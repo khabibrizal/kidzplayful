@@ -248,7 +248,7 @@
   <!-- MENU UTAMA ANAK -->
   <section class="pane show" id="menu">
     <div class="judul-layar">Mode Anak — Menu Utama</div>
-    <div class="ket-layar">Ikon besar, tanpa teks rumit, dipandu suara. Hanya 3 pintu: Minggu Ini, Pustaka, Pojok Video. Gembok di kanan atas = keluar butuh PIN ortu.</div>
+    <div class="ket-layar">Ikon besar, tanpa teks rumit, dipandu suara. Hanya 3 pintu: Minggu Ini, Game Edukasi, Pojok Video. Gembok di kanan atas = keluar butuh PIN ortu.</div>
     <div class="hp"><div class="notch"></div><div class="layar">
       <div class="kid-top">
         <div class="tema-chip">🐰 Minggu Hewan</div>
@@ -259,7 +259,7 @@
       </div>
       <div class="menu-besar">
         <div class="tile minggu"><span class="emo">🎯</span><div>Main Minggu Ini<small>3 permainan seru</small></div></div>
-        <div class="tile pustaka"><span class="emo">📚</span><div>Pustaka<small>semua tema</small></div></div>
+        <div class="tile pustaka"><span class="emo">📚</span><div>Game Edukasi<small>semua tema</small></div></div>
         <div class="tile video"><span class="emo">📺</span><div>Pojok Video<small>nonton sebentar</small></div></div>
       </div>
       <div class="kid-foot">Sisa waktu main hari ini: 18 menit</div>
@@ -461,7 +461,7 @@
   <!-- ADMIN: TEMA -->
   <section class="pane" id="adm-tema">
     <div class="judul-layar">Dashboard Admin — Kelola Tema & Jadwal "Minggu Ini"</div>
-    <div class="ket-layar">Owner membuat tema, lalu memilih tema mana yang tayang sebagai "Minggu Ini". Tema lama tetap tersimpan di Pustaka.</div>
+    <div class="ket-layar">Owner membuat tema, lalu memilih tema mana yang tayang sebagai "Minggu Ini". Tema lama tetap tersimpan di Game Edukasi.</div>
     <div class="desktop"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
     <div class="layar"><div class="adm">
       <div class="adm-side"><div class="lg">🌈 KidzPlayful</div>
@@ -484,19 +484,24 @@
   <!-- ADMIN: EDITOR ASET -->
   <section class="pane" id="adm-edit">
     <div class="judul-layar">Dashboard Admin — Editor Aset Game (rahasia treadmill mingguan)</div>
-    <div class="ket-layar">Untuk "ganti tema": owner cukup unggah gambar + suara dan tandai jawaban benar. Mesin game membaca data ini — tanpa menyentuh kode. Sekali bikin mesin, hidup selamanya.</div>
+    <div class="ket-layar">Produksi konten hybrid: tekan "Buat draf dengan AI" → AI isi gambar+suara+saran jawaban → owner review/edit/approve. Mesin game membaca data ini tanpa koding. (Bisa juga unggah manual.)</div>
     <div class="desktop"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
     <div class="layar"><div class="adm">
       <div class="adm-side"><div class="lg">🌈 KidzPlayful</div>
         <a href="#">💳 Langganan</a><a href="#">🗂️ Tema</a><a href="#" class="on">🧩 Aset Game</a><a href="#">📺 Video</a><a href="#">📊 Ringkasan</a>
       </div>
       <div class="adm-main">
-        <h3>Tema: Hewan · Mesin: <b>Tekan yang Sesuai</b></h3>
-        <div class="editor-row"><div class="slot ok">🐱</div><div class="lbl"><b>Butir 1</b>Suara: "mana kucing?"</div><span class="tag-benar">✓ jawaban benar</span></div>
+        <h3>Tema: Hewan · Mesin: <b>Tekan yang Sesuai</b> <span class="st trial" style="margin-left:6px">draf (AI)</span></h3>
+        <div class="editor-row" style="background:#f3eefb;border-color:#d9c8f3">
+          <div class="slot" style="background:#ece1fb">✨</div>
+          <div class="lbl" style="flex:1"><b>Buat draf dengan AI</b><span style="color:#7b45c0">AI isi gambar + suara + saran jawaban dari nama tema — tinggal review</span></div>
+          <button class="btn-sm">✨ Generate</button>
+        </div>
+        <div class="editor-row"><div class="slot ok">🐱</div><div class="lbl"><b>Butir 1</b>Suara: "mana kucing?" · <i style="color:#7b45c0">dibuat AI</i></div><span class="tag-benar">✓ jawaban benar</span></div>
         <div class="editor-row"><div class="slot">🐶</div><div class="lbl"><b>Pengecoh</b>anjing.png</div></div>
         <div class="editor-row"><div class="slot">🐮</div><div class="lbl"><b>Pengecoh</b>sapi.png</div></div>
         <div class="editor-row" style="border-style:dashed;color:#bbb;justify-content:center">+ tambah butir / unggah gambar & suara</div>
-        <div style="margin-top:14px"><button class="btn-sm">💾 Simpan paket tema</button> <span style="font-size:11px;color:#999;margin-left:8px">Area skill: <b>Kognitif + Menyimak</b></span></div>
+        <div style="margin-top:14px"><button class="btn-sm">💾 Simpan draf</button> <button class="btn-sm" style="background:var(--hijau)">✓ Setujui &amp; siap tayang</button> <span style="font-size:11px;color:#999;margin-left:8px">Usia: <b>2-4</b> · Area skill: <b>Kognitif + Menyimak</b></span></div>
       </div>
     </div></div></div>
   </section>
@@ -572,7 +577,7 @@
       </div>
       <div class="tab-tiles">
         <div class="tile minggu"><span class="emo">🎯</span><div>Main Minggu Ini<small>3 permainan</small></div></div>
-        <div class="tile pustaka"><span class="emo">📚</span><div>Pustaka<small>semua tema</small></div></div>
+        <div class="tile pustaka"><span class="emo">📚</span><div>Game Edukasi<small>semua tema</small></div></div>
         <div class="tile video"><span class="emo">📺</span><div>Pojok Video<small>nonton sebentar</small></div></div>
       </div>
       <div class="kid-foot" style="padding-bottom:14px">Sisa waktu main hari ini: 18 menit</div>
@@ -640,7 +645,7 @@
           <span class="chip">🐰 Minggu Hewan</span>
           <div class="row3">
             <div class="tile minggu"><span class="emo">🎯</span>Minggu Ini</div>
-            <div class="tile pustaka"><span class="emo">📚</span>Pustaka</div>
+            <div class="tile pustaka"><span class="emo">📚</span>Game Edukasi</div>
             <div class="tile video"><span class="emo">📺</span>Video</div>
           </div>
           <div class="hint">Sisa waktu main hari ini: 18 menit</div>

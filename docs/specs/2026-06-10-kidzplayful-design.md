@@ -39,6 +39,7 @@ Satu aplikasi yang **tumbuh bersama anak** (dipakai dari bayi sampai balita) →
 | Monetisasi | **Langganan bulanan** + **free trial 14 hari** |
 | Cara membangun | **Opsi B**: web app penuh, tapi **aktivasi langganan manual** dulu (gateway otomatis menyusul) |
 | Strategi game | **Opsi 1**: beberapa "mesin game" yang diganti-tema tiap minggu (bukan game unik dari nol) |
+| Produksi konten | **Mesin game = hard-code**; **konten tema = hybrid** (AI buat draf → owner review/approve) |
 | Fitur tambahan | **Pojok Video**: video YouTube terkurasi & terkunci di dalam app |
 | Fitur Owner tambahan | **Kelola Video** (input link YouTube) + **Laporan Data Member** (langganan, pendapatan, keterlibatan, daftar) |
 | Bahasa produk & dokumen | Bahasa Indonesia |
@@ -121,6 +122,18 @@ Mesin yang sama diberi "tingkat" (jumlah pilihan, kecepatan) — selaras strateg
 Sensorik **taktil** (tekstur), **proprioseptif/vestibular**, dan **motorik kasar** tetap ranah aktivitas
 fisik (Mode Ortu 0-2) & mainan sensorik fisik — bukan diklaim oleh game layar.
 
+### 5.2b Produksi konten: mesin hard-code + konten hybrid AI
+Dua lapisan terpisah:
+- **Mesin game (logika & interaksi)** — **hard-code** (React/TypeScript), dibuat sekali, dipakai ulang.
+  Bukan dihasilkan AI; game interaktif balita harus diprogram agar mulus & aman.
+- **Konten tiap tema** (gambar, suara, jawaban benar) — **hybrid AI**: dari nama tema, AI membuat
+  **draf** paket aset (gambar via image-gen, suara via TTS, saran jawaban benar). Owner lalu
+  **review / edit / approve** di "Editor Aset Game" sebelum tema tayang. Cepat (mengatasi treadmill)
+  + ada gerbang kualitas manusia + tetap on-brand.
+
+Implikasi data: `paket_aset` punya **`status`** (draf / disetujui) dan **`sumber`** (ai / manual);
+tema hanya bisa dijadwalkan "Minggu Ini" setelah paketnya berstatus *disetujui*.
+
 ### 5.3 Mekanisme "ganti tema" (kunci treadmill mingguan)
 Tiap mesin **membaca data, bukan kode**. Owner mengganti **paket aset** (gambar + suara +
 jawaban benar) per tema lewat Dashboard Admin, tanpa menyentuh kode. Contoh paket tema "Hewan"
@@ -172,11 +185,11 @@ Aturan (wajib, demi keamanan screen time):
 
 ---
 
-## 7. Tema Mingguan, Akses Bebas & Pustaka
+## 7. Tema Mingguan, Akses Bebas & Game Edukasi
 
 - **Tema Minggu Ini** tampil paling depan ("Minggu Hewan 🐰"): game bertema + Pojok Video bertema +
   (Tahap 2) panduan ortu & worksheet bertema. Ini "kelas minggu ini".
-- **Pustaka:** semua tema lama tersimpan & **bisa diakses bebas** kapan saja.
+- **Game Edukasi:** semua tema lama tersimpan & **bisa diakses bebas** kapan saja.
 - Satu tema = satu paket di Admin: nama, sampul, aset per mesin game, daftar video, (nanti)
   worksheet & panduan. Owner **menjadwalkan** tema mana yang tayang sebagai "Minggu Ini".
 
@@ -184,7 +197,7 @@ Aturan (wajib, demi keamanan screen time):
 Dua "pencari" dengan kebutuhan berbeda → **satu data, dua cara tampil.** Tiap aktivitas game diberi label
 metadata: **tema**, **usia_min/usia_max**, **mesin** (jenis game), dan **area_skill** (untuk laporan).
 
-- **Mode Anak — by TEMA (sederhana).** "Minggu Ini" + "Pustaka", ikon besar bergambar, tanpa filter.
+- **Mode Anak — by TEMA (sederhana).** "Minggu Ini" + "Game Edukasi", ikon besar bergambar, tanpa filter.
   Anak tinggal pencet; tidak memilih berdasarkan skill/usia.
 - **Sisi Orang Tua (di balik Gerbang PIN) — by KECOCOKAN.** Dua mekanisme yang dipilih:
   1. **Otomatis sesuai usia anak** — app memakai umur dari profil anak untuk menampilkan
@@ -212,7 +225,7 @@ Umur anak menentukan mode default: 0-2 → Mode Ortu (Tahap 2); 2+ → Mode Anak
 
 ### 8.2 Anak (Mode Anak — sesederhana mungkin)
 ```
-Layar besar bergambar → "Minggu Ini" + "Pustaka" + "Pojok Video"
+Layar besar bergambar → "Minggu Ini" + "Game Edukasi" + "Pojok Video"
   → tekan satu kegiatan → mesin game jalan (instruksi suara)
   → selesai → bintang & koin → kembali ke menu
   → batas waktu habis → layar "istirahat dulu ya" (perlu PIN ortu untuk lanjut)
@@ -282,7 +295,7 @@ python -m http.server 4505
 ### Daftar layar dalam mockup
 
 **Mode Anak (2 thn+)** — ikon besar, dipandu suara, tanpa teks rumit:
-- **Menu Utama** — 3 pintu: Minggu Ini / Pustaka / Pojok Video; chip tema, koin, gembok PIN, sisa waktu main.
+- **Menu Utama** — 3 pintu: Minggu Ini / Game Edukasi / Pojok Video; chip tema, koin, gembok PIN, sisa waktu main.
 - **Main Game** — contoh mesin "Tekan yang Sesuai": prompt suara → tekan gambar benar; target besar, tanpa timer menekan, tanpa "kalah".
 - **Layar Hadiah** — bintang 1-3 + koin (skor "wajah anak").
 - **Pojok Video** — pemutar terkunci, daftar video terkurasi, batas 2 video.
@@ -301,8 +314,8 @@ python -m http.server 4505
 
 **Dashboard Admin (Owner):**
 - **Kelola Langganan** — status trial/aktif/menunggu/kadaluarsa + tombol "Aktifkan" manual (inti Opsi B).
-- **Kelola Tema** — buat tema, jadwalkan "Minggu Ini"; tema lama tersimpan di Pustaka.
-- **Editor Aset Game** — unggah gambar + suara, tandai jawaban benar; mesin game membaca data ini (ganti tema tanpa koding).
+- **Kelola Tema** — buat tema, jadwalkan "Minggu Ini"; tema lama tersimpan di Game Edukasi.
+- **Editor Aset Game** — **"Buat draf dengan AI"** (gambar+suara+saran jawaban) lalu review/edit/approve; atau unggah manual. Mesin game membaca data ini (ganti tema tanpa koding). Status draf/disetujui.
 - **Kelola Video** — tempel link YouTube, pilih tema, atur urutan; link divalidasi (link rusak ditandai). Sumber video untuk "Pojok Video".
 - **Laporan Data Member** — ringkasan langganan, estimasi pendapatan, keterlibatan, dan daftar member (lihat §16).
 
@@ -484,7 +497,7 @@ Jalur langganan: trial hampir habis → ingatkan → halaman langganan → bayar
 **Owner aktifkan manual** → langganan aktif.
 
 ### B. Alur Owner (siapkan tema mingguan)
-Buat Tema → Editor unggah aset per mesin + tandai jawaban benar & area skill → Kurasi video →
+Buat Tema → **AI buat draf aset** (gambar+suara+jawaban) → Editor review/edit/approve → Input link video →
 Jadwalkan "Minggu Ini" → tema tayang.
 
 ```mermaid
@@ -515,10 +528,10 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-  A2["Owner buat Tema"] --> B2["Editor: unggah aset per mesin game"]
-  B2 --> C2["Tandai jawaban benar + area skill"]
-  A2 --> D2["Kurasi video YouTube"]
-  C2 --> E2["Jadwalkan 'Minggu Ini'"]
+  A2["Owner buat Tema"] --> AI["AI buat draf aset (gambar+suara+jawaban)"]
+  AI --> B2["Editor: review / edit / approve"]
+  A2 --> D2["Input link video YouTube"]
+  B2 --> E2["Jadwalkan 'Minggu Ini'"]
   D2 --> E2
   E2 --> F2(["Tema tayang ke pengguna"])
 ```
@@ -536,7 +549,7 @@ Diagram interaktif: **`mockups/index.html` → menu "🗄️ Relasi Database (ER
 | `anak` | Profil anak (nama, tgl lahir, mode default, batas_menit, koin) | milik `orang_tua`; 1—N `hasil_main` |
 | `langganan` | Status (trial/aktif/menunggu/kadaluarsa), tanggal trial & aktif, dibayar_via, diaktifkan_oleh | milik `orang_tua`; diaktifkan `admin` |
 | `tema` | Tema mingguan (nama, sampul, status, **is_minggu_ini**, jadwal_tayang) | 1—N `paket_aset`, `video`, `hasil_main`; 1—1 `panduan` |
-| `paket_aset` | **Butir game sebagai JSON** + mesin + area_skill + **usia_min/usia_max** (untuk auto-rekomendasi usia, §7.1) | milik `tema` |
+| `paket_aset` | **Butir game sebagai JSON** + mesin + area_skill + **usia_min/usia_max** (§7.1) + **sumber** (ai/manual) + **status** (draf/disetujui, §5.2b) | milik `tema` |
 | `video` | Video terkurasi (youtube_id, durasi, urutan, link_ok) | milik `tema` |
 | `hasil_main` | **Log skor** (mesin, area_skill, jumlah_coba, selesai, durasi, bintang, tanggal) — direkam sejak Tahap 1 | milik `anak` & `tema` |
 | `panduan` *(T2)* | Langkah aktivitas (JSON), bahan, worksheet_url | milik `tema` |
@@ -604,6 +617,8 @@ erDiagram
     string area_skill
     int usia_min
     int usia_max
+    string sumber
+    string status
     json butir
   }
   VIDEO {
