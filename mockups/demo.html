@@ -21,7 +21,6 @@
   .caption{font-family:'Quicksand',sans-serif;font-size:13px;color:#7a7390;text-align:center;max-width:360px;line-height:1.5}
   .caption b{color:var(--lavender-d)}
 
-  /* HP */
   .hp{width:340px;height:710px;background:#2b2440;border-radius:46px;padding:13px;box-shadow:0 30px 70px rgba(80,60,140,.35)}
   .layar{position:relative;width:100%;height:100%;border-radius:34px;overflow:hidden;background:var(--bg)}
   .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:24px;background:#2b2440;border-radius:0 0 16px 16px;z-index:50}
@@ -30,23 +29,18 @@
   .screen.on{display:flex}
   @keyframes fade{from{opacity:0;transform:scale(.98)}to{opacity:1;transform:scale(1)}}
 
-  /* Top bar anak */
   .topbar{display:flex;align-items:center;justify-content:space-between;padding:38px 18px 8px}
   .chip{background:var(--peach);color:#9a5b33;font-weight:700;padding:6px 14px;border-radius:99px;font-size:14px;box-shadow:0 4px 0 var(--peach-d)}
   .coin{background:#fff;border-radius:99px;padding:5px 13px;font-weight:700;font-size:14px;color:#c98a00;box-shadow:0 3px 0 #efe3c9;display:flex;align-items:center;gap:5px}
-  .lock{width:40px;height:40px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 3px 0 #e6def5;cursor:pointer;border:none}
+  .lock{width:40px;height:40px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 3px 0 #e6def5;cursor:pointer;border:none;font-family:inherit}
   .right{display:flex;gap:8px;align-items:center}
 
-  /* Splash */
   .splash{align-items:center;justify-content:center;text-align:center;gap:6px;background:linear-gradient(170deg,#e9dcff,#d4ecff)}
   .brand{font-size:30px;font-weight:800;color:var(--lavender-d);letter-spacing:.5px}
   .tagline{font-family:'Quicksand';font-size:13px;color:#8a82a0;margin-bottom:8px}
   .btn{border:none;cursor:pointer;font-family:inherit;font-weight:800;border-radius:99px;padding:15px 30px;font-size:18px;color:#fff;background:var(--lavender-d);box-shadow:0 6px 0 #7d63b8;transition:transform .08s}
   .btn:active{transform:translateY(3px);box-shadow:0 3px 0 #7d63b8}
-  .btn.mint{background:var(--mint-d);box-shadow:0 6px 0 #4fae87}
-  .btn.mint:active{box-shadow:0 3px 0 #4fae87}
 
-  /* Menu tiles */
   .menu{flex:1;display:flex;flex-direction:column;gap:14px;padding:6px 18px 18px;justify-content:center}
   .tile{border:none;cursor:pointer;font-family:inherit;border-radius:26px;padding:20px;display:flex;align-items:center;gap:15px;color:#fff;font-weight:800;font-size:20px;text-align:left;box-shadow:0 7px 0 rgba(0,0,0,.12);transition:transform .08s}
   .tile:active{transform:translateY(3px)}
@@ -57,7 +51,6 @@
   .t-vid{background:var(--biru-d);box-shadow:0 7px 0 #4f93d8}
   .foot{text-align:center;font-family:'Quicksand';font-size:11px;color:var(--abu);padding:0 18px 16px}
 
-  /* Game list */
   .glist{flex:1;display:flex;flex-direction:column;gap:12px;padding:8px 18px;overflow:auto}
   .gcard{background:#fff;border:none;cursor:pointer;font-family:inherit;border-radius:20px;padding:14px;display:flex;align-items:center;gap:13px;box-shadow:0 4px 0 #e6def5;text-align:left}
   .gcard:active{transform:translateY(2px)}
@@ -66,10 +59,8 @@
   .gcard span{font-size:12px;color:var(--abu);font-family:'Quicksand'}
   .badge{margin-left:auto;font-size:11px;font-weight:700;padding:4px 9px;border-radius:99px;background:#eafaf2;color:#3a9e72;font-family:'Quicksand'}
 
-  /* Play */
   .play{flex:1;display:flex;flex-direction:column}
   .prompt{margin:6px 18px;background:#fff;border-radius:22px;padding:16px;text-align:center;font-weight:800;font-size:20px;box-shadow:0 4px 0 #e6def5;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer}
-  .prompt .sp{font-size:22px}
   .grid{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:14px 18px}
   .opt{background:#fff;border:none;border-radius:24px;font-size:62px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 0 #e6def5;cursor:pointer;transition:transform .1s}
   .opt:active{transform:scale(.95)}
@@ -81,7 +72,6 @@
   .prog{flex:1;height:13px;background:#e6def5;border-radius:99px;overflow:hidden}
   .prog i{display:block;height:100%;background:var(--mint-d);width:0;transition:width .4s}
 
-  /* Reward */
   .reward{flex:1;align-items:center;justify-content:center;text-align:center;gap:8px;background:linear-gradient(170deg,#d9c9ff,#bfe6ff);color:#fff;display:flex;flex-direction:column;padding:24px}
   .reward h2{font-size:30px}
   .stars{font-size:40px;letter-spacing:8px;margin:6px 0;animation:pop .6s}
@@ -90,14 +80,12 @@
   .reward .btn{background:#fff;color:var(--lavender-d);box-shadow:0 6px 0 #c9b6f0;font-size:16px;padding:13px 22px}
   .reward .btn:active{box-shadow:0 3px 0 #c9b6f0}
 
-  /* Video */
   .vid{flex:1;display:flex;flex-direction:column;background:#fff}
   .player{margin:6px 18px;background:#2b2440;border-radius:18px;height:175px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:46px;position:relative}
   .player .tag{position:absolute;top:8px;left:10px;font-size:10px;background:#fff3;padding:3px 9px;border-radius:99px;font-family:'Quicksand'}
   .vitem{margin:0 18px;background:#f6f2ff;border-radius:14px;padding:10px;display:flex;gap:10px;align-items:center;margin-top:10px}
   .vitem .th{width:60px;height:42px;border-radius:9px;background:var(--mint);display:flex;align-items:center;justify-content:center;font-size:22px}
 
-  /* PIN overlay */
   .overlay{position:absolute;inset:0;background:rgba(60,48,100,.55);display:none;align-items:center;justify-content:center;z-index:60;animation:fade .25s}
   .overlay.on{display:flex}
   .pincard{background:#fff;border-radius:24px;padding:22px;width:255px;text-align:center;box-shadow:0 20px 40px rgba(0,0,0,.3)}
@@ -111,16 +99,13 @@
   .keys button:active{transform:translateY(2px)}
   .hint-pin{font-family:'Quicksand';font-size:11px;color:var(--abu);margin-top:10px}
 
-  /* Toast */
   .toast{position:absolute;bottom:26px;left:50%;transform:translateX(-50%) translateY(20px);background:#2b2440;color:#fff;font-family:'Quicksand';font-weight:600;font-size:13px;padding:10px 18px;border-radius:99px;opacity:0;transition:.3s;z-index:70;pointer-events:none}
   .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 
-  /* Confetti */
   .confetti{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:55}
   .confetti span{position:absolute;top:-30px;font-size:20px;animation:fall linear forwards}
   @keyframes fall{to{transform:translateY(760px) rotate(360deg);opacity:.4}}
 
-  /* Mascot Pewi */
   .pewi{width:130px;height:130px}
 </style>
 </head>
@@ -144,7 +129,7 @@
     </svg>
     <div class="brand">KidzPlayful</div>
     <div class="tagline">Main sambil belajar 🌿</div>
-    <button class="btn" onclick="go('s-menu')">Mulai ▶</button>
+    <button class="btn" data-go="s-menu">Mulai ▶</button>
   </section>
 
   <!-- MENU -->
@@ -153,13 +138,13 @@
       <div class="chip">🐰 Minggu Hewan</div>
       <div class="right">
         <div class="coin">🪙 <span id="coin1">0</span></div>
-        <button class="lock" onclick="openPin()">🔒</button>
+        <button class="lock" data-act="openpin">🔒</button>
       </div>
     </div>
     <div class="menu">
-      <button class="tile t-main" onclick="go('s-glist')"><span class="emo">🎯</span><div>Main Minggu Ini<small>3 permainan seru</small></div></button>
-      <button class="tile t-lib" onclick="toast('Game Edukasi — semua tema (demo)')"><span class="emo">📚</span><div>Game Edukasi<small>semua tema</small></div></button>
-      <button class="tile t-vid" onclick="go('s-vid')"><span class="emo">📺</span><div>Pojok Video<small>nonton sebentar</small></div></button>
+      <button class="tile t-main" data-go="s-glist"><span class="emo">🎯</span><div>Main Minggu Ini<small>3 permainan seru</small></div></button>
+      <button class="tile t-lib" data-toast="Game Edukasi — semua tema (demo)"><span class="emo">📚</span><div>Game Edukasi<small>semua tema</small></div></button>
+      <button class="tile t-vid" data-go="s-vid"><span class="emo">📺</span><div>Pojok Video<small>nonton sebentar</small></div></button>
     </div>
     <div class="foot">Sisa waktu main hari ini: 18 menit</div>
   </section>
@@ -167,14 +152,14 @@
   <!-- GAME LIST -->
   <section class="screen" id="s-glist">
     <div class="topbar">
-      <button class="lock" onclick="go('s-menu')">←</button>
+      <button class="lock" data-go="s-menu">←</button>
       <div class="chip">🐰 Minggu Hewan</div>
       <div class="coin">🪙 <span id="coin2">0</span></div>
     </div>
     <div class="glist">
-      <button class="gcard" onclick="startGame()"><div class="ic" style="background:#dff7ec">🐱</div><div><b>Mana Ya?</b><br><span>Dengar lalu tekan · 2-4 thn</span></div><span class="badge">main ▶</span></button>
-      <button class="gcard" onclick="toast('Beres-Beres — segera (demo)')"><div class="ic" style="background:#efe7fb">🧺</div><div><b>Beres-Beres</b><br><span>Seret & sortir · 3-4 thn</span></div><span class="badge" style="background:#f0f0f4;color:#999">demo</span></button>
-      <button class="gcard" onclick="toast('Cari Pasangan — segera (demo)')"><div class="ic" style="background:#fff0e0">🍎</div><div><b>Cari Pasangan</b><br><span>Cocokkan · 3-5 thn</span></div><span class="badge" style="background:#f0f0f4;color:#999">demo</span></button>
+      <button class="gcard" data-act="start"><div class="ic" style="background:#dff7ec">🐱</div><div><b>Mana Ya?</b><br><span>Dengar lalu tekan · 2-4 thn</span></div><span class="badge">main ▶</span></button>
+      <button class="gcard" data-toast="Beres-Beres — segera (demo)"><div class="ic" style="background:#efe7fb">🧺</div><div><b>Beres-Beres</b><br><span>Seret & sortir · 3-4 thn</span></div><span class="badge" style="background:#f0f0f4;color:#999">demo</span></button>
+      <button class="gcard" data-toast="Cari Pasangan — segera (demo)"><div class="ic" style="background:#fff0e0">🍎</div><div><b>Cari Pasangan</b><br><span>Cocokkan · 3-5 thn</span></div><span class="badge" style="background:#f0f0f4;color:#999">demo</span></button>
     </div>
     <div class="foot">Pilih game — "Mana Ya?" bisa dimainkan</div>
   </section>
@@ -182,12 +167,12 @@
   <!-- PLAY -->
   <section class="screen play" id="s-play">
     <div class="topbar">
-      <button class="lock" onclick="go('s-glist')">←</button>
+      <button class="lock" data-go="s-glist">←</button>
       <div class="coin">🪙 <span id="coin3">0</span></div>
     </div>
-    <div class="prompt" onclick="sayPrompt()">🔊 Mana <b id="q">&nbsp;</b>?</div>
+    <div class="prompt" data-act="say">🔊 Mana <b id="q">&nbsp;</b>?</div>
     <div class="grid" id="grid"></div>
-    <div class="pbar"><button class="lock" onclick="sayPrompt()">🔊</button><div class="prog"><i id="prog"></i></div><div class="coin" id="round">1/5</div></div>
+    <div class="pbar"><button class="lock" data-act="say">🔊</button><div class="prog"><i id="prog"></i></div><div class="coin" id="round">1/5</div></div>
   </section>
 
   <!-- REWARD -->
@@ -195,16 +180,16 @@
     <div style="font-size:60px">🎉</div>
     <h2>Hebat!</h2>
     <div class="stars" id="stars">⭐⭐⭐</div>
-    <div class="sub" id="rewsub">Kamu dapat 5 koin baru 🪙</div>
+    <div class="sub" id="rewsub">Kamu dapat koin baru 🪙</div>
     <div class="row">
-      <button class="btn" onclick="startGame()">Main lagi</button>
-      <button class="btn" onclick="go('s-menu')">Selesai</button>
+      <button class="btn" data-act="start">Main lagi</button>
+      <button class="btn" data-go="s-menu">Selesai</button>
     </div>
   </section>
 
   <!-- VIDEO -->
   <section class="screen vid" id="s-vid">
-    <div class="topbar"><button class="lock" onclick="go('s-menu')">←</button><div class="chip">Maks. 2 video</div></div>
+    <div class="topbar"><button class="lock" data-go="s-menu">←</button><div class="chip">Maks. 2 video</div></div>
     <div class="player">▶ <span class="tag">terkunci · tanpa rekomendasi</span></div>
     <div class="vitem"><div class="th">🐘</div><div><b style="color:#5b5170">Mengenal Suara Hewan</b><br><span style="font-family:Quicksand;font-size:11px;color:#999">2 menit</span></div></div>
     <div class="vitem"><div class="th" style="background:var(--peach)">🦁</div><div><b style="color:#5b5170">Lagu Hewan</b><br><span style="font-family:Quicksand;font-size:11px;color:#999">3 menit</span></div></div>
@@ -219,10 +204,10 @@
       <p>Masukkan PIN untuk lanjut</p>
       <div class="dots"><i id="d0"></i><i id="d1"></i><i id="d2"></i><i id="d3"></i></div>
       <div class="keys">
-        <button onclick="pin(1)">1</button><button onclick="pin(2)">2</button><button onclick="pin(3)">3</button>
-        <button onclick="pin(4)">4</button><button onclick="pin(5)">5</button><button onclick="pin(6)">6</button>
-        <button onclick="pin(7)">7</button><button onclick="pin(8)">8</button><button onclick="pin(9)">9</button>
-        <button onclick="closePin()">✕</button><button onclick="pin(0)">0</button><button onclick="pinDel()">⌫</button>
+        <button data-pin="1">1</button><button data-pin="2">2</button><button data-pin="3">3</button>
+        <button data-pin="4">4</button><button data-pin="5">5</button><button data-pin="6">6</button>
+        <button data-pin="7">7</button><button data-pin="8">8</button><button data-pin="9">9</button>
+        <button data-act="closepin">✕</button><button data-pin="0">0</button><button data-act="pindel">⌫</button>
       </div>
       <div class="hint-pin">PIN demo: 1234</div>
     </div>
@@ -235,94 +220,6 @@
 
 <div class="caption" style="font-size:11px;color:#a99fc0">Prototipe — gaya Lembut Pastel, maskot "Pewi". Bukan produk final.</div>
 
-<script>
-  var coins = 0, round = 0, correctCount = 0;
-  var ITEMS = [
-    {q:'kucing', ok:'🐱', no:['🐶','🐮','🐰']},
-    {q:'anjing', ok:'🐶', no:['🐱','🐸','🐷']},
-    {q:'bebek',  ok:'🦆', no:['🐔','🐢','🐠']},
-    {q:'gajah',  ok:'🐘', no:['🦒','🐭','🐧']},
-    {q:'sapi',   ok:'🐮', no:['🐴','🐑','🐤']},
-  ];
-
-  function go(id){
-    document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('on')});
-    document.getElementById(id).classList.add('on');
-  }
-  function setCoins(){['coin1','coin2','coin3'].forEach(function(i){var e=document.getElementById(i);if(e)e.textContent=coins;});}
-
-  function speak(t){ try{ if(window.speechSynthesis){ speechSynthesis.cancel(); var u=new SpeechSynthesisUtterance(t); u.lang='id-ID'; u.rate=.9; u.pitch=1.15; speechSynthesis.speak(u);} }catch(e){} }
-  var curQ='';
-  function sayPrompt(){ if(curQ) speak('Mana '+curQ+'?'); }
-
-  function shuffle(a){ for(var i=a.length-1;i>0;i--){var j=Math.floor((i+1)*(0.5));var t=a[i];a[i]=a[j];a[j]=t;} return a; }
-  // deterministic-ish shuffle by rotating (no Math.random needed for demo variety)
-  function mix(arr, seed){ var a=arr.slice(); for(var k=0;k<seed%4;k++){a.push(a.shift());} return a; }
-
-  function startGame(){ round=0; correctCount=0; go('s-play'); renderRound(); }
-
-  function renderRound(){
-    if(round>=ITEMS.length){ return showReward(); }
-    var it = ITEMS[round];
-    curQ = it.q;
-    document.getElementById('q').textContent = ' '+it.q+' ';
-    document.getElementById('round').textContent = (round+1)+'/'+ITEMS.length;
-    document.getElementById('prog').style.width = (round/ITEMS.length*100)+'%';
-    var choices = mix([it.ok, it.no[0], it.no[1], it.no[2]], round+1);
-    var grid = document.getElementById('grid'); grid.innerHTML='';
-    choices.forEach(function(emo){
-      var b=document.createElement('button'); b.className='opt'; b.textContent=emo;
-      b.onclick=function(){ choose(b, emo===it.ok); };
-      grid.appendChild(b);
-    });
-    setTimeout(sayPrompt, 350);
-  }
-
-  function choose(btn, correct){
-    if(correct){
-      btn.classList.add('benar'); coins++; correctCount++; setCoins(); speak('Hebat!');
-      document.querySelectorAll('.opt').forEach(function(o){o.onclick=null;});
-      document.getElementById('prog').style.width=((round+1)/ITEMS.length*100)+'%';
-      setTimeout(function(){ round++; renderRound(); }, 850);
-    } else {
-      btn.classList.add('salah'); speak('Coba lagi ya');
-      setTimeout(function(){ btn.classList.remove('salah'); }, 450);
-    }
-  }
-
-  function showReward(){
-    var s = correctCount>=5?3 : correctCount>=3?2:1;
-    document.getElementById('stars').textContent = ['⭐','⭐⭐','⭐⭐⭐'][s-1];
-    document.getElementById('rewsub').textContent = 'Kamu menjawab '+correctCount+' dari '+ITEMS.length+' · +'+correctCount+' koin 🪙';
-    go('s-reward'); confetti(); speak('Hore, kamu hebat!');
-  }
-
-  function confetti(){
-    var c=document.getElementById('confetti'); c.innerHTML='';
-    var emo=['⭐','🌸','🎈','💜','🌟','🍃'];
-    for(var i=0;i<26;i++){
-      var s=document.createElement('span');
-      s.textContent=emo[i%emo.length];
-      s.style.left=(4+ (i*3.6)%92)+'%';
-      s.style.animationDuration=(2.2 + (i%5)*0.4)+'s';
-      s.style.animationDelay=((i%8)*0.12)+'s';
-      c.appendChild(s);
-    }
-    setTimeout(function(){c.innerHTML='';}, 4200);
-  }
-
-  // PIN
-  var pinBuf='';
-  function openPin(){ pinBuf=''; drawPin(); document.getElementById('pin').classList.add('on'); }
-  function closePin(){ document.getElementById('pin').classList.remove('on'); }
-  function drawPin(){ for(var i=0;i<4;i++){ document.getElementById('d'+i).className = i<pinBuf.length?'f':''; } }
-  function pin(n){ if(pinBuf.length<4){ pinBuf+=n; drawPin(); if(pinBuf.length===4){ setTimeout(checkPin,150);} } }
-  function pinDel(){ pinBuf=pinBuf.slice(0,-1); drawPin(); }
-  function checkPin(){ if(pinBuf==='1234'){ closePin(); toast('✓ Mode orang tua terbuka (demo)'); } else { toast('PIN salah, coba lagi'); pinBuf=''; drawPin(); } }
-
-  // Toast
-  var tt;
-  function toast(msg){ var t=document.getElementById('toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(tt); tt=setTimeout(function(){t.classList.remove('on');},1900); }
-</script>
+<script src="demo.js"></script>
 </body>
 </html>
