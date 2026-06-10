@@ -706,7 +706,39 @@ mendalam mengikuti ketersediaan data `hasil_main` (yang sudah direkam sejak Taha
 
 ---
 
-## 17. Pertanyaan Terbuka (untuk tahap perencanaan)
+## 17. Roadmap Masa Depan (di luar Tahap 1-3)
+
+Ide pengembangan jangka panjang. Memanfaatkan aset unik: mainan sensorik fisik, worksheet,
+bekas kelas bermain, dan audiens orang tua yang sudah percaya.
+
+### ⭐ Prioritas
+- **Phygital cross-sell** — app menautkan tema mingguan ke **mainan sensorik & worksheet cetak** yang dijual Owner; QR di mainan → buka game terkait; worksheet cetak per tema. Digital ↔ fisik saling menjual (pembeda yang sulit ditiru).
+- **Lisensi B2B PAUD/daycare** — jual akses kelas ke sekolah; mengembalikan model "kelas bermain" dalam skala, pemasukan besar per akun.
+- **Laporan + email mingguan** — dashboard perkembangan kaya + ringkasan mingguan ke email ortu ("minggu ini Arka jago motorik halus"); pendorong retensi langganan terkuat.
+- **Kesulitan adaptif & personalisasi** — game menyesuaikan tingkat dari `hasil_main`; sebut nama anak via TTS ("Arka, mana kucing?").
+
+### Produk & konten
+- Mesin game baru: puzzle, urutan (sequencing), memori, mewarnai, rekam-suara.
+- Jalur kurikulum terstruktur per usia (bukan hanya tema mingguan).
+- Dwibahasa (ID/EN); aksesibilitas anak berkebutuhan khusus.
+
+### Engagement & retensi
+- Mode offline (PWA) — main tanpa internet.
+- Notifikasi lembut & ritual harian; gamifikasi "kebun stiker" lebih dalam.
+
+### Monetisasi & bisnis
+- Pembayaran otomatis (Midtrans/Xendit); paket tahunan; hadiah langganan; tier basic/premium.
+
+### Platform & teknis
+- App HP native (iOS/Android) setelah web terbukti.
+- AI lebih dalam (generate tema penuh, suara lokal); analytics produk untuk Owner (funnel, retensi).
+
+### Fisik ↔ digital
+- Kelas bermain **hybrid** (sesi live online + app sebagai materi) — menghidupkan kembali kelas yang tutup tanpa batas lokasi.
+
+---
+
+## 18. Pertanyaan Terbuka (untuk tahap perencanaan)
 
 - Harga langganan bulanan & detail mekanik trial (kartu/tanpa kartu).
 - Metode transfer/QRIS apa saja yang diterima saat aktivasi manual.
