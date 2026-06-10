@@ -227,6 +227,8 @@
   <button data-p="adm-lang">💳 Kelola Langganan</button>
   <button data-p="adm-tema">🗂️ Kelola Tema</button>
   <button data-p="adm-edit">🧩 Editor Aset Game</button>
+  <button data-p="adm-video">📺 Kelola Video</button>
+  <button data-p="adm-member">📊 Laporan Member</button>
 
   <div class="grup">Tampilan Tablet & Desktop</div>
   <button data-p="tab-menu">📱 Menu Anak — Tablet</button>
@@ -475,6 +477,66 @@
     </div></div></div>
   </section>
 
+  <!-- ADMIN: KELOLA VIDEO -->
+  <section class="pane" id="adm-video">
+    <div class="judul-layar">Dashboard Admin — Kelola Video (input link)</div>
+    <div class="ket-layar">Owner menempel link YouTube, memilih tema, mengatur urutan. Link divalidasi (link rusak ditandai). Video inilah yang muncul terkunci di "Pojok Video" anak.</div>
+    <div class="desktop"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
+    <div class="layar"><div class="adm">
+      <div class="adm-side"><div class="lg">🌈 KidzPlayful</div>
+        <a href="#">💳 Langganan</a><a href="#">🗂️ Tema</a><a href="#">🧩 Aset Game</a><a href="#" class="on">📺 Video</a><a href="#">📊 Laporan</a>
+      </div>
+      <div class="adm-main">
+        <h3>Video — Tema: Hewan</h3>
+        <div class="editor-row" style="border-style:dashed">
+          <div class="slot">🔗</div>
+          <div class="lbl" style="flex:1"><b>Tempel link YouTube</b><span style="color:#999">https://youtube.com/watch?v=...</span></div>
+          <span style="font-size:11px;color:#555">Tema: <b>Hewan ▾</b></span>
+          <button class="btn-sm">+ Tambah</button>
+        </div>
+        <div class="editor-row"><div class="slot ok">🐘</div><div class="lbl" style="flex:1"><b>Mengenal Suara Hewan</b>2 mnt · urutan 1</div><span class="st aktif">link OK</span></div>
+        <div class="editor-row"><div class="slot ok">🦁</div><div class="lbl" style="flex:1"><b>Lagu Hewan di Kebun Binatang</b>3 mnt · urutan 2</div><span class="st aktif">link OK</span></div>
+        <div class="editor-row"><div class="slot">🚫</div><div class="lbl" style="flex:1"><b>Video lama</b>dihapus dari YouTube</div><span class="st exp">link rusak</span></div>
+        <div style="margin-top:12px;font-size:11px;color:#999">Maks. 2 video ditampilkan ke anak per sesi · sisanya cadangan/urutan</div>
+      </div>
+    </div></div></div>
+  </section>
+
+  <!-- ADMIN: LAPORAN MEMBER -->
+  <section class="pane" id="adm-member">
+    <div class="judul-layar">Dashboard Admin — Laporan Data Member</div>
+    <div class="ket-layar">Pantauan bisnis Owner: ringkasan langganan, estimasi pendapatan, keterlibatan, dan daftar member. Datanya diambil dari tabel member, langganan, & hasil main.</div>
+    <div class="desktop"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
+    <div class="layar"><div class="adm">
+      <div class="adm-side"><div class="lg">🌈 KidzPlayful</div>
+        <a href="#">💳 Langganan</a><a href="#">🗂️ Tema</a><a href="#">🧩 Aset Game</a><a href="#">📺 Video</a><a href="#" class="on">📊 Laporan</a>
+      </div>
+      <div class="adm-main">
+        <h3>Laporan Member <span style="float:right;font-size:11px;color:#888">Periode: Bulan Ini ▾</span></h3>
+        <div style="font-size:11px;font-weight:700;color:#888;margin-bottom:6px">RINGKASAN LANGGANAN &amp; PENDAPATAN</div>
+        <div class="cards" style="grid-template-columns:repeat(4,1fr)">
+          <div class="stat"><b>38</b><span>Member aktif</span></div>
+          <div class="stat"><b>12</b><span>Sedang trial</span></div>
+          <div class="stat"><b>3</b><span>Churn (berhenti)</span></div>
+          <div class="stat"><b>Rp 1,9jt</b><span>Estimasi MRR</span></div>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:#888;margin:10px 0 6px">KETERLIBATAN</div>
+        <div class="cards" style="grid-template-columns:repeat(3,1fr)">
+          <div class="stat"><b>14 mnt</b><span>Rata-rata main/anak/hari</span></div>
+          <div class="stat"><b>Hewan</b><span>Tema terpopuler</span></div>
+          <div class="stat"><b>Tekan Sesuai</b><span>Game terpopuler</span></div>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:#888;margin:10px 0 6px">DAFTAR MEMBER</div>
+        <div class="tbl">
+          <div class="tr h" style="grid-template-columns:1.6fr 1fr 1fr 1fr 1fr"><span>Orang Tua</span><span>Anak</span><span>Status</span><span>Gabung</span><span>Terakhir aktif</span></div>
+          <div class="tr" style="grid-template-columns:1.6fr 1fr 1fr 1fr 1fr"><span>bunda.arka@mail.com</span><span>Arka, Sasa</span><span><i class="st aktif">Aktif</i></span><span>2 Mei</span><span>hari ini</span></div>
+          <div class="tr" style="grid-template-columns:1.6fr 1fr 1fr 1fr 1fr"><span>ibu.rara@mail.com</span><span>Rara</span><span><i class="st trial">Trial</i></span><span>8 Jun</span><span>kemarin</span></div>
+          <div class="tr" style="grid-template-columns:1.6fr 1fr 1fr 1fr 1fr"><span>mama.kcano@mail.com</span><span>Kano</span><span><i class="st exp">Kadaluarsa</i></span><span>1 Apr</span><span>12 hari lalu</span></div>
+        </div>
+      </div>
+    </div></div></div>
+  </section>
+
   <!-- TABLET: MENU ANAK -->
   <section class="pane" id="tab-menu">
     <div class="judul-layar">Menu Anak — Tampilan Tablet (landscape)</div>
@@ -602,6 +664,7 @@
         <line x1="1048" y1="345" x2="916" y2="302"/>
         <line x1="1048" y1="345" x2="916" y2="386"/>
         <line x1="1048" y1="345" x2="916" y2="470"/>
+        <line x1="1048" y1="345" x2="916" y2="554"/>
       </g>
 
       <!-- include arrows (dashed) -->
@@ -642,10 +705,11 @@
       <g font-size="12.5" fill="#234e80" text-anchor="middle">
         <ellipse cx="820" cy="110" rx="96" ry="27" fill="#e3efff" stroke="#3a78d6" stroke-width="1.5"/><text x="820" y="114">Kelola Tema</text>
         <ellipse cx="820" cy="174" rx="96" ry="27" fill="#e3efff" stroke="#3a78d6" stroke-width="1.5"/><text x="820" y="178">Editor Aset Game</text>
-        <ellipse cx="820" cy="238" rx="96" ry="27" fill="#e3efff" stroke="#3a78d6" stroke-width="1.5"/><text x="820" y="242">Kurasi Video</text>
+        <ellipse cx="820" cy="238" rx="96" ry="27" fill="#e3efff" stroke="#3a78d6" stroke-width="1.5"/><text x="820" y="242">Input Link Video</text>
         <ellipse cx="820" cy="302" rx="96" ry="27" fill="#e3efff" stroke="#3a78d6" stroke-width="1.5"/><text x="820" y="306">Jadwalkan "Minggu Ini"</text>
         <ellipse cx="820" cy="386" rx="96" ry="27" fill="#e3efff" stroke="#3a78d6" stroke-width="1.5"/><text x="820" y="390">Aktifkan Langganan</text>
         <ellipse cx="820" cy="470" rx="96" ry="27" fill="#eaf2ff" stroke="#6f9fe0" stroke-width="1.5" stroke-dasharray="5 3"/><text x="820" y="474">Ringkasan Pakai [T3]</text>
+        <ellipse cx="820" cy="554" rx="96" ry="27" fill="#e3efff" stroke="#3a78d6" stroke-width="1.5"/><text x="820" y="558">Laporan Member</text>
       </g>
 
       <!-- ===== actors ===== -->
@@ -791,7 +855,7 @@ flowchart LR
     <div class="judul-layar">Relasi Database (ERD)</div>
     <div class="ket-layar">Skema data inti. Perhatikan: TEMA → PAKET_ASET menyimpan butir game sebagai JSON (kunci "ganti tema tanpa koding"); HASIL_MAIN merekam skor sejak Tahap 1 untuk laporan di Tahap 3. Tabel T2/T3 (PANDUAN) sudah disiapkan.</div>
     <div style="background:#fff;border-radius:14px;padding:18px;box-shadow:0 24px 60px rgba(0,0,0,.4);max-width:90vw;overflow:auto">
-      <div style="width:100%;max-width:1100px;aspect-ratio:1600/1372;margin:auto">
+      <div style="width:100%;max-width:1150px;aspect-ratio:1824/1330;margin:auto">
         <object type="image/svg+xml" data="diagrams/erd.svg" style="width:100%;height:100%;border:0"></object>
       </div>
       <pre class="mermaid" style="display:none">

@@ -40,6 +40,7 @@ Satu aplikasi yang **tumbuh bersama anak** (dipakai dari bayi sampai balita) →
 | Cara membangun | **Opsi B**: web app penuh, tapi **aktivasi langganan manual** dulu (gateway otomatis menyusul) |
 | Strategi game | **Opsi 1**: beberapa "mesin game" yang diganti-tema tiap minggu (bukan game unik dari nol) |
 | Fitur tambahan | **Pojok Video**: video YouTube terkurasi & terkunci di dalam app |
+| Fitur Owner tambahan | **Kelola Video** (input link YouTube) + **Laporan Data Member** (langganan, pendapatan, keterlibatan, daftar) |
 | Bahasa produk & dokumen | Bahasa Indonesia |
 | Nama kerja | KidzPlayful |
 
@@ -190,9 +191,11 @@ iklan, tanpa pembelian di dalam Mode Anak.
 
 ### 8.3 Owner (Dashboard Admin)
 ```
-- Kelola Tema: buat tema, unggah aset per mesin, pilih jawaban benar, atur video
+- Kelola Tema: buat tema, unggah aset per mesin, pilih jawaban benar
+- Kelola Video: tempel link YouTube, pilih tema, atur urutan, validasi link
 - Jadwalkan "Minggu Ini"
 - Kelola Langganan: lihat status trial/aktif/kadaluarsa, aktifkan manual setelah bayar
+- Laporan Data Member: ringkasan langganan, pendapatan, keterlibatan, daftar member
 - (Tahap 3) Lihat ringkasan penggunaan
 ```
 
@@ -268,6 +271,8 @@ python -m http.server 4505
 - **Kelola Langganan** — status trial/aktif/menunggu/kadaluarsa + tombol "Aktifkan" manual (inti Opsi B).
 - **Kelola Tema** — buat tema, jadwalkan "Minggu Ini"; tema lama tersimpan di Pustaka.
 - **Editor Aset Game** — unggah gambar + suara, tandai jawaban benar; mesin game membaca data ini (ganti tema tanpa koding).
+- **Kelola Video** — tempel link YouTube, pilih tema, atur urutan; link divalidasi (link rusak ditandai). Sumber video untuk "Pojok Video".
+- **Laporan Data Member** — ringkasan langganan, estimasi pendapatan, keterlibatan, dan daftar member (lihat §16).
 
 ### Strategi responsif (satu web app, tiga perangkat)
 - **Mode Anak:** mobile-first; **tablet = perangkat ideal** (target sentuh lega, direkomendasikan ke ortu); HP nyaman; di **desktop** area main **dijaga di tengah, tidak melebar selebar layar** (game anak yang melar justru sulit dipakai).
@@ -303,9 +308,10 @@ Diagram visual tersedia di mockup: **`mockups/index.html` → menu "🧭 Use Cas
 | Orang Tua | Lihat Laporan Perkembangan | 3 |
 | Owner | Kelola Tema | 1 |
 | Owner | Editor Aset Game | 1 |
-| Owner | Kurasi Video | 1 |
+| Owner | Input Link Video | 1 |
 | Owner | Jadwalkan "Minggu Ini" | 1 |
 | Owner | Aktifkan Langganan (manual) | 1 |
+| Owner | Lihat Laporan Data Member | 1 |
 | Owner | Lihat Ringkasan Pemakaian | 3 |
 
 ### Relasi «include»
@@ -345,10 +351,11 @@ flowchart LR
     p8(["Lihat Laporan (T3)"]):::ucp
     o1(["Kelola Tema"]):::uco
     o2(["Editor Aset Game"]):::uco
-    o3(["Kurasi Video"]):::uco
+    o3(["Input Link Video"]):::uco
     o4(["Jadwalkan Minggu Ini"]):::uco
     o5(["Aktifkan Langganan"]):::uco
     o6(["Ringkasan Pakai (T3)"]):::uco
+    o7(["Laporan Data Member"]):::uco
   end
   anak --- g1
   anak --- g2
@@ -367,6 +374,7 @@ flowchart LR
   owner --- o4
   owner --- o5
   owner --- o6
+  owner --- o7
   g1 -. include .-> skor
   g3 -. include .-> pin
   p5 -. include .-> pin
@@ -503,6 +511,9 @@ Diagram interaktif: **`mockups/index.html` → menu "🗄️ Relasi Database (ER
 | `admin` | Owner pengelola | mengaktifkan `langganan` |
 
 Catatan: `koin`/stiker anak diturunkan dari agregasi `hasil_main` (boleh di-cache di kolom `anak.koin`).
+**Laporan Data Member** (§16) tidak butuh tabel baru — diturunkan dari agregasi `orang_tua` + `langganan`
+(+ `nominal` untuk estimasi pendapatan, `terakhir_aktif` untuk kolom "terakhir aktif") dan `hasil_main`
+(untuk keterlibatan). `admin` kini juga sumber input baris `video`.
 
 ### Sumber Mermaid (erDiagram)
 ```mermaid
@@ -515,12 +526,14 @@ erDiagram
   TEMA       ||--o{ HASIL_MAIN  : dimainkan_pada
   TEMA       ||--o| PANDUAN     : punya
   ADMIN      ||--o{ LANGGANAN   : mengaktifkan
+  ADMIN      ||--o{ VIDEO       : input
 
   ORANG_TUA {
     uuid id PK
     string email
     string password_hash
     string pin_ortu
+    datetime terakhir_aktif
     datetime created_at
   }
   ANAK {
@@ -536,6 +549,7 @@ erDiagram
     uuid id PK
     uuid ortu_id FK
     string status
+    int nominal
     date trial_mulai
     date trial_selesai
     date aktif_sampai
@@ -595,7 +609,23 @@ erDiagram
 
 ---
 
-## 16. Pertanyaan Terbuka (untuk tahap perencanaan)
+## 16. Laporan Data Member (Admin)
+
+Layar Admin untuk memantau bisnis. Diagram: **`mockups/index.html` → "📊 Laporan Member"**.
+Empat bagian:
+
+1. **Ringkasan langganan** — jumlah member aktif / trial / kadaluarsa, member baru per periode, churn (berhenti).
+2. **Estimasi pendapatan** — perkiraan MRR dari member aktif (× `langganan.nominal`), tren pendapatan.
+3. **Keterlibatan** — rata-rata waktu main per anak/hari, tema & game terpopuler (dari `hasil_main`).
+4. **Daftar member (tabel)** — nama ortu, anak, status langganan, tanggal gabung, terakhir aktif; bisa difilter periode.
+
+Sumber data: agregasi `orang_tua`, `langganan`, `anak`, `hasil_main` — tanpa tabel baru.
+Dibangun di **Tahap 1** (ringkasan langganan + daftar member + estimasi pendapatan dasar); metrik keterlibatan
+mendalam mengikuti ketersediaan data `hasil_main` (yang sudah direkam sejak Tahap 1).
+
+---
+
+## 17. Pertanyaan Terbuka (untuk tahap perencanaan)
 
 - Harga langganan bulanan & detail mekanik trial (kartu/tanpa kartu).
 - Metode transfer/QRIS apa saja yang diterima saat aktivasi manual.

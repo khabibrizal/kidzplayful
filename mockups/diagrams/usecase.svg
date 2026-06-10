@@ -31,6 +31,7 @@
         <line x1="1048" y1="345" x2="916" y2="302"/>
         <line x1="1048" y1="345" x2="916" y2="386"/>
         <line x1="1048" y1="345" x2="916" y2="470"/>
+        <line x1="1048" y1="345" x2="916" y2="554"/>
       </g>
 
       <!-- include arrows (dashed) -->
@@ -71,10 +72,11 @@
       <g font-size="12.5" fill="#234e80" text-anchor="middle">
         <ellipse cx="820" cy="110" rx="96" ry="27" fill="#e3efff" stroke="#3a78d6" stroke-width="1.5"/><text x="820" y="114">Kelola Tema</text>
         <ellipse cx="820" cy="174" rx="96" ry="27" fill="#e3efff" stroke="#3a78d6" stroke-width="1.5"/><text x="820" y="178">Editor Aset Game</text>
-        <ellipse cx="820" cy="238" rx="96" ry="27" fill="#e3efff" stroke="#3a78d6" stroke-width="1.5"/><text x="820" y="242">Kurasi Video</text>
+        <ellipse cx="820" cy="238" rx="96" ry="27" fill="#e3efff" stroke="#3a78d6" stroke-width="1.5"/><text x="820" y="242">Input Link Video</text>
         <ellipse cx="820" cy="302" rx="96" ry="27" fill="#e3efff" stroke="#3a78d6" stroke-width="1.5"/><text x="820" y="306">Jadwalkan "Minggu Ini"</text>
         <ellipse cx="820" cy="386" rx="96" ry="27" fill="#e3efff" stroke="#3a78d6" stroke-width="1.5"/><text x="820" y="390">Aktifkan Langganan</text>
         <ellipse cx="820" cy="470" rx="96" ry="27" fill="#eaf2ff" stroke="#6f9fe0" stroke-width="1.5" stroke-dasharray="5 3"/><text x="820" y="474">Ringkasan Pakai [T3]</text>
+        <ellipse cx="820" cy="554" rx="96" ry="27" fill="#e3efff" stroke="#3a78d6" stroke-width="1.5"/><text x="820" y="558">Laporan Member</text>
       </g>
 
       <!-- ===== actors ===== -->
