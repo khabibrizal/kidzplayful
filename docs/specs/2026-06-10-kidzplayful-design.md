@@ -317,6 +317,62 @@ Diagram visual tersedia di mockup: **`mockups/index.html` → menu "🧭 Use Cas
 - **Bayar Langganan** (Orang Tua) memicu **Aktifkan Langganan** (Owner) — proses manual (Opsi B).
 - Trial 14 hari aktif otomatis setelah Daftar; saat berakhir ada masa tenggang sebelum dikunci.
 
+### Sumber Mermaid (versi auto-layout)
+```mermaid
+flowchart LR
+  classDef actor fill:#fffae6,stroke:#333,stroke-width:2px,font-weight:bold;
+  classDef uca fill:#e0f7f5,stroke:#2ba8a3;
+  classDef ucp fill:#efe7fb,stroke:#7b45c0;
+  classDef uco fill:#e3efff,stroke:#3a78d6;
+  classDef inc fill:#f0f0f4,stroke:#9a9ab0;
+  anak["Anak (2+)"]:::actor
+  ortu["Orang Tua"]:::actor
+  owner["Owner / Admin"]:::actor
+  subgraph SYS["Sistem KidzPlayful"]
+    direction TB
+    g1(["Main Game"]):::uca
+    g2(["Lihat Hadiah & Koin"]):::uca
+    g3(["Tonton Pojok Video"]):::uca
+    skor(["Catat Skor"]):::inc
+    pin(["Verifikasi PIN"]):::inc
+    p1(["Daftar & Mulai Trial"]):::ucp
+    p2(["Login"]):::ucp
+    p3(["Kelola Profil Anak"]):::ucp
+    p4(["Atur Batas & PIN"]):::ucp
+    p5(["Buka Mode Anak"]):::ucp
+    p6(["Bayar Langganan"]):::ucp
+    p7(["Panduan 0-2 (T2)"]):::ucp
+    p8(["Lihat Laporan (T3)"]):::ucp
+    o1(["Kelola Tema"]):::uco
+    o2(["Editor Aset Game"]):::uco
+    o3(["Kurasi Video"]):::uco
+    o4(["Jadwalkan Minggu Ini"]):::uco
+    o5(["Aktifkan Langganan"]):::uco
+    o6(["Ringkasan Pakai (T3)"]):::uco
+  end
+  anak --- g1
+  anak --- g2
+  anak --- g3
+  ortu --- p1
+  ortu --- p2
+  ortu --- p3
+  ortu --- p4
+  ortu --- p5
+  ortu --- p6
+  ortu --- p7
+  ortu --- p8
+  owner --- o1
+  owner --- o2
+  owner --- o3
+  owner --- o4
+  owner --- o5
+  owner --- o6
+  g1 -. include .-> skor
+  g3 -. include .-> pin
+  p5 -. include .-> pin
+  p6 -. memicu .-> o5
+```
+
 ### Sumber PlantUML (untuk regenerasi)
 ```plantuml
 @startuml
@@ -417,6 +473,16 @@ flowchart TD
   R --> S(["Langganan aktif"])
 ```
 
+```mermaid
+flowchart LR
+  A2["Owner buat Tema"] --> B2["Editor: unggah aset per mesin game"]
+  B2 --> C2["Tandai jawaban benar + area skill"]
+  A2 --> D2["Kurasi video YouTube"]
+  C2 --> E2["Jadwalkan 'Minggu Ini'"]
+  D2 --> E2
+  E2 --> F2(["Tema tayang ke pengguna"])
+```
+
 ---
 
 ## 15. Skema Data (ERD)
@@ -437,7 +503,95 @@ Diagram interaktif: **`mockups/index.html` → menu "🗄️ Relasi Database (ER
 | `admin` | Owner pengelola | mengaktifkan `langganan` |
 
 Catatan: `koin`/stiker anak diturunkan dari agregasi `hasil_main` (boleh di-cache di kolom `anak.koin`).
-Skema penuh (atribut + tipe) ada sebagai sumber `erDiagram` Mermaid di mockup.
+
+### Sumber Mermaid (erDiagram)
+```mermaid
+erDiagram
+  ORANG_TUA  ||--o{ ANAK        : punya
+  ORANG_TUA  ||--|| LANGGANAN   : memiliki
+  ANAK       ||--o{ HASIL_MAIN  : menghasilkan
+  TEMA       ||--o{ PAKET_ASET  : berisi
+  TEMA       ||--o{ VIDEO       : berisi
+  TEMA       ||--o{ HASIL_MAIN  : dimainkan_pada
+  TEMA       ||--o| PANDUAN     : punya
+  ADMIN      ||--o{ LANGGANAN   : mengaktifkan
+
+  ORANG_TUA {
+    uuid id PK
+    string email
+    string password_hash
+    string pin_ortu
+    datetime created_at
+  }
+  ANAK {
+    uuid id PK
+    uuid ortu_id FK
+    string nama
+    date tanggal_lahir
+    string mode_default
+    int batas_menit
+    int koin
+  }
+  LANGGANAN {
+    uuid id PK
+    uuid ortu_id FK
+    string status
+    date trial_mulai
+    date trial_selesai
+    date aktif_sampai
+    string dibayar_via
+    uuid diaktifkan_oleh FK
+    datetime updated_at
+  }
+  TEMA {
+    uuid id PK
+    string nama
+    string sampul_url
+    string status
+    bool is_minggu_ini
+    date jadwal_tayang
+  }
+  PAKET_ASET {
+    uuid id PK
+    uuid tema_id FK
+    string mesin
+    string area_skill
+    json butir
+  }
+  VIDEO {
+    uuid id PK
+    uuid tema_id FK
+    string judul
+    string youtube_id
+    int durasi_detik
+    int urutan
+    bool link_ok
+  }
+  HASIL_MAIN {
+    uuid id PK
+    uuid anak_id FK
+    uuid tema_id FK
+    string mesin
+    string area_skill
+    int jumlah_coba
+    bool selesai
+    int durasi_detik
+    int bintang
+    datetime tanggal
+  }
+  PANDUAN {
+    uuid id PK
+    uuid tema_id FK
+    json langkah
+    string bahan
+    string worksheet_url
+  }
+  ADMIN {
+    uuid id PK
+    string nama
+    string email
+  }
+```
 
 ---
 

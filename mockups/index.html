@@ -675,8 +675,8 @@
     </svg>
     </div>
     <div style="background:#fff;border-radius:14px;padding:18px;box-shadow:0 24px 60px rgba(0,0,0,.3);margin-top:16px;max-width:90vw;overflow:auto">
-      <div style="font-weight:700;color:#555;margin-bottom:8px;font-size:13px">Versi diagram (auto-layout) — aktor ⬭, use case ▭, garis penuh = asosiasi, putus-putus = «include»/«memicu»</div>
-      <pre class="mermaid">
+      <div style="font-size:12px;color:#999">Diagram di atas adalah versi final. Sumber versi auto-layout (Mermaid) tersedia di dokumen spec, Bagian 13.</div>
+      <pre class="mermaid" style="display:none">
 flowchart LR
   classDef actor fill:#ffffff,stroke:#333,stroke-width:2px,font-weight:bold;
   classDef uca fill:#e0f7f5,stroke:#2ba8a3;
@@ -742,7 +742,10 @@ flowchart LR
     <div class="ket-layar">Atas: alur utama orang tua & anak (daftar → trial → main → langganan). Bawah: alur owner menyiapkan konten tema mingguan.</div>
     <div style="background:#fff;border-radius:14px;padding:18px;box-shadow:0 24px 60px rgba(0,0,0,.4);max-width:90vw;overflow:auto">
       <div style="font-weight:700;color:#555;margin-bottom:8px;font-size:13px">A. Alur Orang Tua & Anak</div>
-      <pre class="mermaid">
+      <div style="width:100%;max-width:620px;aspect-ratio:1137/2002;margin-bottom:18px">
+        <object type="image/svg+xml" data="diagrams/flow-a.svg" style="width:100%;height:100%;border:0"></object>
+      </div>
+      <pre class="mermaid" style="display:none">
 flowchart TD
   A(["Buka kidzplayful.id"]) --> B["Daftar: email + profil anak"]
   B --> C["Trial 14 hari aktif otomatis"]
@@ -768,7 +771,10 @@ flowchart TD
   R --> S(["Langganan aktif"])
       </pre>
       <div style="font-weight:700;color:#555;margin:18px 0 8px;font-size:13px">B. Alur Owner — Siapkan Tema Mingguan</div>
-      <pre class="mermaid">
+      <div style="width:100%;max-width:1000px;aspect-ratio:1355/198">
+        <object type="image/svg+xml" data="diagrams/flow-b.svg" style="width:100%;height:100%;border:0"></object>
+      </div>
+      <pre class="mermaid" style="display:none">
 flowchart LR
   A2["Owner buat Tema"] --> B2["Editor: unggah aset per mesin game"]
   B2 --> C2["Tandai jawaban benar + area skill"]
@@ -785,7 +791,10 @@ flowchart LR
     <div class="judul-layar">Relasi Database (ERD)</div>
     <div class="ket-layar">Skema data inti. Perhatikan: TEMA → PAKET_ASET menyimpan butir game sebagai JSON (kunci "ganti tema tanpa koding"); HASIL_MAIN merekam skor sejak Tahap 1 untuk laporan di Tahap 3. Tabel T2/T3 (PANDUAN) sudah disiapkan.</div>
     <div style="background:#fff;border-radius:14px;padding:18px;box-shadow:0 24px 60px rgba(0,0,0,.4);max-width:90vw;overflow:auto">
-      <pre class="mermaid">
+      <div style="width:100%;max-width:1100px;aspect-ratio:1600/1372;margin:auto">
+        <object type="image/svg+xml" data="diagrams/erd.svg" style="width:100%;height:100%;border:0"></object>
+      </div>
+      <pre class="mermaid" style="display:none">
 erDiagram
   ORANG_TUA  ||--o{ ANAK        : punya
   ORANG_TUA  ||--|| LANGGANAN   : memiliki
@@ -889,11 +898,6 @@ erDiagram
     document.getElementById(b.dataset.p).classList.add('show');
     document.querySelector('main').scrollTop=0;
   }));
-</script>
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-<script>
-  if(window.mermaid){ mermaid.initialize({startOnLoad:true, theme:'base',
-    themeVariables:{primaryColor:'#efe7fb',primaryBorderColor:'#7b45c0',lineColor:'#999',fontSize:'14px'}}); }
 </script>
 </body>
 </html>
