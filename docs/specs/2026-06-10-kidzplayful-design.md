@@ -376,7 +376,72 @@ UC_bayar ..> UC_aktif : memicu (manual)
 
 ---
 
-## 14. Pertanyaan Terbuka (untuk tahap perencanaan)
+## 14. Flow Diagram (alur pengguna)
+
+Diagram interaktif: **`mockups/index.html` → menu "🔀 Flow Diagram"**.
+
+### A. Alur Orang Tua & Anak
+Daftar → trial 14 hari otomatis → cabang umur (0-2 = Mode Ortu; 2+ = Mode Anak) → pilih anak →
+cek langganan/trial aktif → Menu Anak → pilih Game atau Pojok Video → **Catat skor & progres** →
+layar hadiah → cek batas waktu (belum = kembali ke menu; habis = layar istirahat + PIN ortu).
+Jalur langganan: trial hampir habis → ingatkan → halaman langganan → bayar (transfer/QRIS) →
+**Owner aktifkan manual** → langganan aktif.
+
+### B. Alur Owner (siapkan tema mingguan)
+Buat Tema → Editor unggah aset per mesin + tandai jawaban benar & area skill → Kurasi video →
+Jadwalkan "Minggu Ini" → tema tayang.
+
+```mermaid
+flowchart TD
+  A(["Buka kidzplayful.id"]) --> B["Daftar: email + profil anak"]
+  B --> C["Trial 14 hari aktif otomatis"]
+  C --> D{"Umur anak?"}
+  D -->|"0-2 thn"| E["Mode Orang Tua: panduan + worksheet (T2)"]
+  D -->|"2 thn+"| F["Pilih profil anak"]
+  F --> G{"Langganan / trial aktif?"}
+  G -->|"Tidak"| H["Halaman langganan"]
+  G -->|"Ya"| I["Menu Anak"]
+  I --> J{"Pilih kegiatan"}
+  J -->|"Game"| K["Main mesin game"]
+  J -->|"Video"| L["Pojok Video (terkunci)"]
+  K --> M["Catat skor & progres"]
+  M --> N["Layar hadiah: bintang + koin"]
+  N --> O{"Batas waktu habis?"}
+  L --> O
+  O -->|"Belum"| I
+  O -->|"Habis"| P["Layar istirahat (perlu PIN ortu)"]
+  C -.->|"trial hampir habis"| U["Ingatkan: lanjut langganan?"]
+  U --> H
+  H --> Q["Bayar: transfer / QRIS"]
+  Q --> R["Owner aktifkan manual (Admin)"]
+  R --> S(["Langganan aktif"])
+```
+
+---
+
+## 15. Skema Data (ERD)
+
+Diagram interaktif: **`mockups/index.html` → menu "🗄️ Relasi Database (ERD)"**.
+
+### Tabel inti & relasi
+| Tabel | Isi | Relasi |
+|---|---|---|
+| `orang_tua` | Akun pemilik (email, password, **pin_ortu**) | 1—N `anak`, 1—1 `langganan` |
+| `anak` | Profil anak (nama, tgl lahir, mode default, batas_menit, koin) | milik `orang_tua`; 1—N `hasil_main` |
+| `langganan` | Status (trial/aktif/menunggu/kadaluarsa), tanggal trial & aktif, dibayar_via, diaktifkan_oleh | milik `orang_tua`; diaktifkan `admin` |
+| `tema` | Tema mingguan (nama, sampul, status, **is_minggu_ini**, jadwal_tayang) | 1—N `paket_aset`, `video`, `hasil_main`; 1—1 `panduan` |
+| `paket_aset` | **Butir game sebagai JSON** + mesin + area_skill (kunci "ganti tema tanpa koding") | milik `tema` |
+| `video` | Video terkurasi (youtube_id, durasi, urutan, link_ok) | milik `tema` |
+| `hasil_main` | **Log skor** (mesin, area_skill, jumlah_coba, selesai, durasi, bintang, tanggal) — direkam sejak Tahap 1 | milik `anak` & `tema` |
+| `panduan` *(T2)* | Langkah aktivitas (JSON), bahan, worksheet_url | milik `tema` |
+| `admin` | Owner pengelola | mengaktifkan `langganan` |
+
+Catatan: `koin`/stiker anak diturunkan dari agregasi `hasil_main` (boleh di-cache di kolom `anak.koin`).
+Skema penuh (atribut + tipe) ada sebagai sumber `erDiagram` Mermaid di mockup.
+
+---
+
+## 16. Pertanyaan Terbuka (untuk tahap perencanaan)
 
 - Harga langganan bulanan & detail mekanik trial (kartu/tanpa kartu).
 - Metode transfer/QRIS apa saja yang diterima saat aktivasi manual.

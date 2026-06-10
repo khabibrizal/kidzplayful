@@ -236,6 +236,8 @@
 
   <div class="grup">Diagram</div>
   <button data-p="uc">🧭 Use Case Diagram</button>
+  <button data-p="flow">🔀 Flow Diagram</button>
+  <button data-p="erd">🗄️ Relasi Database (ERD)</button>
 </aside>
 
 <main>
@@ -674,6 +676,145 @@
     </div>
   </section>
 
+  <!-- FLOW DIAGRAM -->
+  <section class="pane" id="flow">
+    <div class="judul-layar">Flow Diagram — Alur Pengguna</div>
+    <div class="ket-layar">Atas: alur utama orang tua & anak (daftar → trial → main → langganan). Bawah: alur owner menyiapkan konten tema mingguan.</div>
+    <div style="background:#fff;border-radius:14px;padding:18px;box-shadow:0 24px 60px rgba(0,0,0,.4);max-width:90vw;overflow:auto">
+      <div style="font-weight:700;color:#555;margin-bottom:8px;font-size:13px">A. Alur Orang Tua & Anak</div>
+      <pre class="mermaid">
+flowchart TD
+  A(["Buka kidzplayful.id"]) --> B["Daftar: email + profil anak"]
+  B --> C["Trial 14 hari aktif otomatis"]
+  C --> D{"Umur anak?"}
+  D -->|"0-2 thn"| E["Mode Orang Tua:<br/>panduan + worksheet (T2)"]
+  D -->|"2 thn+"| F["Pilih profil anak"]
+  F --> G{"Langganan / trial aktif?"}
+  G -->|"Tidak"| H["Arahkan ke halaman langganan"]
+  G -->|"Ya"| I["Menu Anak"]
+  I --> J{"Pilih kegiatan"}
+  J -->|"Game"| K["Main mesin game"]
+  J -->|"Video"| L["Pojok Video (terkunci)"]
+  K --> M["Catat skor &amp; progres"]
+  M --> N["Layar hadiah: bintang + koin"]
+  N --> O{"Batas waktu habis?"}
+  L --> O
+  O -->|"Belum"| I
+  O -->|"Habis"| P["Layar istirahat<br/>(perlu PIN ortu)"]
+  C -.->|"trial hampir habis"| U["Ingatkan: lanjut langganan?"]
+  U --> H
+  H --> Q["Bayar: transfer / QRIS"]
+  Q --> R["Owner aktifkan manual<br/>(Dashboard Admin)"]
+  R --> S(["Langganan aktif"])
+      </pre>
+      <div style="font-weight:700;color:#555;margin:18px 0 8px;font-size:13px">B. Alur Owner — Siapkan Tema Mingguan</div>
+      <pre class="mermaid">
+flowchart LR
+  A2["Owner buat Tema"] --> B2["Editor: unggah aset per mesin game"]
+  B2 --> C2["Tandai jawaban benar + area skill"]
+  A2 --> D2["Kurasi video YouTube"]
+  C2 --> E2["Jadwalkan 'Minggu Ini'"]
+  D2 --> E2
+  E2 --> F2(["Tema tayang ke pengguna"])
+      </pre>
+    </div>
+  </section>
+
+  <!-- ERD -->
+  <section class="pane" id="erd">
+    <div class="judul-layar">Relasi Database (ERD)</div>
+    <div class="ket-layar">Skema data inti. Perhatikan: TEMA → PAKET_ASET menyimpan butir game sebagai JSON (kunci "ganti tema tanpa koding"); HASIL_MAIN merekam skor sejak Tahap 1 untuk laporan di Tahap 3. Tabel T2/T3 (PANDUAN) sudah disiapkan.</div>
+    <div style="background:#fff;border-radius:14px;padding:18px;box-shadow:0 24px 60px rgba(0,0,0,.4);max-width:90vw;overflow:auto">
+      <pre class="mermaid">
+erDiagram
+  ORANG_TUA  ||--o{ ANAK        : punya
+  ORANG_TUA  ||--|| LANGGANAN   : memiliki
+  ANAK       ||--o{ HASIL_MAIN  : menghasilkan
+  TEMA       ||--o{ PAKET_ASET  : berisi
+  TEMA       ||--o{ VIDEO       : berisi
+  TEMA       ||--o{ HASIL_MAIN  : dimainkan-pada
+  TEMA       ||--o| PANDUAN     : punya
+  ADMIN      ||--o{ LANGGANAN   : mengaktifkan
+
+  ORANG_TUA {
+    uuid id PK
+    string email
+    string password_hash
+    string pin_ortu
+    datetime created_at
+  }
+  ANAK {
+    uuid id PK
+    uuid ortu_id FK
+    string nama
+    date tanggal_lahir
+    string mode_default
+    int batas_menit
+    int koin
+  }
+  LANGGANAN {
+    uuid id PK
+    uuid ortu_id FK
+    string status
+    date trial_mulai
+    date trial_selesai
+    date aktif_sampai
+    string dibayar_via
+    uuid diaktifkan_oleh FK
+    datetime updated_at
+  }
+  TEMA {
+    uuid id PK
+    string nama
+    string sampul_url
+    string status
+    bool is_minggu_ini
+    date jadwal_tayang
+  }
+  PAKET_ASET {
+    uuid id PK
+    uuid tema_id FK
+    string mesin
+    string area_skill
+    json butir
+  }
+  VIDEO {
+    uuid id PK
+    uuid tema_id FK
+    string judul
+    string youtube_id
+    int durasi_detik
+    int urutan
+    bool link_ok
+  }
+  HASIL_MAIN {
+    uuid id PK
+    uuid anak_id FK
+    uuid tema_id FK
+    string mesin
+    string area_skill
+    int jumlah_coba
+    bool selesai
+    int durasi_detik
+    int bintang
+    datetime tanggal
+  }
+  PANDUAN {
+    uuid id PK
+    uuid tema_id FK
+    json langkah
+    string bahan
+    string worksheet_url
+  }
+  ADMIN {
+    uuid id PK
+    string nama
+    string email
+  }
+      </pre>
+    </div>
+  </section>
+
   <div class="legend">Mockup low-fidelity untuk menyepakati struktur & alur — bukan desain visual final (warna/maskot/font menyusul). Klik menu kiri untuk berpindah layar.</div>
 
 </main>
@@ -688,6 +829,11 @@
     document.getElementById(b.dataset.p).classList.add('show');
     document.querySelector('main').scrollTop=0;
   }));
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  if(window.mermaid){ mermaid.initialize({startOnLoad:true, theme:'base',
+    themeVariables:{primaryColor:'#efe7fb',primaryBorderColor:'#7b45c0',lineColor:'#999',fontSize:'14px'}}); }
 </script>
 </body>
 </html>
