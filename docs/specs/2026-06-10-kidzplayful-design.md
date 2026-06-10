@@ -180,6 +180,21 @@ Aturan (wajib, demi keamanan screen time):
 - Satu tema = satu paket di Admin: nama, sampul, aset per mesin game, daftar video, (nanti)
   worksheet & panduan. Owner **menjadwalkan** tema mana yang tayang sebagai "Minggu Ini".
 
+### 7.1 Penemuan & pengelompokan game (anak vs orang tua)
+Dua "pencari" dengan kebutuhan berbeda → **satu data, dua cara tampil.** Tiap aktivitas game diberi label
+metadata: **tema**, **usia_min/usia_max**, **mesin** (jenis game), dan **area_skill** (untuk laporan).
+
+- **Mode Anak — by TEMA (sederhana).** "Minggu Ini" + "Pustaka", ikon besar bergambar, tanpa filter.
+  Anak tinggal pencet; tidak memilih berdasarkan skill/usia.
+- **Sisi Orang Tua (di balik Gerbang PIN) — by KECOCOKAN.** Dua mekanisme yang dipilih:
+  1. **Otomatis sesuai usia anak** — app memakai umur dari profil anak untuk menampilkan
+     **"Cocok untuk [nama] ([usia])"**, daftar game yang sudah tersaring `usia_min ≤ umur ≤ usia_max`.
+     Orang tua tidak perlu menebak. Ini pembeda utama.
+  2. **Telusur per Jenis Game / Tema** — kelompok berdasarkan mesin (Tekan/Seret/…) atau tema (Hewan/Buah/…).
+- Filter manual per Area Skill / rentang usia **tidak** disediakan dulu (YAGNI); `area_skill` tetap direkam
+  di belakang layar untuk Laporan Perkembangan (Tahap 3).
+- Tiap game menampilkan **lencana usia** kecil agar orang tua paham sekilas.
+
 ---
 
 ## 8. Alur Pengguna
@@ -276,6 +291,7 @@ python -m http.server 4505
 **Gerbang & Orang Tua:**
 - **Gerbang PIN** — pelindung keluar Mode Anak / buka video / atur batas.
 - **Kelola Akun & Anak** — multi-profil anak (progres terpisah), batas waktu, PIN, toggle Pojok Video.
+- **Pilih Game untuk Anak** — auto-rekomendasi "Cocok untuk [nama] ([usia])" + telusur Per Tema/Jenis, lencana usia (§7.1).
 
 **Mode Ortu 0-2 (Tahap 2):**
 - **Panduan Aktivitas** — langkah aktivitas fisik bertema + daftar bahan + worksheet PDF.
@@ -520,7 +536,7 @@ Diagram interaktif: **`mockups/index.html` → menu "🗄️ Relasi Database (ER
 | `anak` | Profil anak (nama, tgl lahir, mode default, batas_menit, koin) | milik `orang_tua`; 1—N `hasil_main` |
 | `langganan` | Status (trial/aktif/menunggu/kadaluarsa), tanggal trial & aktif, dibayar_via, diaktifkan_oleh | milik `orang_tua`; diaktifkan `admin` |
 | `tema` | Tema mingguan (nama, sampul, status, **is_minggu_ini**, jadwal_tayang) | 1—N `paket_aset`, `video`, `hasil_main`; 1—1 `panduan` |
-| `paket_aset` | **Butir game sebagai JSON** + mesin + area_skill (kunci "ganti tema tanpa koding") | milik `tema` |
+| `paket_aset` | **Butir game sebagai JSON** + mesin + area_skill + **usia_min/usia_max** (untuk auto-rekomendasi usia, §7.1) | milik `tema` |
 | `video` | Video terkurasi (youtube_id, durasi, urutan, link_ok) | milik `tema` |
 | `hasil_main` | **Log skor** (mesin, area_skill, jumlah_coba, selesai, durasi, bintang, tanggal) — direkam sejak Tahap 1 | milik `anak` & `tema` |
 | `panduan` *(T2)* | Langkah aktivitas (JSON), bahan, worksheet_url | milik `tema` |
@@ -586,6 +602,8 @@ erDiagram
     uuid tema_id FK
     string mesin
     string area_skill
+    int usia_min
+    int usia_max
     json butir
   }
   VIDEO {
