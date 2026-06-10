@@ -278,7 +278,105 @@ Mockup memuat tampilan tablet (Menu & Game) dan desktop (Daftar 2 kolom, Mode An
 
 ---
 
-## 13. Pertanyaan Terbuka (untuk tahap perencanaan)
+## 13. Use Case Diagram
+
+Diagram visual tersedia di mockup: **`mockups/index.html` → menu "🧭 Use Case Diagram"**.
+
+### Aktor
+- **Anak (2 thn+)** — pemakai Mode Anak (di bawah Gerbang PIN ortu).
+- **Orang Tua** — pemilik akun; mengelola, membayar, dan (mode 0-2) memakai panduan.
+- **Owner / Admin** — pengelola konten & langganan.
+
+### Use case per aktor
+| Aktor | Use case | Tahap |
+|---|---|---|
+| Anak | Main Game | 1 |
+| Anak | Lihat Hadiah & Koin | 1 |
+| Anak | Tonton Pojok Video | 1 |
+| Orang Tua | Daftar & Mulai Trial | 1 |
+| Orang Tua | Login | 1 |
+| Orang Tua | Kelola Profil Anak | 1 |
+| Orang Tua | Atur Batas Waktu & PIN | 1 |
+| Orang Tua | Buka Mode Anak | 1 |
+| Orang Tua | Bayar Langganan | 1 |
+| Orang Tua | Lihat Panduan Aktivitas 0-2 | 2 |
+| Orang Tua | Lihat Laporan Perkembangan | 3 |
+| Owner | Kelola Tema | 1 |
+| Owner | Editor Aset Game | 1 |
+| Owner | Kurasi Video | 1 |
+| Owner | Jadwalkan "Minggu Ini" | 1 |
+| Owner | Aktifkan Langganan (manual) | 1 |
+| Owner | Lihat Ringkasan Pemakaian | 3 |
+
+### Relasi «include»
+- **Main Game** → *Catat Skor* (tiap sesi merekam data skor).
+- **Tonton Pojok Video** → *Verifikasi PIN*.
+- **Buka Mode Anak** → *Verifikasi PIN*.
+
+### Catatan alur
+- **Bayar Langganan** (Orang Tua) memicu **Aktifkan Langganan** (Owner) — proses manual (Opsi B).
+- Trial 14 hari aktif otomatis setelah Daftar; saat berakhir ada masa tenggang sebelum dikunci.
+
+### Sumber PlantUML (untuk regenerasi)
+```plantuml
+@startuml
+left to right direction
+actor "Anak (2+)" as Anak
+actor "Orang Tua" as Ortu
+actor "Owner / Admin" as Owner
+
+rectangle "Sistem KidzPlayful" {
+  usecase "Main Game" as UC_game
+  usecase "Lihat Hadiah & Koin" as UC_reward
+  usecase "Tonton Pojok Video" as UC_video
+  usecase "Catat Skor" as UC_skor
+  usecase "Verifikasi PIN" as UC_pin
+
+  usecase "Daftar & Mulai Trial" as UC_daftar
+  usecase "Login" as UC_login
+  usecase "Kelola Profil Anak" as UC_anak
+  usecase "Atur Batas & PIN" as UC_atur
+  usecase "Buka Mode Anak" as UC_buka
+  usecase "Bayar Langganan" as UC_bayar
+  usecase "Panduan 0-2 [T2]" as UC_panduan
+  usecase "Lihat Laporan [T3]" as UC_laporan
+
+  usecase "Kelola Tema" as UC_tema
+  usecase "Editor Aset Game" as UC_aset
+  usecase "Kurasi Video" as UC_kurasi
+  usecase "Jadwalkan Minggu Ini" as UC_jadwal
+  usecase "Aktifkan Langganan" as UC_aktif
+  usecase "Ringkasan Pakai [T3]" as UC_ringkas
+}
+
+Anak --> UC_game
+Anak --> UC_reward
+Anak --> UC_video
+Ortu --> UC_daftar
+Ortu --> UC_login
+Ortu --> UC_anak
+Ortu --> UC_atur
+Ortu --> UC_buka
+Ortu --> UC_bayar
+Ortu --> UC_panduan
+Ortu --> UC_laporan
+Owner --> UC_tema
+Owner --> UC_aset
+Owner --> UC_kurasi
+Owner --> UC_jadwal
+Owner --> UC_aktif
+Owner --> UC_ringkas
+
+UC_game ..> UC_skor : include
+UC_video ..> UC_pin : include
+UC_buka ..> UC_pin : include
+UC_bayar ..> UC_aktif : memicu (manual)
+@enduml
+```
+
+---
+
+## 14. Pertanyaan Terbuka (untuk tahap perencanaan)
 
 - Harga langganan bulanan & detail mekanik trial (kartu/tanpa kartu).
 - Metode transfer/QRIS apa saja yang diterima saat aktivasi manual.
