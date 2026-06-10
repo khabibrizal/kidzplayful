@@ -44,6 +44,7 @@ Satu aplikasi yang **tumbuh bersama anak** (dipakai dari bayi sampai balita) →
 | Fitur Owner tambahan | **Kelola Video** (input link YouTube) + **Laporan Data Member** (langganan, pendapatan, keterlibatan, daftar) |
 | Bahasa produk & dokumen | Bahasa Indonesia |
 | Nama kerja | KidzPlayful |
+| Gaya visual | **Lembut Pastel** (lavender/mint/peach/biru) + maskot **"Pewi"** (awan-kelinci) |
 
 ---
 
@@ -308,8 +309,12 @@ iklan, tanpa pembelian di dalam Mode Anak.
 
 ## 12. Mockup & Desain Antarmuka
 
-Mockup low-fidelity interaktif tersedia di repo: **`mockups/index.html`**.
-Sifatnya menyepakati **struktur & alur layar**, bukan desain visual final (warna/maskot/font final menyusul).
+Mockup low-fidelity tersedia di repo: **`mockups/index.html`** (katalog 20+ layar + semua diagram).
+Sifatnya menyepakati **struktur & alur layar**.
+
+**Live Demo interaktif:** **`mockups/demo.html`** — prototipe **bisa diklik & dimainkan** dengan visual final
+(gaya Lembut Pastel + maskot Pewi): alur Splash → Menu Anak → daftar game → **game "Mana Ya?" benar-benar
+dimainkan** (instruksi suara via Web Speech API, bintang & koin), Pojok Video, dan Gerbang PIN (PIN demo 1234).
 
 **Cara melihat:**
 ```bash
