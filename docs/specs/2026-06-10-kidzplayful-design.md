@@ -104,6 +104,22 @@ Pengguna (browser HP/tablet/laptop)
 | 2. Seret ke Wadah | Seret benda ke keranjang yang benar | Motorik halus + klasifikasi | 1 |
 | 3. Tekan yang Sesuai | Suara menyebut sesuatu, anak tekan gambar yang cocok | Menyimak + motorik + pengenalan | 1 |
 | 4. Telusuri | Telusuri garis/bentuk dengan jari | Motorik halus pra-menulis | 2 |
+| 5. Pop / Letupkan | Tap target bergerak (gelembung berisi warna/angka yang diminta) | Visual tracking + tap, motorik | 2* |
+| 6. Tuang / Isi | Seret menahan untuk menuang/mengisi sampai batas | Kontrol gerak berkelanjutan + konsep banyak/sedikit | 2 |
+| 7. Suara & Irama | Ketuk gendang/tuts mengikuti pola | Sensorik auditori + ritme + urutan | 2 |
+
+\* **Pop / Letupkan** paling murah dibuat & paling disukai balita — kandidat untuk **ditarik ke Tahap 1**
+jika kapasitas memungkinkan. **Tuang/Isi** dan **Suara & Irama** menyusul di Tahap 2.
+
+**Ramp kesulitan per usia** (satu app "tumbuh bersama anak"):
+- **2-3 thn:** hanya **tap** + sebab-akibat, 2 pilihan, target besar, tanpa aturan.
+- **3-4 thn:** tambah **seret** & **cocokkan**, 3-4 pilihan, instruksi 1 langkah.
+- **4-5 thn:** **telusuri** (pra-menulis), urutan/pola, 2 langkah.
+Mesin yang sama diberi "tingkat" (jumlah pilihan, kecepatan) — selaras strategi data-driven (`paket_aset`).
+
+**Batas jujur sensorik:** game layar melatih motorik halus + sensorik **visual/auditori** + sebab-akibat.
+Sensorik **taktil** (tekstur), **proprioseptif/vestibular**, dan **motorik kasar** tetap ranah aktivitas
+fisik (Mode Ortu 0-2) & mainan sensorik fisik — bukan diklaim oleh game layar.
 
 ### 5.3 Mekanisme "ganti tema" (kunci treadmill mingguan)
 Tiap mesin **membaca data, bukan kode**. Owner mengganti **paket aset** (gambar + suara +
