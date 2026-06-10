@@ -122,6 +122,33 @@ Mesin yang sama diberi "tingkat" (jumlah pilihan, kecepatan) — selaras strateg
 Sensorik **taktil** (tekstur), **proprioseptif/vestibular**, dan **motorik kasar** tetap ranah aktivitas
 fisik (Mode Ortu 0-2) & mainan sensorik fisik — bukan diklaim oleh game layar.
 
+### 5.2a Pengelompokan & judul game
+"Macam game" punya dua makna: **mekanik (mesin) = 7 jenis cara main**; **judul game = mesin × tema**
+(mesin sama jadi banyak judul saat dipasang ke tema berbeda). Jadi 7 mekanik → puluhan judul.
+
+**Kelompok A — Motorik Halus (kontrol & gerak jari)**
+| Mesin | Judul Game | Cara main |
+|---|---|---|
+| Seret ke Wadah | **Beres-Beres** | seret benda ke keranjang yang benar |
+| Telusuri | **Ikuti Jejak** | telusuri garis/bentuk dengan jari |
+| Tuang / Isi | **Tuang & Isi** | tahan-seret untuk menuang sampai penuh |
+
+**Kelompok B — Sensorik Visual & Fokus**
+| Mesin | Judul Game | Cara main |
+|---|---|---|
+| Cocokkan | **Cari Pasangan** | pasangkan gambar dengan pasangannya |
+| Pop / Letupkan | **Pop-Pop Balon** | letupkan target bergerak yang diminta |
+
+**Kelompok C — Sensorik Auditori & Bahasa**
+| Mesin | Judul Game | Cara main |
+|---|---|---|
+| Tekan yang Sesuai | **Mana Ya?** | dengar suara → tekan gambar yang cocok |
+| Suara & Irama | **Tabuh Irama** | ketuk gendang/tuts mengikuti pola |
+
+**Perkiraan jumlah judul game:**
+- Tahap 1 (3 mesin: Mana Ya?, Beres-Beres, Cari Pasangan) × ±8 tema → **±24 judul**.
+- Lengkap (7 mesin) × ±12 tema → **±84 judul** — dari 7 mekanik yang diprogram sekali.
+
 ### 5.2b Produksi konten: mesin hard-code + konten hybrid AI
 Dua lapisan terpisah:
 - **Mesin game (logika & interaksi)** — **hard-code** (React/TypeScript), dibuat sekali, dipakai ulang.
