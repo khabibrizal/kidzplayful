@@ -107,6 +107,23 @@
   @keyframes fall{to{transform:translateY(760px) rotate(360deg);opacity:.4}}
 
   .pewi{width:130px;height:130px}
+
+  /* Beres-Beres (seret) */
+  .sortarea{flex:1;display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:center;padding:14px 18px;min-height:0}
+  .item{width:86px;height:86px;border-radius:22px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:48px;box-shadow:0 6px 0 #e6def5;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+  .item.gone{opacity:0;transform:scale(.3)!important;transition:.3s}
+  .bins{display:flex;gap:16px;padding:6px 18px 22px;justify-content:center}
+  .bin{flex:1;height:118px;border-radius:24px;background:#efe7fb;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:40px;border:3px dashed #c9b6f0;color:#7b6aa0}
+  .bin small{font-size:13px;font-weight:700;font-family:'Quicksand';margin-top:2px}
+  .bin.hot{background:#e2f7ee;border-color:var(--mint-d)}
+
+  /* Cari Pasangan (cocokkan) */
+  .matchgrid{flex:1;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;padding:14px 18px;align-content:center}
+  .card{background:#fff;border:none;border-radius:20px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:42px;box-shadow:0 5px 0 #e6def5;cursor:pointer}
+  .card:active{transform:scale(.96)}
+  .card.sel{outline:4px solid var(--biru-d)}
+  .card.lock{background:#dff7ec;box-shadow:0 5px 0 var(--mint-d);outline:3px solid var(--mint-d);cursor:default}
+  .card.salah{animation:shake .4s}
 </style>
 </head>
 <body>
@@ -158,8 +175,8 @@
     </div>
     <div class="glist">
       <button class="gcard" data-act="start"><div class="ic" style="background:#dff7ec">🐱</div><div><b>Mana Ya?</b><br><span>Dengar lalu tekan · 2-4 thn</span></div><span class="badge">main ▶</span></button>
-      <button class="gcard" data-toast="Beres-Beres — segera (demo)"><div class="ic" style="background:#efe7fb">🧺</div><div><b>Beres-Beres</b><br><span>Seret & sortir · 3-4 thn</span></div><span class="badge" style="background:#f0f0f4;color:#999">demo</span></button>
-      <button class="gcard" data-toast="Cari Pasangan — segera (demo)"><div class="ic" style="background:#fff0e0">🍎</div><div><b>Cari Pasangan</b><br><span>Cocokkan · 3-5 thn</span></div><span class="badge" style="background:#f0f0f4;color:#999">demo</span></button>
+      <button class="gcard" data-act="start2"><div class="ic" style="background:#efe7fb">🧺</div><div><b>Beres-Beres</b><br><span>Seret & sortir · 3-4 thn</span></div><span class="badge">main ▶</span></button>
+      <button class="gcard" data-act="start3"><div class="ic" style="background:#fff0e0">🍎</div><div><b>Cari Pasangan</b><br><span>Cocokkan · 3-5 thn</span></div><span class="badge">main ▶</span></button>
     </div>
     <div class="foot">Pilih game — "Mana Ya?" bisa dimainkan</div>
   </section>
@@ -173,6 +190,30 @@
     <div class="prompt" data-act="say">🔊 Mana <b id="q">&nbsp;</b>?</div>
     <div class="grid" id="grid"></div>
     <div class="pbar"><button class="lock" data-act="say">🔊</button><div class="prog"><i id="prog"></i></div><div class="coin" id="round">1/5</div></div>
+  </section>
+
+  <!-- PLAY 2: BERES-BERES (seret) -->
+  <section class="screen play" id="s-play2">
+    <div class="topbar">
+      <button class="lock" data-go="s-glist">←</button>
+      <div class="coin">🪙 <span id="coin4">0</span></div>
+    </div>
+    <div class="prompt">🧺 Seret ke tempat yang benar</div>
+    <div class="sortarea" id="sortarea"></div>
+    <div class="bins">
+      <div class="bin" data-cat="buah">🧺<small>Buah</small></div>
+      <div class="bin" data-cat="hewan">🏠<small>Hewan</small></div>
+    </div>
+  </section>
+
+  <!-- PLAY 3: CARI PASANGAN (cocokkan) -->
+  <section class="screen play" id="s-play3">
+    <div class="topbar">
+      <button class="lock" data-go="s-glist">←</button>
+      <div class="coin">🪙 <span id="coin5">0</span></div>
+    </div>
+    <div class="prompt">🔎 Cari 2 gambar yang sama</div>
+    <div class="matchgrid" id="matchgrid"></div>
   </section>
 
   <!-- REWARD -->

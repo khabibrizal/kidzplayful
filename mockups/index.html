@@ -4,28 +4,31 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KidzPlayful — Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --kuning:#FFC93C; --koral:#FF6B6B; --teal:#3DCCC7; --ungu:#9B5DE5;
-    --hijau:#7BC950; --biru:#4D96FF; --krem:#FFF6E5; --tinta:#3A2E2E;
-    --abu:#8A8178; --kartu:#ffffff;
+    /* Gaya Lembut Pastel */
+    --kuning:#FFE0A3; --koral:#FFB3B3; --teal:#A8E6CF; --ungu:#C9B6F0;
+    --hijau:#B7E4A0; --biru:#A0D2FF; --krem:#FFF8EE; --tinta:#5b5170;
+    --abu:#9a93ad; --kartu:#ffffff;
   }
-  *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif}
-  body{background:#2b2b3a;color:#222;display:flex;min-height:100vh}
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Baloo 2','Quicksand','Segoe UI',system-ui,sans-serif}
+  body{background:radial-gradient(circle at 30% 15%,#efe6ff,#e7f6ff 70%);color:var(--tinta);display:flex;min-height:100vh}
 
   /* Sidebar navigasi mockup */
-  aside{width:250px;background:#1f1f2b;color:#ddd;padding:18px 14px;flex-shrink:0;height:100vh;overflow:auto;position:sticky;top:0}
-  aside h1{font-size:18px;color:var(--kuning);margin-bottom:4px}
-  aside .sub{font-size:11px;color:#888;margin-bottom:18px}
-  aside .grup{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#6c6c80;margin:16px 0 6px}
-  aside button{display:block;width:100%;text-align:left;background:none;border:none;color:#cfcfe0;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px;margin-bottom:2px}
-  aside button:hover{background:#2c2c3d}
-  aside button.aktif{background:var(--ungu);color:#fff;font-weight:600}
+  aside{width:250px;background:#fbf7ff;color:var(--tinta);padding:18px 14px;flex-shrink:0;height:100vh;overflow:auto;position:sticky;top:0;box-shadow:2px 0 14px rgba(120,90,180,.08)}
+  aside h1{font-size:18px;color:var(--lavender-d,#9B7FD4);margin-bottom:4px;font-weight:800}
+  aside .sub{font-size:11px;color:var(--abu);margin-bottom:18px}
+  aside .grup{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#b1a9c4;margin:16px 0 6px;font-weight:700}
+  aside button{display:block;width:100%;text-align:left;background:none;border:none;color:#6b6385;padding:8px 10px;border-radius:10px;cursor:pointer;font-size:13px;margin-bottom:2px;font-weight:600}
+  aside button:hover{background:#efe7fb}
+  aside button.aktif{background:#9B7FD4;color:#fff;font-weight:700}
 
   /* Panggung */
   main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:30px;overflow:auto;height:100vh}
-  .judul-layar{color:#fff;font-size:15px;margin-bottom:4px;text-align:center}
-  .ket-layar{color:#a9a9c0;font-size:12px;margin-bottom:18px;text-align:center;max-width:560px;line-height:1.5}
+  .judul-layar{color:#5b5170;font-size:15px;margin-bottom:4px;text-align:center;font-weight:700}
+  .ket-layar{color:#8a82a0;font-size:12px;margin-bottom:18px;text-align:center;max-width:560px;line-height:1.5;font-family:'Quicksand',sans-serif}
 
   /* Bingkai HP */
   .hp{width:330px;height:670px;background:#000;border-radius:42px;padding:12px;box-shadow:0 24px 60px rgba(0,0,0,.5);flex-shrink:0}

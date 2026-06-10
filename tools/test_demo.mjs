@@ -1,53 +1,43 @@
 import puppeteer from 'puppeteer-core';
-
 const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const URL = 'http://localhost:4505/demo.html';
 
 const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new', args: ['--no-sandbox'] });
 const page = await browser.newPage();
-const logs = [];
-page.on('console', m => logs.push('CONSOLE ' + m.type() + ': ' + m.text()));
-page.on('pageerror', e => logs.push('PAGEERROR: ' + e.message));
-page.on('requestfailed', r => logs.push('REQFAIL: ' + r.url() + ' ' + (r.failure()?.errorText)));
-page.on('response', r => { if (!String(r.status()).startsWith('2') && !String(r.status()).startsWith('3')) logs.push('HTTP ' + r.status() + ' <- ' + r.url()); else if (r.url().endsWith('demo.js')) logs.push('demo.js -> HTTP ' + r.status()); });
+const errs = [];
+page.on('pageerror', e => errs.push('PAGEERROR: ' + e.message));
+const cls = id => page.$eval('#' + id, e => e.className).catch(() => '?');
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 await page.goto(URL, { waitUntil: 'networkidle2', timeout: 15000 });
 
-const diag = await page.evaluate(() => {
-  const btn = document.querySelector('#s-splash [data-go="s-menu"]');
-  const r = btn.getBoundingClientRect();
-  const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-  const top = document.elementFromPoint(cx, cy);
-  const conf = document.getElementById('confetti');
-  return {
-    btnRect: { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) },
-    topAtCenter: top ? (top.tagName + '.' + top.className) : 'null',
-    confettiPE: getComputedStyle(conf).pointerEvents,
-    confettiZ: getComputedStyle(conf).zIndex,
-    splashOn: document.getElementById('s-splash').classList.contains('on')
-  };
-});
-logs.push('DIAG ' + JSON.stringify(diag));
+// Mana Ya?
+await page.click('[data-go="s-menu"]'); await sleep(200);
+await page.click('[data-go="s-glist"]'); await sleep(200);
+await page.click('[data-act="start"]'); await sleep(200);
+console.log('Mana Ya? -> #s-play =', JSON.stringify(await cls('s-play')));
 
-// klik koordinat (seperti mouse asli)
-const before = await page.$eval('#s-menu', e => e.className).catch(() => 'NO #s-menu');
-await page.click('#s-splash [data-go="s-menu"]').catch(e => logs.push('CLICK ERR: ' + e.message));
-await new Promise(r => setTimeout(r, 300));
-const after = await page.$eval('#s-menu', e => e.className).catch(() => 'NO #s-menu');
-// lanjut: dari menu, klik "Main Minggu Ini" lalu mulai game
-await page.click('[data-go="s-glist"]').catch(()=>{});
-await new Promise(r => setTimeout(r, 250));
-await page.click('[data-act="start"]').catch(()=>{});
-await new Promise(r => setTimeout(r, 250));
-const playOn = await page.$eval('#s-play', e => e.className).catch(() => '?');
-logs.push('setelah alur ke game, #s-play = ' + JSON.stringify(playOn));
+// Beres-Beres
+await page.click('#s-play [data-go="s-glist"]'); await sleep(150);
+await page.click('[data-act="start2"]'); await sleep(200);
+const sortItems = await page.$$eval('#sortarea .item', els => els.length);
+console.log('Beres-Beres -> #s-play2 =', JSON.stringify(await cls('s-play2')), '| item:', sortItems);
 
-// cek apakah demo.js mengeksekusi (fungsi global tidak ada krn IIFE; cek efek DOM saja)
-console.log('--- LOGS ---');
-console.log(logs.join('\n') || '(tidak ada log/error)');
-console.log('--- KLIK MULAI ---');
-console.log('class #s-menu sebelum:', JSON.stringify(before));
-console.log('class #s-menu sesudah:', JSON.stringify(after));
-console.log('HASIL:', after.includes('on') ? 'KLIK BEKERJA ✓' : 'KLIK TIDAK BEKERJA ✗');
+// Cari Pasangan + selesaikan
+await page.click('#s-play2 [data-go="s-glist"]'); await sleep(150);
+await page.click('[data-act="start3"]'); await sleep(200);
+console.log('Cari Pasangan -> #s-play3 =', JSON.stringify(await cls('s-play3')));
 
+// auto-play: kelompokkan kartu sama, klik berpasangan
+const cards = await page.$$('#matchgrid .card');
+const texts = await Promise.all(cards.map(c => c.evaluate(e => e.textContent)));
+const byKey = {};
+texts.forEach((t, i) => { (byKey[t] = byKey[t] || []).push(i); });
+for (const k in byKey) {
+  for (const idx of byKey[k]) { await cards[idx].click(); await sleep(180); }
+}
+await sleep(700);
+console.log('Setelah selesaikan match -> #s-reward =', JSON.stringify(await cls('s-reward')));
+
+console.log('ERRORS:', errs.length ? errs.join('\n') : 'tidak ada');
 await browser.close();
