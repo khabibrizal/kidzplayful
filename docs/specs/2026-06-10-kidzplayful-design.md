@@ -232,7 +232,53 @@ iklan, tanpa pembelian di dalam Mode Anak.
 
 ---
 
-## 12. Pertanyaan Terbuka (untuk tahap perencanaan)
+## 12. Mockup & Desain Antarmuka
+
+Mockup low-fidelity interaktif tersedia di repo: **`mockups/index.html`**.
+Sifatnya menyepakati **struktur & alur layar**, bukan desain visual final (warna/maskot/font final menyusul).
+
+**Cara melihat:**
+```bash
+cd mockups
+python -m http.server 4505
+# buka http://localhost:4505 — klik menu kiri untuk pindah layar
+```
+(atau buka langsung `mockups/index.html` di browser via `file://`)
+
+### Daftar layar dalam mockup
+
+**Mode Anak (2 thn+)** — ikon besar, dipandu suara, tanpa teks rumit:
+- **Menu Utama** — 3 pintu: Minggu Ini / Pustaka / Pojok Video; chip tema, koin, gembok PIN, sisa waktu main.
+- **Main Game** — contoh mesin "Tekan yang Sesuai": prompt suara → tekan gambar benar; target besar, tanpa timer menekan, tanpa "kalah".
+- **Layar Hadiah** — bintang 1-3 + koin (skor "wajah anak").
+- **Pojok Video** — pemutar terkunci, daftar video terkurasi, batas 2 video.
+- **Batas Waktu** — ajakan istirahat lembut, lanjut butuh PIN ortu.
+
+**Gerbang & Orang Tua:**
+- **Gerbang PIN** — pelindung keluar Mode Anak / buka video / atur batas.
+- **Kelola Akun & Anak** — multi-profil anak (progres terpisah), batas waktu, PIN, toggle Pojok Video.
+
+**Mode Ortu 0-2 (Tahap 2):**
+- **Panduan Aktivitas** — langkah aktivitas fisik bertema + daftar bahan + worksheet PDF.
+
+**Publik:**
+- **Daftar / Trial** — email ortu + profil anak; trial 14 hari otomatis, tanpa kartu.
+
+**Dashboard Admin (Owner):**
+- **Kelola Langganan** — status trial/aktif/menunggu/kadaluarsa + tombol "Aktifkan" manual (inti Opsi B).
+- **Kelola Tema** — buat tema, jadwalkan "Minggu Ini"; tema lama tersimpan di Pustaka.
+- **Editor Aset Game** — unggah gambar + suara, tandai jawaban benar; mesin game membaca data ini (ganti tema tanpa koding).
+
+### Strategi responsif (satu web app, tiga perangkat)
+- **Mode Anak:** mobile-first; **tablet = perangkat ideal** (target sentuh lega, direkomendasikan ke ortu); HP nyaman; di **desktop** area main **dijaga di tengah, tidak melebar selebar layar** (game anak yang melar justru sulit dipakai).
+- **Mode Ortu & Daftar:** responsif penuh — di HP menumpuk ke bawah, di tablet/desktop bisa 2 kolom.
+- **Dashboard Admin:** desktop/tablet-first (tabel & editor butuh ruang); tetap bisa dibuka di HP.
+
+Mockup memuat tampilan tablet (Menu & Game) dan desktop (Daftar 2 kolom, Mode Anak area-terbatas) sebagai contoh.
+
+---
+
+## 13. Pertanyaan Terbuka (untuk tahap perencanaan)
 
 - Harga langganan bulanan & detail mekanik trial (kartu/tanpa kartu).
 - Metode transfer/QRIS apa saja yang diterima saat aktivasi manual.

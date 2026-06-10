@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KidzPlayful — Mockup</title>
+<style>
+  :root{
+    --kuning:#FFC93C; --koral:#FF6B6B; --teal:#3DCCC7; --ungu:#9B5DE5;
+    --hijau:#7BC950; --biru:#4D96FF; --krem:#FFF6E5; --tinta:#3A2E2E;
+    --abu:#8A8178; --kartu:#ffffff;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',system-ui,sans-serif}
+  body{background:#2b2b3a;color:#222;display:flex;min-height:100vh}
+
+  /* Sidebar navigasi mockup */
+  aside{width:250px;background:#1f1f2b;color:#ddd;padding:18px 14px;flex-shrink:0;height:100vh;overflow:auto;position:sticky;top:0}
+  aside h1{font-size:18px;color:var(--kuning);margin-bottom:4px}
+  aside .sub{font-size:11px;color:#888;margin-bottom:18px}
+  aside .grup{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#6c6c80;margin:16px 0 6px}
+  aside button{display:block;width:100%;text-align:left;background:none;border:none;color:#cfcfe0;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px;margin-bottom:2px}
+  aside button:hover{background:#2c2c3d}
+  aside button.aktif{background:var(--ungu);color:#fff;font-weight:600}
+
+  /* Panggung */
+  main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:30px;overflow:auto;height:100vh}
+  .judul-layar{color:#fff;font-size:15px;margin-bottom:4px;text-align:center}
+  .ket-layar{color:#a9a9c0;font-size:12px;margin-bottom:18px;text-align:center;max-width:560px;line-height:1.5}
+
+  /* Bingkai HP */
+  .hp{width:330px;height:670px;background:#000;border-radius:42px;padding:12px;box-shadow:0 24px 60px rgba(0,0,0,.5);flex-shrink:0}
+  .layar{width:100%;height:100%;border-radius:32px;overflow:hidden;position:relative;background:var(--krem);display:flex;flex-direction:column}
+  .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:22px;background:#000;border-radius:0 0 14px 14px;z-index:20}
+
+  /* Bingkai desktop (admin) */
+  .desktop{width:760px;height:520px;background:#11131a;border-radius:14px;padding:10px;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+  .desktop .bar{display:flex;gap:6px;padding:4px 6px 10px}
+  .desktop .bar i{width:11px;height:11px;border-radius:50%;display:inline-block}
+  .desktop .layar{border-radius:8px;height:470px;background:#f4f5f7}
+
+  .pane{display:none}
+  .pane.show{display:flex;flex-direction:column;align-items:center}
+
+  /* ====== Komponen layar anak ====== */
+  .kid-top{padding:34px 18px 10px;display:flex;justify-content:space-between;align-items:center}
+  .tema-chip{background:var(--koral);color:#fff;padding:6px 14px;border-radius:999px;font-weight:700;font-size:14px;box-shadow:0 4px 0 #d65151}
+  .gembok{width:38px;height:38px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 3px 0 #e3dccb}
+  .koin{background:#fff;border-radius:999px;padding:5px 12px;font-weight:700;font-size:13px;color:#c98a00;box-shadow:0 3px 0 #e3dccb}
+
+  .menu-besar{flex:1;padding:8px 18px 18px;display:flex;flex-direction:column;gap:14px;justify-content:center}
+  .tile{border-radius:24px;padding:18px;display:flex;align-items:center;gap:14px;color:#fff;font-weight:800;font-size:19px;box-shadow:0 6px 0 rgba(0,0,0,.15);cursor:pointer}
+  .tile .emo{font-size:40px}
+  .tile.minggu{background:var(--teal);box-shadow:0 6px 0 #2ba8a3}
+  .tile.pustaka{background:var(--ungu);box-shadow:0 6px 0 #7b45c0}
+  .tile.video{background:var(--biru);box-shadow:0 6px 0 #3a78d6}
+  .tile small{display:block;font-size:12px;font-weight:600;opacity:.9}
+
+  .kid-foot{padding:10px 18px 22px;text-align:center;font-size:11px;color:var(--abu)}
+
+  /* Game */
+  .game-head{padding:34px 18px 6px;display:flex;align-items:center;justify-content:space-between}
+  .game-prompt{background:#fff;margin:6px 18px;border-radius:18px;padding:14px;text-align:center;font-weight:800;font-size:18px;color:var(--tinta);box-shadow:0 4px 0 #e3dccb;display:flex;align-items:center;justify-content:center;gap:8px}
+  .grid-pilih{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:14px 18px}
+  .pilih{background:#fff;border-radius:22px;display:flex;align-items:center;justify-content:center;font-size:56px;box-shadow:0 5px 0 #e3dccb;cursor:pointer}
+  .pilih.benar{outline:4px solid var(--hijau);box-shadow:0 5px 0 #5fa53a}
+  .bar-bawah{padding:0 18px 22px;display:flex;align-items:center;gap:10px}
+  .progress{flex:1;height:12px;background:#e8e0cd;border-radius:99px;overflow:hidden}
+  .progress i{display:block;height:100%;width:60%;background:var(--hijau)}
+
+  /* Reward */
+  .reward{flex:1;background:linear-gradient(160deg,var(--ungu),var(--biru));display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-align:center;padding:24px}
+  .reward .bintang{font-size:34px;letter-spacing:6px;margin:10px 0}
+  .reward h2{font-size:26px;margin-bottom:4px}
+  .reward .tombol{margin-top:24px;background:#fff;color:var(--ungu);font-weight:800;padding:14px 26px;border-radius:999px;box-shadow:0 5px 0 rgba(0,0,0,.2)}
+
+  /* Video */
+  .vid-head{padding:34px 18px 8px;display:flex;align-items:center;justify-content:space-between}
+  .player{margin:6px 18px;background:#000;border-radius:18px;height:170px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:46px;position:relative}
+  .player .live{position:absolute;top:8px;left:10px;font-size:10px;background:#0008;padding:3px 8px;border-radius:99px}
+  .vid-list{flex:1;padding:10px 18px;display:flex;flex-direction:column;gap:10px}
+  .vid-item{background:#fff;border-radius:14px;padding:10px;display:flex;gap:10px;align-items:center;box-shadow:0 3px 0 #e3dccb}
+  .vid-item .thumb{width:62px;height:42px;border-radius:8px;background:var(--teal);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+  .vid-item b{font-size:13px;color:var(--tinta)}
+  .vid-note{font-size:10px;color:var(--abu);text-align:center;padding:0 18px 16px}
+
+  /* Gate PIN */
+  .center-card{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px;text-align:center}
+  .pinbox{display:flex;gap:10px;margin:18px 0}
+  .pinbox i{width:42px;height:52px;border-radius:12px;background:#fff;box-shadow:0 3px 0 #e3dccb;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:var(--tinta)}
+  .keypad{display:grid;grid-template-columns:repeat(3,60px);gap:12px;margin-top:6px}
+  .keypad b{background:#fff;border-radius:50%;height:60px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 4px 0 #e3dccb;cursor:pointer}
+
+  /* Istirahat */
+  .rest{flex:1;background:linear-gradient(160deg,#ffd6a5,#ffb4a2);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;color:#6b3f2f}
+  .rest .emo{font-size:72px;margin-bottom:14px}
+  .rest h2{font-size:24px;margin-bottom:8px}
+  .rest p{font-size:14px;opacity:.85;line-height:1.5}
+  .rest .mini{margin-top:22px;font-size:12px;background:#ffffffaa;padding:10px 16px;border-radius:12px}
+
+  /* Layar ortu (mode 0-2 & kelola) */
+  .ortu{flex:1;background:#fff;display:flex;flex-direction:column}
+  .ortu .hd{padding:34px 18px 14px;background:var(--ungu);color:#fff}
+  .ortu .hd h2{font-size:18px}
+  .ortu .hd small{opacity:.85;font-size:12px}
+  .ortu .body{padding:16px;display:flex;flex-direction:column;gap:12px;overflow:auto}
+  .anak-card{border:1px solid #eee;border-radius:16px;padding:14px;display:flex;gap:12px;align-items:center}
+  .ava{width:46px;height:46px;border-radius:50%;background:var(--kuning);display:flex;align-items:center;justify-content:center;font-size:24px}
+  .anak-card b{font-size:15px}
+  .anak-card span{font-size:12px;color:var(--abu)}
+  .badge{margin-left:auto;font-size:11px;padding:4px 10px;border-radius:99px;font-weight:700}
+  .badge.anak{background:#e6f7ee;color:#2e9e63}
+  .badge.bayi{background:#eee9fb;color:#7b45c0}
+  .row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #f1f1f1;font-size:14px}
+  .toggle{width:42px;height:24px;border-radius:99px;background:var(--hijau);position:relative}
+  .toggle i{position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:#fff}
+
+  /* Mode ortu 0-2 panduan */
+  .panduan{background:#f3f8ff}
+  .step{background:#fff;border-radius:14px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start;box-shadow:0 2px 6px #0000000d}
+  .step .n{width:26px;height:26px;border-radius:50%;background:var(--biru);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;font-size:13px}
+  .step p{font-size:13px;line-height:1.45;color:#444}
+  .bahan{font-size:12px;background:#fff3d6;border-radius:10px;padding:10px 12px;color:#8a6d1f}
+
+  /* Banner trial */
+  .trial-banner{background:var(--kuning);color:#7a5b00;font-size:12px;font-weight:700;text-align:center;padding:8px}
+
+  /* ====== Admin desktop ====== */
+  .adm{display:flex;height:100%;font-size:13px}
+  .adm-side{width:170px;background:#1b2230;color:#cdd6e6;padding:14px 10px}
+  .adm-side .lg{color:var(--kuning);font-weight:800;margin-bottom:14px;font-size:14px}
+  .adm-side a{display:block;padding:8px 10px;border-radius:8px;color:#aeb8cc;text-decoration:none;margin-bottom:3px;font-size:12px}
+  .adm-side a.on{background:#2b3650;color:#fff}
+  .adm-main{flex:1;background:#f4f5f7;padding:18px;overflow:auto}
+  .adm-main h3{font-size:16px;margin-bottom:14px;color:#222}
+  .tbl{width:100%;background:#fff;border-radius:10px;overflow:hidden;border:1px solid #e8e8ee}
+  .tbl div.tr{display:grid;grid-template-columns:2fr 1fr 1fr 1.2fr;padding:11px 14px;border-bottom:1px solid #f0f0f4;align-items:center}
+  .tbl div.tr.h{background:#fafafe;font-weight:700;color:#555;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+  .st{font-size:11px;padding:3px 9px;border-radius:99px;font-weight:700;display:inline-block}
+  .st.aktif{background:#e6f7ee;color:#2e9e63}
+  .st.trial{background:#fff3d6;color:#b88600}
+  .st.exp{background:#fde8e8;color:#d35050}
+  .btn-sm{background:var(--ungu);color:#fff;border:none;padding:6px 12px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer}
+  .cards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px}
+  .stat{background:#fff;border-radius:10px;padding:14px;border:1px solid #e8e8ee}
+  .stat b{font-size:22px;display:block;color:#222}
+  .stat span{font-size:11px;color:#888}
+  .tema-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  .tema-card{background:#fff;border-radius:12px;border:1px solid #e8e8ee;overflow:hidden}
+  .tema-card .cover{height:74px;display:flex;align-items:center;justify-content:center;font-size:34px;color:#fff}
+  .tema-card .meta{padding:10px 12px}
+  .tema-card .meta b{font-size:13px;display:block}
+  .tema-card .meta span{font-size:11px;color:#888}
+  .pill-now{font-size:10px;background:var(--hijau);color:#fff;padding:2px 8px;border-radius:99px;float:right}
+  .editor-row{display:flex;gap:10px;align-items:center;background:#fff;border:1px solid #e8e8ee;border-radius:10px;padding:10px 12px;margin-bottom:8px}
+  .slot{width:48px;height:48px;border-radius:10px;background:#eef0f4;display:flex;align-items:center;justify-content:center;font-size:22px}
+  .slot.ok{background:#e6f7ee}
+  .editor-row .lbl{font-size:12px;color:#555}
+  .editor-row .lbl b{display:block;color:#222;font-size:13px}
+  .tag-benar{font-size:10px;background:#e6f7ee;color:#2e9e63;padding:3px 8px;border-radius:99px;margin-left:auto}
+
+  .legend{margin-top:18px;color:#9a9ab0;font-size:11px;max-width:560px;text-align:center;line-height:1.6}
+
+  /* Bingkai tablet (landscape) */
+  .tablet{width:720px;height:520px;background:#1a1a1a;border-radius:28px;padding:16px 20px;box-shadow:0 24px 60px rgba(0,0,0,.5);flex-shrink:0;position:relative}
+  .tablet .cam{position:absolute;left:8px;top:50%;transform:translateY(-50%);width:8px;height:8px;border-radius:50%;background:#333}
+  .tablet .layar{width:100%;height:100%;border-radius:12px;overflow:hidden;background:var(--krem);display:flex;flex-direction:column;position:relative}
+  .tab-tiles{flex:1;display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;padding:24px 30px;align-content:center}
+  .tab-tiles .tile{flex-direction:column;text-align:center;justify-content:center;padding:30px 18px;font-size:22px;gap:10px}
+  .tab-tiles .tile .emo{font-size:62px}
+
+  /* Bingkai browser desktop */
+  .browser{width:840px;height:540px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.5);flex-shrink:0;border:1px solid #d8d8e0}
+  .browser .chrome{background:#e8e8ee;padding:9px 12px;display:flex;align-items:center;gap:10px}
+  .browser .chrome i{width:11px;height:11px;border-radius:50%}
+  .browser .url{flex:1;background:#fff;border-radius:8px;padding:5px 12px;font-size:11px;color:#888;margin-left:6px}
+  .browser .view{height:496px;overflow:auto}
+
+  /* Daftar desktop 2 kolom */
+  .daftar2{display:grid;grid-template-columns:1fr 1fr;height:100%}
+  .daftar2 .kiri{background:linear-gradient(160deg,var(--ungu),var(--biru));color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:34px;text-align:center}
+  .daftar2 .kiri .big{font-size:80px}
+  .daftar2 .kiri h2{font-size:26px;margin:10px 0 6px}
+  .daftar2 .kiri p{font-size:14px;opacity:.9;line-height:1.6;max-width:280px}
+  .daftar2 .kiri ul{list-style:none;margin-top:18px;font-size:13px;text-align:left;display:flex;flex-direction:column;gap:8px}
+  .daftar2 .kanan{padding:46px 40px;display:flex;flex-direction:column;justify-content:center}
+  .daftar2 .kanan h3{font-size:20px;color:var(--tinta);margin-bottom:4px}
+  .daftar2 .kanan .pill{display:inline-block;background:#fff3d6;color:#b88600;font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;margin-bottom:18px;width:fit-content}
+  .daftar2 .kanan .inp{background:#f3f3f8;border-radius:10px;padding:13px;font-size:13px;color:#999;margin-bottom:11px}
+  .daftar2 .kanan .cta{background:var(--ungu);color:#fff;border-radius:10px;padding:14px;font-weight:800;text-align:center;box-shadow:0 5px 0 #7b45c0;margin-top:4px}
+
+  /* Mode anak desktop — area terbatas di tengah */
+  .deskanak{height:100%;background:radial-gradient(circle at 50% 30%,#fff6e5,#ffe2c2);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
+  .deskanak .topbar{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:14px 22px}
+  .deskanak .canvas{width:430px;background:#fff;border-radius:26px;box-shadow:0 14px 40px #0002;padding:24px;text-align:center}
+  .deskanak .canvas .chip{background:var(--koral);color:#fff;padding:5px 14px;border-radius:99px;font-weight:700;font-size:13px;display:inline-block;margin-bottom:16px}
+  .deskanak .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+  .deskanak .row3 .tile{flex-direction:column;padding:22px 10px;font-size:15px;gap:8px}
+  .deskanak .row3 .tile .emo{font-size:44px}
+  .deskanak .hint{margin-top:16px;font-size:12px;color:#a88}
+
+</style>
+</head>
+<body>
+
+<aside>
+  <h1>KidzPlayful</h1>
+  <div class="sub">Mockup low-fidelity · v1</div>
+
+  <div class="grup">Mode Anak (2 thn+)</div>
+  <button data-p="menu" class="aktif">🏠 Menu Utama</button>
+  <button data-p="game">🎮 Main Game</button>
+  <button data-p="reward">⭐ Layar Hadiah</button>
+  <button data-p="video">📺 Pojok Video</button>
+  <button data-p="rest">😴 Batas Waktu</button>
+
+  <div class="grup">Gerbang & Orang Tua</div>
+  <button data-p="pin">🔒 Gerbang PIN</button>
+  <button data-p="kelola">👨‍👩‍👧 Kelola Akun & Anak</button>
+
+  <div class="grup">Mode Ortu (0-2 thn) · Tahap 2</div>
+  <button data-p="panduan">📋 Panduan Aktivitas</button>
+
+  <div class="grup">Publik</div>
+  <button data-p="daftar">✍️ Daftar / Trial</button>
+
+  <div class="grup">Dashboard Admin (Owner)</div>
+  <button data-p="adm-lang">💳 Kelola Langganan</button>
+  <button data-p="adm-tema">🗂️ Kelola Tema</button>
+  <button data-p="adm-edit">🧩 Editor Aset Game</button>
+
+  <div class="grup">Tampilan Tablet & Desktop</div>
+  <button data-p="tab-menu">📱 Menu Anak — Tablet</button>
+  <button data-p="tab-game">📱 Game — Tablet</button>
+  <button data-p="desk-daftar">🖥️ Daftar — Desktop 2 kolom</button>
+  <button data-p="desk-anak">🖥️ Mode Anak — Desktop</button>
+</aside>
+
+<main>
+
+  <!-- MENU UTAMA ANAK -->
+  <section class="pane show" id="menu">
+    <div class="judul-layar">Mode Anak — Menu Utama</div>
+    <div class="ket-layar">Ikon besar, tanpa teks rumit, dipandu suara. Hanya 3 pintu: Minggu Ini, Pustaka, Pojok Video. Gembok di kanan atas = keluar butuh PIN ortu.</div>
+    <div class="hp"><div class="notch"></div><div class="layar">
+      <div class="kid-top">
+        <div class="tema-chip">🐰 Minggu Hewan</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="koin">🪙 24</div>
+          <div class="gembok">🔒</div>
+        </div>
+      </div>
+      <div class="menu-besar">
+        <div class="tile minggu"><span class="emo">🎯</span><div>Main Minggu Ini<small>3 permainan seru</small></div></div>
+        <div class="tile pustaka"><span class="emo">📚</span><div>Pustaka<small>semua tema</small></div></div>
+        <div class="tile video"><span class="emo">📺</span><div>Pojok Video<small>nonton sebentar</small></div></div>
+      </div>
+      <div class="kid-foot">Sisa waktu main hari ini: 18 menit</div>
+    </div></div>
+  </section>
+
+  <!-- GAME -->
+  <section class="pane" id="game">
+    <div class="judul-layar">Mesin Game — "Tekan yang Sesuai"</div>
+    <div class="ket-layar">Suara berkata "Mana kucing?" → anak menekan gambar yang benar. Target besar, tanpa timer menekan, tanpa "kalah". Mesin yang sama dipakai ulang tiap tema (cukup ganti gambar).</div>
+    <div class="hp"><div class="notch"></div><div class="layar">
+      <div class="game-head">
+        <div class="gembok">←</div>
+        <div class="koin">🪙 24</div>
+      </div>
+      <div class="game-prompt">🔊 Mana <b>&nbsp;kucing&nbsp;</b>?</div>
+      <div class="grid-pilih">
+        <div class="pilih benar">🐱</div>
+        <div class="pilih">🐶</div>
+        <div class="pilih">🐮</div>
+        <div class="pilih">🐰</div>
+      </div>
+      <div class="bar-bawah">
+        <div class="gembok">🔊</div>
+        <div class="progress"><i></i></div>
+        <div class="koin">3/5</div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- REWARD -->
+  <section class="pane" id="reward">
+    <div class="judul-layar">Layar Hadiah (skor "wajah anak")</div>
+    <div class="ket-layar">Selesai → animasi, bintang 1-3, bunyi ceria, koin bertambah. Murni semangat & mau mengulang — tanpa peringkat, tanpa menang-kalah.</div>
+    <div class="hp"><div class="notch"></div><div class="layar">
+      <div class="reward">
+        <div style="font-size:64px">🎉</div>
+        <h2>Hebat!</h2>
+        <div class="bintang">⭐⭐⭐</div>
+        <p>Kamu dapat 3 koin baru 🪙</p>
+        <div class="tombol">Main lagi ▶</div>
+        <p style="margin-top:14px;font-size:12px;opacity:.8">Kebun stiker kamu bertambah 🌼</p>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- VIDEO -->
+  <section class="pane" id="video">
+    <div class="judul-layar">Pojok Video (terkurasi & terkunci)</div>
+    <div class="ket-layar">Hanya video pilihan owner sesuai tema. Pemutar terkunci di dalam app (mode privasi, tanpa rekomendasi/keluar ke YouTube), dibatasi 2 video lalu kembali ke menu.</div>
+    <div class="hp"><div class="notch"></div><div class="layar" style="background:#fff">
+      <div class="vid-head"><div class="gembok">←</div><div class="tema-chip" style="font-size:12px">Maks. 2 video</div></div>
+      <div class="player">▶ <span class="live">terkunci · tanpa rekomendasi</span></div>
+      <div class="vid-list">
+        <div class="vid-item"><div class="thumb">🐘</div><div><b>Mengenal Suara Hewan</b><br><span style="font-size:11px;color:#999">2 menit</span></div></div>
+        <div class="vid-item"><div class="thumb">🦁</div><div><b>Lagu Hewan di Kebun Binatang</b><br><span style="font-size:11px;color:#999">3 menit</span></div></div>
+      </div>
+      <div class="vid-note">Dipilih oleh KidzPlayful · video lain tidak ditampilkan</div>
+    </div></div>
+  </section>
+
+  <!-- REST / BATAS WAKTU -->
+  <section class="pane" id="rest">
+    <div class="judul-layar">Batas Screen Time Habis</div>
+    <div class="ket-layar">Bukan error — ajakan lembut berhenti. Untuk melanjutkan butuh PIN ortu. Ini menegaskan posisi brand: screen time terkontrol.</div>
+    <div class="hp"><div class="notch"></div><div class="layar">
+      <div class="rest">
+        <div class="emo">😴🌙</div>
+        <h2>Waktunya istirahat</h2>
+        <p>Mata kita perlu istirahat dulu ya.<br>Sampai jumpa besok!</p>
+        <div class="mini">🔒 Lanjut main perlu izin orang tua</div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- PIN -->
+  <section class="pane" id="pin">
+    <div class="judul-layar">Gerbang Orang Tua (PIN)</div>
+    <div class="ket-layar">Pelindung untuk keluar Mode Anak, buka Pojok Video, atur batas waktu, atau lanjut setelah waktu habis. Mencegah anak keluar sendiri.</div>
+    <div class="hp"><div class="notch"></div><div class="layar">
+      <div class="center-card">
+        <div style="font-size:46px">🔒</div>
+        <h2 style="margin-top:10px;color:var(--tinta)">Khusus Orang Tua</h2>
+        <p style="color:var(--abu);font-size:13px;margin-top:6px">Masukkan PIN untuk lanjut</p>
+        <div class="pinbox"><i>•</i><i>•</i><i></i><i></i></div>
+        <div class="keypad"><b>1</b><b>2</b><b>3</b><b>4</b><b>5</b><b>6</b><b>7</b><b>8</b><b>9</b><b></b><b>0</b><b>⌫</b></div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- KELOLA -->
+  <section class="pane" id="kelola">
+    <div class="judul-layar">Kelola Akun & Profil Anak (Orang Tua)</div>
+    <div class="ket-layar">Satu akun ortu, beberapa profil anak (progres terpisah). Umur menentukan mode default. Atur batas waktu & PIN di sini.</div>
+    <div class="hp"><div class="notch"></div><div class="layar">
+      <div class="ortu">
+        <div class="hd"><h2>Halo, Bunda 👋</h2><small>Langganan aktif sampai 30 Jun 2026</small></div>
+        <div class="body">
+          <div style="font-size:12px;font-weight:700;color:#999">PROFIL ANAK</div>
+          <div class="anak-card"><div class="ava">🧒</div><div><b>Arka</b><br><span>3 tahun</span></div><span class="badge anak">Mode Anak</span></div>
+          <div class="anak-card"><div class="ava">👶</div><div><b>Sasa</b><br><span>1 tahun</span></div><span class="badge bayi">Mode Ortu</span></div>
+          <div style="font-size:12px;font-weight:700;color:#999;margin-top:6px">PENGATURAN</div>
+          <div class="row"><span>Batas waktu / hari</span><b>20 menit ▾</b></div>
+          <div class="row"><span>PIN orang tua</span><b>Ubah</b></div>
+          <div class="row" style="border:none"><span>Pojok Video</span><div class="toggle"><i></i></div></div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- PANDUAN 0-2 -->
+  <section class="pane" id="panduan">
+    <div class="judul-layar">Mode Orang Tua 0-2 — Panduan Aktivitas (Tahap 2)</div>
+    <div class="ket-layar">Untuk bayi/balita di bawah 2 thn: layar di tangan ORTU. Berisi langkah aktivitas fisik bertema + daftar bahan + worksheet PDF. Tidak ada game layar untuk anak.</div>
+    <div class="hp"><div class="notch"></div><div class="layar">
+      <div class="ortu">
+        <div class="hd" style="background:var(--biru)"><h2>🐰 Aktivitas Minggu Hewan</h2><small>Sensorik · usia 0-2 tahun</small></div>
+        <div class="body panduan">
+          <div class="bahan">🧺 Bahan: wadah, kapas, kain bertekstur, gambar hewan</div>
+          <div class="step"><div class="n">1</div><p>Tempelkan gambar hewan, ajak anak menyentuh kapas sambil tirukan suara "meong".</p></div>
+          <div class="step"><div class="n">2</div><p>Biarkan anak meremas kain bertekstur — sebut "kasar" dan "halus".</p></div>
+          <div class="step"><div class="n">3</div><p>Pindahkan kapas dari wadah ke wadah pakai tangan (latih motorik halus).</p></div>
+          <div class="row" style="border:none;margin-top:6px"><span>📄 Worksheet Hewan.pdf</span><b style="color:var(--biru)">Unduh</b></div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- DAFTAR -->
+  <section class="pane" id="daftar">
+    <div class="judul-layar">Daftar & Mulai Trial 14 Hari</div>
+    <div class="ket-layar">Daftar pakai email ortu + buat profil anak. Trial 14 hari aktif otomatis. Lanjut langganan = transfer/QRIS → owner aktifkan manual (Opsi B).</div>
+    <div class="hp"><div class="notch"></div><div class="layar" style="background:#fff">
+      <div class="trial-banner">🎁 Gratis 14 hari · tanpa kartu kredit</div>
+      <div class="center-card" style="justify-content:flex-start;padding-top:30px">
+        <div style="font-size:40px">🌈</div>
+        <h2 style="color:var(--ungu);margin:8px 0">KidzPlayful</h2>
+        <p style="font-size:13px;color:var(--abu);margin-bottom:18px;text-align:center">Kelas bermain digital yang tumbuh bersama anak</p>
+        <div style="width:100%;display:flex;flex-direction:column;gap:10px">
+          <div style="background:#f3f3f8;border-radius:12px;padding:13px;font-size:13px;color:#888">📧 Email orang tua</div>
+          <div style="background:#f3f3f8;border-radius:12px;padding:13px;font-size:13px;color:#888">🧒 Nama & umur anak</div>
+          <div style="background:var(--ungu);color:#fff;border-radius:12px;padding:14px;font-weight:800;text-align:center;box-shadow:0 5px 0 #7b45c0">Mulai Gratis ▶</div>
+        </div>
+        <p style="font-size:11px;color:#bbb;margin-top:16px">Tanpa iklan · tanpa pelacak · aman untuk anak</p>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- ADMIN: LANGGANAN -->
+  <section class="pane" id="adm-lang">
+    <div class="judul-layar">Dashboard Admin — Kelola Langganan (aktivasi manual)</div>
+    <div class="ket-layar">Inti Opsi B: owner melihat siapa trial/aktif/kadaluarsa, dan menekan "Aktifkan" setelah pelanggan transfer/QRIS. Sederhana, kontrol penuh.</div>
+    <div class="desktop"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
+    <div class="layar"><div class="adm">
+      <div class="adm-side"><div class="lg">🌈 KidzPlayful</div>
+        <a href="#" class="on">💳 Langganan</a><a href="#">🗂️ Tema</a><a href="#">🧩 Aset Game</a><a href="#">📺 Video</a><a href="#">📊 Ringkasan</a>
+      </div>
+      <div class="adm-main">
+        <h3>Langganan</h3>
+        <div class="cards">
+          <div class="stat"><b>12</b><span>Sedang trial</span></div>
+          <div class="stat"><b>38</b><span>Aktif berbayar</span></div>
+          <div class="stat"><b>5</b><span>Menunggu aktivasi</span></div>
+        </div>
+        <div class="tbl">
+          <div class="tr h"><span>Orang Tua</span><span>Status</span><span>Berakhir</span><span>Aksi</span></div>
+          <div class="tr"><span>bunda.arka@mail.com</span><span><i class="st trial">Trial</i></span><span>3 hari lagi</span><span class="abu">—</span></div>
+          <div class="tr"><span>ibu.rara@mail.com</span><span><i class="st exp">Menunggu</i></span><span>sudah transfer</span><span><button class="btn-sm">Aktifkan ✓</button></span></div>
+          <div class="tr"><span>ayah.dito@mail.com</span><span><i class="st aktif">Aktif</i></span><span>30 Jun 2026</span><span class="abu">—</span></div>
+          <div class="tr"><span>mama.kcano@mail.com</span><span><i class="st exp">Kadaluarsa</i></span><span>masa tenggang</span><span><button class="btn-sm">Aktifkan ✓</button></span></div>
+        </div>
+      </div>
+    </div></div></div>
+  </section>
+
+  <!-- ADMIN: TEMA -->
+  <section class="pane" id="adm-tema">
+    <div class="judul-layar">Dashboard Admin — Kelola Tema & Jadwal "Minggu Ini"</div>
+    <div class="ket-layar">Owner membuat tema, lalu memilih tema mana yang tayang sebagai "Minggu Ini". Tema lama tetap tersimpan di Pustaka.</div>
+    <div class="desktop"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
+    <div class="layar"><div class="adm">
+      <div class="adm-side"><div class="lg">🌈 KidzPlayful</div>
+        <a href="#">💳 Langganan</a><a href="#" class="on">🗂️ Tema</a><a href="#">🧩 Aset Game</a><a href="#">📺 Video</a><a href="#">📊 Ringkasan</a>
+      </div>
+      <div class="adm-main">
+        <h3>Tema <button class="btn-sm" style="float:right">+ Tema Baru</button></h3>
+        <div class="tema-grid">
+          <div class="tema-card"><div class="cover" style="background:var(--teal)">🐰<span class="pill-now">Minggu Ini</span></div><div class="meta"><b>Hewan</b><span>3 game · 2 video</span></div></div>
+          <div class="tema-card"><div class="cover" style="background:var(--koral)">🍎</div><div class="meta"><b>Buah</b><span>3 game · 2 video</span></div></div>
+          <div class="tema-card"><div class="cover" style="background:var(--ungu)">🎨</div><div class="meta"><b>Warna</b><span>3 game · 1 video</span></div></div>
+          <div class="tema-card"><div class="cover" style="background:var(--hijau)">🔷</div><div class="meta"><b>Bentuk</b><span>2 game</span></div></div>
+          <div class="tema-card"><div class="cover" style="background:var(--biru)">🚗</div><div class="meta"><b>Kendaraan</b><span>draf</span></div></div>
+          <div class="tema-card" style="border-style:dashed;display:flex;align-items:center;justify-content:center;color:#bbb;min-height:120px">+ tambah</div>
+        </div>
+      </div>
+    </div></div></div>
+  </section>
+
+  <!-- ADMIN: EDITOR ASET -->
+  <section class="pane" id="adm-edit">
+    <div class="judul-layar">Dashboard Admin — Editor Aset Game (rahasia treadmill mingguan)</div>
+    <div class="ket-layar">Untuk "ganti tema": owner cukup unggah gambar + suara dan tandai jawaban benar. Mesin game membaca data ini — tanpa menyentuh kode. Sekali bikin mesin, hidup selamanya.</div>
+    <div class="desktop"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i></div>
+    <div class="layar"><div class="adm">
+      <div class="adm-side"><div class="lg">🌈 KidzPlayful</div>
+        <a href="#">💳 Langganan</a><a href="#">🗂️ Tema</a><a href="#" class="on">🧩 Aset Game</a><a href="#">📺 Video</a><a href="#">📊 Ringkasan</a>
+      </div>
+      <div class="adm-main">
+        <h3>Tema: Hewan · Mesin: <b>Tekan yang Sesuai</b></h3>
+        <div class="editor-row"><div class="slot ok">🐱</div><div class="lbl"><b>Butir 1</b>Suara: "mana kucing?"</div><span class="tag-benar">✓ jawaban benar</span></div>
+        <div class="editor-row"><div class="slot">🐶</div><div class="lbl"><b>Pengecoh</b>anjing.png</div></div>
+        <div class="editor-row"><div class="slot">🐮</div><div class="lbl"><b>Pengecoh</b>sapi.png</div></div>
+        <div class="editor-row" style="border-style:dashed;color:#bbb;justify-content:center">+ tambah butir / unggah gambar & suara</div>
+        <div style="margin-top:14px"><button class="btn-sm">💾 Simpan paket tema</button> <span style="font-size:11px;color:#999;margin-left:8px">Area skill: <b>Kognitif + Menyimak</b></span></div>
+      </div>
+    </div></div></div>
+  </section>
+
+  <!-- TABLET: MENU ANAK -->
+  <section class="pane" id="tab-menu">
+    <div class="judul-layar">Menu Anak — Tampilan Tablet (landscape)</div>
+    <div class="ket-layar">Perangkat ideal untuk anak: target sentuh lebih lega, 3 pintu sejajar. Konten sama dengan versi HP, tapi tata letaknya melebar memanfaatkan ruang.</div>
+    <div class="tablet"><span class="cam"></span><div class="layar">
+      <div class="kid-top" style="padding:18px 26px 6px">
+        <div class="tema-chip">🐰 Minggu Hewan</div>
+        <div style="display:flex;gap:10px;align-items:center"><div class="koin">🪙 24</div><div class="gembok">🔒</div></div>
+      </div>
+      <div class="tab-tiles">
+        <div class="tile minggu"><span class="emo">🎯</span><div>Main Minggu Ini<small>3 permainan</small></div></div>
+        <div class="tile pustaka"><span class="emo">📚</span><div>Pustaka<small>semua tema</small></div></div>
+        <div class="tile video"><span class="emo">📺</span><div>Pojok Video<small>nonton sebentar</small></div></div>
+      </div>
+      <div class="kid-foot" style="padding-bottom:14px">Sisa waktu main hari ini: 18 menit</div>
+    </div></div>
+  </section>
+
+  <!-- TABLET: GAME -->
+  <section class="pane" id="tab-game">
+    <div class="judul-layar">Game — Tampilan Tablet (landscape)</div>
+    <div class="ket-layar">Pilihan jawaban tersebar lega dalam satu baris — lebih mudah ditekan jari balita dibanding grid sempit di HP.</div>
+    <div class="tablet"><span class="cam"></span><div class="layar">
+      <div class="game-head" style="padding:16px 26px 4px"><div class="gembok">←</div><div class="koin">🪙 24</div></div>
+      <div class="game-prompt" style="margin:6px 26px;font-size:22px">🔊 Mana <b>&nbsp;kucing&nbsp;</b>?</div>
+      <div style="flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:18px;padding:18px 26px">
+        <div class="pilih benar" style="font-size:64px">🐱</div>
+        <div class="pilih" style="font-size:64px">🐶</div>
+        <div class="pilih" style="font-size:64px">🐮</div>
+        <div class="pilih" style="font-size:64px">🐰</div>
+      </div>
+      <div class="bar-bawah" style="padding:0 26px 16px"><div class="gembok">🔊</div><div class="progress"><i></i></div><div class="koin">3/5</div></div>
+    </div></div>
+  </section>
+
+  <!-- DESKTOP: DAFTAR 2 KOLOM -->
+  <section class="pane" id="desk-daftar">
+    <div class="judul-layar">Daftar / Trial — Tampilan Desktop (2 kolom)</div>
+    <div class="ket-layar">Di layar lebar, halaman publik & daftar memanfaatkan 2 kolom: kiri "kenapa ini" (jualan), kanan formulir. Di HP, dua kolom ini menumpuk ke bawah otomatis.</div>
+    <div class="browser">
+      <div class="chrome"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><div class="url">🔒 kidzplayful.id/daftar</div></div>
+      <div class="view"><div class="daftar2">
+        <div class="kiri">
+          <div class="big">🌈</div>
+          <h2>KidzPlayful</h2>
+          <p>Kelas bermain digital yang tumbuh bersama anak — sensorik, motorik, kemandirian.</p>
+          <ul>
+            <li>🎯 Game bertema baru tiap minggu</li>
+            <li>⭐ Skor & laporan perkembangan</li>
+            <li>📺 Pojok video aman & terkurasi</li>
+            <li>🔒 Tanpa iklan · screen time terkontrol</li>
+          </ul>
+        </div>
+        <div class="kanan">
+          <span class="pill">🎁 Gratis 14 hari · tanpa kartu kredit</span>
+          <h3>Mulai sekarang</h3>
+          <p style="font-size:13px;color:#999;margin-bottom:18px">Buat akun orang tua & profil anak</p>
+          <div class="inp">📧 Email orang tua</div>
+          <div class="inp">🔑 Kata sandi</div>
+          <div class="inp">🧒 Nama anak &nbsp;·&nbsp; 🎂 Umur</div>
+          <div class="cta">Mulai Gratis ▶</div>
+          <p style="font-size:11px;color:#bbb;margin-top:14px;text-align:center">Tanpa iklan · tanpa pelacak · aman untuk anak</p>
+        </div>
+      </div></div>
+    </div>
+  </section>
+
+  <!-- DESKTOP: MODE ANAK -->
+  <section class="pane" id="desk-anak">
+    <div class="judul-layar">Mode Anak — Tampilan Desktop (area dibatasi di tengah)</div>
+    <div class="ket-layar">Penting: di desktop, area main TIDAK melar selebar layar (game anak yang melebar 27" justru sulit dipakai). Konten dijaga di tengah dengan ukuran nyaman; sisanya latar.</div>
+    <div class="browser">
+      <div class="chrome"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><div class="url">🔒 kidzplayful.id/main</div></div>
+      <div class="view"><div class="deskanak">
+        <div class="topbar"><div class="koin">🪙 24</div><div class="gembok">🔒</div></div>
+        <div class="canvas">
+          <span class="chip">🐰 Minggu Hewan</span>
+          <div class="row3">
+            <div class="tile minggu"><span class="emo">🎯</span>Minggu Ini</div>
+            <div class="tile pustaka"><span class="emo">📚</span>Pustaka</div>
+            <div class="tile video"><span class="emo">📺</span>Video</div>
+          </div>
+          <div class="hint">Sisa waktu main hari ini: 18 menit</div>
+        </div>
+        <p style="position:absolute;bottom:14px;font-size:11px;color:#b59">💡 Tablet/HP tetap pengalaman terbaik untuk anak</p>
+      </div></div>
+    </div>
+  </section>
+
+  <div class="legend">Mockup low-fidelity untuk menyepakati struktur & alur — bukan desain visual final (warna/maskot/font menyusul). Klik menu kiri untuk berpindah layar.</div>
+
+</main>
+
+<script>
+  const btns=document.querySelectorAll('aside button');
+  const panes=document.querySelectorAll('.pane');
+  btns.forEach(b=>b.addEventListener('click',()=>{
+    btns.forEach(x=>x.classList.remove('aktif'));
+    b.classList.add('aktif');
+    panes.forEach(p=>p.classList.remove('show'));
+    document.getElementById(b.dataset.p).classList.add('show');
+    document.querySelector('main').scrollTop=0;
+  }));
+</script>
+</body>
+</html>
