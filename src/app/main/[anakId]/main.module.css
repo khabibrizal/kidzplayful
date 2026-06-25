@@ -1,0 +1,15 @@
+/* src/app/main/[anakId]/main.module.css */
+.wrap { max-width: 420px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; padding: 16px; }
+.top { display: flex; align-items: center; justify-content: space-between; padding: 8px 4px; }
+.chip { background: var(--peach); color: #9a5b33; font-weight: 700; padding: 6px 14px; border-radius: 999px; }
+.coin { background: #fff; border-radius: 999px; padding: 5px 13px; font-weight: 700; color: #c98a00; box-shadow: 0 3px 0 #efe3c9; }
+.lock { width: 40px; height: 40px; border-radius: 50%; background: #fff; border: none; font-size: 18px; box-shadow: 0 3px 0 #e6def5; cursor: pointer; }
+.menu { flex: 1; display: flex; flex-direction: column; gap: 14px; justify-content: center; }
+.tile { border: none; cursor: pointer; border-radius: 26px; padding: 20px; display: flex; align-items: center; gap: 15px; color: #fff; font-weight: 800; font-size: 20px; font-family: inherit; text-align: left; }
+.tile span { font-size: 40px; }
+.tMain { background: var(--mint-d); box-shadow: 0 7px 0 #4fae87; }
+.tLib { background: var(--lavender-d); box-shadow: 0 7px 0 #7d63b8; }
+.tVid { background: var(--biru-d); box-shadow: 0 7px 0 #4f93d8; }
+.foot { text-align: center; font-size: 12px; color: var(--abu); padding: 10px; }
+.rest { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 10px; }
+.rest .emo { font-size: 70px; }
