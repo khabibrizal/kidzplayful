@@ -15,6 +15,8 @@ export interface Paket {
   mesin: Mesin;
   judul: string;
   area_skill: string;
+  usia_min: number;
+  usia_max: number;
   butir: DataTekan | DataSeret | DataCocok;
 }
 
@@ -22,4 +24,24 @@ export interface HasilSelesai {
   benar: number;
   total: number;
   durasiDetik: number;
+}
+
+export interface Video {
+  id: string;
+  judul: string;
+  youtube_id: string;
+  durasi_detik: number;
+}
+
+export interface TemaInfo {
+  id: string;
+  nama: string;
+  sampul: string | null;
+  is_minggu_ini: boolean;
+}
+
+export interface TemaLengkap {
+  tema: TemaInfo;
+  paket: Paket[];
+  video: Video[];
 }
