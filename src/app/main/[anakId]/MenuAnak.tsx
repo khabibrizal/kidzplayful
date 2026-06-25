@@ -2,35 +2,34 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Paket } from '@/lib/game/tipe';
+import type { Paket, TemaLengkap } from '@/lib/game/tipe';
 import GameRunner from '@/components/game/GameRunner';
 import PinGate from '@/components/game/PinGate';
+import VideoPojok from '@/components/game/VideoPojok';
 import { waktuHabis, kunciHari, sisaDetik } from '@/lib/domain/waktu';
 import s from './main.module.css';
 
-type Layar = 'menu' | 'daftar' | 'main' | 'istirahat';
+type Layar = 'menu' | 'daftar' | 'pustaka' | 'video' | 'main' | 'istirahat';
 
 export default function MenuAnak({
-  anak, temaNama, temaSampul, temaId, paket, pinTersimpan,
+  anak, pustaka, pinTersimpan,
 }: {
   anak: { id: string; koin: number; batas_menit: number };
-  temaNama: string; temaSampul: string; temaId: string; paket: Paket[]; pinTersimpan: string | null;
+  pustaka: TemaLengkap[]; pinTersimpan: string | null;
 }) {
   const router = useRouter();
+  const mingguIni = pustaka.find((t) => t.tema.is_minggu_ini) ?? pustaka[0] ?? null;
   const [layar, setLayar] = useState<Layar>('menu');
   const [koin, setKoin] = useState(anak.koin);
   const [aktif, setAktif] = useState<Paket | null>(null);
-  const [pinUntuk, setPinUntuk] = useState<null | 'keluar' | 'lanjut'>(null);
+  const [temaTerpilih, setTemaTerpilih] = useState<TemaLengkap | null>(mingguIni);
+  const [pinUntuk, setPinUntuk] = useState<null | 'keluar'>(null);
   const [terpakai, setTerpakai] = useState(0);
-  // Lazy initializer: new Date() berjalan saat inisialisasi state (sekali), bukan saat render.
-  // Memenuhi rule react-hooks/purity React Compiler (dilarang panggil fungsi impure saat render).
   const [kunci] = useState(() => kunciHari(anak.id, new Date()));
 
-  // muat & jalankan timer harian
   useEffect(() => {
     const awal = Number(localStorage.getItem(kunci) ?? '0');
-    // localStorage hanya ada di klien; baca awal harus di effect (bukan initializer state
-    // karena komponen ikut SSR). Set sekali saat mount aman, bukan cascading render.
+    // localStorage hanya di klien; baca awal harus di effect (komponen ikut SSR).
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setTerpakai(awal);
     const iv = setInterval(() => {
@@ -46,6 +45,10 @@ export default function MenuAnak({
 
   const sisaMnt = Math.ceil(sisaDetik(terpakai, anak.batas_menit) / 60);
 
+  function mulaiGame(p: Paket, tema: TemaLengkap) {
+    setTemaTerpilih(tema); setAktif(p); setLayar('main');
+  }
+
   if (layar === 'istirahat') {
     return (
       <div className={s.wrap}>
@@ -53,7 +56,7 @@ export default function MenuAnak({
           <div className={s.emo}>😴🌙</div>
           <h2>Waktunya istirahat</h2>
           <p style={{ color: 'var(--abu)' }}>Sampai jumpa besok ya!</p>
-          <button className="kp-btn" onClick={() => setPinUntuk('lanjut')}>🔒 Lanjut (izin ortu)</button>
+          <button className="kp-btn" onClick={() => setPinUntuk('keluar')}>🔒 Lanjut (izin ortu)</button>
         </div>
         {pinUntuk && (
           <PinGate pinTersimpan={pinTersimpan}
@@ -64,30 +67,64 @@ export default function MenuAnak({
     );
   }
 
-  if (layar === 'main' && aktif) {
+  if (layar === 'main' && aktif && temaTerpilih) {
     return (
       <div className={s.wrap}>
         <div className={s.top}>
           <button className={s.lock} onClick={() => setLayar('daftar')}>←</button>
           <div className={s.coin}>🪙 {koin}</div>
         </div>
-        <GameRunner paket={aktif} anakId={anak.id} temaId={temaId}
+        <GameRunner paket={aktif} anakId={anak.id} temaId={temaTerpilih.tema.id}
           onKeluar={() => setLayar('daftar')} onKoin={setKoin} />
       </div>
     );
   }
 
-  if (layar === 'daftar') {
+  if (layar === 'video') {
     return (
       <div className={s.wrap}>
         <div className={s.top}>
           <button className={s.lock} onClick={() => setLayar('menu')}>←</button>
-          <div className={s.chip}>{temaSampul} {temaNama}</div>
+          <div className={s.chip}>📺 Pojok Video</div>
+          <div className={s.coin}>🪙 {koin}</div>
+        </div>
+        <VideoPojok video={mingguIni?.video ?? []} onKeluar={() => setLayar('menu')} />
+      </div>
+    );
+  }
+
+  if (layar === 'pustaka') {
+    return (
+      <div className={s.wrap}>
+        <div className={s.top}>
+          <button className={s.lock} onClick={() => setLayar('menu')}>←</button>
+          <div className={s.chip}>📚 Game Edukasi</div>
           <div className={s.coin}>🪙 {koin}</div>
         </div>
         <div className={s.menu}>
-          {paket.map((p) => (
-            <button key={p.id} className={`${s.tile} ${s.tMain}`} onClick={() => { setAktif(p); setLayar('main'); }}>
+          {pustaka.map((t) => (
+            <button key={t.tema.id} className={`${s.tile} ${s.tLib}`}
+              onClick={() => { setTemaTerpilih(t); setLayar('daftar'); }}>
+              <span>{t.tema.sampul ?? '🎈'}</span><div>{t.tema.nama}<br /><small style={{ fontWeight: 600, fontSize: 12 }}>{t.paket.length} permainan</small></div>
+            </button>
+          ))}
+        </div>
+        <div className={s.foot}>Sisa waktu hari ini: {sisaMnt} menit</div>
+      </div>
+    );
+  }
+
+  if (layar === 'daftar' && temaTerpilih) {
+    return (
+      <div className={s.wrap}>
+        <div className={s.top}>
+          <button className={s.lock} onClick={() => setLayar('menu')}>←</button>
+          <div className={s.chip}>{temaTerpilih.tema.sampul ?? '🎈'} {temaTerpilih.tema.nama}</div>
+          <div className={s.coin}>🪙 {koin}</div>
+        </div>
+        <div className={s.menu}>
+          {temaTerpilih.paket.map((p) => (
+            <button key={p.id} className={`${s.tile} ${s.tMain}`} onClick={() => mulaiGame(p, temaTerpilih)}>
               <span>🎯</span><div>{p.judul}</div>
             </button>
           ))}
@@ -101,16 +138,18 @@ export default function MenuAnak({
   return (
     <div className={s.wrap}>
       <div className={s.top}>
-        <div className={s.chip}>{temaSampul} {temaNama}</div>
+        <div className={s.chip}>{mingguIni?.tema.sampul ?? '🎈'} {mingguIni?.tema.nama ?? 'KidzPlayful'}</div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <div className={s.coin}>🪙 {koin}</div>
           <button className={s.lock} onClick={() => setPinUntuk('keluar')}>🔒</button>
         </div>
       </div>
       <div className={s.menu}>
-        <button className={`${s.tile} ${s.tMain}`} onClick={() => setLayar('daftar')}><span>🎯</span><div>Main Minggu Ini<br /><small style={{ fontWeight: 600, fontSize: 12 }}>{paket.length} permainan</small></div></button>
-        <button className={`${s.tile} ${s.tLib}`} onClick={() => setLayar('daftar')}><span>📚</span><div>Game Edukasi</div></button>
-        <button className={`${s.tile} ${s.tVid}`} onClick={() => setPinUntuk('keluar')}><span>📺</span><div>Pojok Video<br /><small style={{ fontWeight: 600, fontSize: 12 }}>segera</small></div></button>
+        <button className={`${s.tile} ${s.tMain}`} onClick={() => { setTemaTerpilih(mingguIni); setLayar('daftar'); }} disabled={!mingguIni}>
+          <span>🎯</span><div>Main Minggu Ini<br /><small style={{ fontWeight: 600, fontSize: 12 }}>{mingguIni?.paket.length ?? 0} permainan</small></div>
+        </button>
+        <button className={`${s.tile} ${s.tLib}`} onClick={() => setLayar('pustaka')}><span>📚</span><div>Game Edukasi<br /><small style={{ fontWeight: 600, fontSize: 12 }}>{pustaka.length} tema</small></div></button>
+        <button className={`${s.tile} ${s.tVid}`} onClick={() => setLayar('video')}><span>📺</span><div>Pojok Video</div></button>
       </div>
       <div className={s.foot}>Sisa waktu hari ini: {sisaMnt} menit</div>
       {pinUntuk && (
