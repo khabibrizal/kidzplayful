@@ -34,7 +34,7 @@ export default async function PilihAnakPage() {
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '10px 0' }}>PROFIL ANAK</div>
       {(anakList ?? []).map((a) => (
-        <a key={a.id} href="/main" className="kp-card"
+        <a key={a.id} href={`/main/${a.id}`} className="kp-card"
            style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 10, textDecoration: 'none', color: 'inherit' }}>
           <span style={{ fontSize: 30 }}>🧒</span>
           <span><b>{a.nama}</b><br /><small style={{ color: 'var(--abu)' }}>mode {a.mode_default}</small></span>
