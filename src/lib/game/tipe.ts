@@ -49,9 +49,11 @@ export interface TemaLengkap {
 
 export interface Panduan {
   tema_id: string;
+  materi: string | null;
   bahan: string | null;
   langkah: string[];
   worksheet_url: string | null;
+  link_ide: string | null;
 }
 export interface TemaPanduan {
   tema: TemaInfo;

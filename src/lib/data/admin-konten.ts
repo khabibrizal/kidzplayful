@@ -85,12 +85,14 @@ export async function hapusVideo(id: string) {
   revalidatePath('/admin/video');
 }
 
-export async function simpanPanduan(input: { temaId: string; bahan: string; langkah: string[]; worksheetUrl: string | null }) {
+export async function simpanPanduan(input: { temaId: string; materi: string; bahan: string; langkah: string[]; linkIde: string; worksheetUrl: string | null }) {
   const supabase = await db();
   const { error } = await supabase.from('panduan').upsert({
     tema_id: input.temaId,
+    materi: input.materi.trim() || null,
     bahan: input.bahan.trim() || null,
     langkah: input.langkah.filter((x) => x.trim()),
+    link_ide: input.linkIde.trim() || null,
     worksheet_url: input.worksheetUrl?.trim() || null,
     status: 'disetujui',
   }, { onConflict: 'tema_id' });

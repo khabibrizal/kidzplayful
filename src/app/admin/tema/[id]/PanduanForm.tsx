@@ -7,9 +7,11 @@ import s from '../../admin.module.css';
 
 export default function PanduanForm({
   temaId, awal,
-}: { temaId: string; awal: { bahan: string | null; langkah: string[]; worksheet_url: string | null } | null }) {
+}: { temaId: string; awal: { materi: string | null; bahan: string | null; langkah: string[]; worksheet_url: string | null; link_ide: string | null } | null }) {
+  const [materi, setMateri] = useState(awal?.materi ?? '');
   const [bahan, setBahan] = useState(awal?.bahan ?? '');
   const [langkah, setLangkah] = useState<string[]>(awal?.langkah?.length ? awal.langkah : ['']);
+  const [linkIde, setLinkIde] = useState(awal?.link_ide ?? '');
   const [worksheet, setWorksheet] = useState<string | null>(awal?.worksheet_url ?? null);
   const [naik, setNaik] = useState(false);
   const [err, setErr] = useState('');
@@ -30,13 +32,14 @@ export default function PanduanForm({
 
   async function simpan() {
     setErr('');
-    try { await simpanPanduan({ temaId, bahan, langkah, worksheetUrl: worksheet }); location.reload(); }
+    try { await simpanPanduan({ temaId, materi, bahan, langkah, linkIde, worksheetUrl: worksheet }); location.reload(); }
     catch (e) { setErr(e instanceof Error ? e.message : 'Gagal'); }
   }
 
   return (
     <div className={s.card}>
-      <input className={s.inp} placeholder="Bahan (mis. wadah, kapas, kain bertekstur)" value={bahan} onChange={(e) => setBahan(e.target.value)} style={{ width: '100%' }} />
+      <textarea className={s.inp} placeholder="Materi/Tujuan (apa yang dilatih minggu ini)" value={materi} onChange={(e) => setMateri(e.target.value)} rows={3} style={{ width: '100%', resize: 'vertical' }} />
+      <input className={s.inp} placeholder="Bahan (mis. wadah, kapas, kain bertekstur)" value={bahan} onChange={(e) => setBahan(e.target.value)} style={{ width: '100%', marginTop: 8 }} />
       <div className={s.muted} style={{ margin: '8px 0 4px' }}>Langkah aktivitas:</div>
       {langkah.map((l, i) => (
         <div key={i} className={s.row} style={{ marginTop: 4 }}>
@@ -51,6 +54,7 @@ export default function PanduanForm({
         {worksheet && <a href={worksheet} target="_blank" className={s.muted} style={{ color: 'var(--biru-d)' }}>lihat PDF</a>}
         <input ref={fileRef} type="file" accept="application/pdf" hidden onChange={unggahPdf} />
       </div>
+      <input className={s.inp} placeholder="Link/video referensi (mis. https://...)" value={linkIde} onChange={(e) => setLinkIde(e.target.value)} style={{ width: '100%', marginTop: 10 }} />
       {err && <div style={{ color: '#c0392b', fontSize: 13, marginTop: 6 }}>{err}</div>}
       <button className={s.btn} style={{ marginTop: 10 }} onClick={simpan}>💾 Simpan panduan</button>
     </div>

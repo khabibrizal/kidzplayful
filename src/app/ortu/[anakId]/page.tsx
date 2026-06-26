@@ -29,11 +29,15 @@ export default async function ModeOrtu({ params }: { params: Promise<{ anakId: s
       {adaPanduan.map(({ tema, panduan }) => (
         <div key={tema.id} className="kp-card" style={{ marginBottom: 12 }}>
           <b>{tema.sampul ?? '🎈'} {tema.nama}{tema.is_minggu_ini ? ' · Minggu Ini' : ''}</b>
+          {panduan?.materi && <p style={{ marginTop: 8, fontSize: 14, whiteSpace: 'pre-wrap' }}>🎯 {panduan.materi}</p>}
           {panduan?.bahan && <div className={s.bahan} style={{ marginTop: 8 }}>🧺 {panduan.bahan}</div>}
           {(panduan?.langkah ?? []).map((l, i) => (
             <div key={i} className={s.step}><span className={s.n}>{i + 1}</span><span style={{ fontSize: 14 }}>{l}</span></div>
           ))}
-          {panduan?.worksheet_url && <a className="kp-btn mint" href={panduan.worksheet_url} target="_blank" style={{ marginTop: 10, fontSize: 14, padding: '11px 20px' }}>📄 Unduh Worksheet</a>}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {panduan?.link_ide && <a className="kp-btn" href={panduan.link_ide} target="_blank" style={{ marginTop: 10, fontSize: 14, padding: '11px 20px' }}>▶ Lihat ide</a>}
+            {panduan?.worksheet_url && <a className="kp-btn mint" href={panduan.worksheet_url} target="_blank" style={{ marginTop: 10, fontSize: 14, padding: '11px 20px' }}>📄 Unduh Worksheet</a>}
+          </div>
         </div>
       ))}
 

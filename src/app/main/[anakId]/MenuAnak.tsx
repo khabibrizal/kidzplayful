@@ -2,7 +2,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Paket, TemaLengkap, Video } from '@/lib/game/tipe';
+import type { Paket, Panduan, TemaLengkap, Video } from '@/lib/game/tipe';
 import GameRunner from '@/components/game/GameRunner';
 import PinGate from '@/components/game/PinGate';
 import VideoPojok from '@/components/game/VideoPojok';
@@ -10,13 +10,13 @@ import { waktuHabis, kunciHari, sisaDetik } from '@/lib/domain/waktu';
 import Pewi from '@/components/ui/Pewi';
 import s from './main.module.css';
 
-type Layar = 'menu' | 'daftar' | 'pustaka' | 'video' | 'main' | 'istirahat';
+type Layar = 'menu' | 'kelas' | 'daftar' | 'pustaka' | 'video' | 'main' | 'istirahat';
 
 export default function MenuAnak({
-  anak, pustaka, pinTersimpan, video, paketAwal,
+  anak, pustaka, pinTersimpan, video, paketAwal, kelas,
 }: {
   anak: { id: string; koin: number; batas_menit: number };
-  pustaka: TemaLengkap[]; pinTersimpan: string | null; video: Video[]; paketAwal?: string;
+  pustaka: TemaLengkap[]; pinTersimpan: string | null; video: Video[]; paketAwal?: string; kelas: Panduan | null;
 }) {
   const router = useRouter();
   const mingguIni = pustaka.find((t) => t.tema.is_minggu_ini) ?? pustaka[0] ?? null;
@@ -100,6 +100,31 @@ export default function MenuAnak({
     );
   }
 
+  if (layar === 'kelas') {
+    return (
+      <div className={s.wrap}>
+        <div className={s.top}>
+          <button className="kp-lock" aria-label="Kembali" onClick={() => setLayar('menu')}>←</button>
+          <div className="kp-chip">{mingguIni?.tema.sampul ?? '🎈'} {mingguIni?.tema.nama}</div>
+          <div className="kp-coin">🪙 {koin}</div>
+        </div>
+        <div style={{ flex: 1, overflow: 'auto', padding: '6px 2px' }}>
+          {!kelas && <p style={{ color: 'var(--abu)', textAlign: 'center' }}>Materi kelas bermain minggu ini belum tersedia.</p>}
+          {kelas?.materi && <div className="kp-card" style={{ marginBottom: 10 }}><b>🎯 Materi</b><p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>{kelas.materi}</p></div>}
+          {kelas?.bahan && <div className="kp-card" style={{ marginBottom: 10, background: '#fff3d6' }}><b>🧺 Bahan</b><p style={{ marginTop: 6 }}>{kelas.bahan}</p></div>}
+          {(kelas?.langkah ?? []).length > 0 && (
+            <div className="kp-card" style={{ marginBottom: 10 }}>
+              <b>📝 Cara membuat</b>
+              <ol style={{ margin: '8px 0 0 18px', lineHeight: 1.7 }}>{(kelas?.langkah ?? []).map((l, i) => <li key={i}>{l}</li>)}</ol>
+            </div>
+          )}
+          {kelas?.link_ide && <a className="kp-btn" style={{ display: 'inline-block', marginRight: 8 }} href={kelas.link_ide} target="_blank">Lihat ide ▶</a>}
+          {kelas?.worksheet_url && <a className="kp-btn putih" style={{ display: 'inline-block' }} href={kelas.worksheet_url} target="_blank">📄 Worksheet</a>}
+        </div>
+      </div>
+    );
+  }
+
   if (layar === 'pustaka') {
     return (
       <div className={s.wrap}>
@@ -155,8 +180,8 @@ export default function MenuAnak({
         <Pewi size={84} />
       </div>
       <div className={s.menu}>
-        <button className="kp-tile mint" onClick={() => { setTemaTerpilih(mingguIni); setLayar('daftar'); }} disabled={!mingguIni}>
-          <span className="emo">🎯</span><div>Main Minggu Ini<small>{mingguIni?.paket.length ?? 0} permainan</small></div>
+        <button className="kp-tile mint" onClick={() => setLayar('kelas')}>
+          <span className="emo">🎈</span><div>Kelas Bermain<small>Minggu Ini</small></div>
         </button>
         <button className="kp-tile lavender" onClick={() => setLayar('pustaka')}><span className="emo">📚</span><div>Game Edukasi<small>{pustaka.length} tema</small></div></button>
         <button className="kp-tile biru" onClick={() => setLayar('video')}><span className="emo">📺</span><div>Pojok Video</div></button>
