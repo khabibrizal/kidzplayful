@@ -2,6 +2,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import type { DataSeret, HasilSelesai } from '@/lib/game/tipe';
+import Aset from './Aset';
 
 export default function BeresBeres({ data, onSelesai }: { data: DataSeret; onSelesai: (h: HasilSelesai) => void }) {
   const [sisa, setSisa] = useState(data.benda);
@@ -57,7 +58,7 @@ export default function BeresBeres({ data, onSelesai }: { data: DataSeret; onSel
         {sisa.map((b, i) => (
           <div key={i} onPointerDown={(e) => down(e, b.kategori)} onPointerMove={move} onPointerUp={(e) => up(e, b.emoji)}
             style={{ width: 84, height: 84, borderRadius: 22, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 46, boxShadow: '0 6px 0 #e6def5', touchAction: 'none', cursor: 'grab' }}>
-            {b.emoji}
+            <Aset value={b.emoji} size={46} />
           </div>
         ))}
       </div>

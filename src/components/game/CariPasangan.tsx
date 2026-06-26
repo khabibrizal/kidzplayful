@@ -2,6 +2,7 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { DataCocok, HasilSelesai } from '@/lib/game/tipe';
+import Aset from './Aset';
 
 function mix<T>(arr: T[], seed: number): T[] {
   const a = arr.slice();
@@ -48,7 +49,7 @@ export default function CariPasangan({ data, onSelesai }: { data: DataCocok; onS
                 background: lock ? '#dff7ec' : '#fff',
                 boxShadow: lock ? '0 5px 0 var(--mint-d)' : '0 5px 0 #e6def5',
                 outline: sel ? '4px solid var(--biru-d)' : lock ? '3px solid var(--mint-d)' : 'none' }}>
-              {emo}
+              <Aset value={emo} size={42} />
             </button>
           );
         })}

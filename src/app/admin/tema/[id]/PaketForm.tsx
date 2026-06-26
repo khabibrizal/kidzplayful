@@ -3,32 +3,34 @@
 import { useState } from 'react';
 import type { Mesin } from '@/lib/game/tipe';
 import { buatPaket } from '@/lib/data/admin-konten';
+import AsetInput from '@/components/admin/AsetInput';
 import s from '../../admin.module.css';
 
 const AREA: Record<Mesin, string> = { 'tekan-sesuai': 'kognitif', 'seret-wadah': 'motorik-halus', 'cari-pasangan': 'kognitif' };
+
+type Soal = { tanya: string; benar: string; pengecoh: string[] };
+type Wadah = { kategori: string; label: string; emoji: string };
+type Benda = { emoji: string; kategori: string };
 
 export default function PaketForm({ temaId }: { temaId: string }) {
   const [mesin, setMesin] = useState<Mesin>('tekan-sesuai');
   const [judul, setJudul] = useState('Mana Ya?');
   const [err, setErr] = useState('');
 
-  // tekan-sesuai
-  const [soal, setSoal] = useState([{ tanya: '', benar: '', salah: '' }]);
-  // seret-wadah
-  const [wadah, setWadah] = useState([{ kategori: '', label: '', emoji: '' }]);
-  const [benda, setBenda] = useState([{ emoji: '', kategori: '' }]);
-  // cari-pasangan
-  const [pasangan, setPasangan] = useState('');
+  const [soal, setSoal] = useState<Soal[]>([{ tanya: '', benar: '', pengecoh: ['', ''] }]);
+  const [wadah, setWadah] = useState<Wadah[]>([{ kategori: '', label: '', emoji: '' }]);
+  const [benda, setBenda] = useState<Benda[]>([{ emoji: '', kategori: '' }]);
+  const [pasangan, setPasangan] = useState<string[]>(['', '']);
 
   async function simpan() {
     setErr('');
     let butir: unknown;
     if (mesin === 'tekan-sesuai') {
-      butir = { soal: soal.filter((x) => x.tanya && x.benar).map((x) => ({ tanya: x.tanya.trim(), benar: x.benar.trim(), salah: x.salah.split(/\s+/).filter(Boolean) })) };
+      butir = { soal: soal.filter((x) => x.tanya && x.benar).map((x) => ({ tanya: x.tanya.trim(), benar: x.benar, salah: x.pengecoh.filter(Boolean) })) };
     } else if (mesin === 'seret-wadah') {
       butir = { wadah: wadah.filter((w) => w.kategori && w.emoji), benda: benda.filter((b) => b.emoji && b.kategori) };
     } else {
-      butir = { pasangan: pasangan.split(/\s+/).filter(Boolean) };
+      butir = { pasangan: pasangan.filter(Boolean) };
     }
     try {
       await buatPaket({ temaId, mesin, judul, areaSkill: AREA[mesin], usiaMin: 2, usiaMax: 5, butir });
@@ -49,34 +51,46 @@ export default function PaketForm({ temaId }: { temaId: string }) {
 
       {mesin === 'tekan-sesuai' && (
         <div style={{ marginTop: 10 }}>
-          <div className={s.muted}>Tiap soal: pertanyaan, emoji benar, lalu emoji pengecoh (pisah spasi).</div>
+          <div className={s.muted}>Tiap soal: pertanyaan (teks), jawaban benar (emoji/gambar), pengecoh (emoji/gambar).</div>
           {soal.map((x, i) => (
-            <div key={i} className={s.row} style={{ marginTop: 6 }}>
-              <input className={s.inp} placeholder="kucing" value={x.tanya} onChange={(e) => setSoal(soal.map((y, j) => j === i ? { ...y, tanya: e.target.value } : y))} style={{ flex: 1 }} />
-              <input className={s.inp} placeholder="🐱" value={x.benar} onChange={(e) => setSoal(soal.map((y, j) => j === i ? { ...y, benar: e.target.value } : y))} style={{ width: 70 }} />
-              <input className={s.inp} placeholder="🐶 🐮 🐰" value={x.salah} onChange={(e) => setSoal(soal.map((y, j) => j === i ? { ...y, salah: e.target.value } : y))} style={{ flex: 1 }} />
+            <div key={i} className={s.card} style={{ background: '#faf7ff' }}>
+              <input className={s.inp} placeholder="pertanyaan (mis. kucing)" value={x.tanya}
+                onChange={(e) => setSoal(soal.map((y, j) => j === i ? { ...y, tanya: e.target.value } : y))} style={{ width: '100%', marginBottom: 6 }} />
+              <div className={s.row} style={{ flexWrap: 'wrap', gap: 8 }}>
+                <span style={{ fontSize: 12, color: '#2e9e63', fontWeight: 700 }}>Benar:</span>
+                <AsetInput value={x.benar} onChange={(v) => setSoal(soal.map((y, j) => j === i ? { ...y, benar: v } : y))} />
+              </div>
+              <div style={{ marginTop: 6 }}>
+                <span style={{ fontSize: 12, color: 'var(--abu)', fontWeight: 700 }}>Pengecoh:</span>
+                {x.pengecoh.map((p, k) => (
+                  <div key={k} style={{ marginTop: 4 }}>
+                    <AsetInput value={p} onChange={(v) => setSoal(soal.map((y, j) => j === i ? { ...y, pengecoh: y.pengecoh.map((q, m) => m === k ? v : q) } : y))} />
+                  </div>
+                ))}
+                <button className={s.btnSm} style={{ background: '#eee', marginTop: 4 }} onClick={() => setSoal(soal.map((y, j) => j === i ? { ...y, pengecoh: [...y.pengecoh, ''] } : y))}>+ pengecoh</button>
+              </div>
             </div>
           ))}
-          <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => setSoal([...soal, { tanya: '', benar: '', salah: '' }])}>+ soal</button>
+          <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => setSoal([...soal, { tanya: '', benar: '', pengecoh: ['', ''] }])}>+ soal</button>
         </div>
       )}
 
       {mesin === 'seret-wadah' && (
         <div style={{ marginTop: 10 }}>
-          <div className={s.muted}>Wadah (kategori, label, emoji) & Benda (emoji, kategori).</div>
+          <div className={s.muted}>Wadah (kategori, label, emoji/gambar) & Benda (emoji/gambar, kategori).</div>
           {wadah.map((w, i) => (
-            <div key={i} className={s.row} style={{ marginTop: 6 }}>
-              <input className={s.inp} placeholder="buah" value={w.kategori} onChange={(e) => setWadah(wadah.map((y, j) => j === i ? { ...y, kategori: e.target.value } : y))} />
-              <input className={s.inp} placeholder="Buah" value={w.label} onChange={(e) => setWadah(wadah.map((y, j) => j === i ? { ...y, label: e.target.value } : y))} />
-              <input className={s.inp} placeholder="🧺" value={w.emoji} onChange={(e) => setWadah(wadah.map((y, j) => j === i ? { ...y, emoji: e.target.value } : y))} style={{ width: 70 }} />
+            <div key={i} className={s.row} style={{ marginTop: 6, flexWrap: 'wrap' }}>
+              <input className={s.inp} placeholder="kategori (buah)" value={w.kategori} onChange={(e) => setWadah(wadah.map((y, j) => j === i ? { ...y, kategori: e.target.value } : y))} />
+              <input className={s.inp} placeholder="label (Buah)" value={w.label} onChange={(e) => setWadah(wadah.map((y, j) => j === i ? { ...y, label: e.target.value } : y))} />
+              <AsetInput value={w.emoji} onChange={(v) => setWadah(wadah.map((y, j) => j === i ? { ...y, emoji: v } : y))} />
             </div>
           ))}
           <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => setWadah([...wadah, { kategori: '', label: '', emoji: '' }])}>+ wadah</button>
           <div style={{ height: 6 }} />
           {benda.map((b, i) => (
-            <div key={i} className={s.row} style={{ marginTop: 6 }}>
-              <input className={s.inp} placeholder="🍎" value={b.emoji} onChange={(e) => setBenda(benda.map((y, j) => j === i ? { ...y, emoji: e.target.value } : y))} style={{ width: 70 }} />
-              <input className={s.inp} placeholder="buah" value={b.kategori} onChange={(e) => setBenda(benda.map((y, j) => j === i ? { ...y, kategori: e.target.value } : y))} style={{ flex: 1 }} />
+            <div key={i} className={s.row} style={{ marginTop: 6, flexWrap: 'wrap' }}>
+              <AsetInput value={b.emoji} onChange={(v) => setBenda(benda.map((y, j) => j === i ? { ...y, emoji: v } : y))} />
+              <input className={s.inp} placeholder="kategori (buah)" value={b.kategori} onChange={(e) => setBenda(benda.map((y, j) => j === i ? { ...y, kategori: e.target.value } : y))} />
             </div>
           ))}
           <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => setBenda([...benda, { emoji: '', kategori: '' }])}>+ benda</button>
@@ -85,8 +99,13 @@ export default function PaketForm({ temaId }: { temaId: string }) {
 
       {mesin === 'cari-pasangan' && (
         <div style={{ marginTop: 10 }}>
-          <div className={s.muted}>Daftar emoji (pisah spasi). Tiap emoji otomatis jadi sepasang.</div>
-          <input className={s.inp} placeholder="🐱 🌸 🐶" value={pasangan} onChange={(e) => setPasangan(e.target.value)} style={{ width: '100%', marginTop: 6 }} />
+          <div className={s.muted}>Tiap entri jadi sepasang (emoji/gambar). Minimal 2.</div>
+          {pasangan.map((p, i) => (
+            <div key={i} style={{ marginTop: 6 }}>
+              <AsetInput value={p} onChange={(v) => setPasangan(pasangan.map((q, j) => j === i ? v : q))} />
+            </div>
+          ))}
+          <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => setPasangan([...pasangan, ''])}>+ pasangan</button>
         </div>
       )}
 

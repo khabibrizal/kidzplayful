@@ -2,6 +2,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import type { DataTekan, HasilSelesai } from '@/lib/game/tipe';
+import Aset from './Aset';
 
 function speak(t: string) {
   try {
@@ -65,7 +66,7 @@ export default function ManaYa({ data, onSelesai }: { data: DataTekan; onSelesai
         {pilihan.map((emo, i) => (
           <button key={i} onClick={(e) => pilih(e, emo === soal.benar)}
             style={{ background: '#fff', border: 'none', borderRadius: 24, fontSize: 62, boxShadow: '0 6px 0 #e6def5', cursor: 'pointer' }}>
-            {emo}
+            <Aset value={emo} size={62} />
           </button>
         ))}
       </div>
