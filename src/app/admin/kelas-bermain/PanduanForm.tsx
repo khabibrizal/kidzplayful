@@ -1,9 +1,9 @@
-// src/app/admin/tema/[id]/PanduanForm.tsx
+// src/app/admin/kelas-bermain/PanduanForm.tsx
 'use client';
 import { useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { simpanPanduan } from '@/lib/data/admin-konten';
-import s from '../../admin.module.css';
+import s from '../admin.module.css';
 
 export default function PanduanForm({
   temaId, awal,
