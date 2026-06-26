@@ -1,6 +1,6 @@
 // src/lib/domain/__tests__/usia.test.ts
 import { describe, it, expect } from 'vitest';
-import { cocokUsia } from '../usia';
+import { cocokUsia, kategoriUsia } from '../usia';
 
 describe('cocokUsia', () => {
   it('true bila umur dalam rentang', () => expect(cocokUsia(3, 2, 4)).toBe(true));
@@ -12,4 +12,9 @@ describe('cocokUsia', () => {
     expect(cocokUsia(1, 2, 4)).toBe(false);
     expect(cocokUsia(5, 2, 4)).toBe(false);
   });
+});
+
+describe('kategoriUsia', () => {
+  it('umur < 2 -> baby', () => expect(kategoriUsia(1)).toBe('baby'));
+  it('umur >= 2 -> toddler', () => expect(kategoriUsia(2)).toBe('toddler'));
 });

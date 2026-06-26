@@ -66,23 +66,23 @@ export async function hapusPaket(id: string, temaId: string) {
   revalidatePath(`/admin/tema/${temaId}`);
 }
 
-export async function buatVideo(input: { temaId: string; judul: string; youtubeId: string; durasiDetik: number }) {
+export async function buatVideo(input: { judul: string; youtubeId: string; kategori: 'baby' | 'toddler'; durasiDetik: number }) {
   const supabase = await db();
   const yid = await ekstrakYoutubeId(input.youtubeId);
   if (!yid) throw new Error('Link/ID YouTube tidak valid.');
   const { error } = await supabase.from('video').insert({
-    tema_id: input.temaId, judul: input.judul.trim() || 'Video', youtube_id: yid,
-    durasi_detik: input.durasiDetik || 0, status: 'disetujui', link_ok: true,
+    tema_id: null, judul: input.judul.trim() || 'Video', youtube_id: yid,
+    kategori: input.kategori, durasi_detik: input.durasiDetik || 0, status: 'disetujui', link_ok: true,
   });
   if (error) throw new Error(error.message);
-  revalidatePath(`/admin/tema/${input.temaId}`);
+  revalidatePath('/admin/video');
 }
 
-export async function hapusVideo(id: string, temaId: string) {
+export async function hapusVideo(id: string) {
   const supabase = await db();
   const { error } = await supabase.from('video').delete().eq('id', id);
   if (error) throw new Error(error.message);
-  revalidatePath(`/admin/tema/${temaId}`);
+  revalidatePath('/admin/video');
 }
 
 export async function ekstrakYoutubeId(s: string): Promise<string | null> {

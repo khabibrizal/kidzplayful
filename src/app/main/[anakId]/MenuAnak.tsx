@@ -2,7 +2,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Paket, TemaLengkap } from '@/lib/game/tipe';
+import type { Paket, TemaLengkap, Video } from '@/lib/game/tipe';
 import GameRunner from '@/components/game/GameRunner';
 import PinGate from '@/components/game/PinGate';
 import VideoPojok from '@/components/game/VideoPojok';
@@ -12,10 +12,10 @@ import s from './main.module.css';
 type Layar = 'menu' | 'daftar' | 'pustaka' | 'video' | 'main' | 'istirahat';
 
 export default function MenuAnak({
-  anak, pustaka, pinTersimpan,
+  anak, pustaka, pinTersimpan, video,
 }: {
   anak: { id: string; koin: number; batas_menit: number };
-  pustaka: TemaLengkap[]; pinTersimpan: string | null;
+  pustaka: TemaLengkap[]; pinTersimpan: string | null; video: Video[];
 }) {
   const router = useRouter();
   const mingguIni = pustaka.find((t) => t.tema.is_minggu_ini) ?? pustaka[0] ?? null;
@@ -88,7 +88,7 @@ export default function MenuAnak({
           <div className={s.chip}>📺 Pojok Video</div>
           <div className={s.coin}>🪙 {koin}</div>
         </div>
-        <VideoPojok video={mingguIni?.video ?? []} onKeluar={() => setLayar('menu')} />
+        <VideoPojok video={video} onKeluar={() => setLayar('menu')} />
       </div>
     );
   }

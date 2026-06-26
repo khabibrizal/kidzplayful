@@ -31,6 +31,7 @@ export interface Video {
   judul: string;
   youtube_id: string;
   durasi_detik: number;
+  kategori: 'baby' | 'toddler';
 }
 
 export interface TemaInfo {

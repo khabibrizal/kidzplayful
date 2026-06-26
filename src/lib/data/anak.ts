@@ -9,7 +9,7 @@ export async function getAnakTerjamin(anakId: string) {
   if (!user) redirect('/login');
 
   const { data: anak } = await supabase
-    .from('anak').select('id,nama,mode_default,batas_menit,koin').eq('id', anakId).single();
+    .from('anak').select('id,nama,mode_default,batas_menit,koin,tanggal_lahir').eq('id', anakId).single();
   if (!anak) redirect('/pilih-anak'); // RLS memastikan hanya anak milik ortu yang terbaca
 
   const { data: lang } = await supabase
