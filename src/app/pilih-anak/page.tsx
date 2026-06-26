@@ -44,6 +44,7 @@ export default async function PilihAnakPage() {
             <span><b>{a.nama}</b><br /><small style={{ color: 'var(--abu)' }}>mode {a.mode_default}</small></span>
           </a>
           <a href={`/pilih-game/${a.id}`} style={{ display: 'inline-block', marginTop: 8, fontSize: 12, color: 'var(--biru-d)' }}>🎯 Pilih game (orang tua)</a>
+          <a href={`/anak/${a.id}`} style={{ display: 'inline-block', marginTop: 8, marginLeft: 12, fontSize: 12, color: 'var(--biru-d)' }}>⚙️ Kelola</a>
         </div>
       ))}
       {(anakList ?? []).length === 0 && (
@@ -56,6 +57,8 @@ export default async function PilihAnakPage() {
         <input className="kp-input" name="tanggal_lahir" type="date" required />
         <button className="kp-btn mint" type="submit" style={{ width: '100%' }}>Tambah anak</button>
       </form>
+
+      <p style={{ textAlign: 'center', marginTop: 6 }}><a href="/pengaturan" style={{ color: 'var(--abu)', fontSize: 13 }}>⚙️ Pengaturan & Langganan</a></p>
 
       <p style={{ textAlign: 'center', marginTop: 20 }}>
         <a href="/admin" style={{ color: 'var(--abu)', fontSize: 12 }}>🛠️ Panel Admin</a>
