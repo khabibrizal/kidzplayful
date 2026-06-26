@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getFeed } from '@/lib/data/komunitas';
 import Compose from './Compose';
 import SukaBtn from './SukaBtn';
+import LaporBtn from './LaporBtn';
 
 export default async function Komunitas({ searchParams }: { searchParams: Promise<{ tema?: string }> }) {
   const { tema: temaAwal } = await searchParams;
@@ -32,6 +33,7 @@ export default async function Komunitas({ searchParams }: { searchParams: Promis
           <div style={{ display: 'flex', gap: 14, alignItems: 'center', fontSize: 13 }}>
             <SukaBtn postId={p.id} awalSuka={p.sukaSaya} awalJml={p.jmlSuka} />
             <Link href={`/komunitas/${p.id}`} style={{ color: 'var(--abu)' }}>💬 {p.jmlKomentar}</Link>
+            <LaporBtn postinganId={p.id} />
           </div>
         </div>
       ))}

@@ -54,3 +54,14 @@ export async function toggleSuka(postId: string) {
   else await supabase.from('suka').insert({ postingan_id: postId, ortu_id: userId });
   revalidatePath('/komunitas'); revalidatePath(`/komunitas/${postId}`);
 }
+
+export async function lapor(input: { postinganId?: string; komentarId?: string; alasan: string }) {
+  const { supabase, userId } = await sesi();
+  const { error } = await supabase.from('laporan').insert({
+    postingan_id: input.postinganId ?? null,
+    komentar_id: input.komentarId ?? null,
+    pelapor: userId,
+    alasan: input.alasan?.trim() || null,
+  });
+  if (error) throw new Error(error.message);
+}
