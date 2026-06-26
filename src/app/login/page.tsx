@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import Pewi from '@/components/ui/Pewi';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -24,14 +25,17 @@ export default function LoginPage() {
 
   return (
     <main style={{ maxWidth: 380, margin: '40px auto', padding: 16 }}>
-      <h1 style={{ color: 'var(--lavender-d)', fontSize: 26, marginBottom: 18 }}>Masuk</h1>
+      <div style={{ textAlign: 'center' }}>
+        <Pewi size={80} />
+      </div>
+      <h1 style={{ color: 'var(--lavender-d)', fontSize: 26, marginBottom: 18, textAlign: 'center' }}>Masuk</h1>
       <form className="kp-card" onSubmit={submit}>
         <input className="kp-input" type="email" placeholder="Email orang tua"
           value={email} onChange={(e) => setEmail(e.target.value)} required />
         <input className="kp-input" type="password" placeholder="Kata sandi"
           value={sandi} onChange={(e) => setSandi(e.target.value)} required />
         {err && <div className="kp-error">{err}</div>}
-        <button className="kp-btn" type="submit" disabled={loading}>
+        <button className="kp-btn" type="submit" disabled={loading} style={{ width: '100%' }}>
           {loading ? 'Memproses…' : 'Masuk'}
         </button>
       </form>

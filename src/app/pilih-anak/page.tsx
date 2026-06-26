@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { statusLangganan, bolehAkses } from '@/lib/domain/trial';
 import { tambahAnak } from './actions';
+import Pewi from '@/components/ui/Pewi';
 
 export default async function PilihAnakPage() {
   const supabase = await createClient();
@@ -26,7 +27,10 @@ export default async function PilihAnakPage() {
 
   return (
     <main style={{ maxWidth: 420, margin: '30px auto', padding: 16 }}>
-      <h1 style={{ color: 'var(--lavender-d)', fontSize: 24 }}>Halo, Bunda 👋</h1>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <Pewi size={64} />
+        <h1 style={{ color: 'var(--lavender-d)', fontSize: 24 }}>Halo, Bunda 👋</h1>
+      </div>
       <p style={{ color: 'var(--abu)', marginBottom: 16 }}>
         Status langganan: <b>{status}</b>
         {!bolehAkses(status) && ' — silakan perpanjang untuk lanjut.'}
@@ -50,7 +54,7 @@ export default async function PilihAnakPage() {
       <form action={tambahAnak} className="kp-card">
         <input className="kp-input" name="nama" placeholder="Nama anak" required />
         <input className="kp-input" name="tanggal_lahir" type="date" required />
-        <button className="kp-btn" type="submit">Tambah anak</button>
+        <button className="kp-btn mint" type="submit" style={{ width: '100%' }}>Tambah anak</button>
       </form>
 
       <p style={{ textAlign: 'center', marginTop: 20 }}>

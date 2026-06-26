@@ -1,18 +1,56 @@
 /* src/app/globals.css */
 :root{
   --lavender:#C9B6F0; --mint:#A8E6CF; --peach:#FFD3B6; --biru:#A0D2FF;
-  --lavender-d:#9B7FD4; --mint-d:#6FC9A3; --biru-d:#6FB0F0;
+  --lavender-d:#9B7FD4; --mint-d:#6FC9A3; --peach-d:#F0A57A; --biru-d:#6FB0F0;
   --tinta:#5b5170; --abu:#9a93ad; --bg:#F3EEFB; --kartu:#fff;
 }
-*{box-sizing:border-box;margin:0;padding:0}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{min-height:100%}
 body{
   font-family: var(--font-baloo), 'Quicksand', 'Segoe UI', system-ui, sans-serif;
   color:var(--tinta);
   background:radial-gradient(circle at 30% 15%,#efe6ff,#e7f6ff 70%);
 }
-.kp-card{background:var(--kartu);border-radius:20px;box-shadow:0 8px 24px rgba(120,90,180,.12);padding:22px}
+
+/* ====== Sistem desain (selaras mockups/demo.html) ====== */
+.kp-shell{max-width:440px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;padding:16px}
+
+/* tombol jelly */
+.kp-btn{border:none;cursor:pointer;font-family:inherit;font-weight:800;border-radius:999px;padding:15px 28px;font-size:18px;color:#fff;background:var(--lavender-d);box-shadow:0 6px 0 #7d63b8;transition:transform .08s;display:inline-block;text-decoration:none;text-align:center}
+.kp-btn:active{transform:translateY(3px);box-shadow:0 3px 0 #7d63b8}
+.kp-btn.mint{background:var(--mint-d);box-shadow:0 6px 0 #4fae87}
+.kp-btn.mint:active{box-shadow:0 3px 0 #4fae87}
+.kp-btn.putih{background:#fff;color:var(--lavender-d);box-shadow:0 6px 0 #c9b6f0}
+.kp-btn.putih:active{box-shadow:0 3px 0 #c9b6f0}
+
+/* kartu, input, chip, koin, lock */
+.kp-card{background:var(--kartu);border-radius:22px;box-shadow:0 8px 24px rgba(120,90,180,.12);padding:18px}
 .kp-input{width:100%;background:#f3f3f8;border:none;border-radius:12px;padding:13px;font-size:14px;margin-bottom:11px;font-family:inherit}
-.kp-btn{border:none;cursor:pointer;font-family:inherit;font-weight:800;border-radius:99px;padding:13px 24px;font-size:16px;color:#fff;background:var(--lavender-d);box-shadow:0 5px 0 #7d63b8}
-.kp-btn:active{transform:translateY(3px);box-shadow:0 2px 0 #7d63b8}
+.kp-chip{background:var(--peach);color:#9a5b33;font-weight:700;padding:6px 14px;border-radius:999px;font-size:14px;box-shadow:0 4px 0 var(--peach-d);display:inline-block}
+.kp-coin{background:#fff;border-radius:999px;padding:5px 13px;font-weight:700;font-size:14px;color:#c98a00;box-shadow:0 3px 0 #efe3c9;display:inline-flex;gap:5px;align-items:center}
+.kp-lock{width:40px;height:40px;border-radius:50%;background:#fff;border:none;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 3px 0 #e6def5;cursor:pointer;font-family:inherit}
+
+/* tile besar (menu anak) */
+.kp-tile{border:none;cursor:pointer;font-family:inherit;border-radius:26px;padding:20px;display:flex;align-items:center;gap:15px;color:#fff;font-weight:800;font-size:20px;text-align:left;box-shadow:0 7px 0 rgba(0,0,0,.12);transition:transform .08s;width:100%}
+.kp-tile:active{transform:translateY(3px)}
+.kp-tile .emo{font-size:42px}
+.kp-tile small{display:block;font-size:12px;font-weight:600;opacity:.92}
+.kp-tile.mint{background:var(--mint-d);box-shadow:0 7px 0 #4fae87}
+.kp-tile.lavender{background:var(--lavender-d);box-shadow:0 7px 0 #7d63b8}
+.kp-tile.biru{background:var(--biru-d);box-shadow:0 7px 0 #4f93d8}
+
+/* splash & reward gradients */
+.kp-splash{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px;background:linear-gradient(170deg,#e9dcff,#d4ecff);border-radius:0}
+.kp-reward{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px;color:#fff;background:linear-gradient(170deg,#d9c9ff,#bfe6ff);border-radius:24px;padding:24px}
+.kp-brand{font-size:30px;font-weight:800;color:var(--lavender-d);letter-spacing:.5px}
+.kp-tagline{font-size:14px;color:#8a82a0}
+
+/* error inline */
 .kp-error{color:#c0392b;font-size:13px;margin:6px 0}
+
+/* animasi */
+@keyframes kp-pop{0%{transform:scale(1)}50%{transform:scale(1.18)}100%{transform:scale(1)}}
+@keyframes kp-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+.kp-confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:90}
+.kp-confetti span{position:absolute;top:-30px;font-size:20px;animation:kp-fall linear forwards}
+@keyframes kp-fall{to{transform:translateY(105vh) rotate(360deg);opacity:.4}}
