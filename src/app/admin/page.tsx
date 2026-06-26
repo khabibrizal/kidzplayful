@@ -24,7 +24,9 @@ export default async function AdminHome() {
 
   return (
     <div>
-      <p style={{ marginBottom: 12 }}><Link href="/admin/video" className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)' }}>📺 Kelola Video</Link></p>
+      <p style={{ marginBottom: 12 }}><Link href="/admin/video" className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)' }}>📺 Kelola Video</Link>
+        <Link href="/admin/langganan" className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginLeft: 6 }}>💳 Langganan</Link>
+        <Link href="/admin/laporan" className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginLeft: 6 }}>📊 Laporan</Link></p>
       <div className={s.section}>Tambah Tema</div>
       <form action={aksiBuat} className={s.card}>
         <div className={s.row}>
