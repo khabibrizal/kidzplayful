@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { hapusPaket, setStatusTema, setMingguIni } from '@/lib/data/admin-konten';
 import PaketForm from './PaketForm';
+import PanduanForm from './PanduanForm';
 import s from '../../admin.module.css';
 
 export default async function KelolaTema({ params }: { params: Promise<{ id: string }> }) {
@@ -10,6 +11,7 @@ export default async function KelolaTema({ params }: { params: Promise<{ id: str
   const supabase = await createClient();
   const { data: tema } = await supabase.from('tema').select('id,nama,sampul,status,is_minggu_ini').eq('id', id).single();
   const { data: paket } = await supabase.from('paket_aset').select('id,mesin,judul').eq('tema_id', id).order('urutan');
+  const { data: panduan } = await supabase.from('panduan').select('bahan,langkah,worksheet_url').eq('tema_id', id).maybeSingle();
 
   if (!tema) return <p>Tema tidak ditemukan. <Link href="/admin">kembali</Link></p>;
 
@@ -47,6 +49,9 @@ export default async function KelolaTema({ params }: { params: Promise<{ id: str
 
       <div className={s.section}>Video</div>
       <p className={s.muted}>Video dikelola per kategori usia di <Link href="/admin/video">Kelola Video</Link>.</p>
+
+      <div className={s.section}>Panduan Ortu 0-2 (dari worksheet)</div>
+      <PanduanForm temaId={id} awal={panduan ? { bahan: panduan.bahan, langkah: (panduan.langkah ?? []) as string[], worksheet_url: panduan.worksheet_url } : null} />
     </div>
   );
 }

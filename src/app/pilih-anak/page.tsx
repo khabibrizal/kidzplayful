@@ -35,7 +35,7 @@ export default async function PilihAnakPage() {
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '10px 0' }}>PROFIL ANAK</div>
       {(anakList ?? []).map((a) => (
         <div key={a.id} className="kp-card" style={{ marginBottom: 10 }}>
-          <a href={`/main/${a.id}`} style={{ display: 'flex', gap: 12, alignItems: 'center', textDecoration: 'none', color: 'inherit' }}>
+          <a href={a.mode_default === 'ortu' ? `/ortu/${a.id}` : `/main/${a.id}`} style={{ display: 'flex', gap: 12, alignItems: 'center', textDecoration: 'none', color: 'inherit' }}>
             <span style={{ fontSize: 30 }}>🧒</span>
             <span><b>{a.nama}</b><br /><small style={{ color: 'var(--abu)' }}>mode {a.mode_default}</small></span>
           </a>

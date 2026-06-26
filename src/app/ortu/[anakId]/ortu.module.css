@@ -1,0 +1,14 @@
+/* src/app/ortu/[anakId]/ortu.module.css */
+.wrap { max-width: 440px; margin: 0 auto; padding: 16px; }
+.hd { background: var(--biru-d); color: #fff; border-radius: 18px; padding: 16px; margin-bottom: 14px; }
+.hd h1 { font-size: 20px; }
+.hd small { opacity: .9; }
+.card { background: #fff; border-radius: 16px; padding: 14px; margin-bottom: 12px; box-shadow: 0 4px 14px rgba(120,90,180,.08); }
+.bahan { background: #fff3d6; color: #8a6d1f; border-radius: 10px; padding: 10px; font-size: 13px; margin-bottom: 8px; }
+.step { display: flex; gap: 10px; align-items: flex-start; margin: 6px 0; }
+.n { width: 24px; height: 24px; flex-shrink: 0; border-radius: 50%; background: var(--biru-d); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+.dl { display: inline-block; margin-top: 8px; background: var(--biru-d); color: #fff; text-decoration: none; padding: 9px 14px; border-radius: 10px; font-weight: 700; font-size: 14px; }
+.sec { font-size: 12px; font-weight: 700; color: var(--abu); text-transform: uppercase; margin: 16px 0 6px; }
+.vid { display: flex; gap: 10px; align-items: center; }
+.muted { color: var(--abu); font-size: 13px; }
+.back { color: var(--abu); font-size: 13px; text-decoration: none; }

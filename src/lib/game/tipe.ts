@@ -46,3 +46,14 @@ export interface TemaLengkap {
   paket: Paket[];
   video: Video[];
 }
+
+export interface Panduan {
+  tema_id: string;
+  bahan: string | null;
+  langkah: string[];
+  worksheet_url: string | null;
+}
+export interface TemaPanduan {
+  tema: TemaInfo;
+  panduan: Panduan | null;
+}
