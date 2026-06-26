@@ -1,8 +1,9 @@
 /* src/app/ortu/[anakId]/ortu.module.css */
 .wrap { max-width: 440px; margin: 0 auto; padding: 16px; }
-.hd { background: var(--biru-d); color: #fff; border-radius: 18px; padding: 16px; margin-bottom: 14px; }
-.hd h1 { font-size: 20px; }
-.hd small { opacity: .9; }
+.hd { display: flex; align-items: center; gap: 12px; background: linear-gradient(170deg, #e9dcff, #d4ecff); color: var(--tinta); border-radius: 22px; padding: 16px 18px; margin: 6px 0 16px; box-shadow: 0 8px 24px rgba(120,90,180,.12); }
+.hdText { flex: 1; }
+.hd h1 { font-size: 20px; color: var(--lavender-d); }
+.hd small { color: #7a7390; }
 .card { background: #fff; border-radius: 16px; padding: 14px; margin-bottom: 12px; box-shadow: 0 4px 14px rgba(120,90,180,.08); }
 .bahan { background: #fff3d6; color: #8a6d1f; border-radius: 10px; padding: 10px; font-size: 13px; margin-bottom: 8px; }
 .step { display: flex; gap: 10px; align-items: flex-start; margin: 6px 0; }
