@@ -6,7 +6,7 @@ export async function getAdminTerjamin() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
-  const { data: prof } = await supabase.from('profiles').select('email,is_admin').single();
+  const { data: prof } = await supabase.from('profiles').select('email,is_admin').eq('id', user.id).single();
   if (!prof?.is_admin) redirect('/pilih-anak');
   return { id: user.id, email: prof.email };
 }

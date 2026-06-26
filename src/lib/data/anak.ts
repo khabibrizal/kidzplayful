@@ -13,7 +13,7 @@ export async function getAnakTerjamin(anakId: string) {
   if (!anak) redirect('/pilih-anak'); // RLS memastikan hanya anak milik ortu yang terbaca
 
   const { data: lang } = await supabase
-    .from('langganan').select('trial_mulai,aktif_sampai').single();
+    .from('langganan').select('trial_mulai,aktif_sampai').eq('ortu_id', user.id).single();
   const status = lang
     ? statusLangganan(
         {

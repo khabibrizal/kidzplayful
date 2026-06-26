@@ -9,7 +9,7 @@ async function db() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Tidak terautentikasi');
-  const { data: prof } = await supabase.from('profiles').select('is_admin').single();
+  const { data: prof } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
   if (!prof?.is_admin) throw new Error('Bukan admin');
   return supabase;
 }

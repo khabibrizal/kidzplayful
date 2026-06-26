@@ -14,7 +14,7 @@ export default async function PilihAnakPage() {
   const { data: anakList } = await supabase
     .from('anak').select('id,nama,tanggal_lahir,mode_default').order('created_at');
   const { data: lang } = await supabase
-    .from('langganan').select('trial_mulai,aktif_sampai').single();
+    .from('langganan').select('trial_mulai,aktif_sampai').eq('ortu_id', user.id).single();
 
   const status = lang
     ? statusLangganan(

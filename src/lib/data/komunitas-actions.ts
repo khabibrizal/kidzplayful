@@ -8,7 +8,7 @@ async function sesi() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
-  const { data: prof } = await supabase.from('profiles').select('nama_tampilan').single();
+  const { data: prof } = await supabase.from('profiles').select('nama_tampilan').eq('id', user.id).single();
   const nama = prof?.nama_tampilan?.trim() || 'Orang Tua';
   return { supabase, userId: user.id, nama };
 }

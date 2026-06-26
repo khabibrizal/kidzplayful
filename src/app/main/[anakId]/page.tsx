@@ -22,7 +22,8 @@ export default async function MainPage({ params, searchParams }: { params: Promi
   const kelas = mi ? await getKelasBermain(mi.tema.id) : null;
 
   const supabase = await createClient();
-  const { data: prof } = await supabase.from('profiles').select('pin_ortu').single();
+  const { data: { user: u } } = await supabase.auth.getUser();
+  const { data: prof } = await supabase.from('profiles').select('pin_ortu').eq('id', u!.id).single();
 
   return (
     <MenuAnak
