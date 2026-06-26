@@ -52,6 +52,10 @@ export default async function PilihAnakPage() {
         <input className="kp-input" name="tanggal_lahir" type="date" required />
         <button className="kp-btn" type="submit">Tambah anak</button>
       </form>
+
+      <p style={{ textAlign: 'center', marginTop: 20 }}>
+        <a href="/admin" style={{ color: 'var(--abu)', fontSize: 12 }}>🛠️ Panel Admin</a>
+      </p>
     </main>
   );
 }
