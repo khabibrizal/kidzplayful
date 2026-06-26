@@ -56,7 +56,7 @@ export default function MenuAnak({
           <div className={s.emo}>😴🌙</div>
           <h2>Waktunya istirahat</h2>
           <p style={{ color: 'var(--abu)' }}>Sampai jumpa besok ya!</p>
-          <button className="kp-btn" onClick={() => setPinUntuk('keluar')}>🔒 Lanjut (izin ortu)</button>
+          <button className="kp-btn" aria-label="Untuk orang tua" onClick={() => setPinUntuk('keluar')}>🔒 Lanjut (izin ortu)</button>
         </div>
         {pinUntuk && (
           <PinGate pinTersimpan={pinTersimpan}
@@ -71,7 +71,7 @@ export default function MenuAnak({
     return (
       <div className={s.wrap}>
         <div className={s.top}>
-          <button className={s.lock} onClick={() => setLayar('daftar')}>←</button>
+          <button className={s.lock} aria-label="Kembali" onClick={() => setLayar('daftar')}>←</button>
           <div className={s.coin}>🪙 {koin}</div>
         </div>
         <GameRunner paket={aktif} anakId={anak.id} temaId={temaTerpilih.tema.id}
@@ -84,7 +84,7 @@ export default function MenuAnak({
     return (
       <div className={s.wrap}>
         <div className={s.top}>
-          <button className={s.lock} onClick={() => setLayar('menu')}>←</button>
+          <button className={s.lock} aria-label="Kembali" onClick={() => setLayar('menu')}>←</button>
           <div className={s.chip}>📺 Pojok Video</div>
           <div className={s.coin}>🪙 {koin}</div>
         </div>
@@ -97,7 +97,7 @@ export default function MenuAnak({
     return (
       <div className={s.wrap}>
         <div className={s.top}>
-          <button className={s.lock} onClick={() => setLayar('menu')}>←</button>
+          <button className={s.lock} aria-label="Kembali" onClick={() => setLayar('menu')}>←</button>
           <div className={s.chip}>📚 Game Edukasi</div>
           <div className={s.coin}>🪙 {koin}</div>
         </div>
@@ -118,7 +118,7 @@ export default function MenuAnak({
     return (
       <div className={s.wrap}>
         <div className={s.top}>
-          <button className={s.lock} onClick={() => setLayar('menu')}>←</button>
+          <button className={s.lock} aria-label="Kembali" onClick={() => setLayar('menu')}>←</button>
           <div className={s.chip}>{temaTerpilih.tema.sampul ?? '🎈'} {temaTerpilih.tema.nama}</div>
           <div className={s.coin}>🪙 {koin}</div>
         </div>
@@ -141,7 +141,7 @@ export default function MenuAnak({
         <div className={s.chip}>{mingguIni?.tema.sampul ?? '🎈'} {mingguIni?.tema.nama ?? 'KidzPlayful'}</div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <div className={s.coin}>🪙 {koin}</div>
-          <button className={s.lock} onClick={() => setPinUntuk('keluar')}>🔒</button>
+          <button className={s.lock} aria-label="Untuk orang tua" onClick={() => setPinUntuk('keluar')}>🔒</button>
         </div>
       </div>
       <div className={s.menu}>

@@ -46,9 +46,9 @@ export default function PinGate({
           {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((n) => (
             <button key={n} className="kp-btn" style={{ background: '#f3eefb', color: 'var(--tinta)', boxShadow: '0 3px 0 #e2d8f3' }} onClick={() => tekan(n)}>{n}</button>
           ))}
-          <button className="kp-btn" style={{ background: '#f3eefb', color: 'var(--tinta)', boxShadow: '0 3px 0 #e2d8f3' }} onClick={onBatal}>✕</button>
+          <button className="kp-btn" aria-label="Tutup" style={{ background: '#f3eefb', color: 'var(--tinta)', boxShadow: '0 3px 0 #e2d8f3' }} onClick={onBatal}>✕</button>
           <button className="kp-btn" style={{ background: '#f3eefb', color: 'var(--tinta)', boxShadow: '0 3px 0 #e2d8f3' }} onClick={() => tekan('0')}>0</button>
-          <button className="kp-btn" style={{ background: '#f3eefb', color: 'var(--tinta)', boxShadow: '0 3px 0 #e2d8f3' }} onClick={() => setBuf(buf.slice(0, -1))}>⌫</button>
+          <button className="kp-btn" aria-label="Hapus" style={{ background: '#f3eefb', color: 'var(--tinta)', boxShadow: '0 3px 0 #e2d8f3' }} onClick={() => setBuf(buf.slice(0, -1))}>⌫</button>
         </div>
       </div>
     </div>

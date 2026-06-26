@@ -7,7 +7,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{min-height:100%}
 body{
-  font-family:'Baloo 2','Quicksand','Segoe UI',system-ui,sans-serif;
+  font-family: var(--font-baloo), 'Quicksand', 'Segoe UI', system-ui, sans-serif;
   color:var(--tinta);
   background:radial-gradient(circle at 30% 15%,#efe6ff,#e7f6ff 70%);
 }

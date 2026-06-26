@@ -59,7 +59,7 @@ export default function ManaYa({ data, onSelesai }: { data: DataTekan; onSelesai
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-      <div onClick={() => speak('Mana ' + soal.tanya + '?')} style={{ background: '#fff', borderRadius: 22, padding: 16, textAlign: 'center', fontWeight: 800, fontSize: 20, boxShadow: '0 4px 0 #e6def5', cursor: 'pointer' }}>
+      <div role="button" tabIndex={0} aria-label="Dengar lagi" onClick={() => speak('Mana ' + soal.tanya + '?')} style={{ background: '#fff', borderRadius: 22, padding: 16, textAlign: 'center', fontWeight: 800, fontSize: 20, boxShadow: '0 4px 0 #e6def5', cursor: 'pointer' }}>
         🔊 Mana <b>{soal.tanya}</b>?
       </div>
       <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, padding: '14px 0' }}>
