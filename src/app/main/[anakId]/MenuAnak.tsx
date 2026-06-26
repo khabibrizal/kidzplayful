@@ -13,17 +13,22 @@ import s from './main.module.css';
 type Layar = 'menu' | 'daftar' | 'pustaka' | 'video' | 'main' | 'istirahat';
 
 export default function MenuAnak({
-  anak, pustaka, pinTersimpan, video,
+  anak, pustaka, pinTersimpan, video, paketAwal,
 }: {
   anak: { id: string; koin: number; batas_menit: number };
-  pustaka: TemaLengkap[]; pinTersimpan: string | null; video: Video[];
+  pustaka: TemaLengkap[]; pinTersimpan: string | null; video: Video[]; paketAwal?: string;
 }) {
   const router = useRouter();
   const mingguIni = pustaka.find((t) => t.tema.is_minggu_ini) ?? pustaka[0] ?? null;
-  const [layar, setLayar] = useState<Layar>('menu');
+  // Deep-link: jika datang dari "Pilih Game" dengan ?paket=<id>, langsung mainkan game itu.
+  const findAwal = () =>
+    paketAwal
+      ? pustaka.flatMap((t) => t.paket.map((p) => ({ p, t }))).find((x) => x.p.id === paketAwal) ?? null
+      : null;
+  const [layar, setLayar] = useState<Layar>(() => (findAwal() ? 'main' : 'menu'));
   const [koin, setKoin] = useState(anak.koin);
-  const [aktif, setAktif] = useState<Paket | null>(null);
-  const [temaTerpilih, setTemaTerpilih] = useState<TemaLengkap | null>(mingguIni);
+  const [aktif, setAktif] = useState<Paket | null>(() => findAwal()?.p ?? null);
+  const [temaTerpilih, setTemaTerpilih] = useState<TemaLengkap | null>(() => findAwal()?.t ?? mingguIni);
   const [pinUntuk, setPinUntuk] = useState<null | 'keluar'>(null);
   const [terpakai, setTerpakai] = useState(0);
   const [kunci] = useState(() => kunciHari(anak.id, new Date()));

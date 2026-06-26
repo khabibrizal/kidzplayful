@@ -19,11 +19,12 @@ export default function PilihGame({
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '8px 0' }}>COCOK UNTUK {nama.toUpperCase()}</div>
       {cocok.map(({ p, t }) => (
-        <div key={p.id} className="kp-card" style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 8 }}>
+        <button key={p.id} className="kp-card" onClick={() => router.push(`/main/${anakId}?paket=${p.id}`)}
+          style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 8, width: '100%', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}>
           <span style={{ fontSize: 26 }}>{t.tema.sampul ?? '🎈'}</span>
-          <span style={{ flex: 1 }}><b>{p.judul}</b><br /><small style={{ color: 'var(--abu)' }}>{t.tema.nama} · {p.usia_min}-{p.usia_max} thn</small></span>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#3a9e72', background: '#eafaf2', padding: '4px 9px', borderRadius: 99 }}>cocok</span>
-        </div>
+          <span style={{ flex: 1 }}><b>{p.judul}</b><br /><small style={{ color: 'var(--abu)' }}>{t.tema.nama} · {p.usia_min}-{p.usia_max} thn ✓</small></span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: 'var(--mint-d)', padding: '6px 12px', borderRadius: 99 }}>main ▶</span>
+        </button>
       ))}
       {cocok.length === 0 && <p style={{ color: 'var(--abu)', fontSize: 13 }}>Belum ada game yang cocok untuk usia ini.</p>}
 

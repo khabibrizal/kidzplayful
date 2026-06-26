@@ -8,8 +8,9 @@ import { kategoriUsia } from '@/lib/domain/usia';
 import { getVideoByKategori } from '@/lib/data/video';
 import MenuAnak from './MenuAnak';
 
-export default async function MainPage({ params }: { params: Promise<{ anakId: string }> }) {
+export default async function MainPage({ params, searchParams }: { params: Promise<{ anakId: string }>; searchParams: Promise<{ paket?: string }> }) {
   const { anakId } = await params;
+  const { paket: paketAwal } = await searchParams;
   const anak = await getAnakTerjamin(anakId);
   const umur = umurTahun(new Date(anak.tanggal_lahir + 'T00:00:00Z'), new Date());
   const video = await getVideoByKategori(kategoriUsia(umur));
@@ -25,6 +26,7 @@ export default async function MainPage({ params }: { params: Promise<{ anakId: s
       pustaka={pustaka}
       pinTersimpan={prof?.pin_ortu ?? null}
       video={video}
+      paketAwal={paketAwal}
     />
   );
 }
