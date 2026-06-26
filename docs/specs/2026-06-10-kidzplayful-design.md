@@ -39,7 +39,7 @@ Satu aplikasi yang **tumbuh bersama anak** (dipakai dari bayi sampai balita) →
 | Monetisasi | **Langganan bulanan** + **free trial 14 hari** |
 | Cara membangun | **Opsi B**: web app penuh, tapi **aktivasi langganan manual** dulu (gateway otomatis menyusul) |
 | Strategi game | **Opsi 1**: beberapa "mesin game" yang diganti-tema tiap minggu (bukan game unik dari nol) |
-| Produksi konten | **Mesin game = hard-code**; **konten tema = hybrid** (AI buat draf → owner review/approve) |
+| Produksi konten | **Mesin game = hard-code**; **konten tema = manual/hardcode** (di-seed dari **worksheet** milik owner). AI = opsional, ditunda ke roadmap |
 | Fitur tambahan | **Pojok Video**: video YouTube terkurasi & terkunci di dalam app |
 | Fitur Owner tambahan | **Kelola Video** (input link YouTube) + **Laporan Data Member** (langganan, pendapatan, keterlibatan, daftar) |
 | Bahasa produk & dokumen | Bahasa Indonesia |
@@ -150,17 +150,18 @@ fisik (Mode Ortu 0-2) & mainan sensorik fisik — bukan diklaim oleh game layar.
 - Tahap 1 (3 mesin: Mana Ya?, Beres-Beres, Cari Pasangan) × ±8 tema → **±24 judul**.
 - Lengkap (7 mesin) × ±12 tema → **±84 judul** — dari 7 mekanik yang diprogram sekali.
 
-### 5.2b Produksi konten: mesin hard-code + konten hybrid AI
-Dua lapisan terpisah:
+### 5.2b Produksi konten: mesin hard-code + konten manual (dari worksheet)
+**Keputusan (revisi):** tanpa AI. Dua lapisan:
 - **Mesin game (logika & interaksi)** — **hard-code** (React/TypeScript), dibuat sekali, dipakai ulang.
-  Bukan dihasilkan AI; game interaktif balita harus diprogram agar mulus & aman.
-- **Konten tiap tema** (gambar, suara, jawaban benar) — **hybrid AI**: dari nama tema, AI membuat
-  **draf** paket aset (gambar via image-gen, suara via TTS, saran jawaban benar). Owner lalu
-  **review / edit / approve** di "Editor Aset Game" sebelum tema tayang. Cepat (mengatasi treadmill)
-  + ada gerbang kualitas manusia + tetap on-brand.
+- **Konten tiap tema** (gambar, suara, jawaban benar) — **manual/hardcode**, disusun owner dan
+  **diturunkan dari worksheet** yang sudah dimiliki (worksheet baby & toddler → jadi paket game).
+  Dimasukkan lewat **seed/migrasi** atau CRUD admin sederhana (tanpa generator AI).
 
-Implikasi data: `paket_aset` punya **`status`** (draf / disetujui) dan **`sumber`** (ai / manual);
-tema hanya bisa dijadwalkan "Minggu Ini" setelah paketnya berstatus *disetujui*.
+Implikasi data: `paket_aset.sumber` selalu `manual`; `status` (draf/disetujui) tetap dipakai sebagai
+gerbang "siap tayang". Kolom-kolom ini sudah ada (tidak perlu ubah skema).
+
+> **AI content pipeline ditunda** ke §17 Roadmap (opsional, bila treadmill konten terasa berat nanti).
+> Untuk sekarang, konten kurasi-sendiri lebih terkontrol, on-brand, dan bebas biaya API.
 
 ### 5.3 Mekanisme "ganti tema" (kunci treadmill mingguan)
 Tiap mesin **membaca data, bukan kode**. Owner mengganti **paket aset** (gambar + suara +

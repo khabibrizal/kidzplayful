@@ -82,7 +82,7 @@ Diatasi dengan <strong>segmentasi umur</strong>:
 </tr>
 <tr>
 <td>Produksi konten</td>
-<td><strong>Mesin game = hard-code</strong>; <strong>konten tema = hybrid</strong> (AI buat draf → owner review/approve)</td>
+<td><strong>Mesin game = hard-code</strong>; <strong>konten tema = manual/hardcode</strong> (di-seed dari <strong>worksheet</strong> milik owner). AI = opsional, ditunda ke roadmap</td>
 </tr>
 <tr>
 <td>Fitur tambahan</td>
@@ -240,16 +240,18 @@ fisik (Mode Ortu 0-2) &amp; mainan sensorik fisik — bukan diklaim oleh game la
 <p><strong>Perkiraan jumlah judul game:</strong>
 - Tahap 1 (3 mesin: Mana Ya?, Beres-Beres, Cari Pasangan) × ±8 tema → <strong>±24 judul</strong>.
 - Lengkap (7 mesin) × ±12 tema → <strong>±84 judul</strong> — dari 7 mekanik yang diprogram sekali.</p>
-<h3 id="52b-produksi-konten-mesin-hard-code-konten-hybrid-ai">5.2b Produksi konten: mesin hard-code + konten hybrid AI</h3>
-<p>Dua lapisan terpisah:
+<h3 id="52b-produksi-konten-mesin-hard-code-konten-manual-dari-worksheet">5.2b Produksi konten: mesin hard-code + konten manual (dari worksheet)</h3>
+<p><strong>Keputusan (revisi):</strong> tanpa AI. Dua lapisan:
 - <strong>Mesin game (logika &amp; interaksi)</strong> — <strong>hard-code</strong> (React/TypeScript), dibuat sekali, dipakai ulang.
-  Bukan dihasilkan AI; game interaktif balita harus diprogram agar mulus &amp; aman.
-- <strong>Konten tiap tema</strong> (gambar, suara, jawaban benar) — <strong>hybrid AI</strong>: dari nama tema, AI membuat
-  <strong>draf</strong> paket aset (gambar via image-gen, suara via TTS, saran jawaban benar). Owner lalu
-  <strong>review / edit / approve</strong> di "Editor Aset Game" sebelum tema tayang. Cepat (mengatasi treadmill)
-  + ada gerbang kualitas manusia + tetap on-brand.</p>
-<p>Implikasi data: <code>paket_aset</code> punya <strong><code>status</code></strong> (draf / disetujui) dan <strong><code>sumber</code></strong> (ai / manual);
-tema hanya bisa dijadwalkan "Minggu Ini" setelah paketnya berstatus <em>disetujui</em>.</p>
+- <strong>Konten tiap tema</strong> (gambar, suara, jawaban benar) — <strong>manual/hardcode</strong>, disusun owner dan
+  <strong>diturunkan dari worksheet</strong> yang sudah dimiliki (worksheet baby &amp; toddler → jadi paket game).
+  Dimasukkan lewat <strong>seed/migrasi</strong> atau CRUD admin sederhana (tanpa generator AI).</p>
+<p>Implikasi data: <code>paket_aset.sumber</code> selalu <code>manual</code>; <code>status</code> (draf/disetujui) tetap dipakai sebagai
+gerbang "siap tayang". Kolom-kolom ini sudah ada (tidak perlu ubah skema).</p>
+<blockquote>
+<p><strong>AI content pipeline ditunda</strong> ke §17 Roadmap (opsional, bila treadmill konten terasa berat nanti).
+Untuk sekarang, konten kurasi-sendiri lebih terkontrol, on-brand, dan bebas biaya API.</p>
+</blockquote>
 <h3 id="53-mekanisme-ganti-tema-kunci-treadmill-mingguan">5.3 Mekanisme "ganti tema" (kunci treadmill mingguan)</h3>
 <p>Tiap mesin <strong>membaca data, bukan kode</strong>. Owner mengganti <strong>paket aset</strong> (gambar + suara +
 jawaban benar) per tema lewat Dashboard Admin, tanpa menyentuh kode. Contoh paket tema "Hewan"
