@@ -736,6 +736,7 @@ bekas kelas bermain, dan audiens orang tua yang sudah percaya.
 
 ### Fisik ↔ digital
 - Kelas bermain **hybrid** (sesi live online + app sebagai materi) — menghidupkan kembali kelas yang tutup tanpa batas lokasi.
+- **Setoran Video + Penilaian** *(ditunda)* — ortu menerapkan Kelas Bermain di rumah, merekam video, kirim ke app untuk **dinilai manual** oleh owner (+feedback/bintang). Ditunda karena upload+**kompres** video butuh **layanan video berbayar** (Cloudflare Stream/Mux/Cloudinary) — tidak praktis di Vercel/Supabase saat ini. Alternatif murah saat siap: kirim **link** video (Drive/YT unlisted) atau upload privat dgn batas durasi/ukuran. Privasi video anak = prioritas (bucket privat, akses terbatas, persetujuan).
 
 ---
 
