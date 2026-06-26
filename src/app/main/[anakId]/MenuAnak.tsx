@@ -109,12 +109,14 @@ export default function MenuAnak({
           <div className="kp-coin">🪙 {koin}</div>
         </div>
         <div style={{ flex: 1, overflow: 'auto', padding: '6px 2px' }}>
-          {!kelas && <p style={{ color: 'var(--abu)', textAlign: 'center' }}>Materi kelas bermain minggu ini belum tersedia.</p>}
-          {kelas?.materi && <div className="kp-card" style={{ marginBottom: 10 }}><b>🎯 Materi</b><p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>{kelas.materi}</p></div>}
+          {!kelas && <p style={{ color: 'var(--abu)', textAlign: 'center' }}>Kelas bermain minggu ini belum tersedia.</p>}
+          {kelas?.judul && <div className="kp-chip" style={{ display: 'inline-block', marginBottom: 10 }}>🎈 {kelas.judul}</div>}
+          {kelas?.aktivitas && <div className="kp-card" style={{ marginBottom: 10 }}><b>🎯 Aktivitas</b><p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>{kelas.aktivitas}</p></div>}
           {kelas?.bahan && <div className="kp-card" style={{ marginBottom: 10, background: '#fff3d6' }}><b>🧺 Bahan</b><p style={{ marginTop: 6 }}>{kelas.bahan}</p></div>}
+          {kelas?.cara_membuat && <div className="kp-card" style={{ marginBottom: 10 }}><b>🛠️ Cara membuat</b><p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>{kelas.cara_membuat}</p></div>}
           {(kelas?.langkah ?? []).length > 0 && (
             <div className="kp-card" style={{ marginBottom: 10 }}>
-              <b>📝 Cara membuat</b>
+              <b>📝 Langkah aktivitas</b>
               <ol style={{ margin: '8px 0 0 18px', lineHeight: 1.7 }}>{(kelas?.langkah ?? []).map((l, i) => <li key={i}>{l}</li>)}</ol>
             </div>
           )}

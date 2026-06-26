@@ -29,8 +29,10 @@ export default async function ModeOrtu({ params }: { params: Promise<{ anakId: s
       {adaPanduan.map(({ tema, panduan }) => (
         <div key={tema.id} className="kp-card" style={{ marginBottom: 12 }}>
           <b>{tema.sampul ?? '🎈'} {tema.nama}{tema.is_minggu_ini ? ' · Minggu Ini' : ''}</b>
-          {panduan?.materi && <p style={{ marginTop: 8, fontSize: 14, whiteSpace: 'pre-wrap' }}>🎯 {panduan.materi}</p>}
+          {panduan?.judul && <div style={{ marginTop: 8, fontSize: 15, fontWeight: 700 }}>🎈 {panduan.judul}</div>}
+          {panduan?.aktivitas && <p style={{ marginTop: 8, fontSize: 14, whiteSpace: 'pre-wrap' }}>🎯 {panduan.aktivitas}</p>}
           {panduan?.bahan && <div className={s.bahan} style={{ marginTop: 8 }}>🧺 {panduan.bahan}</div>}
+          {panduan?.cara_membuat && <p style={{ marginTop: 8, fontSize: 14, whiteSpace: 'pre-wrap' }}>🛠️ {panduan.cara_membuat}</p>}
           {(panduan?.langkah ?? []).map((l, i) => (
             <div key={i} className={s.step}><span className={s.n}>{i + 1}</span><span style={{ fontSize: 14 }}>{l}</span></div>
           ))}
