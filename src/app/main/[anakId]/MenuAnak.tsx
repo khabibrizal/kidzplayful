@@ -7,6 +7,7 @@ import GameRunner from '@/components/game/GameRunner';
 import PinGate from '@/components/game/PinGate';
 import VideoPojok from '@/components/game/VideoPojok';
 import { waktuHabis, kunciHari, sisaDetik } from '@/lib/domain/waktu';
+import Pewi from '@/components/ui/Pewi';
 import s from './main.module.css';
 
 type Layar = 'menu' | 'daftar' | 'pustaka' | 'video' | 'main' | 'istirahat';
@@ -52,8 +53,9 @@ export default function MenuAnak({
   if (layar === 'istirahat') {
     return (
       <div className={s.wrap}>
-        <div className={s.rest}>
-          <div className={s.emo}>😴🌙</div>
+        <div className="kp-splash" style={{ borderRadius: 24, gap: 10 }}>
+          <Pewi size={120} />
+          <div className={s.emo} style={{ fontSize: 44 }}>😴🌙</div>
           <h2>Waktunya istirahat</h2>
           <p style={{ color: 'var(--abu)' }}>Sampai jumpa besok ya!</p>
           <button className="kp-btn" aria-label="Untuk orang tua" onClick={() => setPinUntuk('keluar')}>🔒 Lanjut (izin ortu)</button>
@@ -71,8 +73,8 @@ export default function MenuAnak({
     return (
       <div className={s.wrap}>
         <div className={s.top}>
-          <button className={s.lock} aria-label="Kembali" onClick={() => setLayar('daftar')}>←</button>
-          <div className={s.coin}>🪙 {koin}</div>
+          <button className="kp-lock" aria-label="Kembali" onClick={() => setLayar('daftar')}>←</button>
+          <div className="kp-coin">🪙 {koin}</div>
         </div>
         <GameRunner paket={aktif} anakId={anak.id} temaId={temaTerpilih.tema.id}
           onKeluar={() => setLayar('daftar')} onKoin={setKoin} />
@@ -84,9 +86,9 @@ export default function MenuAnak({
     return (
       <div className={s.wrap}>
         <div className={s.top}>
-          <button className={s.lock} aria-label="Kembali" onClick={() => setLayar('menu')}>←</button>
-          <div className={s.chip}>📺 Pojok Video</div>
-          <div className={s.coin}>🪙 {koin}</div>
+          <button className="kp-lock" aria-label="Kembali" onClick={() => setLayar('menu')}>←</button>
+          <div className="kp-chip">📺 Pojok Video</div>
+          <div className="kp-coin">🪙 {koin}</div>
         </div>
         <VideoPojok video={video} onKeluar={() => setLayar('menu')} />
       </div>
@@ -97,15 +99,15 @@ export default function MenuAnak({
     return (
       <div className={s.wrap}>
         <div className={s.top}>
-          <button className={s.lock} aria-label="Kembali" onClick={() => setLayar('menu')}>←</button>
-          <div className={s.chip}>📚 Game Edukasi</div>
-          <div className={s.coin}>🪙 {koin}</div>
+          <button className="kp-lock" aria-label="Kembali" onClick={() => setLayar('menu')}>←</button>
+          <div className="kp-chip">📚 Game Edukasi</div>
+          <div className="kp-coin">🪙 {koin}</div>
         </div>
         <div className={s.menu}>
-          {pustaka.map((t) => (
-            <button key={t.tema.id} className={`${s.tile} ${s.tLib}`}
+          {pustaka.map((t, i) => (
+            <button key={t.tema.id} className={`kp-tile ${['mint', 'lavender', 'biru'][i % 3]}`}
               onClick={() => { setTemaTerpilih(t); setLayar('daftar'); }}>
-              <span>{t.tema.sampul ?? '🎈'}</span><div>{t.tema.nama}<br /><small style={{ fontWeight: 600, fontSize: 12 }}>{t.paket.length} permainan</small></div>
+              <span className="emo">{t.tema.sampul ?? '🎈'}</span><div>{t.tema.nama}<small>{t.paket.length} permainan</small></div>
             </button>
           ))}
         </div>
@@ -118,14 +120,14 @@ export default function MenuAnak({
     return (
       <div className={s.wrap}>
         <div className={s.top}>
-          <button className={s.lock} aria-label="Kembali" onClick={() => setLayar('menu')}>←</button>
-          <div className={s.chip}>{temaTerpilih.tema.sampul ?? '🎈'} {temaTerpilih.tema.nama}</div>
-          <div className={s.coin}>🪙 {koin}</div>
+          <button className="kp-lock" aria-label="Kembali" onClick={() => setLayar('menu')}>←</button>
+          <div className="kp-chip">{temaTerpilih.tema.sampul ?? '🎈'} {temaTerpilih.tema.nama}</div>
+          <div className="kp-coin">🪙 {koin}</div>
         </div>
         <div className={s.menu}>
-          {temaTerpilih.paket.map((p) => (
-            <button key={p.id} className={`${s.tile} ${s.tMain}`} onClick={() => mulaiGame(p, temaTerpilih)}>
-              <span>🎯</span><div>{p.judul}</div>
+          {temaTerpilih.paket.map((p, i) => (
+            <button key={p.id} className={`kp-tile ${['mint', 'lavender', 'biru'][i % 3]}`} onClick={() => mulaiGame(p, temaTerpilih)}>
+              <span className="emo">🎯</span><div>{p.judul}</div>
             </button>
           ))}
         </div>
@@ -138,18 +140,21 @@ export default function MenuAnak({
   return (
     <div className={s.wrap}>
       <div className={s.top}>
-        <div className={s.chip}>{mingguIni?.tema.sampul ?? '🎈'} {mingguIni?.tema.nama ?? 'KidzPlayful'}</div>
+        <div className="kp-chip">{mingguIni?.tema.sampul ?? '🎈'} {mingguIni?.tema.nama ?? 'KidzPlayful'}</div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <div className={s.coin}>🪙 {koin}</div>
-          <button className={s.lock} aria-label="Untuk orang tua" onClick={() => setPinUntuk('keluar')}>🔒</button>
+          <div className="kp-coin">🪙 {koin}</div>
+          <button className="kp-lock" aria-label="Untuk orang tua" onClick={() => setPinUntuk('keluar')}>🔒</button>
         </div>
       </div>
+      <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 8 }}>
+        <Pewi size={84} />
+      </div>
       <div className={s.menu}>
-        <button className={`${s.tile} ${s.tMain}`} onClick={() => { setTemaTerpilih(mingguIni); setLayar('daftar'); }} disabled={!mingguIni}>
-          <span>🎯</span><div>Main Minggu Ini<br /><small style={{ fontWeight: 600, fontSize: 12 }}>{mingguIni?.paket.length ?? 0} permainan</small></div>
+        <button className="kp-tile mint" onClick={() => { setTemaTerpilih(mingguIni); setLayar('daftar'); }} disabled={!mingguIni}>
+          <span className="emo">🎯</span><div>Main Minggu Ini<small>{mingguIni?.paket.length ?? 0} permainan</small></div>
         </button>
-        <button className={`${s.tile} ${s.tLib}`} onClick={() => setLayar('pustaka')}><span>📚</span><div>Game Edukasi<br /><small style={{ fontWeight: 600, fontSize: 12 }}>{pustaka.length} tema</small></div></button>
-        <button className={`${s.tile} ${s.tVid}`} onClick={() => setLayar('video')}><span>📺</span><div>Pojok Video</div></button>
+        <button className="kp-tile lavender" onClick={() => setLayar('pustaka')}><span className="emo">📚</span><div>Game Edukasi<small>{pustaka.length} tema</small></div></button>
+        <button className="kp-tile biru" onClick={() => setLayar('video')}><span className="emo">📺</span><div>Pojok Video</div></button>
       </div>
       <div className={s.foot}>Sisa waktu hari ini: {sisaMnt} menit</div>
       {pinUntuk && (

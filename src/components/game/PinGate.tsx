@@ -31,6 +31,11 @@ export default function PinGate({
     }
   }
 
+  const keypadKey: React.CSSProperties = {
+    border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 20,
+    padding: 12, borderRadius: 14, background: '#f3eefb', color: 'var(--tinta)', boxShadow: '0 3px 0 #e2d8f3',
+  };
+
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(60,48,100,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
       <div className="kp-card" style={{ width: 260, textAlign: 'center' }}>
@@ -44,11 +49,11 @@ export default function PinGate({
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
           {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((n) => (
-            <button key={n} className="kp-btn" style={{ background: '#f3eefb', color: 'var(--tinta)', boxShadow: '0 3px 0 #e2d8f3' }} onClick={() => tekan(n)}>{n}</button>
+            <button key={n} style={keypadKey} onClick={() => tekan(n)}>{n}</button>
           ))}
-          <button className="kp-btn" aria-label="Tutup" style={{ background: '#f3eefb', color: 'var(--tinta)', boxShadow: '0 3px 0 #e2d8f3' }} onClick={onBatal}>✕</button>
-          <button className="kp-btn" style={{ background: '#f3eefb', color: 'var(--tinta)', boxShadow: '0 3px 0 #e2d8f3' }} onClick={() => tekan('0')}>0</button>
-          <button className="kp-btn" aria-label="Hapus" style={{ background: '#f3eefb', color: 'var(--tinta)', boxShadow: '0 3px 0 #e2d8f3' }} onClick={() => setBuf(buf.slice(0, -1))}>⌫</button>
+          <button aria-label="Tutup" style={keypadKey} onClick={onBatal}>✕</button>
+          <button style={keypadKey} onClick={() => tekan('0')}>0</button>
+          <button aria-label="Hapus" style={keypadKey} onClick={() => setBuf(buf.slice(0, -1))}>⌫</button>
         </div>
       </div>
     </div>

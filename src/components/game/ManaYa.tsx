@@ -41,6 +41,8 @@ export default function ManaYa({ data, onSelesai }: { data: DataTekan; onSelesai
     const btn = e.currentTarget;
     if (ok) {
       btn.style.outline = '4px solid var(--mint-d)';
+      btn.style.boxShadow = '0 6px 0 var(--mint-d)';
+      btn.classList.add('kp-pop');
       benarRef.current++;
       speak('Hebat!');
       setTimeout(() => {
@@ -49,7 +51,8 @@ export default function ManaYa({ data, onSelesai }: { data: DataTekan; onSelesai
         } else setRonde(ronde + 1);
       }, 800);
     } else {
-      btn.animate([{ transform: 'translateX(-7px)' }, { transform: 'translateX(7px)' }, { transform: 'translateX(0)' }], { duration: 350 });
+      btn.classList.add('kp-shake');
+      setTimeout(() => btn.classList.remove('kp-shake'), 450);
       speak('Coba lagi ya');
     }
   }

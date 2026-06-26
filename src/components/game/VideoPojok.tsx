@@ -24,7 +24,7 @@ export default function VideoPojok({ video, onKeluar }: { video: Video[]; onKelu
     const src = `https://www.youtube-nocookie.com/embed/${aktif.youtube_id}?rel=0&modestbranding=1&controls=1&disablekb=1`;
     return (
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', borderRadius: 16, overflow: 'hidden', background: '#000' }}>
+        <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', borderRadius: 18, overflow: 'hidden', background: '#2b2440' }}>
           <iframe title={aktif.judul} src={src} allow="encrypted-media" allowFullScreen
             style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }} />
         </div>

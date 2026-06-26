@@ -48,6 +48,8 @@ export default function BeresBeres({ data, onSelesai }: { data: DataSeret; onSel
       void baru;
     } else {
       d.el.style.transition = 'transform .25s'; d.el.style.transform = '';
+      d.el.classList.add('kp-shake');
+      setTimeout(() => d.el.classList.remove('kp-shake'), 450);
     }
   }
 

@@ -22,7 +22,7 @@ export default function CariPasangan({ data, onSelesai }: { data: DataCocok; onS
     mulaiRef.current = Date.now();
   }, []);
 
-  function klik(i: number) {
+  function klik(i: number, e: React.MouseEvent<HTMLButtonElement>) {
     if (terkunci.includes(i) || pilih === i) return;
     if (pilih === null) { setPilih(i); return; }
     if (kartu[pilih] === kartu[i]) {
@@ -32,6 +32,9 @@ export default function CariPasangan({ data, onSelesai }: { data: DataCocok; onS
         setTimeout(() => onSelesai({ benar: total, total, durasiDetik: Math.round((Date.now() - mulaiRef.current) / 1000) }), 400);
       }
     } else {
+      const btn = e.currentTarget;
+      btn.classList.add('kp-shake');
+      setTimeout(() => btn.classList.remove('kp-shake'), 450);
       setPilih(null);
     }
   }
@@ -44,7 +47,7 @@ export default function CariPasangan({ data, onSelesai }: { data: DataCocok; onS
           const lock = terkunci.includes(i);
           const sel = pilih === i;
           return (
-            <button key={i} onClick={() => klik(i)}
+            <button key={i} onClick={(e) => klik(i, e)}
               style={{ aspectRatio: '1', border: 'none', borderRadius: 20, fontSize: 42, cursor: lock ? 'default' : 'pointer',
                 background: lock ? '#dff7ec' : '#fff',
                 boxShadow: lock ? '0 5px 0 var(--mint-d)' : '0 5px 0 #e6def5',
