@@ -120,6 +120,7 @@ export default function MenuAnak({
           )}
           {kelas?.link_ide && <a className="kp-btn" style={{ display: 'inline-block', marginRight: 8 }} href={kelas.link_ide} target="_blank">Lihat ide ▶</a>}
           {kelas?.worksheet_url && <a className="kp-btn putih" style={{ display: 'inline-block' }} href={kelas.worksheet_url} target="_blank">📄 Worksheet</a>}
+          {mingguIni && <a className="kp-btn putih" style={{ display: 'inline-block', marginTop: 8 }} href={`/komunitas?tema=${mingguIni.tema.id}`}>💬 Bagikan pengalaman</a>}
         </div>
       </div>
     );

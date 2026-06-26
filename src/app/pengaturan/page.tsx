@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { statusLangganan } from '@/lib/domain/trial';
 import PinForm from './PinForm';
 import AkunForm from './AkunForm';
+import NamaForm from './NamaForm';
 
 const BAYAR = {
   bank: 'BCA 1234567890 a.n. KidzPlayful',   // GANTI dgn rekening Anda
@@ -17,7 +18,7 @@ export default async function Pengaturan() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
-  const { data: prof } = await supabase.from('profiles').select('pin_ortu').single();
+  const { data: prof } = await supabase.from('profiles').select('pin_ortu,nama_tampilan').single();
   const { data: lang } = await supabase.from('langganan').select('trial_mulai,aktif_sampai').single();
   const status = lang ? statusLangganan({ trialMulai: new Date(lang.trial_mulai + 'T00:00:00Z'), aktifSampai: lang.aktif_sampai ? new Date(lang.aktif_sampai + 'T00:00:00Z') : null }, new Date()) : 'kadaluarsa';
   const waText = encodeURIComponent('Halo, saya sudah transfer untuk langganan KidzPlayful. Email: ' + (user.email ?? ''));
@@ -29,6 +30,7 @@ export default async function Pengaturan() {
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '8px 0' }}>AKUN</div>
       <AkunForm email={user.email ?? ''} />
+      <NamaForm awal={prof?.nama_tampilan ?? ''} />
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '16px 0 8px' }}>PIN ORANG TUA</div>
       <PinForm sudahAda={!!prof?.pin_ortu} />

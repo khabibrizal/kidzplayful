@@ -1,4 +1,5 @@
 // src/app/pilih-anak/page.tsx
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { statusLangganan, bolehAkses } from '@/lib/domain/trial';
@@ -59,6 +60,8 @@ export default async function PilihAnakPage() {
       </form>
 
       <p style={{ textAlign: 'center', marginTop: 6 }}><a href="/pengaturan" style={{ color: 'var(--abu)', fontSize: 13 }}>⚙️ Pengaturan & Langganan</a></p>
+
+      <p style={{ textAlign: 'center', marginTop: 6 }}><Link href="/komunitas" style={{ color: 'var(--biru-d)', fontSize: 13 }}>💬 Komunitas</Link></p>
 
       <p style={{ textAlign: 'center', marginTop: 20 }}>
         <a href="/admin" style={{ color: 'var(--abu)', fontSize: 12 }}>🛠️ Panel Admin</a>
