@@ -2,16 +2,15 @@
 import Link from 'next/link';
 import Pewi from '@/components/ui/Pewi';
 import { getAnakTerjamin } from '@/lib/data/anak';
-import { getModeOrtu } from '@/lib/data/panduan';
+import { getKelasAktif } from '@/lib/data/kelas-bermain';
 import { getVideoByKategori } from '@/lib/data/video';
 import s from './ortu.module.css';
 
 export default async function ModeOrtu({ params }: { params: Promise<{ anakId: string }> }) {
   const { anakId } = await params;
   const anak = await getAnakTerjamin(anakId);
-  const list = await getModeOrtu();
+  const kelasList = await getKelasAktif();
   const videoBaby = await getVideoByKategori('baby');
-  const adaPanduan = list.filter((t) => t.panduan);
 
   return (
     <div className={s.wrap}>
@@ -24,21 +23,20 @@ export default async function ModeOrtu({ params }: { params: Promise<{ anakId: s
         </div>
       </div>
 
-      {adaPanduan.length === 0 && <p className={s.muted}>Belum ada panduan aktivitas. Admin dapat menambah di Kelola Tema.</p>}
+      {kelasList.length === 0 && <p className={s.muted}>Belum ada kelas bermain aktif. Admin dapat menambah di Kelola Kelas Bermain.</p>}
 
-      {adaPanduan.map(({ tema, panduan }) => (
-        <div key={tema.id} className="kp-card" style={{ marginBottom: 12 }}>
-          <b>{tema.sampul ?? '🎈'} {tema.nama}{tema.is_minggu_ini ? ' · Minggu Ini' : ''}</b>
-          {panduan?.judul && <div style={{ marginTop: 8, fontSize: 15, fontWeight: 700 }}>🎈 {panduan.judul}</div>}
-          {panduan?.aktivitas && <p style={{ marginTop: 8, fontSize: 14, whiteSpace: 'pre-wrap' }}>🎯 {panduan.aktivitas}</p>}
-          {panduan?.bahan && <div className={s.bahan} style={{ marginTop: 8 }}>🧺 {panduan.bahan}</div>}
-          {panduan?.cara_membuat && <p style={{ marginTop: 8, fontSize: 14, whiteSpace: 'pre-wrap' }}>🛠️ {panduan.cara_membuat}</p>}
-          {(panduan?.langkah ?? []).map((l, i) => (
+      {kelasList.map((k) => (
+        <div key={k.id} className="kp-card" style={{ marginBottom: 12 }}>
+          <b>🎈 {k.judul}</b>
+          {k.aktivitas && <p style={{ marginTop: 8, fontSize: 14, whiteSpace: 'pre-wrap' }}>🎯 {k.aktivitas}</p>}
+          {k.bahan && <div className={s.bahan} style={{ marginTop: 8 }}>🧺 {k.bahan}</div>}
+          {k.cara_membuat && <p style={{ marginTop: 8, fontSize: 14, whiteSpace: 'pre-wrap' }}>🛠️ {k.cara_membuat}</p>}
+          {k.langkah.map((l, i) => (
             <div key={i} className={s.step}><span className={s.n}>{i + 1}</span><span style={{ fontSize: 14 }}>{l}</span></div>
           ))}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {panduan?.link_ide && <a className="kp-btn" href={panduan.link_ide} target="_blank" style={{ marginTop: 10, fontSize: 14, padding: '11px 20px' }}>▶ Lihat ide</a>}
-            {panduan?.worksheet_url && <a className="kp-btn mint" href={panduan.worksheet_url} target="_blank" style={{ marginTop: 10, fontSize: 14, padding: '11px 20px' }}>📄 Unduh Worksheet</a>}
+            {k.link_ide && <a className="kp-btn" href={k.link_ide} target="_blank" style={{ marginTop: 10, fontSize: 14, padding: '11px 20px' }}>▶ Lihat ide</a>}
+            {k.worksheet_url && <a className="kp-btn mint" href={k.worksheet_url} target="_blank" style={{ marginTop: 10, fontSize: 14, padding: '11px 20px' }}>📄 Unduh Worksheet</a>}
           </div>
         </div>
       ))}

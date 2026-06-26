@@ -1,8 +1,9 @@
 // src/app/main/[anakId]/MenuAnak.tsx
 'use client';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import type { Paket, TemaLengkap, TemaPanduan, Video } from '@/lib/game/tipe';
+import type { KelasBermain, Paket, TemaLengkap, Video } from '@/lib/game/tipe';
 import GameRunner from '@/components/game/GameRunner';
 import PinGate from '@/components/game/PinGate';
 import VideoPojok from '@/components/game/VideoPojok';
@@ -16,7 +17,7 @@ export default function MenuAnak({
   anak, pustaka, pinTersimpan, video, paketAwal, kelasList,
 }: {
   anak: { id: string; koin: number; batas_menit: number };
-  pustaka: TemaLengkap[]; pinTersimpan: string | null; video: Video[]; paketAwal?: string; kelasList: TemaPanduan[];
+  pustaka: TemaLengkap[]; pinTersimpan: string | null; video: Video[]; paketAwal?: string; kelasList: KelasBermain[];
 }) {
   const router = useRouter();
   const mingguIni = pustaka.find((t) => t.tema.is_minggu_ini) ?? pustaka[0] ?? null;
@@ -30,7 +31,7 @@ export default function MenuAnak({
   const [aktif, setAktif] = useState<Paket | null>(() => findAwal()?.p ?? null);
   const [temaTerpilih, setTemaTerpilih] = useState<TemaLengkap | null>(() => findAwal()?.t ?? mingguIni);
   const [pinUntuk, setPinUntuk] = useState<null | 'keluar'>(null);
-  const [kelasDipilih, setKelasDipilih] = useState<TemaPanduan | null>(null);
+  const [kelasDipilih, setKelasDipilih] = useState<KelasBermain | null>(null);
   const [terpakai, setTerpakai] = useState(0);
   const [kunci] = useState(() => kunciHari(anak.id, new Date()));
 
@@ -115,11 +116,11 @@ export default function MenuAnak({
           </div>
         ) : (
           <div className={s.menu}>
-            {kelasList.map((tp, i) => (
-              <button key={tp.tema.id} className={`kp-tile ${['mint', 'lavender', 'biru'][i % 3]}`}
-                onClick={() => { setKelasDipilih(tp); setLayar('kelas-detail'); }}>
-                <span className="emo">{tp.tema.sampul ?? '🎈'}</span>
-                <div>{tp.panduan?.judul || tp.tema.nama}{tp.tema.is_minggu_ini && <small>Minggu Ini</small>}</div>
+            {kelasList.map((k, i) => (
+              <button key={k.id} className={`kp-tile ${['mint', 'lavender', 'biru'][i % 3]}`}
+                onClick={() => { setKelasDipilih(k); setLayar('kelas-detail'); }}>
+                <span className="emo">🎈</span>
+                <div>{k.judul}</div>
               </button>
             ))}
           </div>
@@ -129,29 +130,29 @@ export default function MenuAnak({
     );
   }
 
-  if (layar === 'kelas-detail') {
-    const kelas = kelasDipilih?.panduan ?? null;
+  if (layar === 'kelas-detail' && kelasDipilih) {
+    const kelas = kelasDipilih;
     return (
       <div className={s.wrap}>
         <div className={s.top}>
           <button className="kp-lock" aria-label="Kembali" onClick={() => setLayar('kelas')}>←</button>
-          <div className="kp-chip">{kelasDipilih?.tema.sampul ?? '🎈'} {kelasDipilih?.tema.nama}</div>
+          <div className="kp-chip">🎈 {kelas.judul}</div>
           <div className="kp-coin">🪙 {koin}</div>
         </div>
         <div style={{ flex: 1, overflow: 'auto', padding: '6px 2px' }}>
-          {kelas?.judul && <h2 style={{ marginBottom: 10 }}>{kelas.judul}</h2>}
-          {kelas?.aktivitas && <div className="kp-card" style={{ marginBottom: 10 }}><b>🎯 Aktivitas</b><p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>{kelas.aktivitas}</p></div>}
-          {kelas?.bahan && <div className="kp-card" style={{ marginBottom: 10, background: '#fff3d6' }}><b>🧺 Bahan</b><p style={{ marginTop: 6 }}>{kelas.bahan}</p></div>}
-          {kelas?.cara_membuat && <div className="kp-card" style={{ marginBottom: 10 }}><b>🛠️ Cara membuat</b><p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>{kelas.cara_membuat}</p></div>}
-          {(kelas?.langkah ?? []).length > 0 && (
+          {kelas.judul && <h2 style={{ marginBottom: 10 }}>{kelas.judul}</h2>}
+          {kelas.aktivitas && <div className="kp-card" style={{ marginBottom: 10 }}><b>🎯 Aktivitas</b><p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>{kelas.aktivitas}</p></div>}
+          {kelas.bahan && <div className="kp-card" style={{ marginBottom: 10, background: '#fff3d6' }}><b>🧺 Bahan</b><p style={{ marginTop: 6 }}>{kelas.bahan}</p></div>}
+          {kelas.cara_membuat && <div className="kp-card" style={{ marginBottom: 10 }}><b>🛠️ Cara membuat</b><p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>{kelas.cara_membuat}</p></div>}
+          {kelas.langkah.length > 0 && (
             <div className="kp-card" style={{ marginBottom: 10 }}>
               <b>📝 Langkah aktivitas</b>
-              <ol style={{ margin: '8px 0 0 18px', lineHeight: 1.7 }}>{(kelas?.langkah ?? []).map((l, i) => <li key={i}>{l}</li>)}</ol>
+              <ol style={{ margin: '8px 0 0 18px', lineHeight: 1.7 }}>{kelas.langkah.map((l, i) => <li key={i}>{l}</li>)}</ol>
             </div>
           )}
-          {kelas?.link_ide && <a className="kp-btn" style={{ display: 'inline-block', marginRight: 8 }} href={kelas.link_ide} target="_blank">Lihat ide ▶</a>}
-          {kelas?.worksheet_url && <a className="kp-btn putih" style={{ display: 'inline-block' }} href={kelas.worksheet_url} target="_blank">📄 Worksheet</a>}
-          {kelasDipilih && <a className="kp-btn putih" style={{ display: 'inline-block', marginTop: 8 }} href={`/komunitas?tema=${kelasDipilih.tema.id}`}>💬 Bagikan pengalaman</a>}
+          {kelas.link_ide && <a className="kp-btn" style={{ display: 'inline-block', marginRight: 8 }} href={kelas.link_ide} target="_blank">Lihat ide ▶</a>}
+          {kelas.worksheet_url && <a className="kp-btn putih" style={{ display: 'inline-block' }} href={kelas.worksheet_url} target="_blank">📄 Worksheet</a>}
+          <Link className="kp-btn putih" style={{ display: 'inline-block', marginTop: 8 }} href="/komunitas">💬 Bagikan pengalaman</Link>
         </div>
       </div>
     );
