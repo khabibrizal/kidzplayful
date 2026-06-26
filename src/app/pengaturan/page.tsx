@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { statusLangganan } from '@/lib/domain/trial';
 import PinForm from './PinForm';
+import AkunForm from './AkunForm';
 
 const BAYAR = {
   bank: 'BCA 1234567890 a.n. KidzPlayful',   // GANTI dgn rekening Anda
@@ -26,7 +27,10 @@ export default async function Pengaturan() {
       <Link href="/pilih-anak" style={{ color: 'var(--abu)', fontSize: 13 }}>← kembali</Link>
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 22, margin: '8px 0 14px' }}>⚙️ Pengaturan</h1>
 
-      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '8px 0' }}>PIN ORANG TUA</div>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '8px 0' }}>AKUN</div>
+      <AkunForm email={user.email ?? ''} />
+
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '16px 0 8px' }}>PIN ORANG TUA</div>
       <PinForm sudahAda={!!prof?.pin_ortu} />
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '16px 0 8px' }}>LANGGANAN</div>
