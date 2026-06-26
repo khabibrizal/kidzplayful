@@ -61,3 +61,15 @@ export interface TemaPanduan {
   tema: TemaInfo;
   panduan: Panduan | null;
 }
+
+export interface KelasBermain {
+  id: string;
+  judul: string;
+  aktivitas: string | null;
+  bahan: string | null;
+  cara_membuat: string | null;
+  langkah: string[];
+  link_ide: string | null;
+  worksheet_url: string | null;
+  status: 'aktif' | 'nonaktif';
+}
