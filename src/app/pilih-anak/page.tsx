@@ -3,8 +3,6 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { statusLangganan, bolehAkses } from '@/lib/domain/trial';
-import { getFavoritKelas } from '@/lib/data/favorit';
-import FavoritBtn from '@/components/FavoritBtn';
 import { tambahAnak } from './actions';
 import Pewi from '@/components/ui/Pewi';
 
@@ -19,7 +17,6 @@ export default async function PilihAnakPage() {
     .from('langganan').select('trial_mulai,aktif_sampai').eq('ortu_id', user.id).single();
   const { data: prof } = await supabase
     .from('profiles').select('nama_tampilan').eq('id', user.id).single();
-  const favorit = await getFavoritKelas();
 
   const status = lang
     ? statusLangganan(
@@ -42,22 +39,10 @@ export default async function PilihAnakPage() {
         {!bolehAkses(status) && ' — silakan perpanjang untuk lanjut.'}
       </p>
 
-      {favorit.length > 0 && (
-        <div style={{ marginBottom: 18 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '0 0 8px' }}>❤️ KELAS BERMAIN FAVORIT</div>
-          {favorit.map((k) => (
-            <div key={k.id} className="kp-card"
-              style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-              <a href={`/kelas/${k.id}`}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'inherit', flex: 1 }}>
-                <span style={{ fontSize: 22 }}>🎈</span>
-                <b>{k.judul}</b>
-              </a>
-              <FavoritBtn kelasId={k.id} awal={true} />
-            </div>
-          ))}
-        </div>
-      )}
+      <Link href="/favorit" className="kp-btn putih"
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+        ❤️ Favoritmu
+      </Link>
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '10px 0' }}>PROFIL ANAK</div>
       {(anakList ?? []).map((a) => (

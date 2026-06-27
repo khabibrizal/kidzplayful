@@ -20,5 +20,6 @@ export async function toggleFavorit(kelasId: string): Promise<boolean> {
     await s.from('favorit').insert({ ortu_id: user.id, kelas_id: kelasId });
   }
   revalidatePath('/pilih-anak');
+  revalidatePath('/favorit');
   return !ada;
 }
