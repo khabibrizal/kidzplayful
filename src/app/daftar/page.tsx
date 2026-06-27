@@ -7,6 +7,8 @@ import Pewi from '@/components/ui/Pewi';
 
 export default function DaftarPage() {
   const router = useRouter();
+  const [nama, setNama] = useState('');
+  const [noWa, setNoWa] = useState('');
   const [email, setEmail] = useState('');
   const [sandi, setSandi] = useState('');
   const [err, setErr] = useState('');
@@ -18,8 +20,15 @@ export default function DaftarPage() {
     setLoading(true);
     const supabase = createClient();
     const { error } = await supabase.auth.signUp({ email, password: sandi });
+    if (error) { setLoading(false); return setErr(error.message); }
+    // Simpan nama & No WhatsApp ke profil (profil dibuat otomatis oleh trigger saat signUp).
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('profiles')
+        .update({ nama_tampilan: nama.trim() || null, no_wa: noWa.trim() || null })
+        .eq('id', user.id);
+    }
     setLoading(false);
-    if (error) return setErr(error.message);
     router.push('/pilih-anak');
   }
 
@@ -31,6 +40,10 @@ export default function DaftarPage() {
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 26, marginBottom: 4, textAlign: 'center' }}>KidzPlayful</h1>
       <p style={{ color: 'var(--abu)', marginBottom: 18, textAlign: 'center' }}>Daftar — gratis 14 hari, tanpa kartu.</p>
       <form className="kp-card" onSubmit={submit}>
+        <input className="kp-input" type="text" placeholder="Nama orang tua"
+          value={nama} onChange={(e) => setNama(e.target.value)} required />
+        <input className="kp-input" type="tel" placeholder="No WhatsApp (mis. 0812xxxx)"
+          value={noWa} onChange={(e) => setNoWa(e.target.value)} required />
         <input className="kp-input" type="email" placeholder="Email orang tua"
           value={email} onChange={(e) => setEmail(e.target.value)} required />
         <input className="kp-input" type="password" placeholder="Kata sandi (min 6)"

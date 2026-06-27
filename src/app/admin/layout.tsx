@@ -1,5 +1,6 @@
 // src/app/admin/layout.tsx
 import { getAdminTerjamin } from '@/lib/data/admin';
+import LogoutBtn from './LogoutBtn';
 import s from './admin.module.css';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -8,7 +9,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className={s.wrap}>
       <div className={s.head}>
         <h1>🛠️ Admin KidzPlayful</h1>
-        <span className={s.muted}>{admin.email}</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span className={s.muted}>{admin.email}</span>
+          <LogoutBtn />
+        </span>
       </div>
       {children}
     </div>

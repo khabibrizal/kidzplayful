@@ -7,6 +7,7 @@ import type { KelasBermain, Paket, TemaLengkap, Video } from '@/lib/game/tipe';
 import GameRunner from '@/components/game/GameRunner';
 import PinGate from '@/components/game/PinGate';
 import VideoPojok from '@/components/game/VideoPojok';
+import FavoritBtn from '@/components/FavoritBtn';
 import { waktuHabis, kunciHari, sisaDetik } from '@/lib/domain/waktu';
 import Pewi from '@/components/ui/Pewi';
 import s from './main.module.css';
@@ -14,10 +15,10 @@ import s from './main.module.css';
 type Layar = 'menu' | 'kelas' | 'kelas-detail' | 'daftar' | 'pustaka' | 'video' | 'main' | 'istirahat';
 
 export default function MenuAnak({
-  anak, pustaka, pinTersimpan, video, paketAwal, kelasList,
+  anak, pustaka, pinTersimpan, video, paketAwal, kelasList, favIds,
 }: {
   anak: { id: string; koin: number; batas_menit: number };
-  pustaka: TemaLengkap[]; pinTersimpan: string | null; video: Video[]; paketAwal?: string; kelasList: KelasBermain[];
+  pustaka: TemaLengkap[]; pinTersimpan: string | null; video: Video[]; paketAwal?: string; kelasList: KelasBermain[]; favIds: string[];
 }) {
   const router = useRouter();
   const mingguIni = pustaka.find((t) => t.tema.is_minggu_ini) ?? pustaka[0] ?? null;
@@ -117,11 +118,17 @@ export default function MenuAnak({
         ) : (
           <div className={s.menu}>
             {kelasList.map((k, i) => (
-              <button key={k.id} className={`kp-tile ${['mint', 'lavender', 'biru'][i % 3]}`}
-                onClick={() => { setKelasDipilih(k); setLayar('kelas-detail'); }}>
+              <div key={k.id} className={`kp-tile ${['mint', 'lavender', 'biru'][i % 3]}`}
+                role="button" tabIndex={0}
+                onClick={() => { setKelasDipilih(k); setLayar('kelas-detail'); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') { setKelasDipilih(k); setLayar('kelas-detail'); } }}
+                style={{ position: 'relative', cursor: 'pointer' }}>
                 <span className="emo">🎈</span>
                 <div>{k.judul}</div>
-              </button>
+                <span style={{ position: 'absolute', top: 6, right: 8 }}>
+                  <FavoritBtn kelasId={k.id} awal={favIds.includes(k.id)} />
+                </span>
+              </div>
             ))}
           </div>
         )}

@@ -7,6 +7,7 @@ import { umurTahun } from '@/lib/domain/anak';
 import { kategoriUsia } from '@/lib/domain/usia';
 import { getVideoByKategori } from '@/lib/data/video';
 import { getKelasAktif } from '@/lib/data/kelas-bermain';
+import { getFavoritIds } from '@/lib/data/favorit';
 import MenuAnak from './MenuAnak';
 
 export default async function MainPage({ params, searchParams }: { params: Promise<{ anakId: string }>; searchParams: Promise<{ paket?: string }> }) {
@@ -19,6 +20,7 @@ export default async function MainPage({ params, searchParams }: { params: Promi
   if (pustaka.length === 0) redirect('/pilih-anak');
 
   const kelasList = await getKelasAktif();
+  const favIds = await getFavoritIds();
 
   const supabase = await createClient();
   const { data: { user: u } } = await supabase.auth.getUser();
@@ -32,6 +34,7 @@ export default async function MainPage({ params, searchParams }: { params: Promi
       video={video}
       paketAwal={paketAwal}
       kelasList={kelasList}
+      favIds={favIds}
     />
   );
 }

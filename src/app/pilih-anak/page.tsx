@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { statusLangganan, bolehAkses } from '@/lib/domain/trial';
+import { getFavoritKelas } from '@/lib/data/favorit';
 import { tambahAnak } from './actions';
 import Pewi from '@/components/ui/Pewi';
 
@@ -15,6 +16,9 @@ export default async function PilihAnakPage() {
     .from('anak').select('id,nama,tanggal_lahir,mode_default').order('created_at');
   const { data: lang } = await supabase
     .from('langganan').select('trial_mulai,aktif_sampai').eq('ortu_id', user.id).single();
+  const { data: prof } = await supabase
+    .from('profiles').select('nama_tampilan').eq('id', user.id).single();
+  const favorit = await getFavoritKelas();
 
   const status = lang
     ? statusLangganan(
@@ -30,12 +34,25 @@ export default async function PilihAnakPage() {
     <main style={{ maxWidth: 420, margin: '30px auto', padding: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <Pewi size={64} />
-        <h1 style={{ color: 'var(--lavender-d)', fontSize: 24 }}>Halo, Bunda 👋</h1>
+        <h1 style={{ color: 'var(--lavender-d)', fontSize: 24 }}>Hai Kak {prof?.nama_tampilan || 'Kakak'} 👋</h1>
       </div>
       <p style={{ color: 'var(--abu)', marginBottom: 16 }}>
         Status langganan: <b>{status}</b>
         {!bolehAkses(status) && ' — silakan perpanjang untuk lanjut.'}
       </p>
+
+      {favorit.length > 0 && (
+        <div style={{ marginBottom: 18 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '0 0 8px' }}>❤️ KELAS BERMAIN FAVORIT</div>
+          {favorit.map((k) => (
+            <a key={k.id} href={`/kelas/${k.id}`} className="kp-card"
+              style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, textDecoration: 'none', color: 'inherit' }}>
+              <span style={{ fontSize: 22 }}>❤️</span>
+              <b>{k.judul}</b>
+            </a>
+          ))}
+        </div>
+      )}
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '10px 0' }}>PROFIL ANAK</div>
       {(anakList ?? []).map((a) => (
@@ -62,10 +79,6 @@ export default async function PilihAnakPage() {
       <p style={{ textAlign: 'center', marginTop: 6 }}><a href="/pengaturan" style={{ color: 'var(--abu)', fontSize: 13 }}>⚙️ Pengaturan & Langganan</a></p>
 
       <p style={{ textAlign: 'center', marginTop: 6 }}><Link href="/komunitas" style={{ color: 'var(--biru-d)', fontSize: 13 }}>💬 Komunitas</Link></p>
-
-      <p style={{ textAlign: 'center', marginTop: 20 }}>
-        <a href="/admin" style={{ color: 'var(--abu)', fontSize: 12 }}>🛠️ Panel Admin</a>
-      </p>
     </main>
   );
 }
