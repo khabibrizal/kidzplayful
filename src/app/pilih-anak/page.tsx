@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { statusLangganan, bolehAkses } from '@/lib/domain/trial';
 import { getFavoritKelas } from '@/lib/data/favorit';
+import FavoritBtn from '@/components/FavoritBtn';
 import { tambahAnak } from './actions';
 import Pewi from '@/components/ui/Pewi';
 
@@ -45,11 +46,15 @@ export default async function PilihAnakPage() {
         <div style={{ marginBottom: 18 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '0 0 8px' }}>❤️ KELAS BERMAIN FAVORIT</div>
           {favorit.map((k) => (
-            <a key={k.id} href={`/kelas/${k.id}`} className="kp-card"
-              style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, textDecoration: 'none', color: 'inherit' }}>
-              <span style={{ fontSize: 22 }}>❤️</span>
-              <b>{k.judul}</b>
-            </a>
+            <div key={k.id} className="kp-card"
+              style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <a href={`/kelas/${k.id}`}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'inherit', flex: 1 }}>
+                <span style={{ fontSize: 22 }}>🎈</span>
+                <b>{k.judul}</b>
+              </a>
+              <FavoritBtn kelasId={k.id} awal={true} />
+            </div>
           ))}
         </div>
       )}

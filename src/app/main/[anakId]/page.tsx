@@ -28,7 +28,7 @@ export default async function MainPage({ params, searchParams }: { params: Promi
 
   return (
     <MenuAnak
-      anak={{ id: anak.id, koin: anak.koin, batas_menit: anak.batas_menit }}
+      anak={{ id: anak.id, nama: anak.nama, koin: anak.koin, batas_menit: anak.batas_menit }}
       pustaka={pustaka}
       pinTersimpan={prof?.pin_ortu ?? null}
       video={video}

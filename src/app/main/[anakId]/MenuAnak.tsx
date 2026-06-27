@@ -17,7 +17,7 @@ type Layar = 'menu' | 'kelas' | 'kelas-detail' | 'daftar' | 'pustaka' | 'video' 
 export default function MenuAnak({
   anak, pustaka, pinTersimpan, video, paketAwal, kelasList, favIds,
 }: {
-  anak: { id: string; koin: number; batas_menit: number };
+  anak: { id: string; nama: string; koin: number; batas_menit: number };
   pustaka: TemaLengkap[]; pinTersimpan: string | null; video: Video[]; paketAwal?: string; kelasList: KelasBermain[]; favIds: string[];
 }) {
   const router = useRouter();
@@ -216,8 +216,9 @@ export default function MenuAnak({
           <button className="kp-lock" aria-label="Untuk orang tua" onClick={() => setPinUntuk('keluar')}>🔒</button>
         </div>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 8 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 8 }}>
         <Pewi size={84} />
+        <h2 style={{ color: 'var(--lavender-d)', margin: '6px 0 2px' }}>Hai, {anak.nama}! 👋</h2>
       </div>
       <div className={s.menu}>
         <button className="kp-tile mint" onClick={() => setLayar('kelas')}>
@@ -226,6 +227,8 @@ export default function MenuAnak({
         <button className="kp-tile lavender" onClick={() => setLayar('pustaka')}><span className="emo">📚</span><div>Game Edukasi<small>{pustaka.length} tema</small></div></button>
         <button className="kp-tile biru" onClick={() => setLayar('video')}><span className="emo">📺</span><div>Pojok Video</div></button>
       </div>
+      <button className="kp-btn putih" onClick={() => setPinUntuk('keluar')}
+        style={{ display: 'block', margin: '4px auto 0' }}>👨‍👩‍👧 Mode Orang Tua</button>
       <div className={s.foot}>Sisa waktu hari ini: {sisaMnt} menit</div>
       {pinUntuk && (
         <PinGate pinTersimpan={pinTersimpan}
