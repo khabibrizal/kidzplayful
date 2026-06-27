@@ -8,6 +8,7 @@ import GameRunner from '@/components/game/GameRunner';
 import PinGate from '@/components/game/PinGate';
 import VideoPojok from '@/components/game/VideoPojok';
 import FavoritBtn from '@/components/FavoritBtn';
+import BeliBtn from '@/components/BeliBtn';
 import { waktuHabis, kunciHari, sisaDetik } from '@/lib/domain/waktu';
 import Pewi from '@/components/ui/Pewi';
 import s from './main.module.css';
@@ -147,18 +148,32 @@ export default function MenuAnak({
           <div className="kp-coin">🪙 {koin}</div>
         </div>
         <div style={{ flex: 1, overflow: 'auto', padding: '6px 2px' }}>
-          {kelas.judul && <h2 style={{ marginBottom: 10 }}>{kelas.judul}</h2>}
-          {kelas.aktivitas && <div className="kp-card" style={{ marginBottom: 10 }}><b>🎯 Aktivitas</b><p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>{kelas.aktivitas}</p></div>}
-          {kelas.bahan && <div className="kp-card" style={{ marginBottom: 10, background: '#fff3d6' }}><b>🧺 Bahan</b><p style={{ marginTop: 6 }}>{kelas.bahan}</p></div>}
-          {kelas.cara_membuat && <div className="kp-card" style={{ marginBottom: 10 }}><b>🛠️ Cara membuat</b><p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>{kelas.cara_membuat}</p></div>}
-          {kelas.langkah.length > 0 && (
-            <div className="kp-card" style={{ marginBottom: 10 }}>
-              <b>📝 Langkah aktivitas</b>
-              <ol style={{ margin: '8px 0 0 18px', lineHeight: 1.7 }}>{kelas.langkah.map((l, i) => <li key={i}>{l}</li>)}</ol>
+          <h2 style={{ marginBottom: 10 }}>{kelas.judul}</h2>
+          {kelas.bahan?.length > 0 && (
+            <div className="kp-card" style={{ marginBottom: 10, background: '#fff3d6' }}>
+              <b>🧺 Bahan</b>
+              <ul style={{ margin: '8px 0 0', paddingLeft: 18 }}>
+                {kelas.bahan.map((b, i) => (
+                  <li key={i} style={{ margin: '6px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ flex: 1 }}>{b.nama}</span>
+                    {b.link && <BeliBtn nama={b.nama} link={b.link} />}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
+          {kelas.aktivitas?.map((a, ai) => (
+            <div key={ai} className="kp-card" style={{ marginBottom: 10 }}>
+              <b>🎯 {a.judul || `Aktivitas ${ai + 1}`}</b>
+              {a.cara_membuat && <p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>🛠️ {a.cara_membuat}</p>}
+              {a.langkah?.length > 0 && (
+                <ol style={{ margin: '8px 0 0 18px', lineHeight: 1.7 }}>{a.langkah.map((l, i) => <li key={i}>{l}</li>)}</ol>
+              )}
+            </div>
+          ))}
           {kelas.link_ide && <a className="kp-btn" style={{ display: 'inline-block', marginRight: 8 }} href={kelas.link_ide} target="_blank">Lihat ide ▶</a>}
           {kelas.worksheet_url && <a className="kp-btn putih" style={{ display: 'inline-block' }} href={kelas.worksheet_url} target="_blank">📄 Worksheet</a>}
+          <Link className="kp-btn putih" style={{ display: 'inline-block', marginTop: 8, marginRight: 8 }} href={`/kelas/${kelas.id}`}>⬇ Unduh PDF</Link>
           <Link className="kp-btn putih" style={{ display: 'inline-block', marginTop: 8 }} href="/komunitas">💬 Bagikan pengalaman</Link>
         </div>
       </div>

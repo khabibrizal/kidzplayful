@@ -6,7 +6,13 @@ import { buatKelas, updateKelas, toggleStatusKelas, hapusKelas, type KelasInput 
 import type { KelasBermain } from '@/lib/game/tipe';
 import s from '../admin.module.css';
 
-const KOSONG: KelasInput = { judul: '', aktivitas: '', bahan: '', caraMembuat: '', langkah: [''], linkIde: '', worksheetUrl: null };
+const KOSONG: KelasInput = {
+  judul: '',
+  bahan: [{ nama: '', link: '' }],
+  aktivitas: [{ judul: '', caraMembuat: '', langkah: [''] }],
+  linkIde: '',
+  worksheetUrl: null,
+};
 
 export default function KelasAdmin({ awal }: { awal: KelasBermain[] }) {
   const [list, setList] = useState<KelasBermain[]>(awal);
@@ -21,10 +27,45 @@ export default function KelasAdmin({ awal }: { awal: KelasBermain[] }) {
   function flash(msg: string) { setToast(msg); setTimeout(() => setToast(''), 2200); }
   const tampil = list.filter((k) => k.judul.toLowerCase().includes(q.toLowerCase()));
 
-  function bukaTambah() { setEditId(null); setForm({ ...KOSONG, langkah: [''] }); }
+  function bukaTambah() { setEditId(null); setForm(structuredClone(KOSONG)); }
   function bukaEdit(k: KelasBermain) {
     setEditId(k.id);
-    setForm({ judul: k.judul, aktivitas: k.aktivitas ?? '', bahan: k.bahan ?? '', caraMembuat: k.cara_membuat ?? '', langkah: k.langkah?.length ? k.langkah : [''], linkIde: k.link_ide ?? '', worksheetUrl: k.worksheet_url });
+    setForm({
+      judul: k.judul,
+      bahan: k.bahan?.length ? k.bahan.map((b) => ({ nama: b.nama, link: b.link ?? '' })) : [{ nama: '', link: '' }],
+      aktivitas: k.aktivitas?.length
+        ? k.aktivitas.map((a) => ({ judul: a.judul, caraMembuat: a.cara_membuat ?? '', langkah: a.langkah?.length ? a.langkah : [''] }))
+        : [{ judul: '', caraMembuat: '', langkah: [''] }],
+      linkIde: k.link_ide ?? '',
+      worksheetUrl: k.worksheet_url,
+    });
+  }
+
+  // --- helper update nested state ---
+  function setBahan(i: number, patch: Partial<{ nama: string; link: string }>) {
+    if (!form) return;
+    setForm({ ...form, bahan: form.bahan.map((b, j) => (j === i ? { ...b, ...patch } : b)) });
+  }
+  function tambahBahan() { if (form) setForm({ ...form, bahan: [...form.bahan, { nama: '', link: '' }] }); }
+  function hapusBahan(i: number) { if (form) setForm({ ...form, bahan: form.bahan.filter((_, j) => j !== i) }); }
+
+  function setAkt(ai: number, patch: Partial<{ judul: string; caraMembuat: string }>) {
+    if (!form) return;
+    setForm({ ...form, aktivitas: form.aktivitas.map((a, j) => (j === ai ? { ...a, ...patch } : a)) });
+  }
+  function tambahAktivitas() { if (form) setForm({ ...form, aktivitas: [...form.aktivitas, { judul: '', caraMembuat: '', langkah: [''] }] }); }
+  function hapusAktivitas(ai: number) { if (form) setForm({ ...form, aktivitas: form.aktivitas.filter((_, j) => j !== ai) }); }
+  function setLangkah(ai: number, li: number, val: string) {
+    if (!form) return;
+    setForm({ ...form, aktivitas: form.aktivitas.map((a, j) => (j === ai ? { ...a, langkah: a.langkah.map((x, k) => (k === li ? val : x)) } : a)) });
+  }
+  function tambahLangkah(ai: number) {
+    if (!form) return;
+    setForm({ ...form, aktivitas: form.aktivitas.map((a, j) => (j === ai ? { ...a, langkah: [...a.langkah, ''] } : a)) });
+  }
+  function hapusLangkah(ai: number, li: number) {
+    if (!form) return;
+    setForm({ ...form, aktivitas: form.aktivitas.map((a, j) => (j === ai ? { ...a, langkah: a.langkah.filter((_, k) => k !== li) } : a)) });
   }
 
   async function unggahPdf(e: React.ChangeEvent<HTMLInputElement>) {
@@ -85,19 +126,44 @@ export default function KelasAdmin({ awal }: { awal: KelasBermain[] }) {
       {form && (
         <div className={s.card} style={{ border: '2px solid var(--lavender)' }}>
           <b>{editId ? 'Edit' : 'Tambah'} Kelas Bermain</b>
-          <input className={s.inp} placeholder="Judul" value={form.judul} onChange={(e) => setForm({ ...form, judul: e.target.value })} style={{ width: '100%', marginTop: 8 }} />
-          <textarea className={s.inp} placeholder="Aktivitas kelas bermain" rows={3} value={form.aktivitas} onChange={(e) => setForm({ ...form, aktivitas: e.target.value })} style={{ width: '100%', resize: 'vertical' }} />
-          <input className={s.inp} placeholder="Bahan" value={form.bahan} onChange={(e) => setForm({ ...form, bahan: e.target.value })} style={{ width: '100%' }} />
-          <textarea className={s.inp} placeholder="Cara membuat" rows={3} value={form.caraMembuat} onChange={(e) => setForm({ ...form, caraMembuat: e.target.value })} style={{ width: '100%', resize: 'vertical' }} />
-          <div className={s.muted} style={{ margin: '4px 0' }}>Langkah aktivitas:</div>
-          {form.langkah.map((l, i) => (
-            <div key={i} className={s.row} style={{ marginTop: 4 }}>
-              <span className={s.muted}>{i + 1}.</span>
-              <input className={s.inp} value={l} placeholder="langkah..." onChange={(e) => setForm({ ...form, langkah: form.langkah.map((x, j) => (j === i ? e.target.value : x)) })} style={{ flex: 1, marginBottom: 0 }} />
+
+          <input className={s.inp} placeholder="Judul kelas" value={form.judul} onChange={(e) => setForm({ ...form, judul: e.target.value })} style={{ width: '100%', marginTop: 8 }} />
+
+          {/* BAHAN (nama + link toko opsional) */}
+          <div className={s.muted} style={{ margin: '8px 0 4px' }}>🧺 Bahan (link toko opsional):</div>
+          {form.bahan.map((b, i) => (
+            <div key={i} className={s.row} style={{ marginTop: 4, gap: 6 }}>
+              <input className={s.inp} placeholder="Nama bahan" value={b.nama} onChange={(e) => setBahan(i, { nama: e.target.value })} style={{ flex: 1, marginBottom: 0 }} />
+              <input className={s.inp} placeholder="Link toko (opsional)" value={b.link} onChange={(e) => setBahan(i, { link: e.target.value })} style={{ flex: 1, marginBottom: 0 }} />
+              <button className={s.btnSm} style={{ background: '#eee' }} onClick={() => hapusBahan(i)} title="Hapus bahan">✕</button>
             </div>
           ))}
-          <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => setForm({ ...form, langkah: [...form.langkah, ''] })}>+ langkah</button>
-          <input className={s.inp} placeholder="Link/video referensi" value={form.linkIde} onChange={(e) => setForm({ ...form, linkIde: e.target.value })} style={{ width: '100%', marginTop: 10 }} />
+          <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={tambahBahan}>+ tambah bahan</button>
+
+          {/* AKTIVITAS (grup: judul + cara membuat + langkah masing-masing) */}
+          <div className={s.muted} style={{ margin: '12px 0 4px' }}>Aktivitas:</div>
+          {form.aktivitas.map((a, ai) => (
+            <div key={ai} className={s.card} style={{ background: '#faf7ff', marginTop: 6 }}>
+              <div className={s.row}>
+                <b style={{ flex: 1 }}>Aktivitas {ai + 1}</b>
+                <button className={`${s.btnSm} ${s.danger}`} onClick={() => hapusAktivitas(ai)} title="Hapus aktivitas">✕</button>
+              </div>
+              <input className={s.inp} placeholder="Judul aktivitas" value={a.judul} onChange={(e) => setAkt(ai, { judul: e.target.value })} style={{ width: '100%', marginTop: 6 }} />
+              <textarea className={s.inp} placeholder="Cara membuat" rows={2} value={a.caraMembuat} onChange={(e) => setAkt(ai, { caraMembuat: e.target.value })} style={{ width: '100%', resize: 'vertical' }} />
+              <div className={s.muted} style={{ margin: '4px 0' }}>Langkah:</div>
+              {a.langkah.map((l, li) => (
+                <div key={li} className={s.row} style={{ marginTop: 4 }}>
+                  <span className={s.muted}>{li + 1}.</span>
+                  <input className={s.inp} value={l} placeholder="langkah..." onChange={(e) => setLangkah(ai, li, e.target.value)} style={{ flex: 1, marginBottom: 0 }} />
+                  <button className={s.btnSm} style={{ background: '#eee' }} onClick={() => hapusLangkah(ai, li)} title="Hapus langkah">✕</button>
+                </div>
+              ))}
+              <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => tambahLangkah(ai)}>+ langkah</button>
+            </div>
+          ))}
+          <button className={s.btnSm} style={{ background: '#dff5e6', color: '#1c7a43', marginTop: 8 }} onClick={tambahAktivitas}>+ tambah aktivitas</button>
+
+          <input className={s.inp} placeholder="Link/video referensi" value={form.linkIde} onChange={(e) => setForm({ ...form, linkIde: e.target.value })} style={{ width: '100%', marginTop: 12 }} />
           <div className={s.row} style={{ marginTop: 6 }}>
             <button type="button" className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)' }} onClick={() => fileRef.current?.click()} disabled={loading}>{loading ? '...' : '⬆ Worksheet PDF'}</button>
             {form.worksheetUrl && <a className={s.muted} href={form.worksheetUrl} target="_blank" style={{ color: 'var(--biru-d)' }}>lihat PDF</a>}
@@ -114,7 +180,9 @@ export default function KelasAdmin({ awal }: { awal: KelasBermain[] }) {
       {tampil.map((k) => (
         <div key={k.id} className={s.card} style={{ opacity: k.status === 'nonaktif' ? 0.55 : 1 }}>
           <div className={s.row}>
-            <span style={{ flex: 1 }}><b>{k.judul}</b> {k.status === 'nonaktif' && <span className={`${s.tag} ${s.tagDraf}`}>nonaktif</span>}</span>
+            <span style={{ flex: 1 }}><b>{k.judul}</b> {k.status === 'nonaktif' && <span className={`${s.tag} ${s.tagDraf}`}>nonaktif</span>}
+              <br /><small className={s.muted}>{k.aktivitas?.length ?? 0} aktivitas · {k.bahan?.length ?? 0} bahan</small>
+            </span>
           </div>
           <div className={s.row} style={{ marginTop: 8, flexWrap: 'wrap' }}>
             <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)' }} onClick={() => bukaEdit(k)} disabled={busyId === k.id}>Edit</button>

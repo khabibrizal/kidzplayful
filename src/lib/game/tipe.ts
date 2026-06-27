@@ -62,13 +62,20 @@ export interface TemaPanduan {
   panduan: Panduan | null;
 }
 
+export interface BahanItem {
+  nama: string;
+  link: string | null; // link marketplace opsional; null = tidak dijual
+}
+export interface AktivitasItem {
+  judul: string;
+  cara_membuat: string | null;
+  langkah: string[];
+}
 export interface KelasBermain {
   id: string;
   judul: string;
-  aktivitas: string | null;
-  bahan: string | null;
-  cara_membuat: string | null;
-  langkah: string[];
+  bahan: BahanItem[];
+  aktivitas: AktivitasItem[];
   link_ide: string | null;
   worksheet_url: string | null;
   status: 'aktif' | 'nonaktif';

@@ -2,11 +2,16 @@
 import { createClient } from '@/lib/supabase/server';
 import type { KelasBermain } from '@/lib/game/tipe';
 
+export interface BahanInput { nama: string; link: string }
+export interface AktivitasInput { judul: string; caraMembuat: string; langkah: string[] }
 export interface KelasInput {
-  judul: string; aktivitas: string; bahan: string; caraMembuat: string;
-  langkah: string[]; linkIde: string; worksheetUrl: string | null;
+  judul: string;
+  bahan: BahanInput[];
+  aktivitas: AktivitasInput[];
+  linkIde: string;
+  worksheetUrl: string | null;
 }
-const COLS = 'id,judul,aktivitas,bahan,cara_membuat,langkah,link_ide,worksheet_url,status';
+const COLS = 'id,judul,aktivitas,bahan,link_ide,worksheet_url,status';
 
 async function adminDb() {
   const s = await createClient();
@@ -19,10 +24,16 @@ async function adminDb() {
 function row(i: KelasInput) {
   return {
     judul: i.judul.trim() || 'Tanpa judul',
-    aktivitas: i.aktivitas.trim() || null,
-    bahan: i.bahan.trim() || null,
-    cara_membuat: i.caraMembuat.trim() || null,
-    langkah: i.langkah.filter((x) => x.trim()),
+    bahan: i.bahan
+      .filter((b) => b.nama.trim())
+      .map((b) => ({ nama: b.nama.trim(), link: b.link.trim() || null })),
+    aktivitas: i.aktivitas
+      .filter((a) => a.judul.trim() || a.langkah.some((l) => l.trim()) || a.caraMembuat.trim())
+      .map((a) => ({
+        judul: a.judul.trim() || 'Aktivitas',
+        cara_membuat: a.caraMembuat.trim() || null,
+        langkah: a.langkah.filter((l) => l.trim()),
+      })),
     link_ide: i.linkIde.trim() || null,
     worksheet_url: i.worksheetUrl?.trim() || null,
   };

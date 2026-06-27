@@ -4,6 +4,7 @@ import Pewi from '@/components/ui/Pewi';
 import { getAnakTerjamin } from '@/lib/data/anak';
 import { getKelasAktif } from '@/lib/data/kelas-bermain';
 import { getVideoByKategori } from '@/lib/data/video';
+import BeliBtn from '@/components/BeliBtn';
 import s from './ortu.module.css';
 
 export default async function ModeOrtu({ params }: { params: Promise<{ anakId: string }> }) {
@@ -28,15 +29,32 @@ export default async function ModeOrtu({ params }: { params: Promise<{ anakId: s
       {kelasList.map((k) => (
         <div key={k.id} className="kp-card" style={{ marginBottom: 12 }}>
           <b>🎈 {k.judul}</b>
-          {k.aktivitas && <p style={{ marginTop: 8, fontSize: 14, whiteSpace: 'pre-wrap' }}>🎯 {k.aktivitas}</p>}
-          {k.bahan && <div className={s.bahan} style={{ marginTop: 8 }}>🧺 {k.bahan}</div>}
-          {k.cara_membuat && <p style={{ marginTop: 8, fontSize: 14, whiteSpace: 'pre-wrap' }}>🛠️ {k.cara_membuat}</p>}
-          {k.langkah.map((l, i) => (
-            <div key={i} className={s.step}><span className={s.n}>{i + 1}</span><span style={{ fontSize: 14 }}>{l}</span></div>
+          {k.bahan?.length > 0 && (
+            <div className={s.bahan} style={{ marginTop: 8 }}>
+              <div>🧺 Bahan:</div>
+              <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+                {k.bahan.map((b, i) => (
+                  <li key={i} style={{ margin: '5px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ flex: 1 }}>{b.nama}</span>
+                    {b.link && <BeliBtn nama={b.nama} link={b.link} />}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {k.aktivitas?.map((a, ai) => (
+            <div key={ai} style={{ marginTop: 10 }}>
+              <p style={{ fontSize: 14, fontWeight: 700, whiteSpace: 'pre-wrap' }}>🎯 {a.judul || `Aktivitas ${ai + 1}`}</p>
+              {a.cara_membuat && <p style={{ marginTop: 4, fontSize: 14, whiteSpace: 'pre-wrap' }}>🛠️ {a.cara_membuat}</p>}
+              {a.langkah?.map((l, i) => (
+                <div key={i} className={s.step}><span className={s.n}>{i + 1}</span><span style={{ fontSize: 14 }}>{l}</span></div>
+              ))}
+            </div>
           ))}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {k.link_ide && <a className="kp-btn" href={k.link_ide} target="_blank" style={{ marginTop: 10, fontSize: 14, padding: '11px 20px' }}>▶ Lihat ide</a>}
             {k.worksheet_url && <a className="kp-btn mint" href={k.worksheet_url} target="_blank" style={{ marginTop: 10, fontSize: 14, padding: '11px 20px' }}>📄 Unduh Worksheet</a>}
+            <Link className="kp-btn putih" href={`/kelas/${k.id}`} style={{ marginTop: 10, fontSize: 14, padding: '11px 20px' }}>⬇ Unduh PDF</Link>
           </div>
         </div>
       ))}
