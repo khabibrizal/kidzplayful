@@ -108,7 +108,7 @@ export default function MenuAnak({
       <div className={s.wrap}>
         <div className={s.top}>
           <button className="kp-lock" aria-label="Kembali" onClick={() => setLayar('menu')}>←</button>
-          <div className="kp-chip">🎈 Kelas Bermain</div>
+          <div className="kp-chip">🎈 Main Hari Ini</div>
           <div className="kp-coin">🪙 {koin}</div>
         </div>
         {kelasList.length === 0 ? (
@@ -222,7 +222,7 @@ export default function MenuAnak({
       </div>
       <div className={s.menu}>
         <button className="kp-tile mint" onClick={() => setLayar('kelas')}>
-          <span className="emo">🎈</span><div>Kelas Bermain<small>Minggu Ini</small></div>
+          <span className="emo">🎈</span><div>Main Hari Ini<small>Yuk main!</small></div>
         </button>
         <button className="kp-tile lavender" onClick={() => setLayar('pustaka')}><span className="emo">📚</span><div>Game Edukasi<small>{pustaka.length} tema</small></div></button>
         <button className="kp-tile biru" onClick={() => setLayar('video')}><span className="emo">📺</span><div>Pojok Video</div></button>
