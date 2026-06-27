@@ -80,3 +80,29 @@ export interface KelasBermain {
   worksheet_url: string | null;
   status: 'aktif' | 'nonaktif';
 }
+
+export interface EventKelas {
+  id: string;
+  judul: string;
+  lokasi: string | null;
+  tanggal: string | null; // 'YYYY-MM-DD'
+  jam_mulai: string | null;
+  jam_selesai: string | null;
+  deskripsi: string | null;
+  gambar_url: string | null;
+  harga_per_anak: number;
+  status: 'tampil' | 'arsip';
+}
+
+export interface PendaftaranEvent {
+  id: string;
+  event_id: string;
+  ortu_id: string;
+  anak_ids: string[];
+  anak_nama: string[];
+  jumlah_anak: number;
+  total: number;
+  bukti_url: string | null;
+  status: 'menunggu' | 'diterima' | 'ditolak';
+  created_at: string;
+}

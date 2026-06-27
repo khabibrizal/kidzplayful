@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { statusLangganan, bolehAkses } from '@/lib/domain/trial';
+import { getEventTampil } from '@/lib/data/event';
+import EventCarousel from '@/components/EventCarousel';
 import { tambahAnak } from './actions';
 import Pewi from '@/components/ui/Pewi';
 
@@ -17,6 +19,7 @@ export default async function PilihAnakPage() {
     .from('langganan').select('trial_mulai,aktif_sampai').eq('ortu_id', user.id).single();
   const { data: prof } = await supabase
     .from('profiles').select('nama_tampilan').eq('id', user.id).single();
+  const events = await getEventTampil();
 
   const status = lang
     ? statusLangganan(
@@ -43,6 +46,8 @@ export default async function PilihAnakPage() {
         style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
         ❤️ Favoritmu
       </Link>
+
+      <EventCarousel events={events} />
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '10px 0' }}>PROFIL ANAK</div>
       {(anakList ?? []).map((a) => (
