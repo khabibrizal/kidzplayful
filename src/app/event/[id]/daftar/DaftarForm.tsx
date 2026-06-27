@@ -2,6 +2,7 @@
 'use client';
 import { useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { daftarEvent } from '@/lib/data/event-actions';
 import type { EventKelas } from '@/lib/game/tipe';
@@ -13,8 +14,8 @@ export default function DaftarForm({ ev, anak }: { ev: EventKelas; anak: { id: s
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState('');
-  const [done, setDone] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
   const total = ev.harga_per_anak * pilih.size;
 
   function toggle(id: string) {
@@ -43,20 +44,15 @@ export default function DaftarForm({ ev, anak }: { ev: EventKelas; anak: { id: s
     if (pilih.size === 0) { setErr('Pilih minimal 1 anak.'); return; }
     if (ev.harga_per_anak > 0 && !buktiUrl) { setErr('Unggah bukti pembayaran dulu.'); return; }
     setSubmitting(true); setErr('');
-    try { await daftarEvent(ev.id, [...pilih], buktiUrl); setDone(true); }
-    catch (e) { setErr(e instanceof Error ? e.message : 'Gagal mendaftar'); }
-    finally { setSubmitting(false); }
-  }
-
-  if (done) {
-    return (
-      <main style={{ maxWidth: 420, margin: '40px auto', padding: 16, textAlign: 'center' }}>
-        <div style={{ fontSize: 48 }}>🎉</div>
-        <h1 style={{ color: 'var(--lavender-d)' }}>Pendaftaran terkirim!</h1>
-        <p style={{ color: 'var(--abu)' }}>Menunggu verifikasi admin. Terima kasih ya 🌿</p>
-        <Link href="/event" className="kp-btn" style={{ display: 'inline-block', marginTop: 12 }}>Kembali ke Event</Link>
-      </main>
-    );
+    try {
+      await daftarEvent(ev.id, [...pilih], buktiUrl);
+      // sukses → kembali ke dashboard (status muncul sebagai badge di kartu event)
+      router.push('/pilih-anak');
+      router.refresh();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Gagal mendaftar');
+      setSubmitting(false);
+    }
   }
 
   return (

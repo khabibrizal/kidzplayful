@@ -3,7 +3,14 @@ import Link from 'next/link';
 import type { EventKelas } from '@/lib/game/tipe';
 import { formatTanggal, formatRupiah } from '@/lib/format';
 
-export default function EventCard({ ev }: { ev: EventKelas }) {
+const STATUS: Record<string, { t: string; c: string; bg: string }> = {
+  menunggu: { t: '⏳ Menunggu verifikasi', c: '#b88600', bg: '#fff3d6' },
+  diterima: { t: '✅ Pendaftaran diterima', c: '#1c7a43', bg: '#dff5e6' },
+  ditolak: { t: '❌ Pendaftaran ditolak', c: '#b3261e', bg: '#fde8e6' },
+};
+
+export default function EventCard({ ev, status }: { ev: EventKelas; status?: string }) {
+  const meta = status ? STATUS[status] : null;
   return (
     <div className="kp-card" style={{ padding: 0, overflow: 'hidden' }}>
       {ev.gambar_url && (
@@ -17,7 +24,14 @@ export default function EventCard({ ev }: { ev: EventKelas }) {
         {(ev.jam_mulai || ev.jam_selesai) && <div style={{ fontSize: 13, color: 'var(--abu)' }}>🕐 {ev.jam_mulai}{ev.jam_selesai ? ` - ${ev.jam_selesai}` : ''} WIB</div>}
         {ev.lokasi && <div style={{ fontSize: 13, color: 'var(--abu)' }}>📍 {ev.lokasi}</div>}
         {ev.harga_per_anak > 0 && <div style={{ fontSize: 13, fontWeight: 700, marginTop: 4 }}>{formatRupiah(ev.harga_per_anak)} / anak</div>}
-        <Link href={`/event/${ev.id}/daftar`} className="kp-btn" style={{ display: 'block', textAlign: 'center', marginTop: 10 }}>Daftar Sekarang</Link>
+        {meta ? (
+          <>
+            <div style={{ marginTop: 10, textAlign: 'center', fontWeight: 700, fontSize: 13, color: meta.c, background: meta.bg, borderRadius: 99, padding: '8px 12px' }}>{meta.t}</div>
+            {status === 'ditolak' && <Link href={`/event/${ev.id}/daftar`} className="kp-btn putih" style={{ display: 'block', textAlign: 'center', marginTop: 8 }}>Daftar lagi</Link>}
+          </>
+        ) : (
+          <Link href={`/event/${ev.id}/daftar`} className="kp-btn" style={{ display: 'block', textAlign: 'center', marginTop: 10 }}>Daftar Sekarang</Link>
+        )}
       </div>
     </div>
   );

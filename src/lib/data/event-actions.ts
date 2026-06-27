@@ -29,4 +29,5 @@ export async function daftarEvent(eventId: string, anakIds: string[], buktiUrl: 
   });
   if (error) throw new Error(error.message);
   revalidatePath('/event');
+  revalidatePath('/pilih-anak');
 }
