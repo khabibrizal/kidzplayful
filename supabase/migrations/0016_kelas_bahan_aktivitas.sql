@@ -1,27 +1,21 @@
 -- supabase/migrations/0016_kelas_bahan_aktivitas.sql
 -- Restrukturisasi kelas_bermain:
 --   bahan: text -> jsonb array [{nama, link}]   (link toko opsional per bahan)
---   aktivitas: text -> jsonb array [{judul, cara_membuat, langkah[]}]  (grup aktivitas + langkah masing-masing)
+--   aktivitas: text -> jsonb array [{judul, cara_membuat, langkah[]}]
 --   cara_membuat & langkah lama dilebur ke dalam aktivitas, lalu di-drop.
+-- Catatan: subquery tidak boleh di ALTER ... USING, jadi bahan dikonversi via kolom sementara + UPDATE.
 
--- 1) bahan text -> jsonb
-alter table public.kelas_bermain alter column bahan drop default;
-alter table public.kelas_bermain
-  alter column bahan type jsonb using (
-    case
-      when bahan is null or btrim(bahan) = '' then '[]'::jsonb
-      else coalesce((
-        select jsonb_agg(jsonb_build_object('nama', btrim(t.val), 'link', null))
-        from regexp_split_to_table(bahan, ',') as t(val)
-        where btrim(t.val) <> ''
-      ), '[]'::jsonb)
-    end
-  );
-alter table public.kelas_bermain alter column bahan set default '[]'::jsonb;
-update public.kelas_bermain set bahan = '[]'::jsonb where bahan is null;
-alter table public.kelas_bermain alter column bahan set not null;
+-- 1) BAHAN text -> jsonb (kolom sementara)
+alter table public.kelas_bermain add column if not exists bahan_json jsonb not null default '[]'::jsonb;
+update public.kelas_bermain set bahan_json = (
+  select coalesce(jsonb_agg(jsonb_build_object('nama', btrim(t.val), 'link', null)), '[]'::jsonb)
+  from regexp_split_to_table(coalesce(bahan, ''), ',') as t(val)
+  where btrim(t.val) <> ''
+);
+alter table public.kelas_bermain drop column bahan;
+alter table public.kelas_bermain rename column bahan_json to bahan;
 
--- 2) aktivitas text (+ cara_membuat + langkah) -> jsonb array of grup
+-- 2) AKTIVITAS text (+ cara_membuat + langkah) -> jsonb array of grup (tanpa subquery, boleh di USING)
 alter table public.kelas_bermain alter column aktivitas drop default;
 alter table public.kelas_bermain
   alter column aktivitas type jsonb using (
