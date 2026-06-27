@@ -45,8 +45,9 @@ await p.waitForSelector('input[type=checkbox]', { timeout: 15000 });
 const cb = await p.$$('input[type=checkbox]');
 await cb[0].click();
 await p.evaluate(() => { const x = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Daftar Sekarang'); x && x.click(); });
-const daftar = await p.waitForFunction(() => document.body.innerText.includes('Pendaftaran terkirim'), { timeout: 20000 }).then(() => 'BERHASIL').catch(() => 'GAGAL');
-console.log('2. DAFTAR (user):', daftar);
+const redirect = await p.waitForFunction(() => location.pathname.startsWith('/pilih-anak'), { timeout: 20000 }).then(() => true).catch(() => false);
+const badgeMenunggu = await p.evaluate(() => document.body.innerText.includes('Menunggu verifikasi'));
+console.log('2. DAFTAR (user): redirect ke dashboard =', redirect, '| badge Menunggu =', badgeMenunggu);
 
 // 3) admin pendaftar + Terima
 await p.goto(U + `/admin/event/${eventId}/pendaftar`, { waitUntil: 'networkidle2', timeout: 30000 });
@@ -54,6 +55,11 @@ const namaTampil = await p.evaluate((n) => document.body.innerText.includes(n), 
 await p.evaluate(() => { const x = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Terima'); x && x.click(); });
 const terima = await p.waitForFunction(() => document.body.innerText.includes('diterima'), { timeout: 15000 }).then(() => 'DITERIMA').catch(() => 'GAGAL');
 console.log('3. ADMIN: nama anak tampil =', namaTampil, '| Terima =', terima);
+
+// 3b) cek badge "diterima" di dashboard user
+await p.goto(U + '/pilih-anak', { waitUntil: 'networkidle2', timeout: 30000 });
+const badgeDiterima = await p.evaluate(() => document.body.innerText.includes('Pendaftaran diterima'));
+console.log('3b. BADGE dashboard user = diterima?', badgeDiterima);
 
 // 4) cleanup event
 await p.goto(U + '/admin/event', { waitUntil: 'networkidle2', timeout: 30000 });
