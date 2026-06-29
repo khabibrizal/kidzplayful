@@ -110,8 +110,8 @@ export async function ekstrakYoutubeId(s: string): Promise<string | null> {
   // Semua format URL umum: watch?v=, youtu.be/, embed/, shorts/, live/, /v/
   const m = t.match(/(?:v=|vi=|youtu\.be\/|embed\/|shorts\/|live\/|\/v\/)([\w-]{11})/);
   if (m) return m[1];
-  // Fallback aman: kalau ini memang URL YouTube, ambil token 11 karakter pertama yang valid
-  if (/youtu/i.test(t)) {
+  // Fallback aman: hanya kalau host benar-benar YouTube
+  if (/youtube\.com|youtu\.be/i.test(t)) {
     const any = t.match(/[\w-]{11}/);
     if (any) return any[0];
   }
