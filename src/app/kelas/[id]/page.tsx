@@ -37,7 +37,7 @@ export default async function KelasDetailPage({ params }: { params: Promise<{ id
             {kelas.bahan.map((b, i) => (
               <li key={i} style={{ margin: '6px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ flex: 1 }}>{b.nama}</span>
-                {b.link && <BeliBtn nama={b.nama} link={b.link} />}
+                {(b.produk_id || b.link) && <BeliBtn nama={b.nama} link={b.link} produkId={b.produk_id} />}
               </li>
             ))}
           </ul>

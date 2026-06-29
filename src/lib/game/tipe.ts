@@ -64,7 +64,8 @@ export interface TemaPanduan {
 
 export interface BahanItem {
   nama: string;
-  link: string | null; // link marketplace opsional; null = tidak dijual
+  link: string | null;        // link marketplace EKSTERNAL (opsional)
+  produk_id?: string | null;  // produk Store INTERNAL (opsional, diutamakan)
 }
 export interface AktivitasItem {
   judul: string;

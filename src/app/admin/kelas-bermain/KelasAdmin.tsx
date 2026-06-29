@@ -8,13 +8,13 @@ import s from '../admin.module.css';
 
 const KOSONG: KelasInput = {
   judul: '',
-  bahan: [{ nama: '', link: '' }],
+  bahan: [{ nama: '', link: '', produkId: '' }],
   aktivitas: [{ judul: '', caraMembuat: '', langkah: [''] }],
   linkIde: '',
   worksheetUrl: null,
 };
 
-export default function KelasAdmin({ awal }: { awal: KelasBermain[] }) {
+export default function KelasAdmin({ awal, produkOpsi = [] }: { awal: KelasBermain[]; produkOpsi?: { id: string; nama: string }[] }) {
   const [list, setList] = useState<KelasBermain[]>(awal);
   const [q, setQ] = useState('');
   const [form, setForm] = useState<KelasInput | null>(null);
@@ -32,7 +32,7 @@ export default function KelasAdmin({ awal }: { awal: KelasBermain[] }) {
     setEditId(k.id);
     setForm({
       judul: k.judul,
-      bahan: k.bahan?.length ? k.bahan.map((b) => ({ nama: b.nama, link: b.link ?? '' })) : [{ nama: '', link: '' }],
+      bahan: k.bahan?.length ? k.bahan.map((b) => ({ nama: b.nama, link: b.link ?? '', produkId: b.produk_id ?? '' })) : [{ nama: '', link: '', produkId: '' }],
       aktivitas: k.aktivitas?.length
         ? k.aktivitas.map((a) => ({ judul: a.judul, caraMembuat: a.cara_membuat ?? '', langkah: a.langkah?.length ? a.langkah : [''] }))
         : [{ judul: '', caraMembuat: '', langkah: [''] }],
@@ -42,11 +42,11 @@ export default function KelasAdmin({ awal }: { awal: KelasBermain[] }) {
   }
 
   // --- helper update nested state ---
-  function setBahan(i: number, patch: Partial<{ nama: string; link: string }>) {
+  function setBahan(i: number, patch: Partial<{ nama: string; link: string; produkId: string }>) {
     if (!form) return;
     setForm({ ...form, bahan: form.bahan.map((b, j) => (j === i ? { ...b, ...patch } : b)) });
   }
-  function tambahBahan() { if (form) setForm({ ...form, bahan: [...form.bahan, { nama: '', link: '' }] }); }
+  function tambahBahan() { if (form) setForm({ ...form, bahan: [...form.bahan, { nama: '', link: '', produkId: '' }] }); }
   function hapusBahan(i: number) { if (form) setForm({ ...form, bahan: form.bahan.filter((_, j) => j !== i) }); }
 
   function setAkt(ai: number, patch: Partial<{ judul: string; caraMembuat: string }>) {
@@ -130,12 +130,20 @@ export default function KelasAdmin({ awal }: { awal: KelasBermain[] }) {
           <input className={s.inp} placeholder="Judul kelas" value={form.judul} onChange={(e) => setForm({ ...form, judul: e.target.value })} style={{ width: '100%', marginTop: 8 }} />
 
           {/* BAHAN (nama + link toko opsional) */}
-          <div className={s.muted} style={{ margin: '8px 0 4px' }}>🧺 Bahan (link toko opsional):</div>
+          <div className={s.muted} style={{ margin: '8px 0 4px' }}>🧺 Bahan (boleh hubungkan ke produk Store, atau pakai link toko luar):</div>
           {form.bahan.map((b, i) => (
-            <div key={i} className={s.row} style={{ marginTop: 4, gap: 6 }}>
-              <input className={s.inp} placeholder="Nama bahan" value={b.nama} onChange={(e) => setBahan(i, { nama: e.target.value })} style={{ flex: 1, marginBottom: 0 }} />
-              <input className={s.inp} placeholder="Link toko (opsional)" value={b.link} onChange={(e) => setBahan(i, { link: e.target.value })} style={{ flex: 1, marginBottom: 0 }} />
-              <button className={s.btnSm} style={{ background: '#eee' }} onClick={() => hapusBahan(i)} title="Hapus bahan">✕</button>
+            <div key={i} style={{ marginTop: 6, padding: 8, background: '#faf7ff', borderRadius: 10 }}>
+              <div className={s.row} style={{ gap: 6 }}>
+                <input className={s.inp} placeholder="Nama bahan" value={b.nama} onChange={(e) => setBahan(i, { nama: e.target.value })} style={{ flex: 1, marginBottom: 0 }} />
+                <button className={s.btnSm} style={{ background: '#eee' }} onClick={() => hapusBahan(i)} title="Hapus bahan">✕</button>
+              </div>
+              <select className={s.inp} value={b.produkId} onChange={(e) => setBahan(i, { produkId: e.target.value })} style={{ width: '100%', marginTop: 4 }}>
+                <option value="">— Beli di Store: tidak dihubungkan —</option>
+                {produkOpsi.map((p) => <option key={p.id} value={p.id}>🛒 {p.nama}</option>)}
+              </select>
+              {!b.produkId && (
+                <input className={s.inp} placeholder="atau Link toko luar (opsional)" value={b.link} onChange={(e) => setBahan(i, { link: e.target.value })} style={{ width: '100%', marginTop: 4 }} />
+              )}
             </div>
           ))}
           <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={tambahBahan}>+ tambah bahan</button>

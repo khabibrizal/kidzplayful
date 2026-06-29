@@ -2,7 +2,7 @@
 import { createClient } from '@/lib/supabase/server';
 import type { KelasBermain } from '@/lib/game/tipe';
 
-export interface BahanInput { nama: string; link: string }
+export interface BahanInput { nama: string; link: string; produkId: string }
 export interface AktivitasInput { judul: string; caraMembuat: string; langkah: string[] }
 export interface KelasInput {
   judul: string;
@@ -26,7 +26,7 @@ function row(i: KelasInput) {
     judul: i.judul.trim() || 'Tanpa judul',
     bahan: i.bahan
       .filter((b) => b.nama.trim())
-      .map((b) => ({ nama: b.nama.trim(), link: b.link.trim() || null })),
+      .map((b) => ({ nama: b.nama.trim(), link: b.link.trim() || null, produk_id: b.produkId || null })),
     aktivitas: i.aktivitas
       .filter((a) => a.judul.trim() || a.langkah.some((l) => l.trim()) || a.caraMembuat.trim())
       .map((a) => ({
