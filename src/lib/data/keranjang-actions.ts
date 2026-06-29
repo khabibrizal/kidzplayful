@@ -2,6 +2,12 @@
 'use server';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { getJumlahKeranjang } from './keranjang';
+
+/** Untuk badge keranjang di bottom nav (dipanggil dari Client). */
+export async function jumlahKeranjang(): Promise<number> {
+  return getJumlahKeranjang();
+}
 
 async function userDb() {
   const s = await createClient();

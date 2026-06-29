@@ -12,7 +12,7 @@ export default function TambahKeranjangBtn({ produkId, habis }: { produkId: stri
   }
   function klik() {
     start(async () => {
-      try { await tambahKeranjang(produkId, 1); setOk(true); setTimeout(() => setOk(false), 1400); } catch { /* abaikan */ }
+      try { await tambahKeranjang(produkId, 1); window.dispatchEvent(new Event('keranjang:update')); setOk(true); setTimeout(() => setOk(false), 1400); } catch { /* abaikan */ }
     });
   }
   return (

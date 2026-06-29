@@ -17,3 +17,12 @@ export async function getKeranjang(): Promise<KeranjangItem[]> {
     .map((r) => ({ produk_id: r.produk_id, qty: r.qty, produk: Array.isArray(r.produk) ? r.produk[0] : r.produk }))
     .filter((r) => r.produk) as unknown as KeranjangItem[];
 }
+
+/** Total qty di keranjang (untuk badge). */
+export async function getJumlahKeranjang(): Promise<number> {
+  const s = await createClient();
+  const { data: { user } } = await s.auth.getUser();
+  if (!user) return 0;
+  const { data } = await s.from('keranjang_item').select('qty').eq('ortu_id', user.id);
+  return (data ?? []).reduce((a, r) => a + (r.qty ?? 0), 0);
+}

@@ -18,6 +18,7 @@ export default function ProdukDetail({ p }: { p: Produk }) {
     start(async () => {
       try {
         await tambahKeranjang(p.id, qty);
+        window.dispatchEvent(new Event('keranjang:update'));
         if (laluKeKeranjang) router.push('/keranjang');
         else { setToast('Ditambahkan ke keranjang ✓'); setTimeout(() => setToast(''), 1800); }
       } catch (e) { setToast(e instanceof Error ? e.message : 'Gagal'); setTimeout(() => setToast(''), 2000); }

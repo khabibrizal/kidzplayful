@@ -23,9 +23,10 @@ export default function KeranjangView({ awal }: { awal: KeranjangItem[] }) {
     if (!it) return;
     const max = Math.max(1, it.produk.stok);
     const q = Math.min(Math.max(0, qty), max);
-    if (q === 0) { setItems(items.filter((x) => x.produk_id !== produkId)); hapusKeranjang(produkId).catch(() => {}); return; }
+    if (q === 0) { setItems(items.filter((x) => x.produk_id !== produkId)); hapusKeranjang(produkId).catch(() => {}); window.dispatchEvent(new Event('keranjang:update')); return; }
     setItems(items.map((x) => (x.produk_id === produkId ? { ...x, qty: q } : x)));
     setQtyKeranjang(produkId, q).catch(() => {});
+    window.dispatchEvent(new Event('keranjang:update'));
   }
 
   function buatPesanan() {
@@ -33,6 +34,7 @@ export default function KeranjangView({ awal }: { awal: KeranjangItem[] }) {
     start(async () => {
       try {
         const id = await checkout({ penerima, noHp, alamat, catatan });
+        window.dispatchEvent(new Event('keranjang:update'));
         router.push(`/pesanan/${id}`);
       } catch (e) { setErr(e instanceof Error ? e.message : 'Gagal membuat pesanan'); }
     });
