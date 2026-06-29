@@ -6,6 +6,7 @@ import { statusLangganan } from '@/lib/domain/trial';
 import PinForm from './PinForm';
 import AkunForm from './AkunForm';
 import NamaForm from './NamaForm';
+import BottomNav from '@/components/BottomNav';
 
 const BAYAR = {
   bank: 'BCA 1234567890 a.n. KidzPlayful',   // GANTI dgn rekening Anda
@@ -24,7 +25,7 @@ export default async function Pengaturan() {
   const waText = encodeURIComponent('Halo, saya sudah transfer untuk langganan KidzPlayful. Email: ' + (user.email ?? ''));
 
   return (
-    <main style={{ maxWidth: 440, margin: '20px auto', padding: 16 }}>
+    <main style={{ maxWidth: 440, margin: '20px auto', padding: 16, paddingBottom: 90 }}>
       <Link href="/pilih-anak" style={{ color: 'var(--abu)', fontSize: 13 }}>← kembali</Link>
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 22, margin: '8px 0 14px' }}>⚙️ Pengaturan</h1>
 
@@ -53,6 +54,7 @@ export default async function Pengaturan() {
         )}
         {status === 'aktif' && <p style={{ color: '#2e9e63' }}>Langganan aktif. Terima kasih! 🎉</p>}
       </div>
+      <BottomNav />
     </main>
   );
 }

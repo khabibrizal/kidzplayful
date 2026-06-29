@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getFavoritKelas } from '@/lib/data/favorit';
 import FavoritBtn from '@/components/FavoritBtn';
+import BottomNav from '@/components/BottomNav';
 
 export default async function FavoritPage() {
   const supabase = await createClient();
@@ -14,7 +15,7 @@ export default async function FavoritPage() {
   const favorit = await getFavoritKelas();
 
   return (
-    <main style={{ maxWidth: 420, margin: '30px auto', padding: 16 }}>
+    <main style={{ maxWidth: 420, margin: '30px auto', padding: 16, paddingBottom: 90 }}>
       <Link href="/pilih-anak" style={{ color: 'var(--abu)', fontSize: 13 }}>← Kembali</Link>
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 24, margin: '10px 0 16px' }}>❤️ Kelas Bermain Favorit</h1>
 
@@ -35,6 +36,7 @@ export default async function FavoritPage() {
           </div>
         ))
       )}
+      <BottomNav />
     </main>
   );
 }

@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { statusLangganan, bolehAkses } from '@/lib/domain/trial';
 import { getEventTampil, getStatusPendaftaranSaya } from '@/lib/data/event';
 import EventCarousel from '@/components/EventCarousel';
+import BottomNav from '@/components/BottomNav';
 import { tambahAnak } from './actions';
 import Pewi from '@/components/ui/Pewi';
 
@@ -33,7 +34,7 @@ export default async function PilihAnakPage() {
     : 'kadaluarsa';
 
   return (
-    <main style={{ maxWidth: 420, margin: '30px auto', padding: 16 }}>
+    <main style={{ maxWidth: 420, margin: '30px auto', padding: 16, paddingBottom: 90 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <Pewi size={64} />
         <h1 style={{ color: 'var(--lavender-d)', fontSize: 24 }}>Hai Kak {prof?.nama_tampilan || 'Kakak'} 👋</h1>
@@ -72,9 +73,7 @@ export default async function PilihAnakPage() {
         <button className="kp-btn mint" type="submit" style={{ width: '100%' }}>Tambah anak</button>
       </form>
 
-      <p style={{ textAlign: 'center', marginTop: 6 }}><a href="/pengaturan" style={{ color: 'var(--abu)', fontSize: 13 }}>⚙️ Pengaturan & Langganan</a></p>
-
-      <p style={{ textAlign: 'center', marginTop: 6 }}><Link href="/komunitas" style={{ color: 'var(--biru-d)', fontSize: 13 }}>💬 Komunitas</Link></p>
+      <BottomNav />
     </main>
   );
 }

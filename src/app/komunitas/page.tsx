@@ -6,6 +6,7 @@ import { getFeed } from '@/lib/data/komunitas';
 import Compose from './Compose';
 import SukaBtn from './SukaBtn';
 import LaporBtn from './LaporBtn';
+import BottomNav from '@/components/BottomNav';
 
 export default async function Komunitas({ searchParams }: { searchParams: Promise<{ tema?: string }> }) {
   const { tema: temaAwal } = await searchParams;
@@ -16,7 +17,7 @@ export default async function Komunitas({ searchParams }: { searchParams: Promis
   const feed = await getFeed();
 
   return (
-    <main style={{ maxWidth: 480, margin: '20px auto', padding: 16 }}>
+    <main style={{ maxWidth: 480, margin: '20px auto', padding: 16, paddingBottom: 90 }}>
       <Link href="/pilih-anak" style={{ color: 'var(--abu)', fontSize: 13 }}>← kembali</Link>
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 22, margin: '8px 0 4px' }}>💬 Komunitas</h1>
       <p style={{ color: 'var(--abu)', fontSize: 12, marginBottom: 12 }}>Berbagi cerita & tips dengan sesama orang tua. Mohon santun & jaga privasi anak. 🌿</p>
@@ -37,6 +38,7 @@ export default async function Komunitas({ searchParams }: { searchParams: Promis
           </div>
         </div>
       ))}
+      <BottomNav />
     </main>
   );
 }

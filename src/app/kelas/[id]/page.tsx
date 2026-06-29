@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import type { KelasBermain } from '@/lib/game/tipe';
 import BeliBtn from '@/components/BeliBtn';
 import UnduhPdfBtn from '@/components/UnduhPdfBtn';
+import { rekamRiwayat } from '@/lib/data/riwayat-kelas';
 
 const COLS = 'id,judul,aktivitas,bahan,link_ide,worksheet_url,status';
 
@@ -19,6 +20,7 @@ export default async function KelasDetailPage({ params }: { params: Promise<{ id
     .from('kelas_bermain').select(COLS).eq('id', id).eq('status', 'aktif').maybeSingle();
   if (!data) redirect('/pilih-anak');
   const kelas = data as unknown as KelasBermain;
+  await rekamRiwayat(kelas.id); // catat ke riwayat "Kelas Bermain Saya"
 
   return (
     <main style={{ maxWidth: 480, margin: '24px auto', padding: 16 }}>

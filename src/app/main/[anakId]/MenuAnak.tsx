@@ -9,6 +9,7 @@ import PinGate from '@/components/game/PinGate';
 import VideoPojok from '@/components/game/VideoPojok';
 import FavoritBtn from '@/components/FavoritBtn';
 import BeliBtn from '@/components/BeliBtn';
+import { catatRiwayatKelas } from '@/lib/data/riwayat-actions';
 import { waktuHabis, kunciHari, sisaDetik } from '@/lib/domain/waktu';
 import Pewi from '@/components/ui/Pewi';
 import s from './main.module.css';
@@ -121,8 +122,8 @@ export default function MenuAnak({
             {kelasList.map((k, i) => (
               <div key={k.id} className={`kp-tile ${['mint', 'lavender', 'biru'][i % 3]}`}
                 role="button" tabIndex={0}
-                onClick={() => { setKelasDipilih(k); setLayar('kelas-detail'); }}
-                onKeyDown={(e) => { if (e.key === 'Enter') { setKelasDipilih(k); setLayar('kelas-detail'); } }}
+                onClick={() => { setKelasDipilih(k); setLayar('kelas-detail'); catatRiwayatKelas(k.id).catch(() => {}); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') { setKelasDipilih(k); setLayar('kelas-detail'); catatRiwayatKelas(k.id).catch(() => {}); } }}
                 style={{ position: 'relative', cursor: 'pointer' }}>
                 <span className="emo">🎈</span>
                 <div>{k.judul}</div>
