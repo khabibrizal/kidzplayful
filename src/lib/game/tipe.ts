@@ -106,3 +106,45 @@ export interface PendaftaranEvent {
   status: 'menunggu' | 'diterima' | 'ditolak';
   created_at: string;
 }
+
+// ===== STORE =====
+export interface Produk {
+  id: string;
+  nama: string;
+  deskripsi: string | null;
+  kategori: string | null;
+  harga: number;
+  stok: number;
+  gambar_url: string | null;
+  status: 'tampil' | 'arsip';
+}
+export interface KeranjangItem {
+  produk_id: string;
+  qty: number;
+  produk: Produk;
+}
+export type StatusPesanan =
+  | 'menunggu_ongkir' | 'menunggu_bayar' | 'dibayar' | 'diproses' | 'dikirim' | 'selesai' | 'batal';
+export interface ItemPesanan {
+  id: string;
+  produk_id: string | null;
+  nama: string;
+  harga: number;
+  qty: number;
+}
+export interface Pesanan {
+  id: string;
+  ortu_id: string;
+  status: StatusPesanan;
+  subtotal: number;
+  ongkir: number;
+  total: number;
+  penerima: string | null;
+  no_hp: string | null;
+  alamat: string | null;
+  bukti_url: string | null;
+  no_resi: string | null;
+  catatan: string | null;
+  created_at: string;
+  item?: ItemPesanan[];
+}

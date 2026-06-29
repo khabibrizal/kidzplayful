@@ -1,0 +1,19 @@
+// src/lib/data/keranjang.ts — baca keranjang
+import { createClient } from '@/lib/supabase/server';
+import type { KeranjangItem } from '@/lib/game/tipe';
+
+const PCOLS = 'id,nama,deskripsi,kategori,harga,stok,gambar_url,status';
+
+export async function getKeranjang(): Promise<KeranjangItem[]> {
+  const s = await createClient();
+  const { data: { user } } = await s.auth.getUser();
+  if (!user) return [];
+  const { data } = await s
+    .from('keranjang_item')
+    .select(`produk_id, qty, produk:produk_id(${PCOLS})`)
+    .eq('ortu_id', user.id)
+    .order('created_at', { ascending: true });
+  return (data ?? [])
+    .map((r) => ({ produk_id: r.produk_id, qty: r.qty, produk: Array.isArray(r.produk) ? r.produk[0] : r.produk }))
+    .filter((r) => r.produk) as unknown as KeranjangItem[];
+}

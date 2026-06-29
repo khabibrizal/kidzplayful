@@ -1,0 +1,64 @@
+// src/app/store/[id]/ProdukDetail.tsx
+'use client';
+import { useState, useTransition } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { tambahKeranjang } from '@/lib/data/keranjang-actions';
+import type { Produk } from '@/lib/game/tipe';
+import { formatRupiah } from '@/lib/format';
+
+export default function ProdukDetail({ p }: { p: Produk }) {
+  const router = useRouter();
+  const [qty, setQty] = useState(1);
+  const [pending, start] = useTransition();
+  const [toast, setToast] = useState('');
+  const habis = p.stok <= 0;
+
+  function tambah(laluKeKeranjang: boolean) {
+    start(async () => {
+      try {
+        await tambahKeranjang(p.id, qty);
+        if (laluKeKeranjang) router.push('/keranjang');
+        else { setToast('Ditambahkan ke keranjang ✓'); setTimeout(() => setToast(''), 1800); }
+      } catch (e) { setToast(e instanceof Error ? e.message : 'Gagal'); setTimeout(() => setToast(''), 2000); }
+    });
+  }
+
+  return (
+    <main style={{ maxWidth: 480, margin: '24px auto', padding: 16 }}>
+      <Link href="/store" style={{ color: 'var(--abu)', fontSize: 13 }}>← Kembali ke Store</Link>
+      <div style={{ aspectRatio: '4/3', borderRadius: 20, background: '#f3eefc', display: 'grid', placeItems: 'center', fontSize: 80, margin: '10px 0 12px', overflow: 'hidden' }}>
+        {p.gambar_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={p.gambar_url} alt={p.nama} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ) : <span>🧸</span>}
+      </div>
+      {p.kategori && <span className="kp-chip" style={{ fontSize: 12 }}>{p.kategori}</span>}
+      <h1 style={{ fontSize: 22, margin: '8px 0 2px' }}>{p.nama}</h1>
+      <div style={{ fontWeight: 800, color: 'var(--lavender-d)', fontSize: 24, margin: '4px 0 8px' }}>{formatRupiah(p.harga)}</div>
+      {p.deskripsi && <p style={{ fontSize: 14, lineHeight: 1.6, color: '#6f6685', whiteSpace: 'pre-wrap' }}>{p.deskripsi}</p>}
+      <div style={{ fontSize: 12, fontWeight: 700, color: habis ? '#b3261e' : 'var(--mint-d)', marginTop: 8 }}>
+        {habis ? 'Stok habis' : `✓ Stok tersedia (${p.stok})`}
+      </div>
+
+      {!habis && (
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, margin: '14px 0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', background: '#fff', borderRadius: 99, boxShadow: '0 3px 0 #e6def5', overflow: 'hidden' }}>
+              <button onClick={() => setQty((q) => Math.max(1, q - 1))} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 18, fontWeight: 800, color: 'var(--lavender-d)', width: 40, height: 40 }}>−</button>
+              <span style={{ minWidth: 30, textAlign: 'center', fontWeight: 800 }}>{qty}</span>
+              <button onClick={() => setQty((q) => Math.min(p.stok, q + 1))} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 18, fontWeight: 800, color: 'var(--lavender-d)', width: 40, height: 40 }}>+</button>
+            </div>
+            <span style={{ color: 'var(--abu)', fontSize: 13 }}>Subtotal: <b style={{ color: 'var(--lavender-d)' }}>{formatRupiah(p.harga * qty)}</b></span>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="kp-btn putih" onClick={() => tambah(false)} disabled={pending} style={{ flex: 1 }}>+ Keranjang</button>
+            <button className="kp-btn" onClick={() => tambah(true)} disabled={pending} style={{ flex: 1 }}>Beli sekarang</button>
+          </div>
+        </>
+      )}
+
+      {toast && <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: '#2b2440', color: '#fff', padding: '10px 18px', borderRadius: 99, fontSize: 14, zIndex: 80 }}>{toast}</div>}
+    </main>
+  );
+}
