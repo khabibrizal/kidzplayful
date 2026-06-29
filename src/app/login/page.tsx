@@ -38,6 +38,9 @@ export default function LoginPage() {
         <button className="kp-btn" type="submit" disabled={loading} style={{ width: '100%' }}>
           {loading ? 'Memproses…' : 'Masuk'}
         </button>
+        <p style={{ textAlign: 'right', marginTop: 10, fontSize: 13 }}>
+          <a href="/lupa-sandi" style={{ color: 'var(--biru-d)' }}>Lupa kata sandi?</a>
+        </p>
       </form>
       <p style={{ textAlign: 'center', marginTop: 14, fontSize: 13 }}>
         Belum punya akun? <a href="/daftar" style={{ color: 'var(--biru-d)' }}>Daftar</a>

@@ -104,7 +104,16 @@ export async function simpanPanduan(input: { temaId: string; judul: string; akti
 
 export async function ekstrakYoutubeId(s: string): Promise<string | null> {
   const t = s.trim();
+  if (!t) return null;
+  // ID mentah (11 karakter)
   if (/^[\w-]{11}$/.test(t)) return t;
-  const m = t.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/);
-  return m ? m[1] : null;
+  // Semua format URL umum: watch?v=, youtu.be/, embed/, shorts/, live/, /v/
+  const m = t.match(/(?:v=|vi=|youtu\.be\/|embed\/|shorts\/|live\/|\/v\/)([\w-]{11})/);
+  if (m) return m[1];
+  // Fallback aman: kalau ini memang URL YouTube, ambil token 11 karakter pertama yang valid
+  if (/youtu/i.test(t)) {
+    const any = t.match(/[\w-]{11}/);
+    if (any) return any[0];
+  }
+  return null;
 }
