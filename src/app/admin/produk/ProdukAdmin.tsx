@@ -8,6 +8,7 @@ import { formatRupiah } from '@/lib/format';
 import s from '../admin.module.css';
 
 const KOSONG: ProdukInput = { nama: '', deskripsi: '', kategori: '', harga: 0, stok: 0, gambarUrl: null, status: 'tampil' };
+const KATEGORI = ['Mainan', 'Bahan Sensorik', 'Worksheet', 'Buku', 'Alat Tulis'];
 
 export default function ProdukAdmin({ awal }: { awal: Produk[] }) {
   const [list, setList] = useState<Produk[]>(awal);
@@ -17,15 +18,17 @@ export default function ProdukAdmin({ awal }: { awal: Produk[] }) {
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [toast, setToast] = useState('');
+  const [katLain, setKatLain] = useState(false); // kategori "Lainnya" (kustom)
   const fileRef = useRef<HTMLInputElement>(null);
 
   function flash(m: string) { setToast(m); setTimeout(() => setToast(''), 2200); }
   const tampil = list.filter((p) => p.nama.toLowerCase().includes(q.toLowerCase()));
 
-  function bukaTambah() { setEditId(null); setForm({ ...KOSONG }); }
+  function bukaTambah() { setEditId(null); setForm({ ...KOSONG }); setKatLain(false); }
   function bukaEdit(p: Produk) {
     setEditId(p.id);
     setForm({ nama: p.nama, deskripsi: p.deskripsi ?? '', kategori: p.kategori ?? '', harga: p.harga, stok: p.stok, gambarUrl: p.gambar_url, status: p.status });
+    setKatLain(!!p.kategori && !KATEGORI.includes(p.kategori));
   }
 
   async function unggahGambar(e: React.ChangeEvent<HTMLInputElement>) {
@@ -81,7 +84,23 @@ export default function ProdukAdmin({ awal }: { awal: Produk[] }) {
         <div className={s.card} style={{ border: '2px solid var(--lavender)' }}>
           <b>{editId ? 'Edit' : 'Tambah'} Produk</b>
           <input className={s.inp} placeholder="Nama produk" value={form.nama} onChange={(e) => setForm({ ...form, nama: e.target.value })} style={{ width: '100%', marginTop: 8 }} />
-          <input className={s.inp} placeholder="Kategori (mis. Mainan / Bahan Sensorik / Worksheet)" value={form.kategori} onChange={(e) => setForm({ ...form, kategori: e.target.value })} style={{ width: '100%' }} />
+          <select
+            className={s.inp}
+            value={katLain ? 'Lainnya' : form.kategori}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === 'Lainnya') { setKatLain(true); setForm({ ...form, kategori: '' }); }
+              else { setKatLain(false); setForm({ ...form, kategori: v }); }
+            }}
+            style={{ width: '100%' }}
+          >
+            <option value="">— Pilih kategori —</option>
+            {KATEGORI.map((k) => <option key={k} value={k}>{k}</option>)}
+            <option value="Lainnya">Lainnya…</option>
+          </select>
+          {katLain && (
+            <input className={s.inp} placeholder="Tulis kategori baru" value={form.kategori} onChange={(e) => setForm({ ...form, kategori: e.target.value })} style={{ width: '100%' }} />
+          )}
           <div className={s.row} style={{ gap: 6 }}>
             <input className={s.inp} type="number" min={0} placeholder="Harga (Rp)" value={form.harga || ''} onChange={(e) => setForm({ ...form, harga: Number(e.target.value) })} style={{ flex: 1, marginBottom: 0 }} />
             <input className={s.inp} type="number" min={0} placeholder="Stok" value={form.stok || ''} onChange={(e) => setForm({ ...form, stok: Number(e.target.value) })} style={{ width: 90, marginBottom: 0 }} />
