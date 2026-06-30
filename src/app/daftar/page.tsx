@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import Pewi from '@/components/ui/Pewi';
+import Logo from '@/components/Logo';
 
 export default function DaftarPage() {
   const router = useRouter();
@@ -34,10 +34,9 @@ export default function DaftarPage() {
 
   return (
     <main style={{ maxWidth: 380, margin: '40px auto', padding: 16 }}>
-      <div style={{ textAlign: 'center' }}>
-        <Pewi size={80} />
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}>
+        <Logo height={48} />
       </div>
-      <h1 style={{ color: 'var(--lavender-d)', fontSize: 26, marginBottom: 4, textAlign: 'center' }}>KidzPlayful</h1>
       <p style={{ color: 'var(--abu)', marginBottom: 18, textAlign: 'center' }}>Daftar — gratis 14 hari, tanpa kartu.</p>
       <form className="kp-card" onSubmit={submit}>
         <input className="kp-input" type="text" placeholder="Nama orang tua"

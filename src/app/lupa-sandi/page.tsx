@@ -2,7 +2,7 @@
 'use client';
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import Pewi from '@/components/ui/Pewi';
+import Logo from '@/components/Logo';
 
 export default function LupaSandiPage() {
   const [email, setEmail] = useState('');
@@ -24,7 +24,7 @@ export default function LupaSandiPage() {
 
   return (
     <main style={{ maxWidth: 380, margin: '40px auto', padding: 16 }}>
-      <div style={{ textAlign: 'center' }}><Pewi size={80} /></div>
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}><Logo height={48} /></div>
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 24, marginBottom: 6, textAlign: 'center' }}>Lupa Kata Sandi</h1>
       {terkirim ? (
         <div className="kp-card" style={{ textAlign: 'center' }}>
