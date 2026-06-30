@@ -12,6 +12,7 @@ import BeliBtn from '@/components/BeliBtn';
 import { catatRiwayatKelas } from '@/lib/data/riwayat-actions';
 import { waktuHabis, kunciHari, sisaDetik } from '@/lib/domain/waktu';
 import Pewi from '@/components/ui/Pewi';
+import Logo from '@/components/Logo';
 import s from './main.module.css';
 
 type Layar = 'menu' | 'kelas' | 'kelas-detail' | 'daftar' | 'pustaka' | 'video' | 'main' | 'istirahat';
@@ -233,8 +234,8 @@ export default function MenuAnak({
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 8 }}>
-        <Pewi size={84} />
-        <h2 style={{ color: 'var(--lavender-d)', margin: '6px 0 2px' }}>Hai, {anak.nama}! 👋</h2>
+        <Logo height={40} />
+        <h2 style={{ color: 'var(--lavender-d)', margin: '10px 0 2px' }}>Hai, {anak.nama}! 👋</h2>
       </div>
       <div className={s.menu}>
         <button className="kp-tile mint" onClick={() => setLayar('kelas')}>

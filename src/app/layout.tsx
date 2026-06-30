@@ -8,6 +8,7 @@ const quicksand = Quicksand({ subsets: ["latin"], weight: ["500", "600", "700"],
 export const metadata: Metadata = {
   title: "KidzPlayful — Main sambil belajar",
   description: "Kelas bermain digital untuk anak 0-4 tahun: game melatih sensorik & motorik, screen time terkontrol.",
+  icons: { icon: "/logo.png", apple: "/logo.png" },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
