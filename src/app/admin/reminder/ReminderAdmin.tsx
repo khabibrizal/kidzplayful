@@ -15,6 +15,7 @@ function pesanReminder(nama: string | null, ev: NonNullable<ReminderRow['event']
 
 export default function ReminderAdmin({ rows, todayStr, besokStr }: { rows: ReminderRow[]; todayStr: string; besokStr: string }) {
   const [list, setList] = useState<ReminderRow[]>(rows);
+  const [q, setQ] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [toast, setToast] = useState('');
   function flash(m: string) { setToast(m); setTimeout(() => setToast(''), 2000); }
@@ -27,15 +28,18 @@ export default function ReminderAdmin({ rows, todayStr, besokStr }: { rows: Remi
     finally { setBusy(null); }
   }
 
-  if (list.length === 0) return <p className={s.muted}>Tidak ada peserta pada event mendatang.</p>;
+  if (list.length === 0) return <p className={s.muted}>Tidak ada peserta pada event apa pun.</p>;
 
-  // kelompokkan per event
+  // kelompokkan per event, lalu saring berdasarkan nama event
   const grup = new Map<string, ReminderRow[]>();
   for (const r of list) { const k = r.event!.id; if (!grup.has(k)) grup.set(k, []); grup.get(k)!.push(r); }
+  const grupTampil = [...grup.values()].filter((pe) => pe[0].event!.judul.toLowerCase().includes(q.trim().toLowerCase()));
 
   return (
     <div>
-      {[...grup.values()].map((peserta) => {
+      <input className={s.inp} placeholder="Cari nama kelas bermain / event..." value={q} onChange={(e) => setQ(e.target.value)} style={{ width: '100%', marginBottom: 12 }} />
+      {grupTampil.length === 0 && <p className={s.muted}>Tidak ada event yang cocok dengan &quot;{q}&quot;.</p>}
+      {grupTampil.map((peserta) => {
         const ev = peserta[0].event!;
         const label = ev.tanggal === besokStr ? 'BESOK (H-1)' : ev.tanggal === todayStr ? 'HARI INI' : (ev.tanggal ? formatTanggal(ev.tanggal) : 'tanpa tanggal');
         const besok = ev.tanggal === besokStr;
