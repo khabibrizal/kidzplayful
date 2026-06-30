@@ -19,12 +19,12 @@ ul,ol { margin:8px 0 8px 6px; padding-left:20px; }
 li { margin:3px 0; }
 </style></head>
 <body><h1 id="dokumentasi-teknis-kidzplayful">Dokumentasi Teknis — KidzPlayful</h1>
-<p>Dokumen ini menjelaskan <strong>seluruh alur</strong> aplikasi KidzPlayful dari nol sampai deploy: arsitektur, tiap berkas &amp; perannya, parameter penting, skema database, serta cara deploy ke <strong>Vercel</strong> (frontend) dan <strong>Supabase</strong> (backend). Tujuannya agar Anda paham FE &amp; BE secara menyeluruh.</p>
+<p>Dokumen ini menjelaskan <strong>seluruh alur</strong> aplikasi KidzPlayful dari nol sampai deploy: arsitektur, tiap berkas &amp; perannya, parameter penting, skema database, serta cara deploy ke <strong>Vercel</strong> (frontend) dan <strong>Supabase</strong> (backend).</p>
 <ul>
-<li><strong>Aplikasi:</strong> web app kelas bermain digital anak 0–4 tahun (game sensorik/motorik, kelas bermain, video, komunitas, <strong>event offline berbayar</strong>, dan <strong>toko/Store</strong> mainan &amp; bahan activity).</li>
+<li><strong>Aplikasi:</strong> web app kelas bermain digital anak 0–4 tahun — game sensorik/motorik, kelas bermain, video, komunitas, <strong>event offline berbayar + pendaftaran</strong>, <strong>toko/Store</strong>, <strong>Catatan Perkembangan Bermain (penilaian guru)</strong>, dan <strong>reminder WhatsApp</strong>.</li>
 <li><strong>Repo:</strong> <code>github.com/khabibrizal/kidzplayful</code> · <strong>Live:</strong> <code>https://kidzplayful-fe2a.vercel.app</code></li>
-<li><strong>Stack:</strong> Next.js 16 (App Router, TypeScript) + Supabase (Postgres + Auth + Storage). Tanpa server backend terpisah — "backend" = Supabase + Server Actions/Server Components Next.js.</li>
-<li><strong>Status fitur:</strong> Auth + Trial + <strong>Lupa Password</strong>, Mode Anak (game, video, kelas bermain), Mode Ortu 0-2, Pilih Game, Area Ortu (kelola anak + laporan), Pengaturan (PIN, ganti sandi, logout, nama), Komunitas, <strong>Favorit</strong>, <strong>Event</strong> offline + pendaftaran, <strong>Store</strong> (produk, keranjang, pesanan), <strong>Bottom navigation</strong> + <strong>Riwayat Kelas Bermain</strong>, dan Admin (tema/paket, video, kelas bermain, langganan, laporan, komunitas, event, produk, pesanan).</li>
+<li><strong>Stack:</strong> Next.js 16 (App Router, TypeScript) + Supabase (Postgres + Auth + Storage). "Backend" = Supabase + Server Actions/Server Components Next.js (tanpa server terpisah).</li>
+<li><strong>Peran pengguna:</strong> Orang tua (default), <strong>Admin</strong> (<code>is_admin</code>), <strong>Guru</strong> (<code>is_guru</code>).</li>
 </ul>
 <hr />
 <h2 id="1-arsitektur-singkat-fe-be">1. Arsitektur Singkat (FE &amp; BE)</h2>
@@ -36,77 +36,26 @@ Next.js (di Vercel)                         ← &quot;Frontend + lapisan server&
    ├─ Client Components  : interaktif di browser ('use client')
    ├─ Server Actions     : fungsi tulis di server ('use server')
    └─ proxy.ts (middleware): segarkan sesi login tiap request
-   │  panggil via @supabase/ssr (pakai cookie sesi)
+   │  via @supabase/ssr (cookie sesi)
    ▼
 Supabase (cloud)                            ← &quot;Backend&quot;
    ├─ Auth      : akun &amp; sesi (email+password) + reset password
-   ├─ Postgres  : tabel data + RLS (keamanan baris) + trigger/function
-   └─ Storage   : file (gambar game, worksheet, gambar event, foto produk, bukti bayar) di bucket 'aset'
+   ├─ Postgres  : tabel + RLS + trigger/function (is_admin/is_guru)
+   └─ Storage   : bucket 'aset' (gambar game/worksheet/event/produk/logo, bukti bayar)
 </code></pre>
-<p><strong>Konsep kunci:</strong> tidak ada server terpisah. Logika server berjalan <strong>di dalam Next.js</strong> (Server Components baca, Server Actions tulis), dan <strong>keamanan data utama ada di Supabase RLS</strong> (Row Level Security) — aturan database yang menentukan baris mana boleh dibaca/ditulis siapa.</p>
+<p><strong>Keamanan utama = RLS</strong> (Row Level Security) di Supabase: aturan database menentukan baris mana boleh dibaca/ditulis siapa.</p>
 <hr />
-<h2 id="2-tech-stack-alasan">2. Tech Stack &amp; Alasan</h2>
-<table>
-<thead>
-<tr>
-<th>Teknologi</th>
-<th>Untuk apa</th>
-<th>Kenapa</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Next.js 16 (App Router)</strong></td>
-<td>Framework FE + server</td>
-<td>Satu kerangka UI + server logic; deploy mudah ke Vercel</td>
-</tr>
-<tr>
-<td><strong>TypeScript</strong></td>
-<td>Bahasa</td>
-<td>Tipe data → lebih sedikit bug</td>
-</tr>
-<tr>
-<td><strong>Supabase</strong></td>
-<td>Auth + Database + Storage</td>
-<td>Backend siap pakai (Postgres + RLS)</td>
-</tr>
-<tr>
-<td><strong>@supabase/ssr</strong></td>
-<td>Hubungkan Next.js ↔ Supabase</td>
-<td>Mengelola sesi login lewat cookie</td>
-</tr>
-<tr>
-<td><strong>Vitest</strong></td>
-<td>Unit test (logika murni)</td>
-<td>Cepat, untuk <code>lib/domain</code></td>
-</tr>
-<tr>
-<td><strong>Playwright / puppeteer-core</strong></td>
-<td>E2E &amp; skrip verifikasi prod</td>
-<td>Uji alur nyata di browser</td>
-</tr>
-<tr>
-<td><strong>Vercel</strong></td>
-<td>Hosting frontend</td>
-<td>Auto-deploy tiap <code>git push</code></td>
-</tr>
-<tr>
-<td><strong>CSS (global + module)</strong></td>
-<td>Styling</td>
-<td>Ringan; tema pastel + maskot Pewi</td>
-</tr>
-</tbody>
-</table>
+<h2 id="2-tech-stack">2. Tech Stack</h2>
+<p>Next.js 16 (App Router) · TypeScript · Supabase (@supabase/ssr) · Vitest (unit) · Playwright/puppeteer-core (e2e &amp; verifikasi prod) · Vercel (hosting, auto-deploy) · CSS global + module (tema pastel + maskot Pewi + <strong>logo <code>public/logo.png</code></strong>).</p>
 <hr />
 <h2 id="3-menjalankan-di-lokal">3. Menjalankan di Lokal</h2>
-<p>Prasyarat: <strong>Node.js 20+</strong>, akun <strong>Supabase</strong>, file <code>.env.local</code>.</p>
 <pre><code class="language-bash">cd d:\kidzplayful
 npm install
 npm run dev      # http://localhost:3000
-npm test         # unit test (Vitest)
+npm test         # unit (Vitest)
 npm run e2e      # end-to-end (Playwright)
-npm run build    # build produksi (cek error)
-npm run lint     # ESLint
+npm run build    # build produksi (cek error + ESLint)
+npm run lint
 </code></pre>
 <hr />
 <h2 id="4-variabel-lingkungan-envlocal">4. Variabel Lingkungan (<code>.env.local</code>)</h2>
@@ -115,59 +64,54 @@ npm run lint     # ESLint
 <tr>
 <th>Variabel</th>
 <th>Untuk apa</th>
-<th>Contoh</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>NEXT_PUBLIC_SUPABASE_URL</code></td>
 <td>Alamat proyek Supabase</td>
-<td><code>https://xxxx.supabase.co</code></td>
 </tr>
 <tr>
 <td><code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code></td>
 <td>Kunci <strong>publishable</strong> (aman di browser)</td>
-<td><code>sb_publishable_...</code></td>
 </tr>
 </tbody>
 </table>
-<blockquote>
-<p>Awalan <code>NEXT_PUBLIC_</code> membuat variabel <strong>disuntik ke bundel browser saat build</strong> → harus ada <strong>sebelum build</strong>. Kunci publishable aman karena keamanan dijaga oleh <strong>RLS</strong>. <strong>JANGAN</strong> pakai <em>secret key</em>.</p>
-</blockquote>
+<p><code>NEXT_PUBLIC_</code> → disuntik ke bundel browser saat build (harus ada sebelum build). Keamanan dijaga RLS, bukan kerahasiaan kunci ini. <strong>Jangan</strong> pakai secret key.</p>
 <hr />
-<h2 id="5-konsep-nextjs-yang-dipakai">5. Konsep Next.js yang Dipakai</h2>
+<h2 id="5-konsep-nextjs">5. Konsep Next.js</h2>
 <ul>
-<li><strong>Server Component</strong> (default): jalan di server, baca data, aman.</li>
-<li><strong>Client Component</strong> (<code>'use client'</code>): interaktif (useState/onClick) — form, tombol, game, carousel, bottom nav.</li>
-<li><strong>Server Action</strong> (<code>'use server'</code>): fungsi tulis di server, dipanggil dari client.</li>
-<li><strong><code>params</code>/<code>searchParams</code></strong>: Promise di Next 16 → harus <code>await</code>.</li>
-<li><strong><code>redirect()</code></strong>: pindah halaman dari server (guard).</li>
-<li><strong><code>revalidatePath('/...')</code></strong>: minta Next ambil ulang data halaman setelah menulis.</li>
-<li><strong><code>useRouter().push()/refresh()</code></strong>: navigasi/refresh dari client.</li>
-<li><strong><code>proxy.ts</code></strong> (dulu <code>middleware.ts</code>): segarkan cookie sesi tiap request.</li>
+<li><strong>Server Component</strong> (default): baca data di server. <strong>Client Component</strong> (<code>'use client'</code>): interaktif. <strong>Server Action</strong> (<code>'use server'</code>): tulis data.</li>
+<li><code>params</code>/<code>searchParams</code> = Promise (await). <code>redirect()</code>, <code>revalidatePath()</code>, <code>useRouter().push()/refresh()</code>. <code>proxy.ts</code> = penyegar sesi.</li>
+<li>Rute = folder <code>src/app/</code>; <code>[x]</code> = parameter dinamis.</li>
 </ul>
-<p>Rute = struktur folder <code>src/app/</code>. <code>[x]</code> = parameter dinamis.</p>
 <hr />
-<h2 id="6-supabase-backend-konsep">6. Supabase (Backend) — Konsep</h2>
+<h2 id="6-supabase-konsep">6. Supabase — Konsep</h2>
 <ul>
-<li><strong>Auth:</strong> user (email+password) &amp; sesi. Daftar → trigger buat <code>profiles</code> + <code>langganan</code> trial. <strong>Reset password</strong> via <code>resetPasswordForEmail</code> → email tautan → halaman set sandi baru (<code>updateUser</code>).</li>
-<li><strong>Postgres + RLS:</strong> tiap tabel punya policy. RLS = lapisan keamanan utama.</li>
-<li><strong><code>public.is_admin()</code>:</strong> <code>true</code> bila user admin. Dipakai di policy admin.</li>
-<li><strong>Storage</strong> (bucket <code>aset</code>, publik baca): tulis <strong>admin</strong> untuk aset game/worksheet/gambar event/foto produk (folder <code>produk/</code>, <code>event/</code>, <code>worksheet/</code>); tulis <strong>user</strong> hanya folder <code>bukti/</code> (bukti bayar event &amp; pesanan).</li>
-<li><strong>Dua client:</strong> <code>lib/supabase/client.ts</code> (browser), <code>lib/supabase/server.ts</code> (server, baca cookie).</li>
+<li><strong>Auth:</strong> email+password; daftar → trigger buat <code>profiles</code> + <code>langganan</code> trial. Reset password: <code>resetPasswordForEmail</code> → email → <code>/reset-sandi</code> (<code>updateUser</code>).</li>
+<li><strong>Fungsi RLS:</strong> <code>is_admin()</code> &amp; <strong><code>is_guru()</code></strong> (cek kolom di <code>profiles</code>).</li>
+<li><strong>Storage</strong> (<code>aset</code>, publik baca): tulis admin (folder <code>produk/</code>, <code>event/</code>, <code>worksheet/</code>) &amp; user (folder <code>bukti/</code>). Logo brand = <code>public/logo.png</code> (bukan Storage).</li>
+<li><strong>Client:</strong> <code>lib/supabase/client.ts</code> (browser), <code>server.ts</code> (server, cookie).</li>
 </ul>
 <hr />
 <h2 id="7-skema-database-per-tabel">7. Skema Database (per tabel)</h2>
-<p>Migrasi <code>supabase/migrations/0001..0019</code> (dijalankan berurutan di Supabase SQL Editor).</p>
-<h3 id="profiles-0001-is_admin-0004-nama_tampilan-0010-no_wa-0015"><code>profiles</code> (0001; +is_admin 0004; +nama_tampilan 0010; +no_wa 0015)</h3>
-<p><code>id(PK=auth.users.id), email, pin_ortu, is_admin, nama_tampilan, no_wa, created_at</code>. RLS: profil sendiri; admin baca semua. <strong>Trigger <code>cegah_self_admin</code> (0012):</strong> user tak bisa jadikan diri admin.</p>
-<h3 id="anak-0001"><code>anak</code> (0001)</h3>
-<p><code>id, ortu_id, nama, tanggal_lahir, mode_default('ortu'|'anak'), batas_menit, koin</code>. RLS milik ortu.</p>
-<h3 id="langganan-0001-nominal-0004"><code>langganan</code> (0001; +nominal 0004)</h3>
-<p><code>id, ortu_id, status, nominal, trial_mulai, aktif_sampai, ...</code>. <strong>Trigger <code>handle_new_user</code></strong> buat profiles+langganan trial 14 hari saat daftar.</p>
-<h3 id="tema-0002-paket_aset-0002-usia-0005-hasil_main-0002-video-0003-kategori-0005"><code>tema</code> (0002) · <code>paket_aset</code> (0002; +usia 0005) · <code>hasil_main</code> (0002) · <code>video</code> (0003; +kategori 0005)</h3>
-<p>Konten game/tema/skor/video. <code>paket_aset.butir</code> (jsonb) = isi game. <code>video</code>: youtube_id, kategori baby/toddler.</p>
-<h3 id="kelas_bermain-0014-restruktur-0016-link-produk-store"><code>kelas_bermain</code> (0014; <strong>restruktur 0016</strong>; +link produk Store)</h3>
+<p>Migrasi <code>supabase/migrations/0001..0021</code> (jalankan berurutan di SQL Editor).</p>
+<h3 id="profiles-0001-is_admin-0004-nama_tampilan-0010-no_wa-0015-is_guru-0020"><code>profiles</code> (0001; +is_admin 0004; +nama_tampilan 0010; +no_wa 0015; +is_guru 0020)</h3>
+<p><code>id(PK), email, pin_ortu, is_admin, is_guru, nama_tampilan, no_wa, created_at</code>. RLS: profil sendiri; admin baca semua + <strong>admin update profil</strong> (untuk set/cabut guru). <strong>Trigger <code>cegah_self_admin</code> (0012, diperluas 0020):</strong> non-admin tak bisa mengubah <code>is_admin</code>/<code>is_guru</code> (hanya admin / SQL).</p>
+<h3 id="anak-0001-langganan-0001-temapaket_asethasil_mainvideo"><code>anak</code> (0001) · <code>langganan</code> (0001) · <code>tema</code>/<code>paket_aset</code>/<code>hasil_main</code>/<code>video</code></h3>
+<p>Profil anak, langganan trial, konten game/tema/skor/video (lihat versi sebelumnya — tetap).</p>
+<h3 id="kelas_bermain-0014-jsonb-0016-produk_id"><code>kelas_bermain</code> (0014; jsonb 0016; +produk_id)</h3>
+<p><code>judul</code>, <code>bahan</code> jsonb <code>[{nama, link, produk_id}]</code> (link toko luar / produk Store internal), <code>aktivitas</code> jsonb <code>[{judul, cara_membuat, langkah[]}]</code>, <code>link_ide</code>, <code>worksheet_url</code>, <code>status</code>.</p>
+<h3 id="favorit-0015-riwayat_kelas-0018"><code>favorit</code> (0015) · <code>riwayat_kelas</code> (0018)</h3>
+<p>Favorit kelas &amp; riwayat materi yang dibuka (PK gabungan ortu+kelas; RLS milik sendiri).</p>
+<h3 id="event-0017-pendaftaran_event-0017-reminder_terkirim-0021"><code>event</code> (0017) · <code>pendaftaran_event</code> (0017; +reminder_terkirim 0021)</h3>
+<ul>
+<li><code>event</code>: judul, lokasi, tanggal, jam_mulai/selesai, deskripsi, gambar_url, harga_per_anak, status(tampil/arsip).</li>
+<li><code>pendaftaran_event</code>: event_id, ortu_id, anak_ids[], anak_nama[], jumlah_anak, total, bukti_url, status(menunggu/diterima/ditolak), <strong>reminder_terkirim</strong>. RLS: milik sendiri + admin update; <strong>guru boleh baca</strong> (0020).</li>
+</ul>
+<h3 id="produk-keranjang_item-pesanan-item_pesanan-0019-store"><code>produk</code> / <code>keranjang_item</code> / <code>pesanan</code> / <code>item_pesanan</code> (0019) — Store</h3>
+<p>Produk (nama, deskripsi, kategori, harga, stok, gambar, status) · keranjang DB · pesanan (status: menunggu_ongkir→…→selesai) · item snapshot. (lihat versi sebelumnya — tetap.)</p>
+<h3 id="catatan_perkembangan-0020-catatan-perkembangan-bermain"><code>catatan_perkembangan</code> (0020) — Catatan Perkembangan Bermain</h3>
 <table>
 <thead>
 <tr>
@@ -177,48 +121,40 @@ npm run lint     # ESLint
 </thead>
 <tbody>
 <tr>
-<td><code>id</code>, <code>judul</code></td>
-<td>identitas + judul</td>
+<td><code>event_id</code>, <code>anak_id</code>, <code>ortu_id</code></td>
+<td>relasi (ortu_id untuk RLS ortu)</td>
 </tr>
 <tr>
-<td><code>bahan</code> (<strong>jsonb</strong>)</td>
-<td>array <code>[{nama, link, produk_id}]</code> — <code>link</code> = toko <strong>luar</strong> opsional, <code>produk_id</code> = produk <strong>Store internal</strong> opsional (diutamakan) → tombol 🛒 Beli</td>
+<td><code>aspek</code> (jsonb)</td>
+<td><code>{fisik_motorik:'BSH', sosial_emosional:'MB', kognitif:'BSH', bahasa:'BSB'}</code> (skala PAUD)</td>
 </tr>
 <tr>
-<td><code>aktivitas</code> (<strong>jsonb</strong>)</td>
-<td>array <code>[{judul, cara_membuat, langkah[]}]</code> — banyak aktivitas, tiap aktivitas punya langkah sendiri</td>
+<td><code>catatan</code></td>
+<td>catatan teks dari guru</td>
 </tr>
 <tr>
-<td><code>link_ide</code>, <code>worksheet_url</code>, <code>status('aktif'|'nonaktif')</code></td>
-<td>referensi + PDF + status</td>
+<td><code>dinilai_oleh</code></td>
+<td>nama guru (snapshot)</td>
+</tr>
+<tr>
+<td>unik</td>
+<td><code>(event_id, anak_id)</code></td>
+</tr>
+<tr>
+<td>RLS: <strong>ortu baca catatan anaknya</strong>, admin &amp; <strong>guru</strong> baca; <strong>guru</strong> insert/update.</td>
+<td></td>
 </tr>
 </tbody>
 </table>
-<h3 id="favorit-0015"><code>favorit</code> (0015)</h3>
-<p><code>ortu_id, kelas_id, created_at</code> — <strong>PK gabungan (ortu_id, kelas_id)</strong>. RLS milik sendiri. Favorit kelas bermain per akun.</p>
-<h3 id="riwayat_kelas-0018"><code>riwayat_kelas</code> (0018)</h3>
-<p><code>ortu_id, kelas_id, terakhir</code> — <strong>PK gabungan</strong>. RLS milik sendiri. Dicatat tiap user membuka detail kelas → menu <strong>🎈 Kelas Bermain</strong> (riwayat).</p>
-<h3 id="event-0017-pendaftaran_event-0017"><code>event</code> (0017) · <code>pendaftaran_event</code> (0017)</h3>
-<ul>
-<li><code>event</code>: judul, lokasi, tanggal, jam_mulai/selesai, deskripsi, gambar_url, <strong>harga_per_anak</strong>, status(tampil/arsip). RLS baca tampil/admin; kelola admin.</li>
-<li><code>pendaftaran_event</code>: event_id, ortu_id, <strong>anak_ids[]</strong>, <strong>anak_nama[]</strong> (snapshot), jumlah_anak, total, bukti_url, status(menunggu/diterima/ditolak). RLS milik sendiri + admin update.</li>
-</ul>
-<h3 id="produk-0019-store"><code>produk</code> (0019) — Store</h3>
-<p><code>id, nama, deskripsi, kategori, harga, stok, gambar_url, status('tampil'|'arsip')</code>. RLS baca tampil/admin; kelola admin.</p>
-<h3 id="keranjang_item-0019"><code>keranjang_item</code> (0019)</h3>
-<p><code>ortu_id, produk_id, qty</code> — <strong>unique (ortu_id, produk_id)</strong>. RLS milik sendiri. Keranjang tersimpan di DB.</p>
-<h3 id="pesanan-0019"><code>pesanan</code> (0019)</h3>
-<p><code>id, ortu_id, status, subtotal, ongkir, total, penerima, no_hp, alamat, bukti_url, no_resi, catatan, created_at</code>. <strong>Status:</strong> menunggu_ongkir → menunggu_bayar → dibayar → diproses → dikirim → selesai (atau batal). RLS: baca/insert/update milik sendiri + admin update.</p>
-<h3 id="item_pesanan-0019"><code>item_pesanan</code> (0019)</h3>
-<p><code>pesanan_id, produk_id, nama, harga, qty</code> (nama/harga di-<em>snapshot</em>). RLS via relasi pesanan.</p>
-<p><strong>Urutan migrasi:</strong> 0001 init → 0002 konten → 0003 video → 0004 admin → 0005 video kategori → 0006 admin bisnis → 0007 storage → 0008–0009 panduan → 0010–0011 komunitas → 0012 cegah self-admin → 0013–0014 kelas_bermain → <strong>0015 favorit (+no_wa)</strong> → <strong>0016 kelas bahan/aktivitas jsonb</strong> → <strong>0017 event</strong> → <strong>0018 riwayat_kelas</strong> → <strong>0019 store</strong>.</p>
+<p><strong>Urutan migrasi:</strong> 0001 init → … → 0015 favorit(+no_wa) → 0016 kelas jsonb → 0017 event → 0018 riwayat → 0019 store → <strong>0020 catatan perkembangan (+is_guru)</strong> → <strong>0021 reminder (+reminder_terkirim)</strong>.</p>
 <hr />
-<h2 id="8-struktur-folder-peran-tiap-berkas">8. Struktur Folder &amp; Peran Tiap Berkas</h2>
-<h3 id="srclibsupabase-clientts-browser-serverts-server"><code>src/lib/supabase/</code> — <code>client.ts</code> (browser), <code>server.ts</code> (server).</h3>
-<h3 id="srclibdomain-logika-murni-trial-anak-usia-skor-waktu-laporan-laporan-anak-__tests__-30-test"><code>src/lib/domain/</code> — logika murni (trial, anak, usia, skor, waktu, laporan, laporan-anak) + <code>__tests__/</code> (30 test).</h3>
-<h3 id="srclibgametipets-semua-interface-paket-video-kelasbermain-bahanitem-produk_id-aktivitasitem-eventkelas-pendaftaranevent-produk-keranjangitem-pesanan-itempesanan-statuspesanan"><code>src/lib/game/tipe.ts</code> — semua interface: Paket, Video, KelasBermain, <strong>BahanItem</strong> (+produk_id), AktivitasItem, EventKelas, PendaftaranEvent, <strong>Produk, KeranjangItem, Pesanan, ItemPesanan, StatusPesanan</strong>.</h3>
-<h3 id="srclibformatts-formattanggal-formatrupiah-status_pesanan-labelwarna-status"><code>src/lib/format.ts</code> — <code>formatTanggal</code>, <code>formatRupiah</code>, <code>STATUS_PESANAN</code> (label+warna status).</h3>
-<h3 id="srclibdata-lapisan-data-baca-fungsi-tulis-server-action"><code>src/lib/data/</code> — lapisan data (baca = fungsi; tulis = Server Action)</h3>
+<h2 id="8-struktur-folder-berkas-utama">8. Struktur Folder &amp; Berkas (utama)</h2>
+<h3 id="srclib"><code>src/lib/</code></h3>
+<ul>
+<li><code>supabase/{client,server}.ts</code>; <code>domain/*</code> (logika murni + 30 test); <code>game/tipe.ts</code> (semua interface incl. <code>Produk</code>, <code>Pesanan</code>, <code>EventKelas</code>, <code>CatatanPerkembangan</code>, <code>SkalaPaud</code>).</li>
+<li><strong><code>format.ts</code></strong> — <code>formatTanggal</code>, <code>formatRupiah</code>, <code>STATUS_PESANAN</code>, <strong><code>ASPEK_PAUD</code>/<code>SKALA_PAUD</code>/<code>metaSkala</code></strong>, <strong><code>nomorWaIntl</code>/<code>linkWa</code></strong> (WA).</li>
+</ul>
+<h3 id="srclibdata"><code>src/lib/data/</code></h3>
 <table>
 <thead>
 <tr>
@@ -228,64 +164,38 @@ npm run lint     # ESLint
 </thead>
 <tbody>
 <tr>
-<td><code>anak.ts</code>, <code>pustaka.ts</code>, <code>tema.ts</code>, <code>video.ts</code>, <code>skor.ts</code></td>
-<td>konten anak/game/video + catat skor</td>
+<td><code>kelas-bermain*.ts</code>, <code>favorit*.ts</code>, <code>riwayat-kelas.ts</code>/<code>riwayat-actions.ts</code></td>
+<td>kelas, favorit, riwayat</td>
 </tr>
 <tr>
-<td><code>kelas-bermain.ts</code> / <code>kelas-bermain-actions.ts</code></td>
-<td>baca + CRUD kelas (Bahan: nama/link/<strong>produk_id</strong>)</td>
+<td><code>event.ts</code> (+<code>getEventDiikuti</code>,<code>getStatusPendaftaranSaya</code>)/<code>event-actions.ts</code>, <code>admin-event*.ts</code></td>
+<td>event + pendaftaran + admin</td>
 </tr>
 <tr>
-<td><code>favorit.ts</code> / <code>favorit-actions.ts</code></td>
-<td>favorit + toggleFavorit</td>
+<td><code>store.ts</code>,<code>keranjang*.ts</code>,<code>pesanan*.ts</code>,<code>admin-store*.ts</code></td>
+<td>Store (produk/keranjang/pesanan)</td>
 </tr>
 <tr>
-<td><code>riwayat-kelas.ts</code> / <code>riwayat-actions.ts</code></td>
-<td><code>getRiwayatKelas</code>, <code>rekamRiwayat</code> + <code>catatRiwayatKelas</code> (client)</td>
+<td><strong><code>guru.ts</code></strong> (getGuruTerjamin, getEventUntukGuru, getPesertaEvent) / <strong><code>guru-actions.ts</code></strong> (simpanCatatan)</td>
+<td>area guru</td>
 </tr>
 <tr>
-<td><code>event.ts</code> / <code>event-actions.ts</code></td>
-<td>event + daftarEvent + getStatusPendaftaranSaya</td>
+<td><strong><code>catatan.ts</code></strong> (getCatatanAnak, getCatatanEventSaya, getEventBerCatatan)</td>
+<td>catatan sisi ortu</td>
 </tr>
 <tr>
-<td><code>admin-event.ts</code> / <code>admin-event-actions.ts</code></td>
-<td>admin event + Terima/Tolak</td>
+<td><strong><code>admin-guru.ts</code>/<code>admin-guru-actions.ts</code></strong> (jadikan/cabut guru)</td>
+<td>kelola guru</td>
 </tr>
 <tr>
-<td><strong><code>store.ts</code></strong></td>
-<td>getProdukTampil, getProduk</td>
-</tr>
-<tr>
-<td><strong><code>keranjang.ts</code></strong></td>
-<td>getKeranjang, <strong>getJumlahKeranjang</strong> (badge)</td>
-</tr>
-<tr>
-<td><strong><code>keranjang-actions.ts</code></strong></td>
-<td>tambah/setQty/hapus, <strong>checkout</strong>, jumlahKeranjang</td>
-</tr>
-<tr>
-<td><strong><code>pesanan.ts</code></strong> / <strong><code>pesanan-actions.ts</code></strong></td>
-<td>pesanan user + uploadBuktiPesanan</td>
-</tr>
-<tr>
-<td><strong><code>admin-store.ts</code></strong> / <strong><code>admin-store-actions.ts</code></strong></td>
-<td>admin produk+pesanan + CRUD/setOngkir/verifikasi/setResi</td>
-</tr>
-<tr>
-<td><code>admin*.ts</code>, <code>ortu-actions.ts</code>, <code>komunitas*.ts</code></td>
-<td>konten/bisnis/moderasi, kelola anak, forum</td>
+<td><strong><code>admin-reminder.ts</code>/<code>admin-reminder-actions.ts</code></strong> (getReminderPendaftaran, tandaiReminder)</td>
+<td>reminder WA</td>
 </tr>
 </tbody>
 </table>
-<blockquote>
-<p><strong>Pola guard:</strong> query "milik sendiri" difilter <code>.eq(..user.id)</code>; action admin pakai <code>adminDb()</code> (cek <code>is_admin</code>). Total/harga dihitung ulang di server (anti manipulasi).</p>
-</blockquote>
 <h3 id="srccomponents"><code>src/components/</code></h3>
-<ul>
-<li><code>ui/Pewi</code>, <code>ui/Confetti</code>, <code>game/*</code> (GameRunner, ManaYa, BeresBeres, CariPasangan, Aset, Reward, PinGate, VideoPojok), <code>admin/AsetInput</code>.</li>
-<li><code>FavoritBtn</code> (❤️ toggle), <strong><code>BeliBtn</code></strong> (Beli bahan: internal produk Store ATAU link luar, dengan konfirmasi), <code>UnduhPdfBtn</code> (cetak PDF kelas), <code>EventCard</code>/<code>EventCarousel</code>, <strong><code>ProdukCard</code></strong> (kartu Store), <strong><code>TambahKeranjangBtn</code></strong>, <strong><code>BottomNav</code></strong> (navigasi bawah + <strong>badge keranjang</strong>).</li>
-</ul>
-<h3 id="srcapp-rute"><code>src/app/</code> — rute</h3>
+<p>Pewi, Confetti, game/<em>, FavoritBtn, BeliBtn (internal/eksternal+konfirmasi), UnduhPdfBtn, EventCard/EventCarousel, ProdukCard, TambahKeranjangBtn, BottomNav (badge keranjang), </em><em>CatatanCard</em><em> (tampilan rubrik), </em><em>Logo</em>* (<code>/logo.png</code> di plate hitam).</p>
+<h3 id="srcapp-rute-yang-baru-ditandai"><code>src/app/</code> — rute (yang baru ditandai ✦)</h3>
 <table>
 <thead>
 <tr>
@@ -295,191 +205,136 @@ npm run lint     # ESLint
 </thead>
 <tbody>
 <tr>
-<td><code>/</code>, <code>/daftar</code>, <code>/login</code></td>
-<td>Landing + Auth. Daftar minta <strong>Nama + No WA</strong>. Login ada <strong>"Lupa kata sandi?"</strong></td>
-</tr>
-<tr>
-<td><code>/lupa-sandi</code>, <code>/reset-sandi</code></td>
-<td>Minta tautan reset + set kata sandi baru</td>
+<td><code>/</code>, <code>/daftar</code>, <code>/login</code>, <code>/lupa-sandi</code>, <code>/reset-sandi</code></td>
+<td>Landing + Auth (+Lupa Password). Pakai <strong>Logo</strong>.</td>
 </tr>
 <tr>
 <td><code>/pilih-anak</code></td>
-<td>Dashboard: sapaan "Hai Kak {nama}", ❤️ Favoritmu, <strong>carousel Event</strong>, profil anak, + BottomNav</td>
+<td>Dashboard ortu (sapaan, Favoritmu, carousel Event) + BottomNav</td>
 </tr>
 <tr>
-<td><code>/favorit</code></td>
-<td>Daftar favorit (+ unfavorite)</td>
+<td><code>/favorit</code>, <code>/kelas/[id]</code></td>
+<td>Favorit + detail kelas (Unduh PDF, 🛒 Beli)</td>
 </tr>
 <tr>
-<td><code>/kelas-saya</code></td>
-<td><strong>Riwayat kelas bermain</strong> yang pernah dibuka (menu 🎈)</td>
+<td>✦ <code>/kelas-saya</code></td>
+<td>Menu 🎈 Kelas Bermain: <strong>event yang diikuti + Catatan Perkembangan</strong>, lalu riwayat materi</td>
 </tr>
 <tr>
-<td><code>/kelas/[id]</code></td>
-<td>Detail kelas (sisi ortu) + Unduh PDF + 🛒 Beli bahan</td>
+<td><code>/main/[anakId]</code>, <code>/ortu/[anakId]</code></td>
+<td>Mode Anak / Mode Ortu</td>
 </tr>
 <tr>
-<td><code>/main/[anakId]</code></td>
-<td><strong>Mode Anak</strong>: sapaan nama anak, Main Hari Ini, Game, Video, tombol Mode Orang Tua</td>
+<td><code>/anak/[anakId]</code>(+<code>/laporan</code>)</td>
+<td>Kelola anak + <strong>Rapor</strong> (termasuk Catatan Perkembangan)</td>
 </tr>
 <tr>
-<td><code>/ortu/[anakId]</code></td>
-<td><strong>Mode Ortu 0-2</strong></td>
+<td><code>/pengaturan</code>, <code>/komunitas</code>(+<code>/[postId]</code>)</td>
+<td>Akun + Forum</td>
 </tr>
 <tr>
-<td><code>/anak/[anakId]</code> (+<code>/laporan</code>), <code>/pilih-game/[anakId]</code></td>
-<td>Kelola anak + laporan + rekomendasi game</td>
+<td><code>/event</code>(+<code>/[id]/daftar</code>)</td>
+<td>Event + pendaftaran (badge status, ✦ tombol 📋 Catatan)</td>
 </tr>
 <tr>
-<td><code>/pengaturan</code></td>
-<td>PIN, ganti sandi, logout, nama, langganan</td>
+<td>✦ <code>/catatan/[eventId]</code></td>
+<td>Ortu lihat Catatan Perkembangan anaknya di satu event</td>
 </tr>
 <tr>
-<td><code>/komunitas</code> (+<code>/[postId]</code>)</td>
-<td>Forum ortu</td>
+<td><code>/store</code>(+<code>/[id]</code>), <code>/keranjang</code>, <code>/pesanan</code>(+<code>/[id]</code>)</td>
+<td>Toko + keranjang + pesanan</td>
 </tr>
 <tr>
-<td><code>/event</code> (+<code>/[id]/daftar</code>)</td>
-<td>Daftar event + pendaftaran (badge status)</td>
+<td>✦ <code>/guru</code>(+<code>/[eventId]</code>)</td>
+<td><strong>Area Guru</strong>: pilih event → isi rubrik catatan per anak</td>
 </tr>
 <tr>
-<td><strong><code>/store</code></strong> (+<code>/[id]</code>)</td>
-<td>Katalog + detail produk</td>
-</tr>
-<tr>
-<td><strong><code>/keranjang</code></strong></td>
-<td>Keranjang + checkout (alamat)</td>
-</tr>
-<tr>
-<td><strong><code>/pesanan</code></strong> (+<code>/[id]</code>)</td>
-<td>Riwayat pesanan + detail + upload bukti</td>
-</tr>
-<tr>
-<td><code>/admin</code></td>
-<td>Dashboard admin (nav + tombol Keluar)</td>
-</tr>
-<tr>
-<td><code>/admin/{tema,video,langganan,laporan,komunitas}</code></td>
-<td>Kelola konten/bisnis/moderasi</td>
-</tr>
-<tr>
-<td><code>/admin/kelas-bermain</code></td>
-<td>CRUD kelas (Bahan ↔ produk Store, Aktivitas bergrup)</td>
-</tr>
-<tr>
-<td><code>/admin/event</code> (+<code>/[id]/pendaftar</code>)</td>
-<td>CRUD event + kelola pendaftar</td>
-</tr>
-<tr>
-<td><strong><code>/admin/produk</code></strong></td>
-<td>CRUD produk + stok + gambar</td>
-</tr>
-<tr>
-<td><strong><code>/admin/pesanan</code></strong></td>
-<td>Kelola pesanan: set ongkir, verifikasi, resi, status</td>
+<td><code>/admin</code> + sub</td>
+<td>Dashboard admin: tema, video, kelas-bermain, langganan, laporan, komunitas, event, produk, pesanan, ✦ <strong>guru</strong> (Kelola Guru), ✦ <strong>reminder</strong></td>
 </tr>
 </tbody>
 </table>
-<p><code>globals.css</code> (token pastel + <code>kp-*</code> + <code>@media print .no-print</code>), <code>layout.tsx</code>, <code>error.tsx</code>, <code>not-found.tsx</code>, <code>proxy.ts</code>.</p>
+<p><code>globals.css</code> (+<code>@media print .no-print</code>), <code>layout.tsx</code> (metadata + <strong>favicon <code>/logo.png</code></strong>), <code>proxy.ts</code>.</p>
 <hr />
 <h2 id="9-alur-fitur-fe-be">9. Alur Fitur (FE ↔ BE)</h2>
-<p><strong>Daftar/Login/Reset:</strong> daftar (<code>signUp</code> → update profil Nama+WA) → trial. Login ada <strong>Lupa kata sandi</strong> → <code>/lupa-sandi</code> (<code>resetPasswordForEmail</code>) → email → <code>/reset-sandi</code> (<code>updateUser</code>).</p>
-<p><strong>Mode Anak:</strong> ambil anak+pustaka+kelas+favoritIds → main game (<code>catatHasil</code> → koin) → Reward. Buka kelas → <code>catatRiwayatKelas</code> (riwayat).</p>
-<p><strong>Favorit:</strong> tap 🤍→❤️ (<code>toggleFavorit</code>) → muncul di tombol "❤️ Favoritmu" / halaman <code>/favorit</code>.</p>
-<p><strong>Kelas Bermain:</strong> admin isi Bahan (nama + pilih produk Store <strong>atau</strong> link luar) &amp; Aktivitas (judul+cara membuat+langkah). User lihat daftar bahan (🛒 Beli → konfirmasi → produk Store internal / marketplace luar) + kartu aktivitas + <strong>⬇ Unduh PDF</strong>.</p>
-<p><strong>Event:</strong> admin buat event (harga/anak) → carousel dashboard &amp; <code>/event</code>. User Daftar → pilih anak (&gt;1), total=harga×anak (server), upload bukti → redirect dashboard + badge status. Admin Terima/Tolak.</p>
-<p><strong>Store:</strong> admin CRUD produk. User katalog → detail → <strong>+ Keranjang</strong> (badge di bottom nav update via event <code>keranjang:update</code>) → <code>/keranjang</code> checkout (alamat) → pesanan <code>menunggu_ongkir</code>. Admin <strong>set ongkir</strong> → <code>menunggu_bayar</code>; user transfer + <strong>upload bukti</strong> → <code>dibayar</code>; admin <strong>verifikasi</strong> (stok −) → <code>diproses</code>; admin <strong>set resi</strong> → <code>dikirim</code>; <strong>selesai</strong>. Status terlihat user.</p>
-<p><strong>Bottom Nav (6 tab):</strong> 🏠 Beranda · 🎈 Kelas · 🛒 Store (badge jumlah keranjang) · 📦 Pesanan · 💬 Komunitas · 👤 Akun. Tampil di halaman ortu; tidak di Mode Anak/Admin.</p>
+<p><strong>Auth:</strong> daftar (Nama+WA) → trial. Login: jika <strong><code>is_guru</code></strong> → diarahkan ke <code>/guru</code>, selain itu <code>/pilih-anak</code>. Lupa password via <code>/lupa-sandi</code> → <code>/reset-sandi</code>.</p>
+<p><strong>Favorit / Kelas Bermain:</strong> materi dibuka → tercatat di riwayat; favorit (❤️) per akun. Bahan bisa terhubung <strong>produk Store internal</strong> (🛒 Beli → /store) atau link luar.</p>
+<p><strong>Event:</strong> admin buat → carousel/<code>/event</code> → user daftar (pilih anak, total server, bukti) → admin Terima/Tolak → badge status.</p>
+<p><strong>Store:</strong> katalog → keranjang (badge) → checkout (alamat) → admin set ongkir → user bayar+bukti → admin verifikasi (stok−) → resi → selesai.</p>
+<p><strong>Catatan Perkembangan Bermain (Guru):</strong></p>
+<pre><code>Admin → Kelola Guru (aktifkan guru by email)
+Guru login → /guru → pilih event → peserta (pendaftaran &quot;diterima&quot;)
+   → isi rubrik 4 aspek (BB/MB/BSH/BSB) + catatan → Simpan
+Ortu → lihat di /kelas-saya &amp; /event (📋 Catatan) &amp; Rapor anak
+</code></pre>
+<p><strong>Reminder WA Event (semi-otomatis):</strong> Admin → 📣 Reminder → semua event (BESOK disorot) → tiap peserta "💬 Kirim WA" (link <code>wa.me</code> + pesan H-1 siap kirim) → "tandai terkirim". Ada <strong>filter cari nama event</strong>. Nomor dirapikan ke <code>62…</code>.</p>
+<p><strong>Bottom Nav (6 tab):</strong> 🏠 Beranda · 🎈 Kelas · 🛒 Store (badge keranjang) · 📦 Pesanan · 💬 Komunitas · 👤 Akun.</p>
 <hr />
 <h2 id="10-keamanan">10. Keamanan</h2>
 <ol>
-<li><strong>RLS tiap tabel</strong> — penentu utama akses.</li>
-<li><strong>Guard kode</strong> — getAnakTerjamin, getAdminTerjamin, adminDb, filter <code>.eq(..user.id)</code>.</li>
-<li><strong><code>is_admin()</code> + trigger anti self-promote (0012)</strong> — admin hanya via SQL Editor.</li>
-<li><strong>Total event &amp; pesanan dihitung ulang di server</strong>; harga di-<em>snapshot</em> di item_pesanan.</li>
-<li><strong>Stok</strong> dikurangi saat admin verifikasi pembayaran (anti oversell).</li>
-<li><strong>Upload user dibatasi</strong> folder <code>bukti/</code>; aset lain admin-only.</li>
-<li><strong>Privasi anak</strong> — 🛒 Beli &amp; keluar selalu lewat konfirmasi/PIN; video <code>youtube-nocookie</code>.</li>
+<li><strong>RLS tiap tabel.</strong> 2. Guard kode (<code>getAnakTerjamin</code>, <code>getAdminTerjamin</code>, <code>getGuruTerjamin</code>, <code>adminDb</code>, filter <code>.eq(..user.id)</code>).</li>
+<li><strong><code>is_admin()</code>/<code>is_guru()</code> + trigger</strong> — non-admin tak bisa promote diri jadi admin/guru; admin yang mengelola role.</li>
+<li>Total event/pesanan dihitung server; harga di-snapshot. Stok berkurang saat verifikasi.</li>
+<li>Upload user dibatasi folder <code>bukti/</code>. 6. Catatan: ortu hanya lihat catatan anaknya; guru hanya baca pendaftaran + tulis catatan.</li>
 </ol>
 <hr />
 <h2 id="11-testing-verifikasi">11. Testing &amp; Verifikasi</h2>
 <ul>
-<li><strong>Unit (Vitest):</strong> <code>npm test</code> — <code>lib/domain</code> &amp; <code>lib/game</code> (30 test).</li>
-<li><strong>E2E (Playwright):</strong> <code>npm run e2e</code>.</li>
-<li><strong>Skrip verifikasi prod (<code>tools/*.mjs</code>, puppeteer):</strong> <code>event_m14_full.mjs</code> (event), <code>store_m16_check.mjs</code> (Store: produk→checkout→ongkir→bukti→verifikasi→stok→resi→cleanup), <code>kelas_m13_check.mjs</code>. Jalankan: <code>node tools/&lt;nama&gt;.mjs</code>.</li>
+<li>Unit: <code>npm test</code> (30). E2E: <code>npm run e2e</code>.</li>
+<li>Skrip verifikasi prod (<code>tools/*.mjs</code>): <code>event_m14_full.mjs</code>, <code>store_m16_check.mjs</code>, <code>catatan_m17_check.mjs</code>, dll. (<code>node tools/&lt;nama&gt;.mjs</code>).</li>
 </ul>
 <hr />
 <h2 id="12-deploy-supabase">12. Deploy — Supabase</h2>
 <ol>
-<li>Buat proyek di supabase.com.</li>
-<li><strong>SQL Editor</strong> → jalankan migrasi <code>0001</code>–<code>0019</code> berurutan.</li>
-<li><strong>Auth → Email</strong>: matikan "Confirm email" (dev) / atur <strong>SMTP</strong> (produksi &amp; agar email reset password terkirim). <strong>URL Configuration → Redirect URLs</strong>: tambahkan <code>https://&lt;domain&gt;/reset-sandi</code>. <strong>Site URL</strong> = domain.</li>
-<li><strong>API</strong> → salin Project URL + publishable key → env Vercel &amp; <code>.env.local</code>.</li>
-<li>Admin (sekali): <code>update public.profiles set is_admin=true where email='EMAIL_ANDA';</code></li>
-<li>Bucket <code>aset</code> (0007) + izin upload bukti (0017).</li>
+<li>Buat proyek. 2. <strong>SQL Editor</strong> → migrasi <code>0001</code>–<code>0021</code> berurutan. 3. Auth: matikan Confirm email (dev) / atur <strong>SMTP</strong> (agar reset password terkirim) + <strong>Redirect URL</strong> <code>https://&lt;domain&gt;/reset-sandi</code> + Site URL. 4. API → salin URL + publishable key ke env Vercel &amp; lokal. 5. Admin (sekali): <code>update public.profiles set is_admin=true where email='…';</code> Guru diaktifkan dari Admin → Kelola Guru. 6. Bucket <code>aset</code> (0007) + izin bukti (0017).</li>
 </ol>
 <h2 id="13-deploy-vercel">13. Deploy — Vercel</h2>
-<ol>
-<li>Push ke GitHub. 2. Import project (Next.js auto). 3. Isi 2 env var <strong>sebelum</strong> Deploy. 4. Deploy → tiap <code>git push master</code> auto-deploy. 5. <strong>Plan Hobby</strong>: repo dibuat <strong>public</strong> agar auto-deploy jalan.</li>
-</ol>
-<p>Rilis: <code>git add -A &amp;&amp; git commit -m "..." &amp;&amp; git push origin master</code>. Skema berubah → tulis <code>00NN_*.sql</code> lalu jalankan di Supabase.</p>
+<p>Push GitHub → Import (Next.js) → isi 2 env var <strong>sebelum</strong> Deploy → tiap <code>git push master</code> auto-deploy. Plan <strong>Hobby</strong>: repo <strong>public</strong>. PowerShell: <code>&amp;&amp;</code> tak berlaku — pakai <code>;</code> atau baris terpisah.</p>
 <hr />
-<h2 id="14-masalah-yang-pernah-terjadi-solusi">14. Masalah yang Pernah Terjadi &amp; Solusi</h2>
+<h2 id="14-masalah-solusi-ringkas">14. Masalah &amp; Solusi (ringkas)</h2>
 <table>
 <thead>
 <tr>
 <th>Masalah</th>
-<th>Sebab</th>
 <th>Solusi</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Deploy "Blocked" Vercel</td>
-<td>Hobby + repo private</td>
+<td>Deploy "Blocked" (Hobby+private)</td>
 <td>Repo dibuat public</td>
 </tr>
 <tr>
-<td>Login admin malah ke /pilih-anak</td>
-<td>Admin baca semua baris → <code>.single()</code> error</td>
-<td>Filter <code>.eq('id', user.id)</code></td>
+<td>Login admin ke /pilih-anak</td>
+<td>Filter <code>.eq('id',user.id)</code> di query</td>
 </tr>
 <tr>
-<td>User bisa jadi admin sendiri</td>
-<td>RLS profil terlalu longgar</td>
-<td>Trigger <code>cegah_self_admin</code> (0012)</td>
+<td>Self-promote admin/guru</td>
+<td>Trigger <code>cegah_self_admin</code> (0012/0020)</td>
 </tr>
 <tr>
-<td>Migrasi 0016 <code>cannot use subquery in transform expression</code></td>
-<td>Subquery di <code>ALTER ... USING</code></td>
-<td>Konversi <code>bahan</code> via kolom sementara + <code>UPDATE</code></td>
+<td>Migrasi 0016 <code>subquery in transform</code></td>
+<td>Konversi bahan via kolom sementara + UPDATE</td>
 </tr>
 <tr>
-<td><strong>Input link YouTube error "tidak valid"</strong></td>
-<td>Ekstraksi hanya kenal v=/youtu.be/embed</td>
-<td>Tambah <strong>shorts/live/format lain</strong> + fallback host youtube</td>
+<td>Input link YouTube ditolak</td>
+<td>Ekstraksi dukung shorts/live/format lain</td>
 </tr>
 <tr>
-<td>Badge/redirect tak terlihat saat uji</td>
-<td>Skrip jalan sebelum deploy live</td>
-<td>Tunggu deploy ~1–2 menit, uji ulang</td>
+<td>Menu Kelas Bermain kosong (event ≠ materi)</td>
+<td><code>/kelas-saya</code> kini tampilkan event yang diikuti + catatan</td>
 </tr>
 </tbody>
 </table>
 <hr />
-<h2 id="15-glosarium-parameter-penting">15. Glosarium Parameter Penting</h2>
+<h2 id="15-glosarium">15. Glosarium</h2>
 <ul>
-<li><strong><code>butir</code> (paket_aset, jsonb):</strong> isi game per tema.</li>
-<li><strong><code>bahan</code> (kelas_bermain, jsonb):</strong> <code>[{nama, link, produk_id}]</code> — <code>produk_id</code> → produk Store internal (diutamakan), <code>link</code> → toko luar.</li>
-<li><strong><code>aktivitas</code> (kelas_bermain, jsonb):</strong> <code>[{judul, cara_membuat, langkah[]}]</code>.</li>
-<li><strong><code>favorit</code> / <code>riwayat_kelas</code> (PK ortu+kelas):</strong> favorit &amp; riwayat buka kelas per akun.</li>
-<li><strong><code>harga_per_anak</code> (event):</strong> total = harga × jumlah anak (server).</li>
-<li><strong><code>anak_nama</code> (pendaftaran_event, text[]):</strong> snapshot nama anak.</li>
-<li><strong><code>produk.stok</code>:</strong> dikurangi saat admin verifikasi pesanan.</li>
-<li><strong><code>pesanan.status</code>:</strong> menunggu_ongkir → menunggu_bayar → dibayar → diproses → dikirim → selesai/batal.</li>
-<li><strong><code>item_pesanan.nama/harga</code>:</strong> snapshot saat checkout (anti perubahan harga).</li>
-<li><strong><code>keranjang_item</code> (unique ortu+produk):</strong> keranjang DB; total qty → badge bottom nav.</li>
-<li><strong><code>mode_default</code> (anak):</strong> &lt;2 → Mode Ortu, ≥2 → Mode Anak. <strong><code>batas_menit</code>:</strong> screen-time harian.</li>
+<li><code>bahan</code> (jsonb): <code>[{nama, link, produk_id}]</code> — produk_id → Store internal.</li>
+<li><code>aktivitas</code> (jsonb): <code>[{judul, cara_membuat, langkah[]}]</code>.</li>
+<li><code>catatan_perkembangan.aspek</code> (jsonb): nilai rubrik PAUD per aspek (<code>BB/MB/BSH/BSB</code>).</li>
+<li><code>is_admin</code> / <code>is_guru</code> (profiles): penanda peran.</li>
+<li><code>harga_per_anak</code>, <code>pesanan.status</code>, <code>produk.stok</code>, <code>keranjang_item</code> (badge), <code>reminder_terkirim</code> (penanda WA H-1 sudah dikirim).</li>
+<li><code>mode_default</code> (anak): &lt;2 → Mode Ortu, ≥2 → Mode Anak.</li>
 </ul>
 <hr />
-<p><em>Dokumen mengikuti kode terkini (sampai fitur Store M16 + bahan↔Store + badge keranjang). Perbarui <code>docs/DOKUMENTASI-KIDZPLAYFUL.md</code> lalu regenerasi PDF: <code>python tools/md2pdf.py docs/DOKUMENTASI-KIDZPLAYFUL.md</code> + Chrome <code>--print-to-pdf</code>.</em></p></body></html>
+<p><em>Mengikuti kode terkini (sampai Reminder WA + Catatan Perkembangan + Store + Logo). Regenerasi PDF: <code>python tools/md2pdf.py docs/DOKUMENTASI-KIDZPLAYFUL.md</code> lalu cetak HTML→PDF via Chrome.</em></p></body></html>
