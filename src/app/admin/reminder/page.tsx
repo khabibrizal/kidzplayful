@@ -12,7 +12,7 @@ export default async function AdminReminderPage() {
     <div>
       <Link href="/admin" className={s.muted}>← dashboard</Link>
       <div className={s.head} style={{ marginTop: 8 }}><h1>📣 Reminder Event</h1></div>
-      <p className={s.muted} style={{ marginBottom: 10 }}>Kirim pengingat WhatsApp ke peserta. Event <b>BESOK (H-1)</b> disorot. Klik "Kirim WA" → WhatsApp terbuka dengan pesan siap kirim, lalu tandai "terkirim".</p>
+      <p className={s.muted} style={{ marginBottom: 10 }}>Semua event ditampilkan (event <b>BESOK</b> disorot). Klik "Kirim WA" → WhatsApp terbuka dengan pesan siap kirim, lalu tandai "terkirim".</p>
       <ReminderAdmin rows={rows} todayStr={todayStr} besokStr={besokStr} />
     </div>
   );
