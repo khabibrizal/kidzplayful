@@ -18,9 +18,16 @@ export default function LoginPage() {
     setLoading(true);
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword({ email, password: sandi });
+    if (error) { setLoading(false); return setErr('Email atau kata sandi salah.'); }
+    // arahkan guru ke area guru
+    const { data: { user } } = await supabase.auth.getUser();
+    let keGuru = false;
+    if (user) {
+      const { data: prof } = await supabase.from('profiles').select('is_guru').eq('id', user.id).single();
+      keGuru = !!prof?.is_guru;
+    }
     setLoading(false);
-    if (error) return setErr('Email atau kata sandi salah.');
-    router.push('/pilih-anak');
+    router.push(keGuru ? '/guru' : '/pilih-anak');
   }
 
   return (

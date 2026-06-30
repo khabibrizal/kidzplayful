@@ -9,7 +9,7 @@ const STATUS: Record<string, { t: string; c: string; bg: string }> = {
   ditolak: { t: '❌ Pendaftaran ditolak', c: '#b3261e', bg: '#fde8e6' },
 };
 
-export default function EventCard({ ev, status }: { ev: EventKelas; status?: string }) {
+export default function EventCard({ ev, status, catatanHref }: { ev: EventKelas; status?: string; catatanHref?: string }) {
   const meta = status ? STATUS[status] : null;
   return (
     <div className="kp-card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -31,6 +31,9 @@ export default function EventCard({ ev, status }: { ev: EventKelas; status?: str
           </>
         ) : (
           <Link href={`/event/${ev.id}/daftar`} className="kp-btn" style={{ display: 'block', textAlign: 'center', marginTop: 10 }}>Daftar Sekarang</Link>
+        )}
+        {catatanHref && (
+          <Link href={catatanHref} className="kp-btn putih" style={{ display: 'block', textAlign: 'center', marginTop: 8 }}>📋 Catatan Perkembangan</Link>
         )}
       </div>
     </div>

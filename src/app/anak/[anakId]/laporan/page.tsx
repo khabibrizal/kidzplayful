@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { laporanAnak, type BarisHasil } from '@/lib/domain/laporan-anak';
+import { getCatatanAnak } from '@/lib/data/catatan';
+import CatatanCard from '@/components/CatatanCard';
 
 const LABEL: Record<string, string> = { 'kognitif': 'Kognitif', 'motorik-halus': 'Motorik Halus', 'sensorik': 'Sensorik', 'kemandirian': 'Kemandirian' };
 
@@ -21,6 +23,7 @@ export default async function LaporanAnakPage({ params }: { params: Promise<{ an
   if (!anak) redirect('/pilih-anak');
   const { data: rows } = await supabase.from('hasil_main').select('area_skill,bintang,durasi_detik,selesai').eq('anak_id', anakId);
   const r = laporanAnak((rows ?? []) as unknown as BarisHasil[]);
+  const catatan = await getCatatanAnak(anakId);
 
   const maxArea = Math.max(1, ...Object.values(r.perArea));
 
@@ -42,6 +45,11 @@ export default async function LaporanAnakPage({ params }: { params: Promise<{ an
         );
       })}
       {r.totalSesi === 0 && <p style={{ color: 'var(--abu)', fontSize: 13 }}>Belum ada data — ajak {anak.nama} main dulu ya.</p>}
+
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '18px 0 8px' }}>CATATAN PERKEMBANGAN BERMAIN (EVENT)</div>
+      {catatan.length === 0
+        ? <p style={{ color: 'var(--abu)', fontSize: 13 }}>Belum ada catatan dari guru. Muncul setelah {anak.nama} ikut event & dinilai.</p>
+        : catatan.map(({ c, judulEvent }) => <CatatanCard key={c.id} c={c} judulEvent={judulEvent} />)}
     </main>
   );
 }

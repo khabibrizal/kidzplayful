@@ -133,6 +133,18 @@ export interface ItemPesanan {
   harga: number;
   qty: number;
 }
+export type SkalaPaud = 'BB' | 'MB' | 'BSH' | 'BSB';
+export interface CatatanPerkembangan {
+  id: string;
+  event_id: string;
+  anak_id: string;
+  ortu_id: string;
+  aspek: Record<string, string>; // key aspek → kode skala
+  catatan: string | null;
+  dinilai_oleh: string | null;
+  created_at: string;
+}
+
 export interface Pesanan {
   id: string;
   ortu_id: string;

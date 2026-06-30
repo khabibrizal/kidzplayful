@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getEventTampil, getStatusPendaftaranSaya } from '@/lib/data/event';
+import { getEventBerCatatan } from '@/lib/data/catatan';
 import EventCard from '@/components/EventCard';
 import BottomNav from '@/components/BottomNav';
 
@@ -12,6 +13,7 @@ export default async function EventListPage() {
   if (!user) redirect('/login');
   const events = await getEventTampil();
   const statusEvent = await getStatusPendaftaranSaya();
+  const adaCatatan = await getEventBerCatatan();
 
   return (
     <main style={{ maxWidth: 480, margin: '24px auto', padding: 16, paddingBottom: 90 }}>
@@ -19,7 +21,7 @@ export default async function EventListPage() {
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 24, margin: '10px 0 16px' }}>✨ Event Kelas Bermain</h1>
       {events.length === 0
         ? <p style={{ color: 'var(--abu)' }}>Belum ada event saat ini.</p>
-        : events.map((ev) => <div key={ev.id} style={{ marginBottom: 14 }}><EventCard ev={ev} status={statusEvent[ev.id]} /></div>)}
+        : events.map((ev) => <div key={ev.id} style={{ marginBottom: 14 }}><EventCard ev={ev} status={statusEvent[ev.id]} catatanHref={adaCatatan.has(ev.id) ? `/catatan/${ev.id}` : undefined} /></div>)}
       <BottomNav />
     </main>
   );
