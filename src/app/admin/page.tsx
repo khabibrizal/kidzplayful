@@ -32,7 +32,8 @@ export default async function AdminHome() {
         <Link href="/admin/event" className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginLeft: 6 }}>🗓️ Event</Link>
         <Link href="/admin/produk" className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginLeft: 6 }}>🛍️ Produk</Link>
         <Link href="/admin/pesanan" className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginLeft: 6 }}>📦 Pesanan</Link>
-        <Link href="/admin/guru" className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginLeft: 6 }}>🍎 Guru</Link></p>
+        <Link href="/admin/guru" className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginLeft: 6 }}>🍎 Guru</Link>
+        <Link href="/admin/reminder" className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginLeft: 6 }}>📣 Reminder</Link></p>
       <div className={s.section}>Tambah Tema</div>
       <form action={aksiBuat} className={s.card}>
         <div className={s.row}>

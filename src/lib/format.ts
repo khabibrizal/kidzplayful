@@ -8,6 +8,20 @@ export function formatRupiah(n: number): string {
   return 'Rp ' + (n || 0).toLocaleString('id-ID');
 }
 
+/** Rapikan nomor WA ke format internasional 62… (08xx → 628xx). null bila kosong. */
+export function nomorWaIntl(no: string | null | undefined): string | null {
+  if (!no) return null;
+  let d = no.replace(/[^0-9]/g, '');
+  if (!d) return null;
+  if (d.startsWith('0')) d = '62' + d.slice(1);
+  else if (d.startsWith('8')) d = '62' + d;
+  return d;
+}
+export function linkWa(no: string | null | undefined, pesan: string): string | null {
+  const intl = nomorWaIntl(no);
+  return intl ? `https://wa.me/${intl}?text=${encodeURIComponent(pesan)}` : null;
+}
+
 // Rubrik PAUD untuk Catatan Perkembangan Bermain
 export const ASPEK_PAUD = [
   { key: 'fisik_motorik', label: 'Fisik-Motorik' },
