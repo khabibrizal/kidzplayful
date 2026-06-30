@@ -16,6 +16,29 @@ export async function getEvent(id: string): Promise<EventKelas | null> {
   return (data as unknown as EventKelas) ?? null;
 }
 
+/** Event (kelas bermain) yang diikuti ortu yang login + status + ada/tidaknya catatan. */
+export async function getEventDiikuti(): Promise<{ event: EventKelas; status: string; adaCatatan: boolean }[]> {
+  const s = await createClient();
+  const { data: { user } } = await s.auth.getUser();
+  if (!user) return [];
+  const { data } = await s
+    .from('pendaftaran_event')
+    .select(`status, created_at, event:event_id(${COLS})`)
+    .eq('ortu_id', user.id)
+    .order('created_at', { ascending: false });
+  const { data: cat } = await s.from('catatan_perkembangan').select('event_id').eq('ortu_id', user.id);
+  const adaSet = new Set((cat ?? []).map((c) => c.event_id as string));
+  const seen = new Set<string>();
+  const out: { event: EventKelas; status: string; adaCatatan: boolean }[] = [];
+  for (const r of data ?? []) {
+    const ev = (Array.isArray(r.event) ? r.event[0] : r.event) as unknown as EventKelas;
+    if (!ev || seen.has(ev.id)) continue;
+    seen.add(ev.id);
+    out.push({ event: ev, status: r.status as string, adaCatatan: adaSet.has(ev.id) });
+  }
+  return out;
+}
+
 /** Status pendaftaran ortu yang login, per event (status terbaru). */
 export async function getStatusPendaftaranSaya(): Promise<Record<string, string>> {
   const s = await createClient();
