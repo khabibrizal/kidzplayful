@@ -2,8 +2,8 @@
 
 Dokumen ini menjelaskan **seluruh alur** aplikasi KidzPlayful dari nol sampai deploy: arsitektur, tiap berkas & perannya, parameter penting, skema database, serta cara deploy ke **Vercel** (frontend) dan **Supabase** (backend).
 
-- **Aplikasi:** web app kelas bermain digital anak 0–4 tahun — game sensorik/motorik, kelas bermain, video, komunitas, **event offline berbayar + pendaftaran**, **toko/Store**, **Catatan Perkembangan Bermain (penilaian guru)**, dan **reminder WhatsApp**.
-- **Repo:** `github.com/khabibrizal/kidzplayful` · **Live:** `https://www.kidzplayful.com`
+- **Aplikasi:** web app kelas bermain digital anak 0–4 tahun — game sensorik/motorik (termasuk **game Mewarnai**), kelas bermain, video, komunitas, **event offline berbayar + pendaftaran**, **toko/Store**, **Catatan Perkembangan Bermain (penilaian guru)**, dan **reminder WhatsApp**. Ada juga **REST API untuk aplikasi mobile (Flutter)**.
+- **Repo:** `github.com/khabibrizal/kidzplayful` · **Live:** `https://www.kidzplayful.com` (domain kustom; region Vercel `bom1` = co-located dgn Supabase `ap-south-1`).
 - **Stack:** Next.js 16 (App Router, TypeScript) + Supabase (Postgres + Auth + Storage). "Backend" = Supabase + Server Actions/Server Components Next.js (tanpa server terpisah).
 - **Peran pengguna:** Orang tua (default), **Admin** (`is_admin`), **Guru** (`is_guru`).
 
@@ -82,12 +82,13 @@ npm run lint
 
 ## 7. Skema Database (per tabel)
 
-Migrasi `supabase/migrations/0001..0021` (jalankan berurutan di SQL Editor).
+Migrasi `supabase/migrations/0001..0025` (jalankan berurutan di SQL Editor).
 
-### `profiles` (0001; +is_admin 0004; +nama_tampilan 0010; +no_wa 0015; +is_guru 0020)
+### `profiles` (0001; +is_admin 0004; +nama_tampilan 0010; +no_wa 0015; +is_guru 0020; +alamat 0023)
 `id(PK), email, pin_ortu, is_admin, is_guru, nama_tampilan, no_wa, created_at`. RLS: profil sendiri; admin baca semua + **admin update profil** (untuk set/cabut guru). **Trigger `cegah_self_admin` (0012, diperluas 0020):** non-admin tak bisa mengubah `is_admin`/`is_guru` (hanya admin / SQL).
 
-### `anak` (0001) · `langganan` (0001) · `tema`/`paket_aset`/`hasil_main`/`video`
+### `anak` (0001; +jenis_kelamin 0024) · `langganan` (0001) · `tema`/`paket_aset`/`hasil_main`/`video`
+- `anak.jenis_kelamin`: 'laki-laki' | 'perempuan' (opsional). `paket_aset.mesin` kini termasuk **`mewarnai`** (0025). Katalog (event/produk/kelas_bermain publik) boleh **dibaca anon** (0022) untuk cache.
 Profil anak, langganan trial, konten game/tema/skor/video (lihat versi sebelumnya — tetap).
 
 ### `kelas_bermain` (0014; jsonb 0016; +produk_id)
@@ -113,7 +114,7 @@ Produk (nama, deskripsi, kategori, harga, stok, gambar, status) · keranjang DB 
 | unik | `(event_id, anak_id)` |
 RLS: **ortu baca catatan anaknya**, admin & **guru** baca; **guru** insert/update.
 
-**Urutan migrasi:** 0001 init → … → 0015 favorit(+no_wa) → 0016 kelas jsonb → 0017 event → 0018 riwayat → 0019 store → **0020 catatan perkembangan (+is_guru)** → **0021 reminder (+reminder_terkirim)**.
+**Urutan migrasi:** … → 0019 store → 0020 catatan perkembangan (+is_guru) → 0021 reminder → **0022 katalog baca anon** → **0023 profil alamat** → **0024 anak jenis_kelamin** → **0025 mesin mewarnai**.
 
 ---
 
@@ -220,6 +221,31 @@ Push GitHub → Import (Next.js) → isi 2 env var **sebelum** Deploy → tiap `
 
 ---
 
+## 15b. Fitur & Peningkatan Terbaru
+
+### Game Mewarnai (engine `mesin: 'mewarnai'`)
+- **Tap-area**: gambar SVG ber-area, pilih warna dari palet → tap area → terisi. Nama warna disuarakan (TTS), tombol Ulang.
+- **Sumber gambar**: (a) **template bawaan** (Apel/Rumah/Ikan/Balon/Bunga) di `src/lib/game/templates-mewarnai.ts`; (b) **admin upload SVG** sendiri — disanitasi (`src/lib/game/svg-sanitize.ts`: buang script/on*/href) & diberi `data-area`.
+- **Mode**: **Bebas** (bintang saat selesai) / **Sesuai contoh** (skor kecocokan warna vs target; ada mini "contoh").
+- Berkas: `components/game/MewarnaiGame.tsx`, admin `TargetEditor.tsx` (atur warna target per area utk SVG upload). Dibuat admin lewat PaketForm (mesin Mewarnai). Skor via `catatHasil`; area skill **`kreativitas`** (muncul di Rapor).
+
+### REST API untuk aplikasi mobile (Flutter)
+- Route Handlers di `src/app/api/**`; auth **Bearer token** (`src/lib/api/helpers.ts`), RLS tetap berlaku. Respons `{ok,data|error}`.
+- Endpoint: `/api/auth/{login,register,refresh}`, `/api/me`, `/api/anak`(+`/[id]/catatan`), `/api/kelas-bermain`(+`/[id]`), `/api/events`(+`/[id]`,`/[id]/daftar`), `/api/produk`(+`/[id]`), `/api/keranjang`, `/api/pesanan`(+`/[id]`). Kontrak: **`docs/API-MOBILE.md`**.
+
+### Performa (web terasa jauh lebih ringan)
+- **Region Vercel `bom1`** co-located dgn Supabase `ap-south-1` (`vercel.json`) — pemangkas latensi terbesar.
+- Middleware lewati `/api` & aset; **query paralel** (`Promise.all`) di halaman berat; **cache katalog** publik 60 dtk (`src/lib/data/publik.ts` + `unstable_cache`, butuh baca anon 0022); **`next/image`** untuk gambar Supabase.
+
+### Lain-lain hari ini
+- **Domain kustom** `www.kidzplayful.com` (DNS DomaiNesia → Vercel; Supabase Auth Site/Redirect URL diperbarui). `metadataBase` di `layout.tsx`.
+- **Logo** brand (`public/logo.png` + `components/Logo.tsx`) di landing/auth/Mode Anak + favicon.
+- **Store checkout auto-isi** (nama/no HP/alamat dari profil) + halaman **Akun → Data Pengiriman** (`ProfilPengirimanForm`, kolom `profiles.alamat`).
+- **Anak**: jenis kelamin (👦/👧) + form Tambah Anak jadi **collapse** (`<details>`); perbaikan tampilan input tanggal iOS.
+- **Kategori produk** jadi dropdown. Fix bug game "Mana Ya" (reset tombol tiap ganti soal).
+
+---
+
 ## 15. Glosarium
 
 - `bahan` (jsonb): `[{nama, link, produk_id}]` — produk_id → Store internal.
@@ -227,8 +253,9 @@ Push GitHub → Import (Next.js) → isi 2 env var **sebelum** Deploy → tiap `
 - `catatan_perkembangan.aspek` (jsonb): nilai rubrik PAUD per aspek (`BB/MB/BSH/BSB`).
 - `is_admin` / `is_guru` (profiles): penanda peran.
 - `harga_per_anak`, `pesanan.status`, `produk.stok`, `keranjang_item` (badge), `reminder_terkirim` (penanda WA H-1 sudah dikirim).
-- `mode_default` (anak): <2 → Mode Ortu, ≥2 → Mode Anak.
+- `mode_default` (anak): <2 → Mode Ortu, ≥2 → Mode Anak. `jenis_kelamin`: 'laki-laki'|'perempuan'.
+- `DataMewarnai` (butir game mewarnai): `{sumber:'template'|'svg', template?, svg?, palette[], mode:'bebas'|'sesuai', target?}`.
 
 ---
 
-*Mengikuti kode terkini (sampai Reminder WA + Catatan Perkembangan + Store + Logo). Regenerasi PDF: `python tools/md2pdf.py docs/DOKUMENTASI-KIDZPLAYFUL.md` lalu cetak HTML→PDF via Chrome.*
+*Mengikuti kode terkini (Game Mewarnai + REST API mobile + performa region/caching + domain www + Store/Catatan/Reminder). Regenerasi PDF: `python tools/md2pdf.py docs/DOKUMENTASI-KIDZPLAYFUL.md` lalu cetak HTML→PDF via Chrome.*

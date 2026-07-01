@@ -2,8 +2,8 @@
 
 Ringkasan navigasi seluruh codebase, dihasilkan dari **knowledge graph** (`/graphify`). Graf penuh: `graphify-out/graph.html` (interaktif), audit: `graphify-out/GRAPH_REPORT.md`, data: `graphify-out/graph.json`.
 
-- **Korpus:** 237 file (~171k kata) · **Graf:** 703 node, 1344 edge, 61 komunitas.
-- **Stack:** Next.js 16 (App Router, TS) + Supabase (Postgres/RLS/Auth/Storage), deploy Vercel. Backend = Server Components (baca) + Server Actions (tulis) + RLS.
+- **Korpus:** 237 file (~171k kata) · **Graf:** 703 node, 1344 edge, 61 komunitas. *(graf belum di-regen; lihat "Update terbaru" di bawah untuk fitur setelah snapshot.)*
+- **Stack:** Next.js 16 (App Router, TS) + Supabase (Postgres/RLS/Auth/Storage), deploy Vercel (region **bom1**). Live: **www.kidzplayful.com**. Backend = Server Components (baca) + Server Actions (tulis) + RLS. Ada **REST API** (`src/app/api/**`) untuk aplikasi **mobile Flutter**.
 
 ## Abstraksi inti (God Nodes — paling banyak terhubung)
 1. **`createClient()`** (supabase server/browser) — 73 edge. Gerbang semua akses data.
@@ -47,7 +47,15 @@ Ringkasan navigasi seluruh codebase, dihasilkan dari **knowledge graph** (`/grap
 - **Keamanan utama = RLS** per tabel + guard `getAnakTerjamin`/`getAdminTerjamin`/`getGuruTerjamin`/`adminDb`. Query "milik sendiri" selalu `.eq(..user.id)`.
 - **Peran:** `profiles.is_admin` / `is_guru` (fungsi `is_admin()`/`is_guru()`); trigger `cegah_self_admin` cegah promosi diri.
 - **Total uang dihitung ulang di server**; harga di-snapshot (item_pesanan).
-- **Migrasi** SQL berurutan `supabase/migrations/0001..0021` (dijalankan di Supabase SQL Editor).
+- **Migrasi** SQL berurutan `supabase/migrations/0001..0025` (dijalankan di Supabase SQL Editor).
+
+## Update terbaru (setelah snapshot graf)
+- **Game Mewarnai** (`mesin:'mewarnai'`): `components/game/MewarnaiGame.tsx`, `lib/game/templates-mewarnai.ts` (template bawaan), `lib/game/svg-sanitize.ts` (upload SVG aman), admin `TargetEditor.tsx` (mode sesuai). Mode Bebas/Sesuai, skor area `kreativitas`. Migrasi 0025 (izin mesin).
+- **REST API mobile (Flutter)**: `src/app/api/**` (auth/anak/kelas-bermain/events/produk/keranjang/pesanan/me) + `lib/api/helpers.ts` (Bearer). Kontrak: `docs/API-MOBILE.md`.
+- **Performa**: region Vercel `bom1`; `lib/data/publik.ts` (cache katalog `unstable_cache`, baca anon migrasi 0022); `Promise.all` di halaman berat; `next/image`.
+- **Domain**: `www.kidzplayful.com` (Vercel + DomaiNesia + Supabase Auth URL). Logo `components/Logo.tsx` (`public/logo.png`) + favicon.
+- **Store**: checkout auto-isi dari profil; **Akun → Data Pengiriman** (`ProfilPengirimanForm`, `profiles.alamat` migrasi 0023). Kategori produk dropdown.
+- **Anak**: `jenis_kelamin` (migrasi 0024) + form tambah anak collapse.
 
 ## Catatan
 - `mockups/` (demo.js/index.html) = prototipe statis, terpisah dari app Next.js.

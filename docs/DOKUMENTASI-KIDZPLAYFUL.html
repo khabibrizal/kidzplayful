@@ -21,8 +21,8 @@ li { margin:3px 0; }
 <body><h1 id="dokumentasi-teknis-kidzplayful">Dokumentasi Teknis — KidzPlayful</h1>
 <p>Dokumen ini menjelaskan <strong>seluruh alur</strong> aplikasi KidzPlayful dari nol sampai deploy: arsitektur, tiap berkas &amp; perannya, parameter penting, skema database, serta cara deploy ke <strong>Vercel</strong> (frontend) dan <strong>Supabase</strong> (backend).</p>
 <ul>
-<li><strong>Aplikasi:</strong> web app kelas bermain digital anak 0–4 tahun — game sensorik/motorik, kelas bermain, video, komunitas, <strong>event offline berbayar + pendaftaran</strong>, <strong>toko/Store</strong>, <strong>Catatan Perkembangan Bermain (penilaian guru)</strong>, dan <strong>reminder WhatsApp</strong>.</li>
-<li><strong>Repo:</strong> <code>github.com/khabibrizal/kidzplayful</code> · <strong>Live:</strong> <code>https://kidzplayful-fe2a.vercel.app</code></li>
+<li><strong>Aplikasi:</strong> web app kelas bermain digital anak 0–4 tahun — game sensorik/motorik (termasuk <strong>game Mewarnai</strong>), kelas bermain, video, komunitas, <strong>event offline berbayar + pendaftaran</strong>, <strong>toko/Store</strong>, <strong>Catatan Perkembangan Bermain (penilaian guru)</strong>, dan <strong>reminder WhatsApp</strong>. Ada juga <strong>REST API untuk aplikasi mobile (Flutter)</strong>.</li>
+<li><strong>Repo:</strong> <code>github.com/khabibrizal/kidzplayful</code> · <strong>Live:</strong> <code>https://www.kidzplayful.com</code> (domain kustom; region Vercel <code>bom1</code> = co-located dgn Supabase <code>ap-south-1</code>).</li>
 <li><strong>Stack:</strong> Next.js 16 (App Router, TypeScript) + Supabase (Postgres + Auth + Storage). "Backend" = Supabase + Server Actions/Server Components Next.js (tanpa server terpisah).</li>
 <li><strong>Peran pengguna:</strong> Orang tua (default), <strong>Admin</strong> (<code>is_admin</code>), <strong>Guru</strong> (<code>is_guru</code>).</li>
 </ul>
@@ -95,11 +95,14 @@ npm run lint
 </ul>
 <hr />
 <h2 id="7-skema-database-per-tabel">7. Skema Database (per tabel)</h2>
-<p>Migrasi <code>supabase/migrations/0001..0021</code> (jalankan berurutan di SQL Editor).</p>
-<h3 id="profiles-0001-is_admin-0004-nama_tampilan-0010-no_wa-0015-is_guru-0020"><code>profiles</code> (0001; +is_admin 0004; +nama_tampilan 0010; +no_wa 0015; +is_guru 0020)</h3>
+<p>Migrasi <code>supabase/migrations/0001..0025</code> (jalankan berurutan di SQL Editor).</p>
+<h3 id="profiles-0001-is_admin-0004-nama_tampilan-0010-no_wa-0015-is_guru-0020-alamat-0023"><code>profiles</code> (0001; +is_admin 0004; +nama_tampilan 0010; +no_wa 0015; +is_guru 0020; +alamat 0023)</h3>
 <p><code>id(PK), email, pin_ortu, is_admin, is_guru, nama_tampilan, no_wa, created_at</code>. RLS: profil sendiri; admin baca semua + <strong>admin update profil</strong> (untuk set/cabut guru). <strong>Trigger <code>cegah_self_admin</code> (0012, diperluas 0020):</strong> non-admin tak bisa mengubah <code>is_admin</code>/<code>is_guru</code> (hanya admin / SQL).</p>
-<h3 id="anak-0001-langganan-0001-temapaket_asethasil_mainvideo"><code>anak</code> (0001) · <code>langganan</code> (0001) · <code>tema</code>/<code>paket_aset</code>/<code>hasil_main</code>/<code>video</code></h3>
-<p>Profil anak, langganan trial, konten game/tema/skor/video (lihat versi sebelumnya — tetap).</p>
+<h3 id="anak-0001-jenis_kelamin-0024-langganan-0001-temapaket_asethasil_mainvideo"><code>anak</code> (0001; +jenis_kelamin 0024) · <code>langganan</code> (0001) · <code>tema</code>/<code>paket_aset</code>/<code>hasil_main</code>/<code>video</code></h3>
+<ul>
+<li><code>anak.jenis_kelamin</code>: 'laki-laki' | 'perempuan' (opsional). <code>paket_aset.mesin</code> kini termasuk <strong><code>mewarnai</code></strong> (0025). Katalog (event/produk/kelas_bermain publik) boleh <strong>dibaca anon</strong> (0022) untuk cache.
+Profil anak, langganan trial, konten game/tema/skor/video (lihat versi sebelumnya — tetap).</li>
+</ul>
 <h3 id="kelas_bermain-0014-jsonb-0016-produk_id"><code>kelas_bermain</code> (0014; jsonb 0016; +produk_id)</h3>
 <p><code>judul</code>, <code>bahan</code> jsonb <code>[{nama, link, produk_id}]</code> (link toko luar / produk Store internal), <code>aktivitas</code> jsonb <code>[{judul, cara_membuat, langkah[]}]</code>, <code>link_ide</code>, <code>worksheet_url</code>, <code>status</code>.</p>
 <h3 id="favorit-0015-riwayat_kelas-0018"><code>favorit</code> (0015) · <code>riwayat_kelas</code> (0018)</h3>
@@ -146,7 +149,7 @@ npm run lint
 </tr>
 </tbody>
 </table>
-<p><strong>Urutan migrasi:</strong> 0001 init → … → 0015 favorit(+no_wa) → 0016 kelas jsonb → 0017 event → 0018 riwayat → 0019 store → <strong>0020 catatan perkembangan (+is_guru)</strong> → <strong>0021 reminder (+reminder_terkirim)</strong>.</p>
+<p><strong>Urutan migrasi:</strong> … → 0019 store → 0020 catatan perkembangan (+is_guru) → 0021 reminder → <strong>0022 katalog baca anon</strong> → <strong>0023 profil alamat</strong> → <strong>0024 anak jenis_kelamin</strong> → <strong>0025 mesin mewarnai</strong>.</p>
 <hr />
 <h2 id="8-struktur-folder-berkas-utama">8. Struktur Folder &amp; Berkas (utama)</h2>
 <h3 id="srclib"><code>src/lib/</code></h3>
@@ -327,6 +330,33 @@ Ortu → lihat di /kelas-saya &amp; /event (📋 Catatan) &amp; Rapor anak
 </tbody>
 </table>
 <hr />
+<h2 id="15b-fitur-peningkatan-terbaru">15b. Fitur &amp; Peningkatan Terbaru</h2>
+<h3 id="game-mewarnai-engine-mesin-mewarnai">Game Mewarnai (engine <code>mesin: 'mewarnai'</code>)</h3>
+<ul>
+<li><strong>Tap-area</strong>: gambar SVG ber-area, pilih warna dari palet → tap area → terisi. Nama warna disuarakan (TTS), tombol Ulang.</li>
+<li><strong>Sumber gambar</strong>: (a) <strong>template bawaan</strong> (Apel/Rumah/Ikan/Balon/Bunga) di <code>src/lib/game/templates-mewarnai.ts</code>; (b) <strong>admin upload SVG</strong> sendiri — disanitasi (<code>src/lib/game/svg-sanitize.ts</code>: buang script/on*/href) &amp; diberi <code>data-area</code>.</li>
+<li><strong>Mode</strong>: <strong>Bebas</strong> (bintang saat selesai) / <strong>Sesuai contoh</strong> (skor kecocokan warna vs target; ada mini "contoh").</li>
+<li>Berkas: <code>components/game/MewarnaiGame.tsx</code>, admin <code>TargetEditor.tsx</code> (atur warna target per area utk SVG upload). Dibuat admin lewat PaketForm (mesin Mewarnai). Skor via <code>catatHasil</code>; area skill <strong><code>kreativitas</code></strong> (muncul di Rapor).</li>
+</ul>
+<h3 id="rest-api-untuk-aplikasi-mobile-flutter">REST API untuk aplikasi mobile (Flutter)</h3>
+<ul>
+<li>Route Handlers di <code>src/app/api/**</code>; auth <strong>Bearer token</strong> (<code>src/lib/api/helpers.ts</code>), RLS tetap berlaku. Respons <code>{ok,data|error}</code>.</li>
+<li>Endpoint: <code>/api/auth/{login,register,refresh}</code>, <code>/api/me</code>, <code>/api/anak</code>(+<code>/[id]/catatan</code>), <code>/api/kelas-bermain</code>(+<code>/[id]</code>), <code>/api/events</code>(+<code>/[id]</code>,<code>/[id]/daftar</code>), <code>/api/produk</code>(+<code>/[id]</code>), <code>/api/keranjang</code>, <code>/api/pesanan</code>(+<code>/[id]</code>). Kontrak: <strong><code>docs/API-MOBILE.md</code></strong>.</li>
+</ul>
+<h3 id="performa-web-terasa-jauh-lebih-ringan">Performa (web terasa jauh lebih ringan)</h3>
+<ul>
+<li><strong>Region Vercel <code>bom1</code></strong> co-located dgn Supabase <code>ap-south-1</code> (<code>vercel.json</code>) — pemangkas latensi terbesar.</li>
+<li>Middleware lewati <code>/api</code> &amp; aset; <strong>query paralel</strong> (<code>Promise.all</code>) di halaman berat; <strong>cache katalog</strong> publik 60 dtk (<code>src/lib/data/publik.ts</code> + <code>unstable_cache</code>, butuh baca anon 0022); <strong><code>next/image</code></strong> untuk gambar Supabase.</li>
+</ul>
+<h3 id="lain-lain-hari-ini">Lain-lain hari ini</h3>
+<ul>
+<li><strong>Domain kustom</strong> <code>www.kidzplayful.com</code> (DNS DomaiNesia → Vercel; Supabase Auth Site/Redirect URL diperbarui). <code>metadataBase</code> di <code>layout.tsx</code>.</li>
+<li><strong>Logo</strong> brand (<code>public/logo.png</code> + <code>components/Logo.tsx</code>) di landing/auth/Mode Anak + favicon.</li>
+<li><strong>Store checkout auto-isi</strong> (nama/no HP/alamat dari profil) + halaman <strong>Akun → Data Pengiriman</strong> (<code>ProfilPengirimanForm</code>, kolom <code>profiles.alamat</code>).</li>
+<li><strong>Anak</strong>: jenis kelamin (👦/👧) + form Tambah Anak jadi <strong>collapse</strong> (<code>&lt;details&gt;</code>); perbaikan tampilan input tanggal iOS.</li>
+<li><strong>Kategori produk</strong> jadi dropdown. Fix bug game "Mana Ya" (reset tombol tiap ganti soal).</li>
+</ul>
+<hr />
 <h2 id="15-glosarium">15. Glosarium</h2>
 <ul>
 <li><code>bahan</code> (jsonb): <code>[{nama, link, produk_id}]</code> — produk_id → Store internal.</li>
@@ -334,7 +364,8 @@ Ortu → lihat di /kelas-saya &amp; /event (📋 Catatan) &amp; Rapor anak
 <li><code>catatan_perkembangan.aspek</code> (jsonb): nilai rubrik PAUD per aspek (<code>BB/MB/BSH/BSB</code>).</li>
 <li><code>is_admin</code> / <code>is_guru</code> (profiles): penanda peran.</li>
 <li><code>harga_per_anak</code>, <code>pesanan.status</code>, <code>produk.stok</code>, <code>keranjang_item</code> (badge), <code>reminder_terkirim</code> (penanda WA H-1 sudah dikirim).</li>
-<li><code>mode_default</code> (anak): &lt;2 → Mode Ortu, ≥2 → Mode Anak.</li>
+<li><code>mode_default</code> (anak): &lt;2 → Mode Ortu, ≥2 → Mode Anak. <code>jenis_kelamin</code>: 'laki-laki'|'perempuan'.</li>
+<li><code>DataMewarnai</code> (butir game mewarnai): <code>{sumber:'template'|'svg', template?, svg?, palette[], mode:'bebas'|'sesuai', target?}</code>.</li>
 </ul>
 <hr />
-<p><em>Mengikuti kode terkini (sampai Reminder WA + Catatan Perkembangan + Store + Logo). Regenerasi PDF: <code>python tools/md2pdf.py docs/DOKUMENTASI-KIDZPLAYFUL.md</code> lalu cetak HTML→PDF via Chrome.</em></p></body></html>
+<p><em>Mengikuti kode terkini (Game Mewarnai + REST API mobile + performa region/caching + domain www + Store/Catatan/Reminder). Regenerasi PDF: <code>python tools/md2pdf.py docs/DOKUMENTASI-KIDZPLAYFUL.md</code> lalu cetak HTML→PDF via Chrome.</em></p></body></html>
