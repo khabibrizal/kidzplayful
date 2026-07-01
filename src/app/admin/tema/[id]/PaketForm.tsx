@@ -5,6 +5,7 @@ import type { Mesin } from '@/lib/game/tipe';
 import { buatPaket } from '@/lib/data/admin-konten';
 import AsetInput from '@/components/admin/AsetInput';
 import { TEMPLATE_OPSI, TEMPLATES, PALETTE_DEFAULT } from '@/lib/game/templates-mewarnai';
+import { sanitizeSvg, hitungArea } from '@/lib/game/svg-sanitize';
 import s from '../../admin.module.css';
 
 const AREA: Record<Mesin, string> = { 'tekan-sesuai': 'kognitif', 'seret-wadah': 'motorik-halus', 'cari-pasangan': 'kognitif', 'mewarnai': 'kreativitas' };
@@ -24,6 +25,17 @@ export default function PaketForm({ temaId }: { temaId: string }) {
   const [pasangan, setPasangan] = useState<string[]>(['', '']);
   const [template, setTemplate] = useState<string>(TEMPLATE_OPSI[0]?.id ?? '');
   const [modeMew, setModeMew] = useState<'bebas' | 'sesuai'>('bebas');
+  const [sumberMew, setSumberMew] = useState<'template' | 'svg'>('template');
+  const [svgMarkup, setSvgMarkup] = useState('');
+  const [svgArea, setSvgArea] = useState(0);
+
+  async function pilihSvg(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]; if (!f) return;
+    const teks = await f.text();
+    const bersih = sanitizeSvg(teks);
+    setSvgMarkup(bersih);
+    setSvgArea(hitungArea(bersih));
+  }
 
   async function simpan() {
     setErr('');
@@ -33,7 +45,11 @@ export default function PaketForm({ temaId }: { temaId: string }) {
     } else if (mesin === 'seret-wadah') {
       butir = { wadah: wadah.filter((w) => w.kategori && w.emoji), benda: benda.filter((b) => b.emoji && b.kategori) };
     } else if (mesin === 'mewarnai') {
-      butir = { template, palette: PALETTE_DEFAULT, mode: modeMew, target: modeMew === 'sesuai' ? TEMPLATES[template]?.target : undefined };
+      if (sumberMew === 'svg') {
+        butir = { sumber: 'svg', svg: svgMarkup, palette: PALETTE_DEFAULT, mode: 'bebas' };
+      } else {
+        butir = { sumber: 'template', template, palette: PALETTE_DEFAULT, mode: modeMew, target: modeMew === 'sesuai' ? TEMPLATES[template]?.target : undefined };
+      }
     } else {
       butir = { pasangan: pasangan.filter(Boolean) };
     }
@@ -117,17 +133,31 @@ export default function PaketForm({ temaId }: { temaId: string }) {
 
       {mesin === 'mewarnai' && (
         <div style={{ marginTop: 10 }}>
-          <div className={s.muted}>Pilih gambar template & mode. Palet warna default dipakai otomatis.</div>
-          <div className={s.row} style={{ marginTop: 6, gap: 6 }}>
-            <select className={s.inp} value={template} onChange={(e) => setTemplate(e.target.value)} style={{ flex: 1 }}>
-              {TEMPLATE_OPSI.map((t) => <option key={t.id} value={t.id}>{t.nama}</option>)}
-            </select>
-            <select className={s.inp} value={modeMew} onChange={(e) => setModeMew(e.target.value as 'bebas' | 'sesuai')}>
-              <option value="bebas">Bebas</option>
-              <option value="sesuai">Sesuai contoh</option>
-            </select>
-          </div>
-          <div className={s.muted} style={{ fontSize: 12 }}>Bebas = warnai sesuka hati (bintang saat selesai). Sesuai = cocokkan warna target (bintang dari kecocokan).</div>
+          <select className={s.inp} value={sumberMew} onChange={(e) => setSumberMew(e.target.value as 'template' | 'svg')} style={{ width: '100%' }}>
+            <option value="template">Template bawaan</option>
+            <option value="svg">Upload gambar SVG sendiri</option>
+          </select>
+
+          {sumberMew === 'template' ? (
+            <>
+              <div className={s.row} style={{ marginTop: 6, gap: 6 }}>
+                <select className={s.inp} value={template} onChange={(e) => setTemplate(e.target.value)} style={{ flex: 1 }}>
+                  {TEMPLATE_OPSI.map((t) => <option key={t.id} value={t.id}>{t.nama}</option>)}
+                </select>
+                <select className={s.inp} value={modeMew} onChange={(e) => setModeMew(e.target.value as 'bebas' | 'sesuai')}>
+                  <option value="bebas">Bebas</option>
+                  <option value="sesuai">Sesuai contoh</option>
+                </select>
+              </div>
+              <div className={s.muted} style={{ fontSize: 12 }}>Bebas = warnai sesuka hati (bintang saat selesai). Sesuai = cocokkan warna target.</div>
+            </>
+          ) : (
+            <div style={{ marginTop: 6 }}>
+              <div className={s.muted} style={{ fontSize: 12, marginBottom: 4 }}>Unggah file .svg berisi outline (garis) gambar. Mode: Bebas. Warna otomatis dibersihkan menjadi putih agar bisa diwarnai.</div>
+              <input type="file" accept="image/svg+xml,.svg" onChange={pilihSvg} />
+              {svgMarkup && <div className={s.muted} style={{ fontSize: 12, marginTop: 4, color: '#2e9e63' }}>✓ SVG dimuat · {svgArea} area bisa diwarnai</div>}
+            </div>
+          )}
         </div>
       )}
 

@@ -25,8 +25,12 @@ export function validasiButir(mesin: Mesin, butir: unknown): string {
   }
   if (mesin === 'mewarnai') {
     const b = butir as DataMewarnai;
-    if (!b.template) return 'Pilih template gambar.';
     if (!b.palette?.length) return 'Palet warna kosong.';
+    if (b.sumber === 'svg') {
+      if (!b.svg || !b.svg.includes('<svg')) return 'Unggah file SVG yang valid.';
+      return '';
+    }
+    if (!b.template) return 'Pilih template gambar.';
     if (b.mode === 'sesuai' && (!b.target || Object.keys(b.target).length === 0)) return 'Mode sesuai butuh warna target.';
     return '';
   }

@@ -11,7 +11,9 @@ export interface DataSeret { wadah: Wadah[]; benda: Benda[]; }
 export interface DataCocok { pasangan: string[]; }
 
 export interface DataMewarnai {
-  template: string;                    // id template bawaan
+  sumber?: 'template' | 'svg';         // default 'template'
+  template?: string;                   // id template bawaan (sumber 'template')
+  svg?: string;                        // markup SVG (sumber 'svg', sudah disanitasi)
   palette: string[];                   // pilihan warna (hex)
   mode: 'bebas' | 'sesuai';
   target?: Record<string, string>;     // areaId -> hex (mode 'sesuai')
