@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import Pewi from '@/components/ui/Pewi';
 import { getAnakTerjamin } from '@/lib/data/anak';
-import { getKelasAktif } from '@/lib/data/kelas-bermain';
+import { getKelasAktifCached } from '@/lib/data/publik';
 import { getVideoByKategori } from '@/lib/data/video';
 import BeliBtn from '@/components/BeliBtn';
 import s from './ortu.module.css';
@@ -10,7 +10,7 @@ import s from './ortu.module.css';
 export default async function ModeOrtu({ params }: { params: Promise<{ anakId: string }> }) {
   const { anakId } = await params;
   const anak = await getAnakTerjamin(anakId);
-  const kelasList = await getKelasAktif();
+  const kelasList = await getKelasAktifCached();
   const videoBaby = await getVideoByKategori('baby');
 
   return (

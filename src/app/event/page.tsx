@@ -2,7 +2,8 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { getEventTampil, getStatusPendaftaranSaya } from '@/lib/data/event';
+import { getStatusPendaftaranSaya } from '@/lib/data/event';
+import { getEventTampilCached } from '@/lib/data/publik';
 import { getEventBerCatatan } from '@/lib/data/catatan';
 import EventCard from '@/components/EventCard';
 import BottomNav from '@/components/BottomNav';
@@ -12,7 +13,7 @@ export default async function EventListPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
   const [events, statusEvent, adaCatatan] = await Promise.all([
-    getEventTampil(),
+    getEventTampilCached(),
     getStatusPendaftaranSaya(),
     getEventBerCatatan(),
   ]);

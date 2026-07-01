@@ -6,7 +6,7 @@ import { getPustaka } from '@/lib/data/pustaka';
 import { umurTahun } from '@/lib/domain/anak';
 import { kategoriUsia } from '@/lib/domain/usia';
 import { getVideoByKategori } from '@/lib/data/video';
-import { getKelasAktif } from '@/lib/data/kelas-bermain';
+import { getKelasAktifCached } from '@/lib/data/publik';
 import { getFavoritIds } from '@/lib/data/favorit';
 import MenuAnak from './MenuAnak';
 
@@ -22,7 +22,7 @@ export default async function MainPage({ params, searchParams }: { params: Promi
   const [video, pustaka, kelasList, favIds, { data: prof }] = await Promise.all([
     getVideoByKategori(kategoriUsia(umur)),
     getPustaka(),
-    getKelasAktif(),
+    getKelasAktifCached(),
     getFavoritIds(),
     supabase.from('profiles').select('pin_ortu').eq('id', u!.id).single(),
   ]);

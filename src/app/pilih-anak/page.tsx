@@ -3,7 +3,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { statusLangganan, bolehAkses } from '@/lib/domain/trial';
-import { getEventTampil, getStatusPendaftaranSaya } from '@/lib/data/event';
+import { getStatusPendaftaranSaya } from '@/lib/data/event';
+import { getEventTampilCached } from '@/lib/data/publik';
 import EventCarousel from '@/components/EventCarousel';
 import BottomNav from '@/components/BottomNav';
 import { tambahAnak } from './actions';
@@ -19,7 +20,7 @@ export default async function PilihAnakPage() {
     supabase.from('anak').select('id,nama,tanggal_lahir,mode_default').order('created_at'),
     supabase.from('langganan').select('trial_mulai,aktif_sampai').eq('ortu_id', user.id).single(),
     supabase.from('profiles').select('nama_tampilan').eq('id', user.id).single(),
-    getEventTampil(),
+    getEventTampilCached(),
     getStatusPendaftaranSaya(),
   ]);
 
