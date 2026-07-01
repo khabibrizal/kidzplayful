@@ -28,6 +28,7 @@ export function validasiButir(mesin: Mesin, butir: unknown): string {
     if (!b.palette?.length) return 'Palet warna kosong.';
     if (b.sumber === 'svg') {
       if (!b.svg || !b.svg.includes('<svg')) return 'Unggah file SVG yang valid.';
+      if (b.mode === 'sesuai' && (!b.target || Object.keys(b.target).length === 0)) return 'Atur warna target minimal 1 area (mode sesuai).';
       return '';
     }
     if (!b.template) return 'Pilih template gambar.';

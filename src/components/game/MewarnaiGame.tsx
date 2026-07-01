@@ -85,15 +85,32 @@ function TemplateMode({ data, onSelesai }: { data: DataMewarnai; onSelesai: (h: 
   );
 }
 
-// ---------- Mode SVG upload (Fase 2, bebas) ----------
+// render SVG statis (read-only) dengan warna per data-area (untuk "contoh")
+function svgDenganWarna(svg: string, warna: Record<string, string>, size: number): string {
+  if (typeof window === 'undefined' || typeof DOMParser === 'undefined') return '';
+  try {
+    const doc = new DOMParser().parseFromString(sanitizeSvg(svg), 'image/svg+xml');
+    const root = doc.querySelector('svg'); if (!root) return '';
+    root.setAttribute('width', String(size)); root.setAttribute('height', String(size));
+    root.querySelectorAll('path,rect,circle,ellipse,polygon').forEach((sh, i) => {
+      const k = sh.getAttribute('data-area') ?? String(i);
+      sh.setAttribute('fill', warna[k] ?? '#fff');
+      if (!sh.getAttribute('stroke')) { sh.setAttribute('stroke', '#5b5170'); sh.setAttribute('stroke-width', '2'); }
+    });
+    return root.outerHTML;
+  } catch { return ''; }
+}
+
+// ---------- Mode SVG upload (Fase 2 bebas + Fase 3 sesuai) ----------
 function SvgMode({ data, onSelesai }: { data: DataMewarnai; onSelesai: (h: HasilSelesai) => void }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [dipilih, setDipilih] = useState<string>(data.palette[0] ?? '#e74c3c');
   const warnaRef = useRef(dipilih);
-  const terisiRef = useRef<Set<Element>>(new Set());
+  const isiRef = useRef<Record<string, string>>({}); // areaKey -> hex
   const [terisi, setTerisi] = useState(0);
   const [total, setTotal] = useState(0);
   const mulaiRef = useRef(Date.now());
+  const sesuai = data.mode === 'sesuai' && !!data.target;
 
   useEffect(() => { warnaRef.current = dipilih; }, [dipilih]);
 
@@ -105,13 +122,15 @@ function SvgMode({ data, onSelesai }: { data: DataMewarnai; onSelesai: (h: Hasil
     const shapes = host.querySelectorAll('path,rect,circle,ellipse,polygon');
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setTotal(shapes.length);
-    shapes.forEach((sh) => {
+    shapes.forEach((sh, i) => {
+      const k = sh.getAttribute('data-area') ?? String(i);
       sh.setAttribute('fill', '#fff');
       if (!sh.getAttribute('stroke')) { sh.setAttribute('stroke', '#5b5170'); sh.setAttribute('stroke-width', '2'); }
       (sh as SVGElement).style.cursor = 'pointer';
       sh.addEventListener('click', () => {
         sh.setAttribute('fill', warnaRef.current);
-        if (!terisiRef.current.has(sh)) { terisiRef.current.add(sh); setTerisi(terisiRef.current.size); }
+        isiRef.current[k] = warnaRef.current;
+        setTerisi(Object.keys(isiRef.current).length);
       });
     });
   }, [data.svg]);
@@ -120,19 +139,35 @@ function SvgMode({ data, onSelesai }: { data: DataMewarnai; onSelesai: (h: Hasil
   function ulang() {
     const host = hostRef.current; if (!host) return;
     host.querySelectorAll('path,rect,circle,ellipse,polygon').forEach((sh) => sh.setAttribute('fill', '#fff'));
-    terisiRef.current.clear(); setTerisi(0);
+    isiRef.current = {}; setTerisi(0);
+  }
+  function selesai() {
+    let benar = total;
+    if (sesuai && data.target) {
+      const t = data.target;
+      benar = Object.keys(t).filter((k) => (isiRef.current[k] ?? '').toLowerCase() === (t[k] ?? '').toLowerCase()).length;
+    }
+    onSelesai({ benar, total: sesuai && data.target ? Object.keys(data.target).length : total, durasiDetik: Math.round((Date.now() - mulaiRef.current) / 1000) });
   }
   const semua = total > 0 && terisi >= total;
+  const contoh = useMemo(() => (sesuai ? svgDenganWarna(data.svg ?? '', data.target ?? {}, 54) : ''), [sesuai, data.svg, data.target]);
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+      {sesuai && contoh && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--abu)' }}>
+          Contoh:
+          <span style={{ background: '#fff', borderRadius: 12, padding: 2, boxShadow: '0 2px 0 #e6def5' }} dangerouslySetInnerHTML={{ __html: contoh }} />
+          <span>Warnai seperti contoh ya!</span>
+        </div>
+      )}
       <div style={{ background: '#fff', borderRadius: 24, padding: 8, boxShadow: '0 6px 0 #e6def5' }}>
         <div ref={hostRef} style={{ display: 'flex', justifyContent: 'center', touchAction: 'manipulation' }} />
       </div>
       <PaletBar palette={data.palette} dipilih={dipilih} onPilih={pilih} />
       <div style={{ display: 'flex', gap: 8 }}>
         <button className="kp-btn putih" onClick={ulang}>↺ Ulang</button>
-        <button className="kp-btn" onClick={() => onSelesai({ benar: total, total, durasiDetik: Math.round((Date.now() - mulaiRef.current) / 1000) })} disabled={!semua} style={semua ? undefined : { opacity: 0.5 }}>Selesai ✓</button>
+        <button className="kp-btn" onClick={selesai} disabled={!semua} style={semua ? undefined : { opacity: 0.5 }}>Selesai ✓</button>
       </div>
       {!semua && <div style={{ fontSize: 12, color: 'var(--abu)' }}>Warnai semua bagian dulu ya 🖍️</div>}
     </div>

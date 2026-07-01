@@ -5,7 +5,8 @@ import type { Mesin } from '@/lib/game/tipe';
 import { buatPaket } from '@/lib/data/admin-konten';
 import AsetInput from '@/components/admin/AsetInput';
 import { TEMPLATE_OPSI, TEMPLATES, PALETTE_DEFAULT } from '@/lib/game/templates-mewarnai';
-import { sanitizeSvg, hitungArea } from '@/lib/game/svg-sanitize';
+import { sanitizeSvg, tandaiArea } from '@/lib/game/svg-sanitize';
+import TargetEditor from './TargetEditor';
 import s from '../../admin.module.css';
 
 const AREA: Record<Mesin, string> = { 'tekan-sesuai': 'kognitif', 'seret-wadah': 'motorik-halus', 'cari-pasangan': 'kognitif', 'mewarnai': 'kreativitas' };
@@ -28,13 +29,16 @@ export default function PaketForm({ temaId }: { temaId: string }) {
   const [sumberMew, setSumberMew] = useState<'template' | 'svg'>('template');
   const [svgMarkup, setSvgMarkup] = useState('');
   const [svgArea, setSvgArea] = useState(0);
+  const [svgMode, setSvgMode] = useState<'bebas' | 'sesuai'>('bebas');
+  const [svgTarget, setSvgTarget] = useState<Record<string, string>>({});
 
   async function pilihSvg(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]; if (!f) return;
     const teks = await f.text();
-    const bersih = sanitizeSvg(teks);
-    setSvgMarkup(bersih);
-    setSvgArea(hitungArea(bersih));
+    const { svg: ditandai, jumlah } = tandaiArea(sanitizeSvg(teks));
+    setSvgMarkup(ditandai);
+    setSvgArea(jumlah);
+    setSvgTarget({});
   }
 
   async function simpan() {
@@ -46,7 +50,7 @@ export default function PaketForm({ temaId }: { temaId: string }) {
       butir = { wadah: wadah.filter((w) => w.kategori && w.emoji), benda: benda.filter((b) => b.emoji && b.kategori) };
     } else if (mesin === 'mewarnai') {
       if (sumberMew === 'svg') {
-        butir = { sumber: 'svg', svg: svgMarkup, palette: PALETTE_DEFAULT, mode: 'bebas' };
+        butir = { sumber: 'svg', svg: svgMarkup, palette: PALETTE_DEFAULT, mode: svgMode, target: svgMode === 'sesuai' ? svgTarget : undefined };
       } else {
         butir = { sumber: 'template', template, palette: PALETTE_DEFAULT, mode: modeMew, target: modeMew === 'sesuai' ? TEMPLATES[template]?.target : undefined };
       }
@@ -153,9 +157,18 @@ export default function PaketForm({ temaId }: { temaId: string }) {
             </>
           ) : (
             <div style={{ marginTop: 6 }}>
-              <div className={s.muted} style={{ fontSize: 12, marginBottom: 4 }}>Unggah file .svg berisi outline (garis) gambar. Mode: Bebas. Warna otomatis dibersihkan menjadi putih agar bisa diwarnai.</div>
+              <div className={s.muted} style={{ fontSize: 12, marginBottom: 4 }}>Unggah file .svg berisi outline (garis). Warna otomatis jadi putih agar bisa diwarnai.</div>
               <input type="file" accept="image/svg+xml,.svg" onChange={pilihSvg} />
-              {svgMarkup && <div className={s.muted} style={{ fontSize: 12, marginTop: 4, color: '#2e9e63' }}>✓ SVG dimuat · {svgArea} area bisa diwarnai</div>}
+              {svgMarkup && (
+                <>
+                  <div className={s.muted} style={{ fontSize: 12, marginTop: 4, color: '#2e9e63' }}>✓ SVG dimuat · {svgArea} area bisa diwarnai</div>
+                  <select className={s.inp} value={svgMode} onChange={(e) => setSvgMode(e.target.value as 'bebas' | 'sesuai')} style={{ width: '100%', marginTop: 6 }}>
+                    <option value="bebas">Mode Bebas</option>
+                    <option value="sesuai">Mode Sesuai contoh (atur warna target)</option>
+                  </select>
+                  {svgMode === 'sesuai' && <TargetEditor svg={svgMarkup} palette={PALETTE_DEFAULT} target={svgTarget} setTarget={setSvgTarget} />}
+                </>
+              )}
             </div>
           )}
         </div>

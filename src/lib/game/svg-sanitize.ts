@@ -30,3 +30,16 @@ export function hitungArea(svg: string): number {
     return doc.querySelectorAll('path,rect,circle,ellipse,polygon').length;
   } catch { return 0; }
 }
+
+/** Beri penanda data-area="0","1",… ke tiap bentuk agar id area stabil (untuk mode "sesuai"). */
+export function tandaiArea(svg: string): { svg: string; jumlah: number } {
+  if (typeof window === 'undefined' || typeof DOMParser === 'undefined') return { svg, jumlah: 0 };
+  try {
+    const doc = new DOMParser().parseFromString(svg, 'image/svg+xml');
+    const root = doc.querySelector('svg');
+    if (!root) return { svg, jumlah: 0 };
+    const shapes = root.querySelectorAll('path,rect,circle,ellipse,polygon');
+    shapes.forEach((sh, i) => sh.setAttribute('data-area', String(i)));
+    return { svg: root.outerHTML, jumlah: shapes.length };
+  } catch { return { svg, jumlah: 0 }; }
+}
