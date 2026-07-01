@@ -63,3 +63,11 @@ body{
 /* Collapse (details/summary) tanpa segitiga default */
 details>summary{list-style:none;cursor:pointer}
 details>summary::-webkit-details-marker{display:none}
+
+/* Perbaiki tampilan input tanggal di mobile/iOS (kp-input) */
+input[type="date"].kp-input{
+  -webkit-appearance:none; appearance:none;
+  min-height:46px; color:var(--tinta); -webkit-text-fill-color:var(--tinta);
+}
+input[type="date"]::-webkit-date-and-time-value{ text-align:left; margin:0; }
+input[type="date"]::-webkit-calendar-picker-indicator{ opacity:.7; }
