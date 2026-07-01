@@ -59,3 +59,7 @@ body{
 
 /* Sembunyikan navigasi/tombol saat cetak ke PDF */
 @media print{.no-print{display:none !important}body{background:#fff}}
+
+/* Collapse (details/summary) tanpa segitiga default */
+details>summary{list-style:none;cursor:pointer}
+details>summary::-webkit-details-marker{display:none}

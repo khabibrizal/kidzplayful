@@ -17,7 +17,7 @@ export default async function PilihAnakPage() {
 
   // Jalankan paralel (hindari round-trip berurutan ke Supabase)
   const [{ data: anakList }, { data: lang }, { data: prof }, events, statusEvent] = await Promise.all([
-    supabase.from('anak').select('id,nama,tanggal_lahir,mode_default').order('created_at'),
+    supabase.from('anak').select('id,nama,tanggal_lahir,mode_default,jenis_kelamin').order('created_at'),
     supabase.from('langganan').select('trial_mulai,aktif_sampai').eq('ortu_id', user.id).single(),
     supabase.from('profiles').select('nama_tampilan').eq('id', user.id).single(),
     getEventTampilCached(),
@@ -56,7 +56,7 @@ export default async function PilihAnakPage() {
       {(anakList ?? []).map((a) => (
         <div key={a.id} className="kp-card" style={{ marginBottom: 10 }}>
           <a href={a.mode_default === 'ortu' ? `/ortu/${a.id}` : `/main/${a.id}`} style={{ display: 'flex', gap: 12, alignItems: 'center', textDecoration: 'none', color: 'inherit' }}>
-            <span style={{ fontSize: 30 }}>🧒</span>
+            <span style={{ fontSize: 30 }}>{a.jenis_kelamin === 'laki-laki' ? '👦' : a.jenis_kelamin === 'perempuan' ? '👧' : '🧒'}</span>
             <span><b>{a.nama}</b><br /><small style={{ color: 'var(--abu)' }}>mode {a.mode_default}</small></span>
           </a>
           <a href={`/pilih-game/${a.id}`} style={{ display: 'inline-block', marginTop: 8, fontSize: 12, color: 'var(--biru-d)' }}>🎯 Pilih game (orang tua)</a>
@@ -67,12 +67,19 @@ export default async function PilihAnakPage() {
         <p style={{ color: 'var(--abu)', fontSize: 13 }}>Belum ada profil anak. Tambahkan di bawah.</p>
       )}
 
-      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '16px 0 6px' }}>TAMBAH ANAK</div>
-      <form action={tambahAnak} className="kp-card">
-        <input className="kp-input" name="nama" placeholder="Nama anak" required />
-        <input className="kp-input" name="tanggal_lahir" type="date" required />
-        <button className="kp-btn mint" type="submit" style={{ width: '100%' }}>Tambah anak</button>
-      </form>
+      <details className="kp-card" style={{ marginTop: 16 }}>
+        <summary className="kp-btn putih" style={{ display: 'inline-block', textAlign: 'center' }}>➕ Tambah data anak</summary>
+        <form action={tambahAnak} style={{ marginTop: 12 }}>
+          <input className="kp-input" name="nama" placeholder="Nama anak" required />
+          <select className="kp-input" name="jenis_kelamin" defaultValue="" required>
+            <option value="" disabled>Jenis kelamin</option>
+            <option value="laki-laki">Laki-laki</option>
+            <option value="perempuan">Perempuan</option>
+          </select>
+          <input className="kp-input" name="tanggal_lahir" type="date" required />
+          <button className="kp-btn mint" type="submit" style={{ width: '100%' }}>Tambah anak</button>
+        </form>
+      </details>
 
       <BottomNav />
     </main>

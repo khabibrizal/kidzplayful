@@ -3,15 +3,16 @@
 import { useState } from 'react';
 import { updateAnak, setBatas, hapusAnak } from '@/lib/data/ortu-actions';
 
-export default function KelolaAnak({ anak }: { anak: { id: string; nama: string; tanggal_lahir: string; batas_menit: number } }) {
+export default function KelolaAnak({ anak }: { anak: { id: string; nama: string; tanggal_lahir: string; batas_menit: number; jenis_kelamin: string | null } }) {
   const [nama, setNama] = useState(anak.nama);
   const [tgl, setTgl] = useState(anak.tanggal_lahir);
+  const [jk, setJk] = useState(anak.jenis_kelamin ?? '');
   const [batas, setBatasState] = useState(anak.batas_menit);
   const [msg, setMsg] = useState('');
 
   async function simpan() {
     setMsg('');
-    try { await updateAnak(anak.id, nama, tgl); await setBatas(anak.id, batas); setMsg('Tersimpan ✓'); }
+    try { await updateAnak(anak.id, nama, tgl, jk); await setBatas(anak.id, batas); setMsg('Tersimpan ✓'); }
     catch (e) { setMsg(e instanceof Error ? e.message : 'Gagal'); }
   }
   async function hapus() {
@@ -23,6 +24,12 @@ export default function KelolaAnak({ anak }: { anak: { id: string; nama: string;
     <div className="kp-card">
       <label style={{ fontSize: 12, color: 'var(--abu)' }}>Nama</label>
       <input className="kp-input" value={nama} onChange={(e) => setNama(e.target.value)} />
+      <label style={{ fontSize: 12, color: 'var(--abu)' }}>Jenis kelamin</label>
+      <select className="kp-input" value={jk} onChange={(e) => setJk(e.target.value)}>
+        <option value="">— belum diisi —</option>
+        <option value="laki-laki">Laki-laki</option>
+        <option value="perempuan">Perempuan</option>
+      </select>
       <label style={{ fontSize: 12, color: 'var(--abu)' }}>Tanggal lahir</label>
       <input className="kp-input" type="date" value={tgl} onChange={(e) => setTgl(e.target.value)} />
       <label style={{ fontSize: 12, color: 'var(--abu)' }}>Batas waktu main / hari</label>
