@@ -37,6 +37,16 @@ export async function hapusAnak(anakId: string) {
   redirect('/pilih-anak');
 }
 
+/** Simpan data pengiriman di profil (no HP + alamat) untuk auto-isi checkout. */
+export async function simpanProfilPengiriman(input: { noWa: string; alamat: string }) {
+  const { supabase, userId } = await sesi();
+  const { error } = await supabase.from('profiles')
+    .update({ no_wa: input.noWa.trim() || null, alamat: input.alamat.trim() || null })
+    .eq('id', userId);
+  if (error) throw new Error(error.message);
+  revalidatePath('/pengaturan'); revalidatePath('/keranjang');
+}
+
 export async function setPin(pin: string) {
   const { supabase, userId } = await sesi();
   if (!/^\d{4}$/.test(pin)) throw new Error('PIN harus 4 angka.');

@@ -6,6 +6,7 @@ import { statusLangganan } from '@/lib/domain/trial';
 import PinForm from './PinForm';
 import AkunForm from './AkunForm';
 import NamaForm from './NamaForm';
+import ProfilPengirimanForm from './ProfilPengirimanForm';
 import BottomNav from '@/components/BottomNav';
 
 const BAYAR = {
@@ -20,7 +21,7 @@ export default async function Pengaturan() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
   const [{ data: prof }, { data: lang }] = await Promise.all([
-    supabase.from('profiles').select('pin_ortu,nama_tampilan').eq('id', user.id).single(),
+    supabase.from('profiles').select('pin_ortu,nama_tampilan,no_wa,alamat').eq('id', user.id).single(),
     supabase.from('langganan').select('trial_mulai,aktif_sampai').eq('ortu_id', user.id).single(),
   ]);
   const status = lang ? statusLangganan({ trialMulai: new Date(lang.trial_mulai + 'T00:00:00Z'), aktifSampai: lang.aktif_sampai ? new Date(lang.aktif_sampai + 'T00:00:00Z') : null }, new Date()) : 'kadaluarsa';
@@ -34,6 +35,9 @@ export default async function Pengaturan() {
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '8px 0' }}>AKUN</div>
       <AkunForm email={user.email ?? ''} />
       <NamaForm awal={prof?.nama_tampilan ?? ''} />
+
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '16px 0 8px' }}>DATA PENGIRIMAN</div>
+      <ProfilPengirimanForm awalNoWa={prof?.no_wa ?? ''} awalAlamat={prof?.alamat ?? ''} />
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '16px 0 8px' }}>PIN ORANG TUA</div>
       <PinForm sudahAda={!!prof?.pin_ortu} />

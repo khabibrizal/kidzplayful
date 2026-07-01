@@ -7,12 +7,12 @@ import { setQtyKeranjang, hapusKeranjang, checkout } from '@/lib/data/keranjang-
 import type { KeranjangItem } from '@/lib/game/tipe';
 import { formatRupiah } from '@/lib/format';
 
-export default function KeranjangView({ awal }: { awal: KeranjangItem[] }) {
+export default function KeranjangView({ awal, profil }: { awal: KeranjangItem[]; profil?: { nama: string; noWa: string; alamat: string } }) {
   const router = useRouter();
   const [items, setItems] = useState<KeranjangItem[]>(awal);
-  const [penerima, setPenerima] = useState('');
-  const [noHp, setNoHp] = useState('');
-  const [alamat, setAlamat] = useState('');
+  const [penerima, setPenerima] = useState(profil?.nama ?? '');
+  const [noHp, setNoHp] = useState(profil?.noWa ?? '');
+  const [alamat, setAlamat] = useState(profil?.alamat ?? '');
   const [catatan, setCatatan] = useState('');
   const [err, setErr] = useState('');
   const [pending, start] = useTransition();
@@ -31,6 +31,11 @@ export default function KeranjangView({ awal }: { awal: KeranjangItem[] }) {
 
   function buatPesanan() {
     setErr('');
+    // validasi di klien dulu → pesan ramah (hindari error server yang disamarkan di produksi)
+    if (!penerima.trim() || !noHp.trim() || !alamat.trim()) {
+      setErr('Lengkapi nama penerima, no HP, dan alamat. Bisa disimpan otomatis di menu Akun → Data Pengiriman.');
+      return;
+    }
     start(async () => {
       try {
         const id = await checkout({ penerima, noHp, alamat, catatan });
