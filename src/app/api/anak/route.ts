@@ -1,0 +1,20 @@
+// GET /api/anak -> daftar anak · POST /api/anak { nama, tanggal_lahir } -> tambah anak
+import { getAuth, isAuthErr, ok, fail } from '@/lib/api/helpers';
+
+export async function GET(req: Request) {
+  const a = await getAuth(req); if (isAuthErr(a)) return fail(a.error, a.status);
+  const { data } = await a.supabase.from('anak').select('id,nama,tanggal_lahir,mode_default,batas_menit,koin').order('created_at');
+  return ok(data ?? []);
+}
+
+export async function POST(req: Request) {
+  const a = await getAuth(req); if (isAuthErr(a)) return fail(a.error, a.status);
+  let b: { nama?: string; tanggal_lahir?: string };
+  try { b = await req.json(); } catch { return fail('Body JSON tidak valid'); }
+  if (!b.nama?.trim() || !b.tanggal_lahir) return fail('nama & tanggal_lahir wajib');
+  const { data, error } = await a.supabase.from('anak')
+    .insert({ ortu_id: a.user.id, nama: b.nama.trim(), tanggal_lahir: b.tanggal_lahir })
+    .select('id,nama,tanggal_lahir,mode_default,batas_menit,koin').single();
+  if (error) return fail(error.message);
+  return ok(data, 201);
+}
