@@ -1,10 +1,11 @@
 // src/lib/game/butir.ts
-import type { Mesin, DataTekan, DataSeret, DataCocok } from './tipe';
+import type { Mesin, DataTekan, DataSeret, DataCocok, DataMewarnai } from './tipe';
 
-export function butirDariForm(mesin: Mesin, form: unknown): DataTekan | DataSeret | DataCocok {
+export function butirDariForm(mesin: Mesin, form: unknown): DataTekan | DataSeret | DataCocok | DataMewarnai {
   // form sudah berbentuk objek sesuai mesin; fungsi ini titik normalisasi tunggal
   if (mesin === 'tekan-sesuai') return form as DataTekan;
   if (mesin === 'seret-wadah') return form as DataSeret;
+  if (mesin === 'mewarnai') return form as DataMewarnai;
   return form as DataCocok;
 }
 
@@ -20,6 +21,13 @@ export function validasiButir(mesin: Mesin, butir: unknown): string {
   if (mesin === 'seret-wadah') {
     const b = butir as DataSeret;
     if (!b.wadah?.length || !b.benda?.length) return 'Butuh minimal 1 wadah dan 1 benda.';
+    return '';
+  }
+  if (mesin === 'mewarnai') {
+    const b = butir as DataMewarnai;
+    if (!b.template) return 'Pilih template gambar.';
+    if (!b.palette?.length) return 'Palet warna kosong.';
+    if (b.mode === 'sesuai' && (!b.target || Object.keys(b.target).length === 0)) return 'Mode sesuai butuh warna target.';
     return '';
   }
   const b = butir as DataCocok;

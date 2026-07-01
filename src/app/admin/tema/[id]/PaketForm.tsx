@@ -4,9 +4,10 @@ import { useState } from 'react';
 import type { Mesin } from '@/lib/game/tipe';
 import { buatPaket } from '@/lib/data/admin-konten';
 import AsetInput from '@/components/admin/AsetInput';
+import { TEMPLATE_OPSI, TEMPLATES, PALETTE_DEFAULT } from '@/lib/game/templates-mewarnai';
 import s from '../../admin.module.css';
 
-const AREA: Record<Mesin, string> = { 'tekan-sesuai': 'kognitif', 'seret-wadah': 'motorik-halus', 'cari-pasangan': 'kognitif' };
+const AREA: Record<Mesin, string> = { 'tekan-sesuai': 'kognitif', 'seret-wadah': 'motorik-halus', 'cari-pasangan': 'kognitif', 'mewarnai': 'kreativitas' };
 
 type Soal = { tanya: string; benar: string; pengecoh: string[] };
 type Wadah = { kategori: string; label: string; emoji: string };
@@ -21,6 +22,8 @@ export default function PaketForm({ temaId }: { temaId: string }) {
   const [wadah, setWadah] = useState<Wadah[]>([{ kategori: '', label: '', emoji: '' }]);
   const [benda, setBenda] = useState<Benda[]>([{ emoji: '', kategori: '' }]);
   const [pasangan, setPasangan] = useState<string[]>(['', '']);
+  const [template, setTemplate] = useState<string>(TEMPLATE_OPSI[0]?.id ?? '');
+  const [modeMew, setModeMew] = useState<'bebas' | 'sesuai'>('bebas');
 
   async function simpan() {
     setErr('');
@@ -29,6 +32,8 @@ export default function PaketForm({ temaId }: { temaId: string }) {
       butir = { soal: soal.filter((x) => x.tanya && x.benar).map((x) => ({ tanya: x.tanya.trim(), benar: x.benar, salah: x.pengecoh.filter(Boolean) })) };
     } else if (mesin === 'seret-wadah') {
       butir = { wadah: wadah.filter((w) => w.kategori && w.emoji), benda: benda.filter((b) => b.emoji && b.kategori) };
+    } else if (mesin === 'mewarnai') {
+      butir = { template, palette: PALETTE_DEFAULT, mode: modeMew, target: modeMew === 'sesuai' ? TEMPLATES[template]?.target : undefined };
     } else {
       butir = { pasangan: pasangan.filter(Boolean) };
     }
@@ -45,6 +50,7 @@ export default function PaketForm({ temaId }: { temaId: string }) {
           <option value="tekan-sesuai">Mana Ya? (tekan)</option>
           <option value="seret-wadah">Beres-Beres (seret)</option>
           <option value="cari-pasangan">Cari Pasangan (cocok)</option>
+          <option value="mewarnai">Mewarnai (warnai)</option>
         </select>
         <input className={s.inp} value={judul} onChange={(e) => setJudul(e.target.value)} placeholder="Judul game" style={{ flex: 1 }} />
       </div>
@@ -106,6 +112,22 @@ export default function PaketForm({ temaId }: { temaId: string }) {
             </div>
           ))}
           <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => setPasangan([...pasangan, ''])}>+ pasangan</button>
+        </div>
+      )}
+
+      {mesin === 'mewarnai' && (
+        <div style={{ marginTop: 10 }}>
+          <div className={s.muted}>Pilih gambar template & mode. Palet warna default dipakai otomatis.</div>
+          <div className={s.row} style={{ marginTop: 6, gap: 6 }}>
+            <select className={s.inp} value={template} onChange={(e) => setTemplate(e.target.value)} style={{ flex: 1 }}>
+              {TEMPLATE_OPSI.map((t) => <option key={t.id} value={t.id}>{t.nama}</option>)}
+            </select>
+            <select className={s.inp} value={modeMew} onChange={(e) => setModeMew(e.target.value as 'bebas' | 'sesuai')}>
+              <option value="bebas">Bebas</option>
+              <option value="sesuai">Sesuai contoh</option>
+            </select>
+          </div>
+          <div className={s.muted} style={{ fontSize: 12 }}>Bebas = warnai sesuka hati (bintang saat selesai). Sesuai = cocokkan warna target (bintang dari kecocokan).</div>
         </div>
       )}
 

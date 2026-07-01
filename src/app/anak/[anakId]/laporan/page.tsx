@@ -6,7 +6,7 @@ import { laporanAnak, type BarisHasil } from '@/lib/domain/laporan-anak';
 import { getCatatanAnak } from '@/lib/data/catatan';
 import CatatanCard from '@/components/CatatanCard';
 
-const LABEL: Record<string, string> = { 'kognitif': 'Kognitif', 'motorik-halus': 'Motorik Halus', 'sensorik': 'Sensorik', 'kemandirian': 'Kemandirian' };
+const LABEL: Record<string, string> = { 'kognitif': 'Kognitif', 'motorik-halus': 'Motorik Halus', 'sensorik': 'Sensorik', 'kemandirian': 'Kemandirian', 'kreativitas': 'Kreativitas' };
 
 function Stat({ b, l }: { b: string; l: string }) {
   return (

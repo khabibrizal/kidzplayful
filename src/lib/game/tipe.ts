@@ -1,5 +1,5 @@
 // src/lib/game/tipe.ts
-export type Mesin = 'tekan-sesuai' | 'seret-wadah' | 'cari-pasangan';
+export type Mesin = 'tekan-sesuai' | 'seret-wadah' | 'cari-pasangan' | 'mewarnai';
 
 export interface ButirTekan { tanya: string; benar: string; salah: string[]; }
 export interface DataTekan { soal: ButirTekan[]; }
@@ -10,6 +10,13 @@ export interface DataSeret { wadah: Wadah[]; benda: Benda[]; }
 
 export interface DataCocok { pasangan: string[]; }
 
+export interface DataMewarnai {
+  template: string;                    // id template bawaan
+  palette: string[];                   // pilihan warna (hex)
+  mode: 'bebas' | 'sesuai';
+  target?: Record<string, string>;     // areaId -> hex (mode 'sesuai')
+}
+
 export interface Paket {
   id: string;
   mesin: Mesin;
@@ -17,7 +24,7 @@ export interface Paket {
   area_skill: string;
   usia_min: number;
   usia_max: number;
-  butir: DataTekan | DataSeret | DataCocok;
+  butir: DataTekan | DataSeret | DataCocok | DataMewarnai;
 }
 
 export interface HasilSelesai {
