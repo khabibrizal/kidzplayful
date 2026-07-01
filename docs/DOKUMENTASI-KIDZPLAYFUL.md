@@ -3,7 +3,7 @@
 Dokumen ini menjelaskan **seluruh alur** aplikasi KidzPlayful dari nol sampai deploy: arsitektur, tiap berkas & perannya, parameter penting, skema database, serta cara deploy ke **Vercel** (frontend) dan **Supabase** (backend).
 
 - **Aplikasi:** web app kelas bermain digital anak 0–4 tahun — game sensorik/motorik, kelas bermain, video, komunitas, **event offline berbayar + pendaftaran**, **toko/Store**, **Catatan Perkembangan Bermain (penilaian guru)**, dan **reminder WhatsApp**.
-- **Repo:** `github.com/khabibrizal/kidzplayful` · **Live:** `https://kidzplayful.com`
+- **Repo:** `github.com/khabibrizal/kidzplayful` · **Live:** `https://www.kidzplayful.com`
 - **Stack:** Next.js 16 (App Router, TypeScript) + Supabase (Postgres + Auth + Storage). "Backend" = Supabase + Server Actions/Server Components Next.js (tanpa server terpisah).
 - **Peran pengguna:** Orang tua (default), **Admin** (`is_admin`), **Guru** (`is_guru`).
 

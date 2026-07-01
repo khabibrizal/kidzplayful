@@ -1,6 +1,6 @@
 # API Mobile — KidzPlayful (untuk Flutter)
 
-REST API di Next.js Route Handlers. **Base URL:** `https://kidzplayful.com/api` (lokal: `http://<ip-komputer>:3000/api`).
+REST API di Next.js Route Handlers. **Base URL:** `https://www.kidzplayful.com/api` (lokal: `http://<ip-komputer>:3000/api`).
 
 Format respons seragam:
 - Sukses: `{ "ok": true, "data": <hasil> }`
