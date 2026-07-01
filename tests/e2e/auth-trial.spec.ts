@@ -10,6 +10,8 @@ test('daftar -> trial aktif -> tambah anak', async ({ page }) => {
   await page.waitForURL('**/login', { timeout: 90000 });
   await page.goto('/daftar');
 
+  await page.fill('input[placeholder="Nama orang tua"]', 'Bunda Uji');
+  await page.fill('input[type=tel]', '081234567890');
   await page.fill('input[type=email]', email);
   await page.fill('input[type=password]', 'rahasia123');
   await page.click('button[type=submit]');

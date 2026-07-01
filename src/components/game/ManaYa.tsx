@@ -67,7 +67,7 @@ export default function ManaYa({ data, onSelesai }: { data: DataTekan; onSelesai
       </div>
       <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, padding: '14px 0' }}>
         {pilihan.map((emo, i) => (
-          <button key={i} onClick={(e) => pilih(e, emo === soal.benar)}
+          <button key={`${ronde}-${i}`} onClick={(e) => pilih(e, emo === soal.benar)}
             style={{ background: '#fff', border: 'none', borderRadius: 24, fontSize: 62, boxShadow: '0 6px 0 #e6def5', cursor: 'pointer' }}>
             <Aset value={emo} size={62} />
           </button>
