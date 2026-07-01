@@ -11,9 +11,11 @@ export default async function EventListPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
-  const events = await getEventTampil();
-  const statusEvent = await getStatusPendaftaranSaya();
-  const adaCatatan = await getEventBerCatatan();
+  const [events, statusEvent, adaCatatan] = await Promise.all([
+    getEventTampil(),
+    getStatusPendaftaranSaya(),
+    getEventBerCatatan(),
+  ]);
 
   return (
     <main style={{ maxWidth: 480, margin: '24px auto', padding: 16, paddingBottom: 90 }}>

@@ -1,5 +1,6 @@
 // src/components/ProdukCard.tsx — kartu produk di katalog Store
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Produk } from '@/lib/game/tipe';
 import { formatRupiah } from '@/lib/format';
 import TambahKeranjangBtn from './TambahKeranjangBtn';
@@ -11,8 +12,7 @@ export default function ProdukCard({ p }: { p: Produk }) {
       <Link href={`/store/${p.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
         <div style={{ position: 'relative', aspectRatio: '1/1', background: '#f3eefc', display: 'grid', placeItems: 'center', fontSize: 46 }}>
           {p.gambar_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={p.gambar_url} alt={p.nama} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <Image src={p.gambar_url} alt={p.nama} fill sizes="(max-width: 480px) 50vw, 240px" style={{ objectFit: 'cover' }} />
           ) : <span>🧸</span>}
           {p.kategori && <span style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(255,255,255,.88)', borderRadius: 99, padding: '3px 9px', fontSize: 10, fontWeight: 700, color: 'var(--tinta)' }}>{p.kategori}</span>}
           {habis && <span style={{ position: 'absolute', inset: 0, background: 'rgba(91,81,112,.45)', color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800 }}>Stok habis</span>}

@@ -17,8 +17,7 @@ export default async function KelasSayaPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
-  const diikuti = await getEventDiikuti();
-  const riwayat = await getRiwayatKelas();
+  const [diikuti, riwayat] = await Promise.all([getEventDiikuti(), getRiwayatKelas()]);
 
   return (
     <main style={{ maxWidth: 480, margin: '24px auto', padding: 16, paddingBottom: 90 }}>

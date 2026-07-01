@@ -2,6 +2,7 @@
 'use client';
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { tambahKeranjang } from '@/lib/data/keranjang-actions';
 import type { Produk } from '@/lib/game/tipe';
@@ -28,10 +29,9 @@ export default function ProdukDetail({ p }: { p: Produk }) {
   return (
     <main style={{ maxWidth: 480, margin: '24px auto', padding: 16 }}>
       <Link href="/store" style={{ color: 'var(--abu)', fontSize: 13 }}>← Kembali ke Store</Link>
-      <div style={{ aspectRatio: '4/3', borderRadius: 20, background: '#f3eefc', display: 'grid', placeItems: 'center', fontSize: 80, margin: '10px 0 12px', overflow: 'hidden' }}>
+      <div style={{ position: 'relative', aspectRatio: '4/3', borderRadius: 20, background: '#f3eefc', display: 'grid', placeItems: 'center', fontSize: 80, margin: '10px 0 12px', overflow: 'hidden' }}>
         {p.gambar_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={p.gambar_url} alt={p.nama} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <Image src={p.gambar_url} alt={p.nama} fill sizes="(max-width: 480px) 100vw, 480px" style={{ objectFit: 'cover' }} />
         ) : <span>🧸</span>}
       </div>
       {p.kategori && <span className="kp-chip" style={{ fontSize: 12 }}>{p.kategori}</span>}

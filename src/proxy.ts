@@ -27,5 +27,7 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  // Kecualikan /api (pakai Bearer token, bukan cookie), aset statis & file gambar,
+  // supaya request tersebut tidak membayar round-trip auth.getUser() di middleware.
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|logo.png|.*\\.(?:png|jpg|jpeg|svg|ico|webp)$).*)'],
 };

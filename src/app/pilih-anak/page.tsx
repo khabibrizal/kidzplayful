@@ -14,14 +14,14 @@ export default async function PilihAnakPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: anakList } = await supabase
-    .from('anak').select('id,nama,tanggal_lahir,mode_default').order('created_at');
-  const { data: lang } = await supabase
-    .from('langganan').select('trial_mulai,aktif_sampai').eq('ortu_id', user.id).single();
-  const { data: prof } = await supabase
-    .from('profiles').select('nama_tampilan').eq('id', user.id).single();
-  const events = await getEventTampil();
-  const statusEvent = await getStatusPendaftaranSaya();
+  // Jalankan paralel (hindari round-trip berurutan ke Supabase)
+  const [{ data: anakList }, { data: lang }, { data: prof }, events, statusEvent] = await Promise.all([
+    supabase.from('anak').select('id,nama,tanggal_lahir,mode_default').order('created_at'),
+    supabase.from('langganan').select('trial_mulai,aktif_sampai').eq('ortu_id', user.id).single(),
+    supabase.from('profiles').select('nama_tampilan').eq('id', user.id).single(),
+    getEventTampil(),
+    getStatusPendaftaranSaya(),
+  ]);
 
   const status = lang
     ? statusLangganan(

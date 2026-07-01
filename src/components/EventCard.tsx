@@ -1,5 +1,6 @@
 // src/components/EventCard.tsx — kartu event (dipakai di carousel dashboard & halaman /event)
 import Link from 'next/link';
+import Image from 'next/image';
 import type { EventKelas } from '@/lib/game/tipe';
 import { formatTanggal, formatRupiah } from '@/lib/format';
 
@@ -14,8 +15,9 @@ export default function EventCard({ ev, status, catatanHref }: { ev: EventKelas;
   return (
     <div className="kp-card" style={{ padding: 0, overflow: 'hidden' }}>
       {ev.gambar_url && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={ev.gambar_url} alt={ev.judul} style={{ width: '100%', height: 150, objectFit: 'cover', display: 'block' }} />
+        <div style={{ position: 'relative', width: '100%', height: 150 }}>
+          <Image src={ev.gambar_url} alt={ev.judul} fill sizes="(max-width: 480px) 100vw, 480px" style={{ objectFit: 'cover' }} />
+        </div>
       )}
       <div style={{ padding: 14 }}>
         <span className="kp-chip" style={{ background: 'var(--lavender)', color: '#fff', fontSize: 11 }}>🎈 MAIN BARENG YUK!</span>
