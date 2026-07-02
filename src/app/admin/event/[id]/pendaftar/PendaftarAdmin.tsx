@@ -57,8 +57,13 @@ export default function PendaftarAdmin({ awal, sertMap, eventsAktif }: { awal: P
 
   if (list.length === 0) return <p className={s.muted}>Belum ada pendaftar.</p>;
 
+  const totalHadir = list.reduce((n, p) => n + (p.hadir_anak_ids?.length ?? 0), 0);
+
   return (
     <div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+        <span className={s.tag} style={{ background: '#dff5e6', color: '#1c7a43' }}>✅ {totalHadir} anak hadir</span>
+      </div>
       {list.map((p) => (
         <div key={p.id} className={s.card}>
           <div className={s.row}>
