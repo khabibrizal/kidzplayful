@@ -1,5 +1,4 @@
 // src/app/admin/video/page.tsx
-import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { hapusVideo } from '@/lib/data/admin-konten';
 import VideoForm from './VideoForm';
@@ -16,7 +15,6 @@ export default async function KelolaVideo() {
 
   return (
     <div>
-      <Link href="/admin" className={s.muted}>&larr; dashboard</Link>
       <div className={s.section}>Tambah Video</div>
       <VideoForm />
 

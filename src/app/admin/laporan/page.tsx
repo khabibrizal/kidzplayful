@@ -35,7 +35,6 @@ export default async function Laporan() {
 
   return (
     <div>
-      <Link href="/admin" className={s.muted}>← dashboard</Link>
       <div className={s.head} style={{ marginTop: 8 }}><h1>📊 Laporan Member</h1><Link href="/admin/langganan" className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)' }}>💳 Kelola</Link></div>
 
       <div className={s.section}>Ringkasan Langganan & Pendapatan</div>

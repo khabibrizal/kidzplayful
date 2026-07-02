@@ -19,7 +19,6 @@ export default async function KelolaTema({ params }: { params: Promise<{ id: str
 
   return (
     <div>
-      <Link href="/admin" className={s.muted}>← semua tema</Link>
       <div className={s.head} style={{ marginTop: 8 }}>
         <h1>{tema.sampul} {tema.nama}</h1>
         <div className={s.row}>

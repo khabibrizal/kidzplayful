@@ -1,6 +1,7 @@
 // src/app/admin/layout.tsx
 import { getAdminTerjamin } from '@/lib/data/admin';
 import LogoutBtn from './LogoutBtn';
+import AdminNav from './AdminNav';
 import s from './admin.module.css';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -14,6 +15,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <LogoutBtn />
         </span>
       </div>
+      <AdminNav />
       {children}
     </div>
   );

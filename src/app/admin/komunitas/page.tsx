@@ -1,5 +1,4 @@
 // src/app/admin/komunitas/page.tsx
-import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { moderasiPostingan, hapusPostinganAdmin, moderasiKomentar, hapusKomentarAdmin, tuntaskanLaporan } from '@/lib/data/admin-komunitas';
 import s from '../admin.module.css';
@@ -23,7 +22,6 @@ export default async function AdminKomunitas() {
 
   return (
     <div>
-      <Link href="/admin" className={s.muted}>← dashboard</Link>
       <div className={s.section}>Dilaporkan ({laporan?.length ?? 0})</div>
       {(laporan ?? []).map((l) => {
         const post = pick(l.postingan as unknown); const kom = pick(l.komentar as unknown);

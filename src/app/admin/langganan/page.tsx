@@ -31,7 +31,6 @@ export default async function Langganan() {
 
   return (
     <div>
-      <Link href="/admin" className={s.muted}>← dashboard</Link>
       <div className={s.head} style={{ marginTop: 8 }}><h1>💳 Kelola Langganan</h1><Link href="/admin/laporan" className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)' }}>📊 Laporan</Link></div>
       <p className={s.muted}>Setelah member transfer/QRIS, klik Aktifkan (langganan +1 bulan).</p>
 
