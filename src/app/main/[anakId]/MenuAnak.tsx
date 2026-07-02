@@ -9,6 +9,8 @@ import PinGate from '@/components/game/PinGate';
 import VideoPojok from '@/components/game/VideoPojok';
 import FavoritBtn from '@/components/FavoritBtn';
 import BeliBtn from '@/components/BeliBtn';
+import YoutubeEmbed from '@/components/YoutubeEmbed';
+import { youtubeId } from '@/lib/youtube';
 import { catatRiwayatKelas } from '@/lib/data/riwayat-actions';
 import { waktuHabis, kunciHari, sisaDetik } from '@/lib/domain/waktu';
 import Pewi from '@/components/ui/Pewi';
@@ -173,7 +175,8 @@ export default function MenuAnak({
               )}
             </div>
           ))}
-          {kelas.link_ide && <a className="kp-btn" style={{ display: 'inline-block', marginRight: 8 }} href={kelas.link_ide} target="_blank">Lihat ide ▶</a>}
+          {kelas.link_ide && youtubeId(kelas.link_ide) && <YoutubeEmbed id={youtubeId(kelas.link_ide)!} title={kelas.judul} />}
+          {kelas.link_ide && !youtubeId(kelas.link_ide) && <a className="kp-btn" style={{ display: 'inline-block', marginRight: 8 }} href={kelas.link_ide} target="_blank">Lihat ide ▶</a>}
           {kelas.worksheet_url && <a className="kp-btn putih" style={{ display: 'inline-block' }} href={kelas.worksheet_url} target="_blank">📄 Worksheet</a>}
           <Link className="kp-btn putih" style={{ display: 'inline-block', marginTop: 8, marginRight: 8 }} href={`/kelas/${kelas.id}`}>⬇ Unduh PDF</Link>
           <Link className="kp-btn putih" style={{ display: 'inline-block', marginTop: 8 }} href="/komunitas">💬 Bagikan pengalaman</Link>

@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase/server';
 import type { KelasBermain } from '@/lib/game/tipe';
 import BeliBtn from '@/components/BeliBtn';
 import UnduhPdfBtn from '@/components/UnduhPdfBtn';
+import YoutubeEmbed from '@/components/YoutubeEmbed';
+import { youtubeId } from '@/lib/youtube';
 import { rekamRiwayat } from '@/lib/data/riwayat-kelas';
 
 const COLS = 'id,judul,aktivitas,bahan,link_ide,worksheet_url,status';
@@ -56,8 +58,11 @@ export default async function KelasDetailPage({ params }: { params: Promise<{ id
         </div>
       ))}
 
-      <div className="no-print">
-        {kelas.link_ide && <a className="kp-btn" style={{ display: 'inline-block', marginRight: 8 }} href={kelas.link_ide} target="_blank">Lihat ide ▶</a>}
+      {kelas.link_ide && youtubeId(kelas.link_ide) && (
+        <div className="no-print"><YoutubeEmbed id={youtubeId(kelas.link_ide)!} title={kelas.judul} /></div>
+      )}
+      <div className="no-print" style={{ marginTop: 10 }}>
+        {kelas.link_ide && !youtubeId(kelas.link_ide) && <a className="kp-btn" style={{ display: 'inline-block', marginRight: 8 }} href={kelas.link_ide} target="_blank">Lihat ide ▶</a>}
         {kelas.worksheet_url && <a className="kp-btn putih" style={{ display: 'inline-block' }} href={kelas.worksheet_url} target="_blank">📄 Worksheet</a>}
       </div>
     </main>

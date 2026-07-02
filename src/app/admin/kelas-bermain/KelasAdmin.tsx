@@ -171,7 +171,7 @@ export default function KelasAdmin({ awal, produkOpsi = [] }: { awal: KelasBerma
           ))}
           <button className={s.btnSm} style={{ background: '#dff5e6', color: '#1c7a43', marginTop: 8 }} onClick={tambahAktivitas}>+ tambah aktivitas</button>
 
-          <input className={s.inp} placeholder="Link/video referensi" value={form.linkIde} onChange={(e) => setForm({ ...form, linkIde: e.target.value })} style={{ width: '100%', marginTop: 12 }} />
+          <input className={s.inp} placeholder="Link YouTube / referensi (link YouTube tampil sbg video embed)" value={form.linkIde} onChange={(e) => setForm({ ...form, linkIde: e.target.value })} style={{ width: '100%', marginTop: 12 }} />
           <div className={s.row} style={{ marginTop: 6 }}>
             <button type="button" className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)' }} onClick={() => fileRef.current?.click()} disabled={loading}>{loading ? '...' : '⬆ Worksheet PDF'}</button>
             {form.worksheetUrl && <a className={s.muted} href={form.worksheetUrl} target="_blank" style={{ color: 'var(--biru-d)' }}>lihat PDF</a>}
