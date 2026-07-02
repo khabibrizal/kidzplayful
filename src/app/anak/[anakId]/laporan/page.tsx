@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { laporanAnak, type BarisHasil } from '@/lib/domain/laporan-anak';
 import { getCatatanAnak } from '@/lib/data/catatan';
+import { getSertifikatAnak } from '@/lib/data/sertifikat';
+import { formatTanggal } from '@/lib/format';
 import CatatanCard from '@/components/CatatanCard';
 
 const LABEL: Record<string, string> = { 'kognitif': 'Kognitif', 'motorik-halus': 'Motorik Halus', 'sensorik': 'Sensorik', 'kemandirian': 'Kemandirian', 'kreativitas': 'Kreativitas' };
@@ -24,6 +26,7 @@ export default async function LaporanAnakPage({ params }: { params: Promise<{ an
   const { data: rows } = await supabase.from('hasil_main').select('area_skill,bintang,durasi_detik,selesai').eq('anak_id', anakId);
   const r = laporanAnak((rows ?? []) as unknown as BarisHasil[]);
   const catatan = await getCatatanAnak(anakId);
+  const sertifikat = await getSertifikatAnak(anakId);
 
   const maxArea = Math.max(1, ...Object.values(r.perArea));
 
@@ -50,6 +53,22 @@ export default async function LaporanAnakPage({ params }: { params: Promise<{ an
       {catatan.length === 0
         ? <p style={{ color: 'var(--abu)', fontSize: 13 }}>Belum ada catatan dari guru. Muncul setelah {anak.nama} ikut event & dinilai.</p>
         : catatan.map(({ c, judulEvent }) => <CatatanCard key={c.id} c={c} judulEvent={judulEvent} />)}
+
+      {sertifikat.length > 0 && (
+        <>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '18px 0 8px' }}>🏅 SERTIFIKAT & DOKUMENTASI</div>
+          {sertifikat.map((st) => (
+            <div key={st.id} className="kp-card" style={{ padding: 12, marginBottom: 8 }}>
+              <div style={{ fontWeight: 700 }}>{st.event_judul}</div>
+              <div style={{ fontSize: 12, color: 'var(--abu)', marginTop: 2 }}>{formatTanggal(st.event_tanggal)}</div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                <Link href={`/sertifikat/${st.id}`} className="kp-btn" style={{ display: 'inline-block' }}>🏅 Lihat / Unduh Sertifikat</Link>
+                {st.dokumentasi_url && <a href={st.dokumentasi_url} target="_blank" rel="noopener noreferrer" className="kp-btn" style={{ display: 'inline-block', background: 'var(--mint-d)' }}>📷 Dokumentasi</a>}
+              </div>
+            </div>
+          ))}
+        </>
+      )}
     </main>
   );
 }

@@ -102,6 +102,8 @@ export interface EventKelas {
   gambar_url: string | null;
   harga_per_anak: number;
   status: 'tampil' | 'arsip';
+  sertifikat_bg_url: string | null; // template sertifikat (JPEG)
+  dokumentasi_url: string | null;   // link dokumentasi kegiatan
 }
 
 export interface PendaftaranEvent {
@@ -110,10 +112,26 @@ export interface PendaftaranEvent {
   ortu_id: string;
   anak_ids: string[];
   anak_nama: string[];
+  hadir_anak_ids: string[]; // anak yang ditandai HADIR (absensi)
   jumlah_anak: number;
   total: number;
   bukti_url: string | null;
   status: 'menunggu' | 'diterima' | 'ditolak';
+  created_at: string;
+}
+
+export interface Sertifikat {
+  id: string;
+  event_id: string | null;
+  anak_id: string;
+  ortu_id: string;
+  anak_nama: string;
+  event_judul: string;
+  event_tanggal: string | null;
+  lokasi: string | null;
+  bg_url: string | null;
+  dokumentasi_url: string | null;
+  diterbitkan_oleh: string | null;
   created_at: string;
 }
 

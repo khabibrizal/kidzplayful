@@ -3,7 +3,8 @@
 import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { buatEvent, updateEvent, toggleStatusEvent, hapusEvent, type EventInput } from '@/lib/data/admin-event-actions';
+import { buatEvent, updateEvent, toggleStatusEvent, hapusEvent, simpanBerkasSertifikat, type EventInput } from '@/lib/data/admin-event-actions';
+import { generateSertifikatEvent } from '@/lib/data/admin-sertifikat-actions';
 import type { EventKelas } from '@/lib/game/tipe';
 import { formatRupiah } from '@/lib/format';
 import s from '../admin.module.css';
@@ -125,11 +126,81 @@ export default function EventAdmin({ awal, counts }: { awal: EventKelas[]; count
             <button className={s.btnSm} style={{ background: '#fff3d6', color: '#b88600' }} onClick={() => toggle(e)} disabled={busyId === e.id}>{busyId === e.id ? '...' : (e.status === 'tampil' ? 'Arsipkan' : 'Tampilkan')}</button>
             <button className={`${s.btnSm} ${s.danger}`} onClick={() => hapus(e)} disabled={busyId === e.id}>Hapus</button>
           </div>
+
+          <details style={{ marginTop: 8, borderTop: '1px dashed #e6e0f2', paddingTop: 8 }}>
+            <summary style={{ fontSize: 13, fontWeight: 700, color: 'var(--lavender-d)' }}>🏅 Sertifikat & Dokumentasi</summary>
+            <PanelSertifikat e={e} flash={flash} onSaved={(patch) => setList((l) => l.map((x) => (x.id === e.id ? { ...x, ...patch } : x)))} />
+          </details>
         </div>
       ))}
       {list.length === 0 && <p className={s.muted}>Belum ada event.</p>}
 
       {toast && <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: '#2b2440', color: '#fff', padding: '10px 18px', borderRadius: 99, fontSize: 14, zIndex: 80 }}>{toast}</div>}
+    </div>
+  );
+}
+
+/** Panel per-kartu: upload template sertifikat (JPEG) + link dokumentasi → auto-generate e-sertifikat untuk anak HADIR. */
+function PanelSertifikat({ e, flash, onSaved }: {
+  e: EventKelas;
+  flash: (m: string) => void;
+  onSaved: (patch: Partial<EventKelas>) => void;
+}) {
+  const [bg, setBg] = useState<string | null>(e.sertifikat_bg_url);
+  const [doc, setDoc] = useState(e.dokumentasi_url ?? '');
+  const [busy, setBusy] = useState(false);
+  const tplRef = useRef<HTMLInputElement>(null);
+
+  async function generate() {
+    const n = await generateSertifikatEvent(e.id);
+    flash(n > 0 ? `E-sertifikat digenerate untuk ${n} anak hadir ✓` : 'Belum ada anak berstatus hadir.');
+  }
+
+  async function unggahTemplate(ev: React.ChangeEvent<HTMLInputElement>) {
+    const file = ev.target.files?.[0]; if (!file) return;
+    setBusy(true);
+    try {
+      const sb = createClient();
+      const ext = file.name.split('.').pop() || 'jpg';
+      const path = `event/sertifikat-${Date.now()}-${Math.floor(performance.now())}.${ext}`;
+      const { error } = await sb.storage.from('aset').upload(path, file, { upsert: false });
+      if (error) throw error;
+      const url = sb.storage.from('aset').getPublicUrl(path).data.publicUrl;
+      await simpanBerkasSertifikat(e.id, { sertifikatBgUrl: url });
+      setBg(url); onSaved({ sertifikat_bg_url: url });
+      await generate();
+    } catch (e2) { flash(e2 instanceof Error ? e2.message : 'Gagal unggah template'); }
+    finally { setBusy(false); if (tplRef.current) tplRef.current.value = ''; }
+  }
+
+  async function simpanDoc() {
+    setBusy(true);
+    try {
+      await simpanBerkasSertifikat(e.id, { dokumentasiUrl: doc });
+      onSaved({ dokumentasi_url: doc.trim() || null });
+      await generate();
+      flash('Link dokumentasi tersimpan ✓');
+    } catch (e2) { flash(e2 instanceof Error ? e2.message : 'Gagal simpan link'); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div className={s.muted} style={{ fontSize: 12, marginBottom: 6 }}>
+        Tandai anak <b>Hadir</b> dulu di halaman Pendaftar. Upload template (JPEG landscape, sisakan ruang tengah untuk nama anak) → e-sertifikat otomatis dibuat untuk anak hadir.
+      </div>
+      <div className={s.row} style={{ flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+        <button type="button" className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)' }} onClick={() => tplRef.current?.click()} disabled={busy}>{busy ? '...' : '⬆ Template Sertifikat (JPEG)'}</button>
+        {bg && <a className={s.muted} href={bg} target="_blank" style={{ color: 'var(--biru-d)' }}>lihat template</a>}
+        <input ref={tplRef} type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" hidden onChange={unggahTemplate} />
+      </div>
+      <div className={s.row} style={{ marginTop: 8, gap: 6, flexWrap: 'wrap' }}>
+        <input className={s.inp} placeholder="Link dokumentasi (mis. album foto)" value={doc} onChange={(ev) => setDoc(ev.target.value)} style={{ flex: 1, minWidth: 180, marginBottom: 0 }} />
+        <button type="button" className={s.btnSm} style={{ background: '#dff5e6', color: '#1c7a43' }} onClick={simpanDoc} disabled={busy}>Simpan link</button>
+      </div>
+      <div className={s.row} style={{ marginTop: 8 }}>
+        <button type="button" className={s.btnSm} style={{ background: '#fff3d6', color: '#b88600' }} onClick={async () => { setBusy(true); try { await generate(); } finally { setBusy(false); } }} disabled={busy}>🔄 Generate ulang sertifikat</button>
+      </div>
     </div>
   );
 }

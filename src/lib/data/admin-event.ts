@@ -2,7 +2,7 @@
 import { createClient } from '@/lib/supabase/server';
 import type { EventKelas, PendaftaranEvent } from '@/lib/game/tipe';
 
-const COLS = 'id,judul,lokasi,tanggal,jam_mulai,jam_selesai,deskripsi,gambar_url,harga_per_anak,status';
+const COLS = 'id,judul,lokasi,tanggal,jam_mulai,jam_selesai,deskripsi,gambar_url,harga_per_anak,status,sertifikat_bg_url,dokumentasi_url';
 
 export async function getEventSemua(): Promise<EventKelas[]> {
   const s = await createClient();
@@ -29,7 +29,7 @@ export async function getPendaftaranByEvent(eventId: string): Promise<Pendaftara
   const s = await createClient();
   const { data } = await s
     .from('pendaftaran_event')
-    .select('id,event_id,ortu_id,anak_ids,anak_nama,jumlah_anak,total,bukti_url,status,created_at')
+    .select('id,event_id,ortu_id,anak_ids,anak_nama,hadir_anak_ids,jumlah_anak,total,bukti_url,status,created_at')
     .eq('event_id', eventId)
     .order('created_at', { ascending: false });
   return (data ?? []) as unknown as PendaftaranEvent[];

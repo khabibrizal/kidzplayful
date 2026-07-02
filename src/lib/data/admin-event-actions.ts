@@ -14,7 +14,7 @@ export interface EventInput {
   gambarUrl: string | null;
   hargaPerAnak: number;
 }
-const COLS = 'id,judul,lokasi,tanggal,jam_mulai,jam_selesai,deskripsi,gambar_url,harga_per_anak,status';
+const COLS = 'id,judul,lokasi,tanggal,jam_mulai,jam_selesai,deskripsi,gambar_url,harga_per_anak,status,sertifikat_bg_url,dokumentasi_url';
 
 async function adminDb() {
   const s = await createClient();
@@ -69,4 +69,33 @@ export async function setStatusPendaftaran(id: string, statusBaru: 'menunggu' | 
   const s = await adminDb();
   const { error } = await s.from('pendaftaran_event').update({ status: statusBaru }).eq('id', id);
   if (error) throw new Error(error.message);
+}
+
+/** Absensi: tandai satu anak HADIR / tidak pada sebuah pendaftaran. Kembalikan daftar anak hadir terbaru. */
+export async function setKehadiran(pendaftaranId: string, anakId: string, hadir: boolean): Promise<string[]> {
+  const s = await adminDb();
+  const { data: p, error: e1 } = await s.from('pendaftaran_event').select('hadir_anak_ids,status').eq('id', pendaftaranId).single();
+  if (e1) throw new Error(e1.message);
+  if (p.status !== 'diterima') throw new Error('Terima pendaftaran dulu sebelum absensi.');
+  const set = new Set<string>((p.hadir_anak_ids as string[]) ?? []);
+  if (hadir) set.add(anakId); else set.delete(anakId);
+  const baru = [...set];
+  const { error: e2 } = await s.from('pendaftaran_event').update({ hadir_anak_ids: baru }).eq('id', pendaftaranId);
+  if (e2) throw new Error(e2.message);
+  return baru;
+}
+
+/** Simpan template sertifikat (JPEG) &/atau link dokumentasi pada sebuah event. */
+export async function simpanBerkasSertifikat(
+  eventId: string,
+  patch: { sertifikatBgUrl?: string | null; dokumentasiUrl?: string | null },
+): Promise<void> {
+  const s = await adminDb();
+  const upd: Record<string, string | null> = {};
+  if ('sertifikatBgUrl' in patch) upd.sertifikat_bg_url = patch.sertifikatBgUrl?.trim() || null;
+  if ('dokumentasiUrl' in patch) upd.dokumentasi_url = patch.dokumentasiUrl?.trim() || null;
+  if (Object.keys(upd).length === 0) return;
+  const { error } = await s.from('event').update(upd).eq('id', eventId);
+  if (error) throw new Error(error.message);
+  revalidatePath('/pilih-anak'); revalidatePath('/event');
 }
