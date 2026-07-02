@@ -1,7 +1,7 @@
 // src/components/Logo.tsx — logo KidzPlayful (gambar di public/logo.png)
-// Logo tampil di atas "plate" hitam membulat agar menyatu dengan latar hitam gambar logo
-// (kalau nanti Anda punya versi PNG transparan, set prop plate={false}).
-export default function Logo({ height = 60, plate = true }: { height?: number; plate?: boolean }) {
+// Logo baru berlatar transparan → tampil polos tanpa "plate".
+// (untuk logo berlatar gelap, set prop plate={true} agar dibungkus kotak hitam membulat).
+export default function Logo({ height = 60, plate = false }: { height?: number; plate?: boolean }) {
   const img = (
     // eslint-disable-next-line @next/next/no-img-element
     <img src="/logo.png" alt="KidzPlayful" style={{ height, width: 'auto', maxWidth: '100%', display: 'block' }} />
