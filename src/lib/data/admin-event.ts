@@ -38,7 +38,7 @@ export async function getPendaftaranByEvent(eventId: string): Promise<Pendaftara
   const s = await createClient();
   const { data } = await s
     .from('pendaftaran_event')
-    .select('id,event_id,ortu_id,anak_ids,anak_nama,hadir_anak_ids,jumlah_anak,total,bukti_url,status,created_at')
+    .select('id,event_id,ortu_id,anak_ids,anak_nama,hadir_anak_ids,jumlah_anak,total,bukti_url,status,created_at,event_asal_id,alasan_reschedule')
     .eq('event_id', eventId)
     .order('created_at', { ascending: false });
   return (data ?? []) as unknown as PendaftaranEvent[];

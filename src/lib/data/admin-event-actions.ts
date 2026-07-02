@@ -85,6 +85,29 @@ export async function setKehadiran(pendaftaranId: string, anakId: string, hadir:
   return baru;
 }
 
+/**
+ * Reschedule: pindahkan sebuah pendaftaran ke event AKTIF lain (mis. anak sakit H-1
+ * → ikut kelas bermain berikutnya). Pembayaran/bukti/status ikut terbawa; absensi direset.
+ */
+export async function reschedulePendaftaran(pendaftaranId: string, eventBaruId: string, alasan: string): Promise<void> {
+  const s = await adminDb();
+  const alsn = alasan.trim();
+  if (!alsn) throw new Error('Alasan reschedule wajib diisi.');
+
+  const { data: p } = await s.from('pendaftaran_event').select('event_id').eq('id', pendaftaranId).single();
+  if (!p) throw new Error('Pendaftaran tidak ditemukan.');
+  if (p.event_id === eventBaruId) throw new Error('Pilih event yang berbeda.');
+
+  const { data: ev } = await s.from('event').select('id,status').eq('id', eventBaruId).maybeSingle();
+  if (!ev || ev.status !== 'tampil') throw new Error('Event tujuan tidak aktif.');
+
+  const { error } = await s.from('pendaftaran_event')
+    .update({ event_id: eventBaruId, event_asal_id: p.event_id, alasan_reschedule: alsn, hadir_anak_ids: [] })
+    .eq('id', pendaftaranId);
+  if (error) throw new Error(error.message);
+  revalidatePath('/event'); revalidatePath('/pilih-anak');
+}
+
 /** Simpan template sertifikat (JPEG) &/atau link dokumentasi pada sebuah event. */
 export async function simpanBerkasSertifikat(
   eventId: string,

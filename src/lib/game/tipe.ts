@@ -118,6 +118,8 @@ export interface PendaftaranEvent {
   bukti_url: string | null;
   status: 'menunggu' | 'diterima' | 'ditolak';
   created_at: string;
+  event_asal_id: string | null;      // event asal bila pendaftaran ini di-reschedule
+  alasan_reschedule: string | null;  // alasan reschedule (mis. anak sakit)
 }
 
 export interface Sertifikat {
