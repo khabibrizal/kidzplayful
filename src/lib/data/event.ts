@@ -39,6 +39,28 @@ export async function getEventDiikuti(): Promise<{ event: EventKelas; status: st
   return out;
 }
 
+/**
+ * anak_id yang SUDAH terdaftar (status menunggu/diterima) per event, oleh ortu login.
+ * Pendaftaran berstatus 'ditolak' TIDAK dihitung → anak boleh didaftarkan ulang.
+ */
+export async function getAnakTerdaftarPerEvent(): Promise<Record<string, string[]>> {
+  const s = await createClient();
+  const { data: { user } } = await s.auth.getUser();
+  if (!user) return {};
+  const { data } = await s
+    .from('pendaftaran_event')
+    .select('event_id,anak_ids,status')
+    .eq('ortu_id', user.id);
+  const map: Record<string, string[]> = {};
+  for (const r of data ?? []) {
+    if (r.status === 'ditolak') continue;
+    const key = r.event_id as string;
+    if (!map[key]) map[key] = [];
+    for (const id of (r.anak_ids as string[]) ?? []) if (!map[key].includes(id)) map[key].push(id);
+  }
+  return map;
+}
+
 /** Status pendaftaran ortu yang login, per event (status terbaru). */
 export async function getStatusPendaftaranSaya(): Promise<Record<string, string>> {
   const s = await createClient();

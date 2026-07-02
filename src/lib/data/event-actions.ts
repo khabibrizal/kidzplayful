@@ -17,13 +17,20 @@ export async function daftarEvent(eventId: string, anakIds: string[], buktiUrl: 
   const valid = anak ?? [];
   if (!valid.length) throw new Error('Anak tidak valid.');
 
-  const total = (ev.harga_per_anak ?? 0) * valid.length;
+  // cegah daftar ganda: buang anak yang sudah terdaftar (menunggu/diterima) di event ini
+  const { data: pend } = await s.from('pendaftaran_event').select('anak_ids,status').eq('ortu_id', user.id).eq('event_id', eventId);
+  const sudah = new Set<string>();
+  for (const r of pend ?? []) if (r.status !== 'ditolak') for (const x of (r.anak_ids as string[]) ?? []) sudah.add(x);
+  const baru = valid.filter((a) => !sudah.has(a.id));
+  if (!baru.length) throw new Error('Semua anak yang dipilih sudah terdaftar di event ini.');
+
+  const total = (ev.harga_per_anak ?? 0) * baru.length;
   const { error } = await s.from('pendaftaran_event').insert({
     event_id: eventId,
     ortu_id: user.id,
-    anak_ids: valid.map((a) => a.id),
-    anak_nama: valid.map((a) => a.nama),
-    jumlah_anak: valid.length,
+    anak_ids: baru.map((a) => a.id),
+    anak_nama: baru.map((a) => a.nama),
+    jumlah_anak: baru.length,
     total,
     bukti_url: buktiUrl,
   });

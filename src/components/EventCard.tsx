@@ -10,8 +10,9 @@ const STATUS: Record<string, { t: string; c: string; bg: string }> = {
   ditolak: { t: '❌ Pendaftaran ditolak', c: '#b3261e', bg: '#fde8e6' },
 };
 
-export default function EventCard({ ev, status, catatanHref }: { ev: EventKelas; status?: string; catatanHref?: string }) {
+export default function EventCard({ ev, status, catatanHref, sisaAnak }: { ev: EventKelas; status?: string; catatanHref?: string; sisaAnak?: number }) {
   const meta = status ? STATUS[status] : null;
+  const adaSisa = typeof sisaAnak === 'number' && sisaAnak > 0;
   return (
     <div className="kp-card" style={{ padding: 0, overflow: 'hidden' }}>
       {ev.gambar_url && (
@@ -29,7 +30,9 @@ export default function EventCard({ ev, status, catatanHref }: { ev: EventKelas;
         {meta ? (
           <>
             <div style={{ marginTop: 10, textAlign: 'center', fontWeight: 700, fontSize: 13, color: meta.c, background: meta.bg, borderRadius: 99, padding: '8px 12px' }}>{meta.t}</div>
-            {status === 'ditolak' && <Link href={`/event/${ev.id}/daftar`} className="kp-btn putih" style={{ display: 'block', textAlign: 'center', marginTop: 8 }}>Daftar lagi</Link>}
+            {status === 'ditolak'
+              ? <Link href={`/event/${ev.id}/daftar`} className="kp-btn putih" style={{ display: 'block', textAlign: 'center', marginTop: 8 }}>Daftar lagi</Link>
+              : adaSisa && <Link href={`/event/${ev.id}/daftar`} className="kp-btn putih" style={{ display: 'block', textAlign: 'center', marginTop: 8 }}>➕ Daftarkan anak lainnya</Link>}
           </>
         ) : (
           <Link href={`/event/${ev.id}/daftar`} className="kp-btn" style={{ display: 'block', textAlign: 'center', marginTop: 10 }}>Daftar Sekarang</Link>
