@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 
 const MENU: { href: string; label: string }[] = [
   { href: '/admin', label: '🏠 Dashboard' },
+  { href: '/admin/analitik', label: '📈 Analitik' },
   { href: '/admin/event', label: '🗓️ Event' },
   { href: '/admin/produk', label: '🛍️ Produk' },
   { href: '/admin/pesanan', label: '📦 Pesanan' },
