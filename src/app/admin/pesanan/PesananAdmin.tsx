@@ -60,11 +60,11 @@ export default function PesananAdmin({ awal }: { awal: Pesanan[] }) {
             </div>
             {o.bukti_url && <div className={s.row} style={{ marginTop: 4 }}><a className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)' }} href={o.bukti_url} target="_blank">📎 Bukti bayar</a></div>}
 
-            {/* aksi sesuai status */}
-            {o.status === 'menunggu_ongkir' && (
+            {/* aksi sesuai status — isi/koreksi ongkir selama belum dibayar */}
+            {(o.status === 'menunggu_ongkir' || o.status === 'menunggu_bayar') && (
               <div className={s.row} style={{ marginTop: 8, gap: 6 }}>
-                <input className={s.inp} type="number" min={0} placeholder="Ongkir (Rp)" value={draft[o.id] ?? ''} onChange={(e) => setDraft({ ...draft, [o.id]: e.target.value })} style={{ flex: 1, marginBottom: 0 }} />
-                <button className={s.btn} onClick={() => aksiOngkir(o)} disabled={busyId === o.id}>Set ongkir</button>
+                <input className={s.inp} type="number" min={0} placeholder="Ongkir (Rp)" value={draft[o.id] ?? (o.status === 'menunggu_bayar' ? String(o.ongkir) : '')} onChange={(e) => setDraft({ ...draft, [o.id]: e.target.value })} style={{ flex: 1, marginBottom: 0 }} />
+                <button className={s.btn} onClick={() => aksiOngkir(o)} disabled={busyId === o.id}>{o.status === 'menunggu_ongkir' ? 'Set ongkir' : 'Perbarui ongkir'}</button>
               </div>
             )}
             {o.status === 'dibayar' && (

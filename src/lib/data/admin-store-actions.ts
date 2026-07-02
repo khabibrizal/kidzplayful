@@ -62,6 +62,7 @@ export async function setOngkir(pesananId: string, ongkir: number): Promise<void
     .update({ ongkir: ong, total: (p.subtotal ?? 0) + ong, status: 'menunggu_bayar', updated_at: new Date().toISOString() })
     .eq('id', pesananId);
   if (error) throw new Error(error.message);
+  revalidatePath('/pesanan'); // total baru langsung terlihat di halaman pesanan user
 }
 
 /** Verifikasi pembayaran → diproses + kurangi stok tiap produk. */
