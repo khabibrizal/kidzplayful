@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { statusLangganan, bolehAkses } from '@/lib/domain/trial';
-import { getStatusPendaftaranSaya, getAnakTerdaftarPerEvent } from '@/lib/data/event';
+import { getStatusPendaftaranSaya, getPesertaPerEvent } from '@/lib/data/event';
 import { getEventTampilCached } from '@/lib/data/publik';
 import EventCarousel from '@/components/EventCarousel';
 import BottomNav from '@/components/BottomNav';
@@ -16,17 +16,17 @@ export default async function PilihAnakPage() {
   if (!user) redirect('/login');
 
   // Jalankan paralel (hindari round-trip berurutan ke Supabase)
-  const [{ data: anakList }, { data: lang }, { data: prof }, events, statusEvent, terdaftar] = await Promise.all([
+  const [{ data: anakList }, { data: lang }, { data: prof }, events, statusEvent, peserta] = await Promise.all([
     supabase.from('anak').select('id,nama,tanggal_lahir,mode_default,jenis_kelamin').order('created_at'),
     supabase.from('langganan').select('trial_mulai,aktif_sampai').eq('ortu_id', user.id).single(),
     supabase.from('profiles').select('nama_tampilan').eq('id', user.id).single(),
     getEventTampilCached(),
     getStatusPendaftaranSaya(),
-    getAnakTerdaftarPerEvent(),
+    getPesertaPerEvent(),
   ]);
   const jumlahAnak = (anakList ?? []).length;
   const sisaMap: Record<string, number> = {};
-  for (const ev of events) sisaMap[ev.id] = jumlahAnak - (terdaftar[ev.id]?.length ?? 0);
+  for (const ev of events) sisaMap[ev.id] = jumlahAnak - (peserta[ev.id]?.length ?? 0);
 
   const status = lang
     ? statusLangganan(
@@ -54,7 +54,7 @@ export default async function PilihAnakPage() {
         ❤️ Favoritmu
       </Link>
 
-      <EventCarousel events={events} statusMap={statusEvent} sisaMap={sisaMap} />
+      <EventCarousel events={events} statusMap={statusEvent} sisaMap={sisaMap} pesertaMap={peserta} />
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '10px 0' }}>PROFIL ANAK</div>
       {(anakList ?? []).map((a) => (

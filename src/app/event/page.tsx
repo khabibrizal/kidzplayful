@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { getStatusPendaftaranSaya, getAnakTerdaftarPerEvent } from '@/lib/data/event';
+import { getStatusPendaftaranSaya, getPesertaPerEvent } from '@/lib/data/event';
 import { getEventTampilCached } from '@/lib/data/publik';
 import { getEventBerCatatan } from '@/lib/data/catatan';
 import EventCard from '@/components/EventCard';
@@ -12,11 +12,11 @@ export default async function EventListPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
-  const [events, statusEvent, adaCatatan, terdaftar, { count: totalAnak }] = await Promise.all([
+  const [events, statusEvent, adaCatatan, peserta, { count: totalAnak }] = await Promise.all([
     getEventTampilCached(),
     getStatusPendaftaranSaya(),
     getEventBerCatatan(),
-    getAnakTerdaftarPerEvent(),
+    getPesertaPerEvent(),
     supabase.from('anak').select('id', { count: 'exact', head: true }).eq('ortu_id', user.id),
   ]);
   const jumlahAnak = totalAnak ?? 0;
@@ -27,7 +27,7 @@ export default async function EventListPage() {
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 24, margin: '10px 0 16px' }}>✨ Event Kelas Bermain</h1>
       {events.length === 0
         ? <p style={{ color: 'var(--abu)' }}>Belum ada event saat ini.</p>
-        : events.map((ev) => <div key={ev.id} style={{ marginBottom: 14 }}><EventCard ev={ev} status={statusEvent[ev.id]} sisaAnak={jumlahAnak - (terdaftar[ev.id]?.length ?? 0)} catatanHref={adaCatatan.has(ev.id) ? `/catatan/${ev.id}` : undefined} /></div>)}
+        : events.map((ev) => <div key={ev.id} style={{ marginBottom: 14 }}><EventCard ev={ev} status={statusEvent[ev.id]} peserta={peserta[ev.id]} sisaAnak={jumlahAnak - (peserta[ev.id]?.length ?? 0)} catatanHref={adaCatatan.has(ev.id) ? `/catatan/${ev.id}` : undefined} /></div>)}
       <BottomNav />
     </main>
   );

@@ -10,9 +10,15 @@ const STATUS: Record<string, { t: string; c: string; bg: string }> = {
   ditolak: { t: '❌ Pendaftaran ditolak', c: '#b3261e', bg: '#fde8e6' },
 };
 
-export default function EventCard({ ev, status, catatanHref, sisaAnak }: { ev: EventKelas; status?: string; catatanHref?: string; sisaAnak?: number }) {
+export default function EventCard({ ev, status, catatanHref, sisaAnak, peserta }: { ev: EventKelas; status?: string; catatanHref?: string; sisaAnak?: number; peserta?: { nama: string; status: string }[] }) {
   const meta = status ? STATUS[status] : null;
   const adaSisa = typeof sisaAnak === 'number' && sisaAnak > 0;
+  const adaPeserta = !!peserta && peserta.length > 0;
+  const tombolSisa = adaSisa && (
+    <Link href={`/event/${ev.id}/daftar`} className="kp-btn putih" style={{ display: 'block', textAlign: 'center', marginTop: 8 }}>
+      ➕ Daftarkan anak lainnya{typeof sisaAnak === 'number' ? ` (${sisaAnak})` : ''}
+    </Link>
+  );
   return (
     <div className="kp-card" style={{ padding: 0, overflow: 'hidden' }}>
       {ev.gambar_url && (
@@ -27,12 +33,26 @@ export default function EventCard({ ev, status, catatanHref, sisaAnak }: { ev: E
         {(ev.jam_mulai || ev.jam_selesai) && <div style={{ fontSize: 13, color: 'var(--abu)' }}>🕐 {ev.jam_mulai}{ev.jam_selesai ? ` - ${ev.jam_selesai}` : ''} WIB</div>}
         {ev.lokasi && <div style={{ fontSize: 13, color: 'var(--abu)' }}>📍 {ev.lokasi}</div>}
         {ev.harga_per_anak > 0 && <div style={{ fontSize: 13, fontWeight: 700, marginTop: 4 }}>{formatRupiah(ev.harga_per_anak)} / anak</div>}
-        {meta ? (
+        {adaPeserta ? (
+          <div style={{ marginTop: 10 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', marginBottom: 4 }}>Anak terdaftar</div>
+            {peserta!.map((p, i) => {
+              const pm = STATUS[p.status] ?? { t: p.status, c: 'var(--abu)', bg: '#eee' };
+              return (
+                <div key={`${p.nama}-${i}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '4px 0' }}>
+                  <span style={{ fontSize: 14 }}>🧒 {p.nama}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: pm.c, background: pm.bg, borderRadius: 99, padding: '2px 8px', whiteSpace: 'nowrap' }}>{pm.t}</span>
+                </div>
+              );
+            })}
+            {tombolSisa}
+          </div>
+        ) : meta ? (
           <>
             <div style={{ marginTop: 10, textAlign: 'center', fontWeight: 700, fontSize: 13, color: meta.c, background: meta.bg, borderRadius: 99, padding: '8px 12px' }}>{meta.t}</div>
             {status === 'ditolak'
               ? <Link href={`/event/${ev.id}/daftar`} className="kp-btn putih" style={{ display: 'block', textAlign: 'center', marginTop: 8 }}>Daftar lagi</Link>
-              : adaSisa && <Link href={`/event/${ev.id}/daftar`} className="kp-btn putih" style={{ display: 'block', textAlign: 'center', marginTop: 8 }}>➕ Daftarkan anak lainnya</Link>}
+              : tombolSisa}
           </>
         ) : (
           <Link href={`/event/${ev.id}/daftar`} className="kp-btn" style={{ display: 'block', textAlign: 'center', marginTop: 10 }}>Daftar Sekarang</Link>

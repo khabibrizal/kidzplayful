@@ -40,23 +40,25 @@ export async function getEventDiikuti(): Promise<{ event: EventKelas; status: st
 }
 
 /**
- * anak_id yang SUDAH terdaftar (status menunggu/diterima) per event, oleh ortu login.
+ * Anak yang SUDAH terdaftar (status menunggu/diterima) per event, oleh ortu login,
+ * lengkap dengan nama + status masing-masing anak (untuk ditampilkan di kartu event).
  * Pendaftaran berstatus 'ditolak' TIDAK dihitung → anak boleh didaftarkan ulang.
  */
-export async function getAnakTerdaftarPerEvent(): Promise<Record<string, string[]>> {
+export async function getPesertaPerEvent(): Promise<Record<string, { nama: string; status: string }[]>> {
   const s = await createClient();
   const { data: { user } } = await s.auth.getUser();
   if (!user) return {};
   const { data } = await s
     .from('pendaftaran_event')
-    .select('event_id,anak_ids,status')
-    .eq('ortu_id', user.id);
-  const map: Record<string, string[]> = {};
+    .select('event_id,anak_nama,status,created_at')
+    .eq('ortu_id', user.id)
+    .order('created_at', { ascending: true });
+  const map: Record<string, { nama: string; status: string }[]> = {};
   for (const r of data ?? []) {
     if (r.status === 'ditolak') continue;
     const key = r.event_id as string;
     if (!map[key]) map[key] = [];
-    for (const id of (r.anak_ids as string[]) ?? []) if (!map[key].includes(id)) map[key].push(id);
+    for (const nama of (r.anak_nama as string[]) ?? []) map[key].push({ nama, status: r.status as string });
   }
   return map;
 }
