@@ -30,6 +30,19 @@ export default async function LaporanAnakPage({ params }: { params: Promise<{ an
 
   const maxArea = Math.max(1, ...Object.values(r.perArea));
 
+  // Gabungkan catatan + sertifikat per EVENT agar bisa ditampilkan sebagai daftar collapse.
+  type BlokEvent = { key: string; judul: string; tanggal: string | null; catatan: typeof catatan[number]['c'][]; sertifikat: typeof sertifikat };
+  const blokMap = new Map<string, BlokEvent>();
+  const ambilBlok = (key: string, judul: string, tanggal: string | null) => {
+    let b = blokMap.get(key);
+    if (!b) { b = { key, judul, tanggal, catatan: [], sertifikat: [] }; blokMap.set(key, b); }
+    if (!b.tanggal && tanggal) b.tanggal = tanggal;
+    return b;
+  };
+  for (const { c, judulEvent } of catatan) ambilBlok(c.event_id ?? `j:${judulEvent}`, judulEvent, null).catatan.push(c);
+  for (const st of sertifikat) ambilBlok(st.event_id ?? `j:${st.event_judul}`, st.event_judul, st.event_tanggal).sertifikat.push(st);
+  const blokEvent = [...blokMap.values()].sort((a, b) => (b.tanggal ?? '').localeCompare(a.tanggal ?? ''));
+
   return (
     <main style={{ maxWidth: 440, margin: '20px auto', padding: 16 }}>
       <Link href={`/anak/${anakId}`} style={{ color: 'var(--abu)', fontSize: 13 }}>← kembali</Link>
@@ -49,26 +62,32 @@ export default async function LaporanAnakPage({ params }: { params: Promise<{ an
       })}
       {r.totalSesi === 0 && <p style={{ color: 'var(--abu)', fontSize: 13 }}>Belum ada data — ajak {anak.nama} main dulu ya.</p>}
 
-      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '18px 0 8px' }}>CATATAN PERKEMBANGAN BERMAIN (EVENT)</div>
-      {catatan.length === 0
-        ? <p style={{ color: 'var(--abu)', fontSize: 13 }}>Belum ada catatan dari guru. Muncul setelah {anak.nama} ikut event & dinilai.</p>
-        : catatan.map(({ c, judulEvent }) => <CatatanCard key={c.id} c={c} judulEvent={judulEvent} />)}
-
-      {sertifikat.length > 0 && (
-        <>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '18px 0 8px' }}>🏅 SERTIFIKAT & DOKUMENTASI</div>
-          {sertifikat.map((st) => (
-            <div key={st.id} className="kp-card" style={{ padding: 12, marginBottom: 8 }}>
-              <div style={{ fontWeight: 700 }}>{st.event_judul}</div>
-              <div style={{ fontSize: 12, color: 'var(--abu)', marginTop: 2 }}>{formatTanggal(st.event_tanggal)}</div>
-              <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-                <Link href={`/sertifikat/${st.id}`} className="kp-btn" style={{ display: 'inline-block' }}>🏅 Lihat / Unduh Sertifikat</Link>
-                {st.dokumentasi_url && <a href={st.dokumentasi_url} target="_blank" rel="noopener noreferrer" className="kp-btn" style={{ display: 'inline-block', background: 'var(--mint-d)' }}>📷 Dokumentasi</a>}
-              </div>
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '18px 0 8px' }}>KEGIATAN (EVENT)</div>
+      {blokEvent.length === 0
+        ? <p style={{ color: 'var(--abu)', fontSize: 13 }}>Belum ada event yang diikuti. Catatan & sertifikat muncul setelah {anak.nama} ikut event.</p>
+        : blokEvent.map((b) => (
+          <details key={b.key} className="kp-card" style={{ padding: 12, marginBottom: 8 }}>
+            <summary style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 700 }}>
+              <span>🎈 {b.judul}</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 400, fontSize: 12, color: 'var(--abu)' }}>
+                {b.tanggal && <span>{formatTanggal(b.tanggal)}</span>}
+                {b.sertifikat.length > 0 && <span title="Ada sertifikat">🏅</span>}
+                <span aria-hidden>▾</span>
+              </span>
+            </summary>
+            <div style={{ marginTop: 10 }}>
+              {b.sertifikat.map((st) => (
+                <div key={st.id} style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+                  <Link href={`/sertifikat/${st.id}`} className="kp-btn" style={{ display: 'inline-block' }}>🏅 Lihat / Unduh Sertifikat</Link>
+                  {st.dokumentasi_url && <a href={st.dokumentasi_url} target="_blank" rel="noopener noreferrer" className="kp-btn" style={{ display: 'inline-block', background: 'var(--mint-d)' }}>📷 Dokumentasi</a>}
+                </div>
+              ))}
+              {b.catatan.length > 0
+                ? b.catatan.map((c) => <CatatanCard key={c.id} c={c} />)
+                : b.sertifikat.length === 0 && <p style={{ color: 'var(--abu)', fontSize: 13, margin: 0 }}>Belum ada detail.</p>}
             </div>
-          ))}
-        </>
-      )}
+          </details>
+        ))}
     </main>
   );
 }
