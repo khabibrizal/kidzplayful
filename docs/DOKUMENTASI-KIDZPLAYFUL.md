@@ -82,7 +82,7 @@ npm run lint
 
 ## 7. Skema Database (per tabel)
 
-Migrasi `supabase/migrations/0001..0025` (jalankan berurutan di SQL Editor).
+Migrasi `supabase/migrations/0001..0028` (jalankan berurutan di SQL Editor).
 
 ### `profiles` (0001; +is_admin 0004; +nama_tampilan 0010; +no_wa 0015; +is_guru 0020; +alamat 0023)
 `id(PK), email, pin_ortu, is_admin, is_guru, nama_tampilan, no_wa, created_at`. RLS: profil sendiri; admin baca semua + **admin update profil** (untuk set/cabut guru). **Trigger `cegah_self_admin` (0012, diperluas 0020):** non-admin tak bisa mengubah `is_admin`/`is_guru` (hanya admin / SQL).
@@ -114,7 +114,7 @@ Produk (nama, deskripsi, kategori, harga, stok, gambar, status) · keranjang DB 
 | unik | `(event_id, anak_id)` |
 RLS: **ortu baca catatan anaknya**, admin & **guru** baca; **guru** insert/update.
 
-**Urutan migrasi:** … → 0019 store → 0020 catatan perkembangan (+is_guru) → 0021 reminder → **0022 katalog baca anon** → **0023 profil alamat** → **0024 anak jenis_kelamin** → **0025 mesin mewarnai**.
+**Urutan migrasi:** … → 0019 store → 0020 catatan perkembangan (+is_guru) → 0021 reminder → 0022 katalog baca anon → 0023 profil alamat → 0024 anak jenis_kelamin → 0025 mesin mewarnai → **0026 sertifikat** (kolom `event.sertifikat_bg_url`/`dokumentasi_url`, `pendaftaran_event.hadir_anak_ids`, tabel `sertifikat`) → **0027 reschedule** (`pendaftaran_event.event_asal_id`/`alasan_reschedule`) → **0028 postingan topik** (`postingan.topik`).
 
 ---
 
@@ -136,7 +136,7 @@ RLS: **ortu baca catatan anaknya**, admin & **guru** baca; **guru** insert/updat
 | **`admin-reminder.ts`/`admin-reminder-actions.ts`** (getReminderPendaftaran, tandaiReminder) | reminder WA |
 
 ### `src/components/`
-Pewi, Confetti, game/*, FavoritBtn, BeliBtn (internal/eksternal+konfirmasi), UnduhPdfBtn, EventCard/EventCarousel, ProdukCard, TambahKeranjangBtn, BottomNav (badge keranjang), **CatatanCard** (tampilan rubrik), **Logo** (`/logo.png` di plate hitam).
+Pewi, Confetti, game/*, FavoritBtn, BeliBtn (internal/eksternal+konfirmasi), UnduhPdfBtn, EventCard/EventCarousel (tampil peserta+status per anak), ProdukCard, TambahKeranjangBtn, BottomNav (badge keranjang), **CatatanCard** (rubrik), **Logo** (`/logo.png`, transparan, `plate=false`), **SertifikatView** (e-sertifikat), **YoutubeEmbed** (embed materi).
 
 ### `src/app/` — rute (yang baru ditandai ✦)
 | Rute | Untuk |
@@ -152,7 +152,7 @@ Pewi, Confetti, game/*, FavoritBtn, BeliBtn (internal/eksternal+konfirmasi), Und
 | ✦ `/catatan/[eventId]` | Ortu lihat Catatan Perkembangan anaknya di satu event |
 | `/store`(+`/[id]`), `/keranjang`, `/pesanan`(+`/[id]`) | Toko + keranjang + pesanan |
 | ✦ `/guru`(+`/[eventId]`) | **Area Guru**: pilih event → isi rubrik catatan per anak |
-| `/admin` + sub | Dashboard admin: tema, video, kelas-bermain, langganan, laporan, komunitas, event, produk, pesanan, ✦ **guru** (Kelola Guru), ✦ **reminder** |
+| `/admin` + sub | Dashboard admin: tema, video, kelas-bermain, langganan, laporan, komunitas, event (+Pendaftar: absensi/sertifikat/reschedule), produk, pesanan, **guru**, **reminder**, ✦ **analitik**. **Nav utama persisten + tombol Back** (`AdminNav`) di semua halaman. |
 
 `globals.css` (+`@media print .no-print`), `layout.tsx` (metadata + **favicon `/logo.png`**), `proxy.ts`.
 
@@ -246,6 +246,46 @@ Push GitHub → Import (Next.js) → isi 2 env var **sebelum** Deploy → tiap `
 
 ---
 
+## 15c. Fitur & Peningkatan (2026-07-02)
+
+### E-Sertifikat Kelas Bermain (Event) — migrasi 0026
+- **Absensi kehadiran per anak**: di halaman Pendaftar event (admin) tiap anak (pada pendaftaran *diterima*) punya tombol **Hadir** → tersimpan di `pendaftaran_event.hadir_anak_ids uuid[]`. Ada **badge "N anak hadir"** di pojok kanan atas (live).
+- **Template & dokumentasi per event**: kolom baru `event.sertifikat_bg_url` (gambar template JPEG) & `event.dokumentasi_url` (link). Di-upload/diisi lewat panel **🏅 Sertifikat & Dokumentasi** pada kartu event. Saat template di-upload / link disimpan → **auto-generate** sertifikat untuk semua anak *hadir*.
+- **Tabel `sertifikat`** (snapshot: `anak_nama, event_judul, event_tanggal, lokasi, bg_url, dokumentasi_url, diterbitkan_oleh`; `unique(event_id,anak_id)`; RLS: ortu baca miliknya / admin kelola). Generate = **upsert idempoten** (`generateSertifikatEvent`).
+- **Sisi user**: halaman `/sertifikat/[id]` (`components/SertifikatView.tsx`) — desain landscape, **teks apresiasi di-overlay di atas template JPEG** (fallback desain pastel + Logo bila belum ada template), tombol **Unduh PDF** (cetak A4 landscape). Muncul di **Rapor anak** + tombol unduh per anak di halaman Pendaftar admin.
+- Berkas: `lib/data/sertifikat.ts` (baca), `lib/data/admin-sertifikat-actions.ts` (`generateSertifikatEvent`,`hapusSertifikat`), `components/SertifikatView.tsx`, `app/sertifikat/[id]/page.tsx`.
+
+### Reschedule pendaftaran — migrasi 0027
+Tombol **🔁 Reschedule** di kartu Pendaftar → pilih **event aktif** tujuan + **alasan** (mis. anak sakit H-1). `reschedulePendaftaran` memindahkan `event_id` (pembayaran/bukti/status ikut, absensi direset) dan mencatat `event_asal_id` + `alasan_reschedule`. Event tujuan menampilkan catatan "🔁 Direschedule: {alasan}".
+
+### Pendaftaran event per-anak (multi-anak)
+- `getPesertaPerEvent()` → per event: daftar **{nama, status}** anak yang terdaftar (kecuali *ditolak*).
+- **Kartu event** kini menampilkan **"Anak terdaftar"** (nama + status per anak) + tombol **"➕ Daftarkan anak lainnya (N)"** selama masih ada anak belum terdaftar. Halaman daftar hanya menampilkan anak yang belum terdaftar; `daftarEvent` menolak/membuang anak yang sudah terdaftar (cegah duplikat).
+
+### Rapor anak — daftar per-event (collapse)
+Section catatan & sertifikat digabung menjadi satu daftar **collapse** (`<details>`) per event (ringkas saat anak ikut banyak event); dibuka → detail (sertifikat, dokumentasi, kartu catatan).
+
+### Pesanan admin — koreksi ongkir
+Field ongkir juga muncul saat status **`menunggu_bayar`** (nilai terisi otomatis) → admin bisa memperbaiki ongkir sebelum user bayar; total user ter-recompute. `setOngkir` `revalidatePath('/pesanan')`.
+
+### Navigasi Admin persisten + tombol Back
+`src/app/admin/AdminNav.tsx` (client) dirender di `admin/layout.tsx`: **menu utama selalu tampil di semua halaman** & menandai halaman aktif, plus tombol **"← Kembali"** (`router.back()`) otomatis di tiap sub-halaman. Grid menu di dashboard & link "← dashboard" inline per halaman dihapus (tak dobel).
+
+### Materi Kelas Bermain — embed YouTube inline
+Link YouTube pada `link_ide` kini tampil sebagai **iframe embed** (`youtube-nocookie`, 16:9) — seperti pojok video — bukan tautan keluar. Util `src/lib/youtube.ts` (`youtubeId`) + komponen `src/components/YoutubeEmbed.tsx`. Non-YouTube tetap jadi tombol "Lihat ide". Dipakai di `/kelas/[id]`, Mode Anak, Mode Ortu.
+
+### Komunitas — topik dari judul materi/event/game — migrasi 0028
+Kolom baru `postingan.topik` (teks bebas) menggantikan pemakaian `tema_id` sebagai topik. Opsi topik (datalist di `Compose`) = gabungan **judul Kelas Bermain (aktif) + Event (tampil) + Game/paket (disetujui)** via `getTopikOptions()`. Tombol **"💬 Bagikan pengalaman"** dari halaman materi membawa `?topik=<judul>` → form komunitas terisi otomatis.
+
+### Analytics
+- **Dashboard Admin** `/admin/analitik` (`app/admin/analitik/page.tsx`): **DAU/WAU/MAU** akun ortu, total akun/anak, **aktivitas 30 hari** (sesi main, pendaftaran, pesanan, postingan, komentar), **game terpopuler** & **ortu teraktif** — dihitung dari data Supabase (admin baca lintas user via RLS migrasi 0006). Tanpa pihak ketiga → privat.
+- **Vercel Web Analytics**: `@vercel/analytics` `<Analytics/>` di `layout.tsx` untuk traffic pengunjung (aktifkan **Web Analytics** di dashboard Vercel).
+
+### Branding
+Logo baru **berlatar transparan**; `components/Logo.tsx` default `plate=false` (tanpa kotak hitam). Favicon tetap `/logo.png`.
+
+---
+
 ## 15. Glosarium
 
 - `bahan` (jsonb): `[{nama, link, produk_id}]` — produk_id → Store internal.
@@ -258,4 +298,4 @@ Push GitHub → Import (Next.js) → isi 2 env var **sebelum** Deploy → tiap `
 
 ---
 
-*Mengikuti kode terkini (Game Mewarnai + REST API mobile + performa region/caching + domain www + Store/Catatan/Reminder). Regenerasi PDF: `python tools/md2pdf.py docs/DOKUMENTASI-KIDZPLAYFUL.md` lalu cetak HTML→PDF via Chrome.*
+*Mengikuti kode terkini per 2026-07-02 (E-Sertifikat + Reschedule + pendaftaran per-anak + Rapor collapse + koreksi ongkir + nav admin persisten + embed YouTube materi + topik komunitas + Analitik/Vercel Analytics + logo baru). Regenerasi PDF: `python tools/md2pdf.py docs/DOKUMENTASI-KIDZPLAYFUL.md` lalu cetak HTML→PDF via Chrome.*

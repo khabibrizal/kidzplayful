@@ -95,7 +95,7 @@ npm run lint
 </ul>
 <hr />
 <h2 id="7-skema-database-per-tabel">7. Skema Database (per tabel)</h2>
-<p>Migrasi <code>supabase/migrations/0001..0025</code> (jalankan berurutan di SQL Editor).</p>
+<p>Migrasi <code>supabase/migrations/0001..0028</code> (jalankan berurutan di SQL Editor).</p>
 <h3 id="profiles-0001-is_admin-0004-nama_tampilan-0010-no_wa-0015-is_guru-0020-alamat-0023"><code>profiles</code> (0001; +is_admin 0004; +nama_tampilan 0010; +no_wa 0015; +is_guru 0020; +alamat 0023)</h3>
 <p><code>id(PK), email, pin_ortu, is_admin, is_guru, nama_tampilan, no_wa, created_at</code>. RLS: profil sendiri; admin baca semua + <strong>admin update profil</strong> (untuk set/cabut guru). <strong>Trigger <code>cegah_self_admin</code> (0012, diperluas 0020):</strong> non-admin tak bisa mengubah <code>is_admin</code>/<code>is_guru</code> (hanya admin / SQL).</p>
 <h3 id="anak-0001-jenis_kelamin-0024-langganan-0001-temapaket_asethasil_mainvideo"><code>anak</code> (0001; +jenis_kelamin 0024) · <code>langganan</code> (0001) · <code>tema</code>/<code>paket_aset</code>/<code>hasil_main</code>/<code>video</code></h3>
@@ -149,7 +149,7 @@ Profil anak, langganan trial, konten game/tema/skor/video (lihat versi sebelumny
 </tr>
 </tbody>
 </table>
-<p><strong>Urutan migrasi:</strong> … → 0019 store → 0020 catatan perkembangan (+is_guru) → 0021 reminder → <strong>0022 katalog baca anon</strong> → <strong>0023 profil alamat</strong> → <strong>0024 anak jenis_kelamin</strong> → <strong>0025 mesin mewarnai</strong>.</p>
+<p><strong>Urutan migrasi:</strong> … → 0019 store → 0020 catatan perkembangan (+is_guru) → 0021 reminder → 0022 katalog baca anon → 0023 profil alamat → 0024 anak jenis_kelamin → 0025 mesin mewarnai → <strong>0026 sertifikat</strong> (kolom <code>event.sertifikat_bg_url</code>/<code>dokumentasi_url</code>, <code>pendaftaran_event.hadir_anak_ids</code>, tabel <code>sertifikat</code>) → <strong>0027 reschedule</strong> (<code>pendaftaran_event.event_asal_id</code>/<code>alasan_reschedule</code>) → <strong>0028 postingan topik</strong> (<code>postingan.topik</code>).</p>
 <hr />
 <h2 id="8-struktur-folder-berkas-utama">8. Struktur Folder &amp; Berkas (utama)</h2>
 <h3 id="srclib"><code>src/lib/</code></h3>
@@ -197,7 +197,7 @@ Profil anak, langganan trial, konten game/tema/skor/video (lihat versi sebelumny
 </tbody>
 </table>
 <h3 id="srccomponents"><code>src/components/</code></h3>
-<p>Pewi, Confetti, game/<em>, FavoritBtn, BeliBtn (internal/eksternal+konfirmasi), UnduhPdfBtn, EventCard/EventCarousel, ProdukCard, TambahKeranjangBtn, BottomNav (badge keranjang), </em><em>CatatanCard</em><em> (tampilan rubrik), </em><em>Logo</em>* (<code>/logo.png</code> di plate hitam).</p>
+<p>Pewi, Confetti, game/<em>, FavoritBtn, BeliBtn (internal/eksternal+konfirmasi), UnduhPdfBtn, EventCard/EventCarousel (tampil peserta+status per anak), ProdukCard, TambahKeranjangBtn, BottomNav (badge keranjang), </em><em>CatatanCard</em><em> (rubrik), </em><em>Logo</em><em> (<code>/logo.png</code>, transparan, <code>plate=false</code>), </em><em>SertifikatView</em><em> (e-sertifikat), </em><em>YoutubeEmbed</em>* (embed materi).</p>
 <h3 id="srcapp-rute-yang-baru-ditandai"><code>src/app/</code> — rute (yang baru ditandai ✦)</h3>
 <table>
 <thead>
@@ -253,7 +253,7 @@ Profil anak, langganan trial, konten game/tema/skor/video (lihat versi sebelumny
 </tr>
 <tr>
 <td><code>/admin</code> + sub</td>
-<td>Dashboard admin: tema, video, kelas-bermain, langganan, laporan, komunitas, event, produk, pesanan, ✦ <strong>guru</strong> (Kelola Guru), ✦ <strong>reminder</strong></td>
+<td>Dashboard admin: tema, video, kelas-bermain, langganan, laporan, komunitas, event (+Pendaftar: absensi/sertifikat/reschedule), produk, pesanan, <strong>guru</strong>, <strong>reminder</strong>, ✦ <strong>analitik</strong>. <strong>Nav utama persisten + tombol Back</strong> (<code>AdminNav</code>) di semua halaman.</td>
 </tr>
 </tbody>
 </table>
@@ -357,6 +357,40 @@ Ortu → lihat di /kelas-saya &amp; /event (📋 Catatan) &amp; Rapor anak
 <li><strong>Kategori produk</strong> jadi dropdown. Fix bug game "Mana Ya" (reset tombol tiap ganti soal).</li>
 </ul>
 <hr />
+<h2 id="15c-fitur-peningkatan-2026-07-02">15c. Fitur &amp; Peningkatan (2026-07-02)</h2>
+<h3 id="e-sertifikat-kelas-bermain-event-migrasi-0026">E-Sertifikat Kelas Bermain (Event) — migrasi 0026</h3>
+<ul>
+<li><strong>Absensi kehadiran per anak</strong>: di halaman Pendaftar event (admin) tiap anak (pada pendaftaran <em>diterima</em>) punya tombol <strong>Hadir</strong> → tersimpan di <code>pendaftaran_event.hadir_anak_ids uuid[]</code>. Ada <strong>badge "N anak hadir"</strong> di pojok kanan atas (live).</li>
+<li><strong>Template &amp; dokumentasi per event</strong>: kolom baru <code>event.sertifikat_bg_url</code> (gambar template JPEG) &amp; <code>event.dokumentasi_url</code> (link). Di-upload/diisi lewat panel <strong>🏅 Sertifikat &amp; Dokumentasi</strong> pada kartu event. Saat template di-upload / link disimpan → <strong>auto-generate</strong> sertifikat untuk semua anak <em>hadir</em>.</li>
+<li><strong>Tabel <code>sertifikat</code></strong> (snapshot: <code>anak_nama, event_judul, event_tanggal, lokasi, bg_url, dokumentasi_url, diterbitkan_oleh</code>; <code>unique(event_id,anak_id)</code>; RLS: ortu baca miliknya / admin kelola). Generate = <strong>upsert idempoten</strong> (<code>generateSertifikatEvent</code>).</li>
+<li><strong>Sisi user</strong>: halaman <code>/sertifikat/[id]</code> (<code>components/SertifikatView.tsx</code>) — desain landscape, <strong>teks apresiasi di-overlay di atas template JPEG</strong> (fallback desain pastel + Logo bila belum ada template), tombol <strong>Unduh PDF</strong> (cetak A4 landscape). Muncul di <strong>Rapor anak</strong> + tombol unduh per anak di halaman Pendaftar admin.</li>
+<li>Berkas: <code>lib/data/sertifikat.ts</code> (baca), <code>lib/data/admin-sertifikat-actions.ts</code> (<code>generateSertifikatEvent</code>,<code>hapusSertifikat</code>), <code>components/SertifikatView.tsx</code>, <code>app/sertifikat/[id]/page.tsx</code>.</li>
+</ul>
+<h3 id="reschedule-pendaftaran-migrasi-0027">Reschedule pendaftaran — migrasi 0027</h3>
+<p>Tombol <strong>🔁 Reschedule</strong> di kartu Pendaftar → pilih <strong>event aktif</strong> tujuan + <strong>alasan</strong> (mis. anak sakit H-1). <code>reschedulePendaftaran</code> memindahkan <code>event_id</code> (pembayaran/bukti/status ikut, absensi direset) dan mencatat <code>event_asal_id</code> + <code>alasan_reschedule</code>. Event tujuan menampilkan catatan "🔁 Direschedule: {alasan}".</p>
+<h3 id="pendaftaran-event-per-anak-multi-anak">Pendaftaran event per-anak (multi-anak)</h3>
+<ul>
+<li><code>getPesertaPerEvent()</code> → per event: daftar <strong>{nama, status}</strong> anak yang terdaftar (kecuali <em>ditolak</em>).</li>
+<li><strong>Kartu event</strong> kini menampilkan <strong>"Anak terdaftar"</strong> (nama + status per anak) + tombol <strong>"➕ Daftarkan anak lainnya (N)"</strong> selama masih ada anak belum terdaftar. Halaman daftar hanya menampilkan anak yang belum terdaftar; <code>daftarEvent</code> menolak/membuang anak yang sudah terdaftar (cegah duplikat).</li>
+</ul>
+<h3 id="rapor-anak-daftar-per-event-collapse">Rapor anak — daftar per-event (collapse)</h3>
+<p>Section catatan &amp; sertifikat digabung menjadi satu daftar <strong>collapse</strong> (<code>&lt;details&gt;</code>) per event (ringkas saat anak ikut banyak event); dibuka → detail (sertifikat, dokumentasi, kartu catatan).</p>
+<h3 id="pesanan-admin-koreksi-ongkir">Pesanan admin — koreksi ongkir</h3>
+<p>Field ongkir juga muncul saat status <strong><code>menunggu_bayar</code></strong> (nilai terisi otomatis) → admin bisa memperbaiki ongkir sebelum user bayar; total user ter-recompute. <code>setOngkir</code> <code>revalidatePath('/pesanan')</code>.</p>
+<h3 id="navigasi-admin-persisten-tombol-back">Navigasi Admin persisten + tombol Back</h3>
+<p><code>src/app/admin/AdminNav.tsx</code> (client) dirender di <code>admin/layout.tsx</code>: <strong>menu utama selalu tampil di semua halaman</strong> &amp; menandai halaman aktif, plus tombol <strong>"← Kembali"</strong> (<code>router.back()</code>) otomatis di tiap sub-halaman. Grid menu di dashboard &amp; link "← dashboard" inline per halaman dihapus (tak dobel).</p>
+<h3 id="materi-kelas-bermain-embed-youtube-inline">Materi Kelas Bermain — embed YouTube inline</h3>
+<p>Link YouTube pada <code>link_ide</code> kini tampil sebagai <strong>iframe embed</strong> (<code>youtube-nocookie</code>, 16:9) — seperti pojok video — bukan tautan keluar. Util <code>src/lib/youtube.ts</code> (<code>youtubeId</code>) + komponen <code>src/components/YoutubeEmbed.tsx</code>. Non-YouTube tetap jadi tombol "Lihat ide". Dipakai di <code>/kelas/[id]</code>, Mode Anak, Mode Ortu.</p>
+<h3 id="komunitas-topik-dari-judul-materieventgame-migrasi-0028">Komunitas — topik dari judul materi/event/game — migrasi 0028</h3>
+<p>Kolom baru <code>postingan.topik</code> (teks bebas) menggantikan pemakaian <code>tema_id</code> sebagai topik. Opsi topik (datalist di <code>Compose</code>) = gabungan <strong>judul Kelas Bermain (aktif) + Event (tampil) + Game/paket (disetujui)</strong> via <code>getTopikOptions()</code>. Tombol <strong>"💬 Bagikan pengalaman"</strong> dari halaman materi membawa <code>?topik=&lt;judul&gt;</code> → form komunitas terisi otomatis.</p>
+<h3 id="analytics">Analytics</h3>
+<ul>
+<li><strong>Dashboard Admin</strong> <code>/admin/analitik</code> (<code>app/admin/analitik/page.tsx</code>): <strong>DAU/WAU/MAU</strong> akun ortu, total akun/anak, <strong>aktivitas 30 hari</strong> (sesi main, pendaftaran, pesanan, postingan, komentar), <strong>game terpopuler</strong> &amp; <strong>ortu teraktif</strong> — dihitung dari data Supabase (admin baca lintas user via RLS migrasi 0006). Tanpa pihak ketiga → privat.</li>
+<li><strong>Vercel Web Analytics</strong>: <code>@vercel/analytics</code> <code>&lt;Analytics/&gt;</code> di <code>layout.tsx</code> untuk traffic pengunjung (aktifkan <strong>Web Analytics</strong> di dashboard Vercel).</li>
+</ul>
+<h3 id="branding">Branding</h3>
+<p>Logo baru <strong>berlatar transparan</strong>; <code>components/Logo.tsx</code> default <code>plate=false</code> (tanpa kotak hitam). Favicon tetap <code>/logo.png</code>.</p>
+<hr />
 <h2 id="15-glosarium">15. Glosarium</h2>
 <ul>
 <li><code>bahan</code> (jsonb): <code>[{nama, link, produk_id}]</code> — produk_id → Store internal.</li>
@@ -368,4 +402,4 @@ Ortu → lihat di /kelas-saya &amp; /event (📋 Catatan) &amp; Rapor anak
 <li><code>DataMewarnai</code> (butir game mewarnai): <code>{sumber:'template'|'svg', template?, svg?, palette[], mode:'bebas'|'sesuai', target?}</code>.</li>
 </ul>
 <hr />
-<p><em>Mengikuti kode terkini (Game Mewarnai + REST API mobile + performa region/caching + domain www + Store/Catatan/Reminder). Regenerasi PDF: <code>python tools/md2pdf.py docs/DOKUMENTASI-KIDZPLAYFUL.md</code> lalu cetak HTML→PDF via Chrome.</em></p></body></html>
+<p><em>Mengikuti kode terkini per 2026-07-02 (E-Sertifikat + Reschedule + pendaftaran per-anak + Rapor collapse + koreksi ongkir + nav admin persisten + embed YouTube materi + topik komunitas + Analitik/Vercel Analytics + logo baru). Regenerasi PDF: <code>python tools/md2pdf.py docs/DOKUMENTASI-KIDZPLAYFUL.md</code> lalu cetak HTML→PDF via Chrome.</em></p></body></html>

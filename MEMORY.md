@@ -47,7 +47,7 @@ Ringkasan navigasi seluruh codebase, dihasilkan dari **knowledge graph** (`/grap
 - **Keamanan utama = RLS** per tabel + guard `getAnakTerjamin`/`getAdminTerjamin`/`getGuruTerjamin`/`adminDb`. Query "milik sendiri" selalu `.eq(..user.id)`.
 - **Peran:** `profiles.is_admin` / `is_guru` (fungsi `is_admin()`/`is_guru()`); trigger `cegah_self_admin` cegah promosi diri.
 - **Total uang dihitung ulang di server**; harga di-snapshot (item_pesanan).
-- **Migrasi** SQL berurutan `supabase/migrations/0001..0025` (dijalankan di Supabase SQL Editor).
+- **Migrasi** SQL berurutan `supabase/migrations/0001..0028` (dijalankan di Supabase SQL Editor).
 
 ## Update terbaru (setelah snapshot graf)
 - **Game Mewarnai** (`mesin:'mewarnai'`): `components/game/MewarnaiGame.tsx`, `lib/game/templates-mewarnai.ts` (template bawaan), `lib/game/svg-sanitize.ts` (upload SVG aman), admin `TargetEditor.tsx` (mode sesuai). Mode Bebas/Sesuai, skor area `kreativitas`. Migrasi 0025 (izin mesin).
@@ -56,6 +56,18 @@ Ringkasan navigasi seluruh codebase, dihasilkan dari **knowledge graph** (`/grap
 - **Domain**: `www.kidzplayful.com` (Vercel + DomaiNesia + Supabase Auth URL). Logo `components/Logo.tsx` (`public/logo.png`) + favicon.
 - **Store**: checkout auto-isi dari profil; **Akun → Data Pengiriman** (`ProfilPengirimanForm`, `profiles.alamat` migrasi 0023). Kategori produk dropdown.
 - **Anak**: `jenis_kelamin` (migrasi 0024) + form tambah anak collapse.
+
+### 2026-07-02
+- **E-Sertifikat event** (migrasi **0026**): absensi hadir per anak (`pendaftaran_event.hadir_anak_ids`), template JPEG + link dokumentasi per event (`event.sertifikat_bg_url`/`dokumentasi_url`), tabel `sertifikat` (snapshot + RLS). Admin (halaman Pendaftar): tombol Hadir per anak, upload template JPEG → **auto-generate** untuk anak hadir, tombol unduh sertifikat per anak, **badge "N anak hadir"** pojok kanan atas. User: halaman `/sertifikat/[id]` (`components/SertifikatView.tsx`, Unduh PDF landscape; teks apresiasi di-overlay di atas template) + section di Rapor anak. Data: `lib/data/sertifikat.ts`, `admin-sertifikat-actions.ts` (`generateSertifikatEvent`,`hapusSertifikat`).
+- **Reschedule pendaftaran** (migrasi **0027**): `reschedulePendaftaran` pindah pendaftaran ke event aktif lain + alasan (`event_asal_id`,`alasan_reschedule`); pembayaran terbawa, absensi direset. Tombol 🔁 di kartu Pendaftar.
+- **Pendaftaran per-anak**: `getPesertaPerEvent` (nama+status per anak) → kartu event tampilkan **"Anak terdaftar"** + tombol **"Daftarkan anak lainnya (N)"**; halaman daftar hanya menampilkan anak belum terdaftar; `daftarEvent` cegah duplikat.
+- **Rapor anak** (`/anak/[anakId]/laporan`): daftar per-event **collapse** (`<details>`) — catatan + sertifikat + dokumentasi digabung per event.
+- **Pesanan admin**: ongkir bisa dikoreksi saat status `menunggu_bayar`; `setOngkir` `revalidatePath('/pesanan')`.
+- **Nav admin persisten**: `src/app/admin/AdminNav.tsx` di `layout.tsx` — menu utama selalu tampil & tandai aktif + tombol **Back** (`router.back()`) di semua sub-halaman; grid menu dashboard + link "← dashboard" inline dihapus.
+- **Embed YouTube di materi**: link `link_ide` YouTube tampil sebagai **iframe** (`components/YoutubeEmbed.tsx` + util `lib/youtube.ts`), fallback tombol utk non-YouTube. Dipakai di `/kelas/[id]`, Mode Anak, Mode Ortu.
+- **Komunitas topik** (migrasi **0028**): `postingan.topik` (teks bebas) menggantikan pemakaian `tema_id`; opsi topik = judul Kelas Bermain + Event + Game (`getTopikOptions`, datalist di `Compose`); tombol **"Bagikan pengalaman"** dari materi prefill `?topik=<judul>`.
+- **Analitik**: `/admin/analitik` — DAU/WAU/MAU akun ortu, aktivitas 30 hari (sesi main, pendaftaran, pesanan, postingan, komentar), game & ortu teraktif (data Supabase, RLS admin baca 0006) + **Vercel Web Analytics** (`@vercel/analytics` `<Analytics/>` di layout; aktifkan Web Analytics di dashboard Vercel).
+- **Logo baru** transparan; `components/Logo.tsx` default `plate=false` (tanpa kotak hitam).
 
 ## Catatan
 - `mockups/` (demo.js/index.html) = prototipe statis, terpisah dari app Next.js.
