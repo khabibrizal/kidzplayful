@@ -20,11 +20,11 @@ export async function setNamaTampilan(nama: string) {
   revalidatePath('/pengaturan'); revalidatePath('/komunitas');
 }
 
-export async function buatPostingan(teks: string, temaId: string | null) {
+export async function buatPostingan(teks: string, topik: string | null) {
   const { supabase, userId, nama } = await sesi();
   if (!teks.trim()) throw new Error('Cerita tidak boleh kosong.');
   const { error } = await supabase.from('postingan').insert({
-    ortu_id: userId, nama, teks: teks.trim(), tema_id: temaId || null,
+    ortu_id: userId, nama, teks: teks.trim(), topik: topik?.trim() || null,
   });
   if (error) throw new Error(error.message);
   revalidatePath('/komunitas');

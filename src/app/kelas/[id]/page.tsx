@@ -61,9 +61,10 @@ export default async function KelasDetailPage({ params }: { params: Promise<{ id
       {kelas.link_ide && youtubeId(kelas.link_ide) && (
         <div className="no-print"><YoutubeEmbed id={youtubeId(kelas.link_ide)!} title={kelas.judul} /></div>
       )}
-      <div className="no-print" style={{ marginTop: 10 }}>
-        {kelas.link_ide && !youtubeId(kelas.link_ide) && <a className="kp-btn" style={{ display: 'inline-block', marginRight: 8 }} href={kelas.link_ide} target="_blank">Lihat ide ▶</a>}
+      <div className="no-print" style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {kelas.link_ide && !youtubeId(kelas.link_ide) && <a className="kp-btn" style={{ display: 'inline-block' }} href={kelas.link_ide} target="_blank">Lihat ide ▶</a>}
         {kelas.worksheet_url && <a className="kp-btn putih" style={{ display: 'inline-block' }} href={kelas.worksheet_url} target="_blank">📄 Worksheet</a>}
+        <Link className="kp-btn putih" style={{ display: 'inline-block' }} href={`/komunitas?topik=${encodeURIComponent(kelas.judul)}`}>💬 Bagikan pengalaman</Link>
       </div>
     </main>
   );

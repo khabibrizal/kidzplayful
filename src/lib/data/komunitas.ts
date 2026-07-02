@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 
 export interface PostFeed {
   id: string; nama: string; teks: string; created_at: string;
+  topik: string | null;
   tema: { nama: string; sampul: string | null } | null;
   jmlSuka: number; jmlKomentar: number; sukaSaya: boolean; milikSaya: boolean;
 }
@@ -12,7 +13,7 @@ export async function getFeed(): Promise<PostFeed[]> {
   const { data: { user } } = await supabase.auth.getUser();
   const { data: posts } = await supabase
     .from('postingan')
-    .select('id,nama,teks,created_at,ortu_id,tema:tema_id(nama,sampul),suka(count),komentar(count)')
+    .select('id,nama,teks,created_at,ortu_id,topik,tema:tema_id(nama,sampul),suka(count),komentar(count)')
     .eq('status', 'tampil').order('created_at', { ascending: false }).limit(100);
   const { data: sukaSaya } = user
     ? await supabase.from('suka').select('postingan_id').eq('ortu_id', user.id)
@@ -22,6 +23,7 @@ export async function getFeed(): Promise<PostFeed[]> {
     const tema = Array.isArray(p.tema) ? p.tema[0] : p.tema;
     return {
       id: p.id as string, nama: p.nama as string, teks: p.teks as string, created_at: p.created_at as string,
+      topik: (p.topik as string | null) ?? null,
       tema: tema ? { nama: tema.nama as string, sampul: tema.sampul as string | null } : null,
       jmlSuka: (p.suka as { count: number }[])?.[0]?.count ?? 0,
       jmlKomentar: (p.komentar as { count: number }[])?.[0]?.count ?? 0,
@@ -29,6 +31,21 @@ export async function getFeed(): Promise<PostFeed[]> {
       milikSaya: user ? p.ortu_id === user.id : false,
     };
   });
+}
+
+/** Opsi topik komunitas: gabungan judul Kelas Bermain (aktif) + Event (tampil) + Game (paket disetujui). */
+export async function getTopikOptions(): Promise<string[]> {
+  const s = await createClient();
+  const [kelas, event, game] = await Promise.all([
+    s.from('kelas_bermain').select('judul').eq('status', 'aktif'),
+    s.from('event').select('judul').eq('status', 'tampil'),
+    s.from('paket_aset').select('judul').eq('status', 'disetujui'),
+  ]);
+  const set = new Set<string>();
+  for (const arr of [kelas.data, event.data, game.data]) {
+    for (const r of arr ?? []) { const j = (r.judul as string | null)?.trim(); if (j) set.add(j); }
+  }
+  return [...set].sort((a, b) => a.localeCompare(b, 'id'));
 }
 
 export interface KomentarItem { id: string; nama: string; teks: string; created_at: string; }
