@@ -25,6 +25,15 @@ export async function getJumlahPendaftar(): Promise<Record<string, number>> {
   return map;
 }
 
+/** Peta anak_id → sertifikat_id untuk satu event (admin boleh baca semua via RLS). */
+export async function getSertifikatMapByEvent(eventId: string): Promise<Record<string, string>> {
+  const s = await createClient();
+  const { data } = await s.from('sertifikat').select('id,anak_id').eq('event_id', eventId);
+  const map: Record<string, string> = {};
+  for (const r of data ?? []) map[r.anak_id as string] = r.id as string;
+  return map;
+}
+
 export async function getPendaftaranByEvent(eventId: string): Promise<PendaftaranEvent[]> {
   const s = await createClient();
   const { data } = await s

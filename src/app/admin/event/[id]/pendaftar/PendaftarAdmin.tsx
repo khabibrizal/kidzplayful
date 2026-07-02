@@ -8,7 +8,7 @@ import s from '../../../admin.module.css';
 
 const WARNA: Record<string, string> = { menunggu: '#b88600', diterima: '#1c7a43', ditolak: '#b3261e' };
 
-export default function PendaftarAdmin({ awal }: { awal: PendaftaranEvent[] }) {
+export default function PendaftarAdmin({ awal, sertMap }: { awal: PendaftaranEvent[]; sertMap: Record<string, string> }) {
   const [list, setList] = useState<PendaftaranEvent[]>(awal);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [toast, setToast] = useState('');
@@ -78,6 +78,14 @@ export default function PendaftarAdmin({ awal }: { awal: PendaftaranEvent[] }) {
                   );
                 })}
               </div>
+              {p.anak_ids.some((id) => sertMap[id]) && (
+                <div className={s.row} style={{ flexWrap: 'wrap', gap: 6, marginTop: 8, alignItems: 'center' }}>
+                  <span className={s.muted} style={{ fontSize: 12 }}>E-sertifikat:</span>
+                  {p.anak_ids.map((anakId, i) => sertMap[anakId]
+                    ? <a key={anakId} className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)' }} href={`/sertifikat/${sertMap[anakId]}`} target="_blank" rel="noopener noreferrer">⬇ {p.anak_nama[i] ?? 'Anak'}</a>
+                    : null)}
+                </div>
+              )}
             </div>
           )}
         </div>
