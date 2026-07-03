@@ -1,5 +1,5 @@
 // src/lib/game/tipe.ts
-export type Mesin = 'tekan-sesuai' | 'seret-wadah' | 'cari-pasangan' | 'mewarnai' | 'dekode';
+export type Mesin = 'tekan-sesuai' | 'seret-wadah' | 'cari-pasangan' | 'mewarnai' | 'dekode' | 'urutan';
 
 export interface ButirTekan { tanya: string; benar: string; salah: string[]; }
 export interface DataTekan { soal: ButirTekan[]; }
@@ -23,6 +23,16 @@ export interface DataMewarnai {
 export interface DekodeMap { simbol: string; nilai: string; } // simbol: emoji/gambar-URL/#hex; nilai: huruf/angka/kata/emoji
 export interface DataDekode { legenda: DekodeMap[]; soal: string[][]; } // tiap soal = urutan 'simbol' (harus ada di legenda)
 
+// Urutan & Pola: 'urutkan' (anak menata item ke urutan benar) / 'pola' (lanjutkan pola).
+export interface UrutanSoal {
+  urut?: string[];       // tipe 'urutkan': urutan BENAR (ditampilkan teracak)
+  petunjuk?: string;     // tipe 'urutkan': hint (mis. "kecil → besar" / "susun: BUKU")
+  tampil?: string[];     // tipe 'pola': sekuens yang ditampilkan
+  benar?: string;        // tipe 'pola': item berikutnya yang benar
+  salah?: string[];      // tipe 'pola': pengecoh
+}
+export interface DataUrutan { tipe: 'urutkan' | 'pola'; soal: UrutanSoal[]; }
+
 export interface Paket {
   id: string;
   mesin: Mesin;
@@ -30,7 +40,7 @@ export interface Paket {
   area_skill: string;
   usia_min: number;
   usia_max: number;
-  butir: DataTekan | DataSeret | DataCocok | DataMewarnai | DataDekode;
+  butir: DataTekan | DataSeret | DataCocok | DataMewarnai | DataDekode | DataUrutan;
 }
 
 export interface HasilSelesai {

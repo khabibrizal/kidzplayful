@@ -11,7 +11,7 @@ import { sanitizeSvg, tandaiArea } from '@/lib/game/svg-sanitize';
 import TargetEditor from './TargetEditor';
 import s from '../../admin.module.css';
 
-const AREA: Record<Mesin, string> = { 'tekan-sesuai': 'kognitif', 'seret-wadah': 'motorik-halus', 'cari-pasangan': 'kognitif', 'mewarnai': 'kreativitas', 'dekode': 'kognitif' };
+const AREA: Record<Mesin, string> = { 'tekan-sesuai': 'kognitif', 'seret-wadah': 'motorik-halus', 'cari-pasangan': 'kognitif', 'mewarnai': 'kreativitas', 'dekode': 'kognitif', 'urutan': 'kognitif' };
 
 const isHex = (v: string) => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v.trim());
 function SimbolMini({ v, size = 22 }: { v: string; size?: number }) {
@@ -45,6 +45,10 @@ export default function PaketForm({ temaId }: { temaId: string }) {
   // dekode ("Pecahkan Kode")
   const [legenda, setLegenda] = useState<LegRow[]>([{ simbol: '', nilai: '' }]);
   const [dsoal, setDsoal] = useState<string[][]>([[]]);
+  // urutan & pola
+  const [uTipe, setUTipe] = useState<'urutkan' | 'pola'>('urutkan');
+  const [uSoal, setUSoal] = useState<{ item: string[]; petunjuk: string }[]>([{ item: ['', ''], petunjuk: '' }]);
+  const [pSoal, setPSoal] = useState<{ tampil: string[]; benar: string; salah: string[] }[]>([{ tampil: ['', '', ''], benar: '', salah: [''] }]);
 
   async function pilihSvg(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]; if (!f) return;
@@ -74,6 +78,12 @@ export default function PaketForm({ temaId }: { temaId: string }) {
         legenda: legenda.filter((m) => m.simbol.trim() && m.nilai.trim()).map((m) => ({ simbol: m.simbol.trim(), nilai: m.nilai.trim() })),
         soal: dsoal.filter((sq) => sq.length > 0),
       };
+    } else if (mesin === 'urutan') {
+      if (uTipe === 'urutkan') {
+        butir = { tipe: 'urutkan', soal: uSoal.map((x) => ({ urut: x.item.filter(Boolean), petunjuk: x.petunjuk.trim() || undefined })).filter((x) => x.urut.length >= 2) };
+      } else {
+        butir = { tipe: 'pola', soal: pSoal.map((x) => ({ tampil: x.tampil.filter(Boolean), benar: x.benar.trim(), salah: x.salah.filter(Boolean) })).filter((x) => x.benar && x.tampil.length >= 1 && x.salah.length >= 1) };
+      }
     } else {
       butir = { pasangan: pasangan.filter(Boolean) };
     }
@@ -96,6 +106,7 @@ export default function PaketForm({ temaId }: { temaId: string }) {
           <option value="cari-pasangan">Cari Pasangan (cocok)</option>
           <option value="mewarnai">Mewarnai (warnai)</option>
           <option value="dekode">Pecahkan Kode (dekode)</option>
+          <option value="urutan">Urutan & Pola (urutan)</option>
         </select>
         <input className={s.inp} value={judul} onChange={(e) => setJudul(e.target.value)} placeholder="Judul game" style={{ flex: 1 }} />
       </div>
@@ -256,6 +267,68 @@ export default function PaketForm({ temaId }: { temaId: string }) {
             );
           })}
           <button type="button" className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => setDsoal([...dsoal, []])}>+ soal</button>
+        </div>
+      )}
+
+      {mesin === 'urutan' && (
+        <div style={{ marginTop: 10 }}>
+          <select className={s.inp} value={uTipe} onChange={(e) => setUTipe(e.target.value as 'urutkan' | 'pola')} style={{ width: '100%' }}>
+            <option value="urutkan">Urutkan (anak menata item ke urutan benar)</option>
+            <option value="pola">Lanjutkan Pola (anak pilih item berikutnya)</option>
+          </select>
+
+          {uTipe === 'urutkan' ? (
+            <div style={{ marginTop: 8 }}>
+              <div className={s.muted} style={{ fontSize: 12 }}>Isi item pada <b>urutan yang BENAR</b> (kiri→kanan). Di game ditampilkan teracak; anak mengetuknya berurutan. Petunjuk mis. &quot;kecil → besar&quot; / &quot;susun: BUKU&quot;.</div>
+              {uSoal.map((sq, i) => (
+                <div key={i} className={s.card} style={{ background: '#faf7ff' }}>
+                  <input className={s.inp} placeholder="petunjuk (mis. kecil → besar)" value={sq.petunjuk} onChange={(e) => setUSoal(uSoal.map((y, j) => j === i ? { ...y, petunjuk: e.target.value } : y))} style={{ width: '100%', marginBottom: 6 }} />
+                  {sq.item.map((it, k) => (
+                    <div key={k} className={s.row} style={{ marginTop: 4, gap: 6, alignItems: 'center' }}>
+                      <span className={s.muted} style={{ fontSize: 11, width: 16 }}>{k + 1}.</span>
+                      <AsetInput value={it} onChange={(v) => setUSoal(uSoal.map((y, j) => j === i ? { ...y, item: y.item.map((q, m) => m === k ? v : q) } : y))} placeholder="1 / 🍎 / #hex" />
+                      {sq.item.length > 2 && <button className={`${s.btnSm} ${s.danger}`} onClick={() => setUSoal(uSoal.map((y, j) => j === i ? { ...y, item: y.item.filter((_, m) => m !== k) } : y))}>×</button>}
+                    </div>
+                  ))}
+                  <button className={s.btnSm} style={{ background: '#eee', marginTop: 4 }} onClick={() => setUSoal(uSoal.map((y, j) => j === i ? { ...y, item: [...y.item, ''] } : y))}>+ item</button>
+                  {uSoal.length > 1 && <button className={`${s.btnSm} ${s.danger}`} style={{ marginLeft: 6 }} onClick={() => setUSoal(uSoal.filter((_, j) => j !== i))}>hapus soal</button>}
+                </div>
+              ))}
+              <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => setUSoal([...uSoal, { item: ['', ''], petunjuk: '' }])}>+ soal</button>
+            </div>
+          ) : (
+            <div style={{ marginTop: 8 }}>
+              <div className={s.muted} style={{ fontSize: 12 }}>Tiap soal: urutan yang <b>ditampilkan</b> (pola) + jawaban <b>berikutnya</b> yang benar + pengecoh.</div>
+              {pSoal.map((sq, i) => (
+                <div key={i} className={s.card} style={{ background: '#faf7ff' }}>
+                  <div className={s.muted} style={{ fontSize: 11, fontWeight: 700 }}>Pola tampil:</div>
+                  {sq.tampil.map((it, k) => (
+                    <div key={k} className={s.row} style={{ marginTop: 4, gap: 6, alignItems: 'center' }}>
+                      <AsetInput value={it} onChange={(v) => setPSoal(pSoal.map((y, j) => j === i ? { ...y, tampil: y.tampil.map((q, m) => m === k ? v : q) } : y))} placeholder="🔺 / 🔵 / #hex" />
+                      {sq.tampil.length > 1 && <button className={`${s.btnSm} ${s.danger}`} onClick={() => setPSoal(pSoal.map((y, j) => j === i ? { ...y, tampil: y.tampil.filter((_, m) => m !== k) } : y))}>×</button>}
+                    </div>
+                  ))}
+                  <button className={s.btnSm} style={{ background: '#eee', marginTop: 4 }} onClick={() => setPSoal(pSoal.map((y, j) => j === i ? { ...y, tampil: [...y.tampil, ''] } : y))}>+ item pola</button>
+                  <div className={s.row} style={{ marginTop: 8, flexWrap: 'wrap', gap: 8 }}>
+                    <span style={{ fontSize: 12, color: '#2e9e63', fontWeight: 700 }}>Benar (berikutnya):</span>
+                    <AsetInput value={sq.benar} onChange={(v) => setPSoal(pSoal.map((y, j) => j === i ? { ...y, benar: v } : y))} />
+                  </div>
+                  <div style={{ marginTop: 6 }}>
+                    <span style={{ fontSize: 12, color: 'var(--abu)', fontWeight: 700 }}>Pengecoh:</span>
+                    {sq.salah.map((it, k) => (
+                      <div key={k} className={s.row} style={{ marginTop: 4, gap: 6, alignItems: 'center' }}>
+                        <AsetInput value={it} onChange={(v) => setPSoal(pSoal.map((y, j) => j === i ? { ...y, salah: y.salah.map((q, m) => m === k ? v : q) } : y))} />
+                        {sq.salah.length > 1 && <button className={`${s.btnSm} ${s.danger}`} onClick={() => setPSoal(pSoal.map((y, j) => j === i ? { ...y, salah: y.salah.filter((_, m) => m !== k) } : y))}>×</button>}
+                      </div>
+                    ))}
+                    <button className={s.btnSm} style={{ background: '#eee', marginTop: 4 }} onClick={() => setPSoal(pSoal.map((y, j) => j === i ? { ...y, salah: [...y.salah, ''] } : y))}>+ pengecoh</button>
+                  </div>
+                  {pSoal.length > 1 && <button className={`${s.btnSm} ${s.danger}`} style={{ marginTop: 6 }} onClick={() => setPSoal(pSoal.filter((_, j) => j !== i))}>hapus soal</button>}
+                </div>
+              ))}
+              <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => setPSoal([...pSoal, { tampil: ['', '', ''], benar: '', salah: [''] }])}>+ soal</button>
+            </div>
+          )}
         </div>
       )}
 

@@ -1,12 +1,13 @@
 // src/lib/game/butir.ts
-import type { Mesin, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode } from './tipe';
+import type { Mesin, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode, DataUrutan } from './tipe';
 
-export function butirDariForm(mesin: Mesin, form: unknown): DataTekan | DataSeret | DataCocok | DataMewarnai | DataDekode {
+export function butirDariForm(mesin: Mesin, form: unknown): DataTekan | DataSeret | DataCocok | DataMewarnai | DataDekode | DataUrutan {
   // form sudah berbentuk objek sesuai mesin; fungsi ini titik normalisasi tunggal
   if (mesin === 'tekan-sesuai') return form as DataTekan;
   if (mesin === 'seret-wadah') return form as DataSeret;
   if (mesin === 'mewarnai') return form as DataMewarnai;
   if (mesin === 'dekode') return form as DataDekode;
+  if (mesin === 'urutan') return form as DataUrutan;
   return form as DataCocok;
 }
 
@@ -46,6 +47,20 @@ export function validasiButir(mesin: Mesin, butir: unknown): string {
     for (const s of b.soal) {
       if (!s?.length) return 'Tiap soal butuh minimal 1 simbol.';
       for (const sim of s) if (!set.has(sim)) return `Simbol "${sim}" pada soal tidak ada di legenda.`;
+    }
+    return '';
+  }
+  if (mesin === 'urutan') {
+    const b = butir as DataUrutan;
+    if (!b.soal?.length) return 'Butuh minimal 1 soal.';
+    if (b.tipe === 'urutkan') {
+      for (const sq of b.soal) if (!sq.urut || sq.urut.length < 2) return 'Tiap soal "urutkan" butuh minimal 2 item.';
+    } else {
+      for (const sq of b.soal) {
+        if (!sq.tampil?.length) return 'Tiap soal "pola" butuh urutan yang ditampilkan.';
+        if (!sq.benar?.trim()) return 'Tiap soal "pola" butuh jawaban benar.';
+        if (!sq.salah?.length) return 'Tiap soal "pola" butuh minimal 1 pengecoh.';
+      }
     }
     return '';
   }
