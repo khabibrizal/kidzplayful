@@ -1,7 +1,7 @@
 // src/app/admin/tema/[id]/PaketForm.tsx
 'use client';
 import { useState } from 'react';
-import type { Mesin, Paket, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode, DataUrutan, DataJalur, DataHitung, DataCocokkan, DataEjaKata } from '@/lib/game/tipe';
+import type { Mesin, Paket, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode, DataUrutan, DataJalur, DataHitung, DataCocokkan, DataEjaKata, DataGaris } from '@/lib/game/tipe';
 import { buatPaket, updatePaket } from '@/lib/data/admin-konten';
 import { validasiButir } from '@/lib/game/butir';
 import AsetInput from '@/components/admin/AsetInput';
@@ -11,7 +11,7 @@ import { sanitizeSvg, tandaiArea } from '@/lib/game/svg-sanitize';
 import TargetEditor from './TargetEditor';
 import s from '../../admin.module.css';
 
-const AREA: Record<Mesin, string> = { 'tekan-sesuai': 'kognitif', 'seret-wadah': 'motorik-halus', 'cari-pasangan': 'kognitif', 'mewarnai': 'kreativitas', 'dekode': 'kognitif', 'urutan': 'kognitif', 'jalur': 'kognitif', 'hitung': 'kognitif', 'cocokkan': 'kognitif', 'ejakata': 'kognitif' };
+const AREA: Record<Mesin, string> = { 'tekan-sesuai': 'kognitif', 'seret-wadah': 'motorik-halus', 'cari-pasangan': 'kognitif', 'mewarnai': 'kreativitas', 'dekode': 'kognitif', 'urutan': 'kognitif', 'jalur': 'kognitif', 'hitung': 'kognitif', 'cocokkan': 'kognitif', 'ejakata': 'kognitif', 'garis': 'motorik-halus' };
 type JSoal = { kolom: number; baris: number; mulai: [number, number]; tujuan: [number, number]; rintangan: [number, number][]; karakter: string; hadiah: string };
 
 const isHex = (v: string) => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v.trim());
@@ -62,6 +62,9 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
   const [cocokPairs, setCocokPairs] = useState<{ kiri: string; kanan: string }[]>([{ kiri: '', kanan: '' }, { kiri: '', kanan: '' }]);
   // eja kata
   const [ejaSoal, setEjaSoal] = useState<{ gambar: string; kata: string; pengecoh: string }[]>([{ gambar: '', kata: '', pengecoh: '' }]);
+  // titik & garis
+  const [gSoal, setGSoal] = useState<{ kolom: number; baris: number; garis: [number, number][] }[]>([{ kolom: 2, baris: 2, garis: [] }]);
+  const [gSel, setGSel] = useState<{ i: number; dot: number } | null>(null);
 
   async function pilihSvg(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]; if (!f) return;
@@ -108,6 +111,8 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
       butir = { pasangan: cocokPairs.filter((x) => x.kiri.trim() && x.kanan.trim()).map((x) => ({ kiri: x.kiri.trim(), kanan: x.kanan.trim() })) };
     } else if (mesin === 'ejakata') {
       butir = { soal: ejaSoal.filter((x) => x.kata.trim()).map((x) => ({ gambar: x.gambar.trim() || undefined, kata: x.kata.trim(), pengecoh: x.pengecoh.trim() || undefined })) };
+    } else if (mesin === 'garis') {
+      butir = { soal: gSoal.map((sq) => ({ kolom: sq.kolom, baris: sq.baris, garis: sq.garis })).filter((sq) => sq.garis.length > 0) };
     } else {
       butir = { pasangan: pasangan.filter(Boolean) };
     }
@@ -162,6 +167,9 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
     } else if (p.mesin === 'ejakata') {
       const b = p.butir as DataEjaKata;
       setEjaSoal(b.soal?.length ? b.soal.map((x) => ({ gambar: x.gambar ?? '', kata: x.kata ?? '', pengecoh: x.pengecoh ?? '' })) : [{ gambar: '', kata: '', pengecoh: '' }]);
+    } else if (p.mesin === 'garis') {
+      const b = p.butir as DataGaris;
+      setGSoal(b.soal?.length ? b.soal.map((x) => ({ kolom: x.kolom, baris: x.baris, garis: x.garis })) : [{ kolom: 2, baris: 2, garis: [] }]);
     }
   }
 
@@ -194,6 +202,7 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
           <option value="hitung">Hitung-Kode (hitung)</option>
           <option value="cocokkan">Cocokkan / Asosiasi (cocokkan)</option>
           <option value="ejakata">Eja Kata (ejakata)</option>
+          <option value="garis">Titik & Garis (garis)</option>
         </select>
         <input className={s.inp} value={judul} onChange={(e) => setJudul(e.target.value)} placeholder="Judul game" style={{ flex: 1 }} />
       </div>
@@ -540,6 +549,43 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
             </div>
           ))}
           <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => setEjaSoal([...ejaSoal, { gambar: '', kata: '', pengecoh: '' }])}>+ soal</button>
+        </div>
+      )}
+
+      {mesin === 'garis' && (
+        <div style={{ marginTop: 10 }}>
+          <div className={s.muted} style={{ fontSize: 12 }}>Atur ukuran grid titik, lalu ketuk <b>2 titik</b> untuk membuat/menghapus garis. Anak akan meniru pola ini.</div>
+          {gSoal.map((sq, i) => {
+            const pad = 16, gap = 44;
+            const W = pad * 2 + (sq.kolom - 1) * gap, H = pad * 2 + (sq.baris - 1) * gap;
+            const pos = (k: number) => ({ x: pad + (k % sq.kolom) * gap, y: pad + Math.floor(k / sq.kolom) * gap });
+            return (
+              <div key={i} className={s.card} style={{ background: '#faf7ff' }}>
+                <div className={s.row} style={{ gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span className={s.muted} style={{ fontSize: 12 }}>Grid</span>
+                  <input className={s.inp} type="number" min={2} max={4} value={sq.kolom} onChange={(e) => { const v = Math.max(2, Math.min(4, Number(e.target.value) || 2)); setGSoal(gSoal.map((y, j) => j === i ? { ...y, kolom: v, garis: [] } : y)); setGSel(null); }} style={{ width: 56, marginBottom: 0 }} />
+                  <span className={s.muted}>×</span>
+                  <input className={s.inp} type="number" min={2} max={4} value={sq.baris} onChange={(e) => { const v = Math.max(2, Math.min(4, Number(e.target.value) || 2)); setGSoal(gSoal.map((y, j) => j === i ? { ...y, baris: v, garis: [] } : y)); setGSel(null); }} style={{ width: 56, marginBottom: 0 }} />
+                  <span className={s.muted} style={{ fontSize: 11 }}>(ubah ukuran → garis dikosongkan)</span>
+                </div>
+                <svg width={W} height={H} style={{ marginTop: 8, background: '#fff', borderRadius: 10 }}>
+                  {sq.garis.map((g, k) => { const A = pos(g[0]), B = pos(g[1]); return <line key={k} x1={A.x} y1={A.y} x2={B.x} y2={B.y} stroke="var(--lavender-d)" strokeWidth={4} strokeLinecap="round" />; })}
+                  {Array.from({ length: sq.kolom * sq.baris }).map((_, k) => {
+                    const P = pos(k); const selk = gSel?.i === i && gSel.dot === k;
+                    return <circle key={k} cx={P.x} cy={P.y} r={9} fill={selk ? 'var(--mint-d)' : '#5b5170'} style={{ cursor: 'pointer' }} onClick={() => {
+                      if (!gSel || gSel.i !== i) { setGSel({ i, dot: k }); return; }
+                      if (gSel.dot === k) { setGSel(null); return; }
+                      const a = Math.min(gSel.dot, k), b = Math.max(gSel.dot, k);
+                      setGSoal(gSoal.map((y, j) => { if (j !== i) return y; const has = y.garis.some((g) => Math.min(g[0], g[1]) === a && Math.max(g[0], g[1]) === b); return { ...y, garis: has ? y.garis.filter((g) => !(Math.min(g[0], g[1]) === a && Math.max(g[0], g[1]) === b)) : [...y.garis, [a, b] as [number, number]] }; }));
+                      setGSel(null);
+                    }} />;
+                  })}
+                </svg>
+                {gSoal.length > 1 && <div><button className={`${s.btnSm} ${s.danger}`} onClick={() => setGSoal(gSoal.filter((_, j) => j !== i))}>hapus soal</button></div>}
+              </div>
+            );
+          })}
+          <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => setGSoal([...gSoal, { kolom: 2, baris: 2, garis: [] }])}>+ soal</button>
         </div>
       )}
 

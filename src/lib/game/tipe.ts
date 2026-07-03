@@ -1,5 +1,5 @@
 // src/lib/game/tipe.ts
-export type Mesin = 'tekan-sesuai' | 'seret-wadah' | 'cari-pasangan' | 'mewarnai' | 'dekode' | 'urutan' | 'jalur' | 'hitung' | 'cocokkan' | 'ejakata';
+export type Mesin = 'tekan-sesuai' | 'seret-wadah' | 'cari-pasangan' | 'mewarnai' | 'dekode' | 'urutan' | 'jalur' | 'hitung' | 'cocokkan' | 'ejakata' | 'garis';
 
 export interface ButirTekan { tanya: string; benar: string; salah: string[]; }
 export interface DataTekan { soal: ButirTekan[]; }
@@ -57,6 +57,10 @@ export interface DataCocokkan { pasangan: CocokPair[]; }
 export interface EjaSoal { gambar?: string; kata: string; pengecoh?: string } // gambar: emoji/URL; kata: target; pengecoh: huruf pengganggu
 export interface DataEjaKata { soal: EjaSoal[]; }
 
+// Titik & Garis: hubungkan titik pada grid sesuai contoh (menutup #6 & #24 buku).
+export interface GarisSoal { kolom: number; baris: number; garis: [number, number][] } // garis = pasangan indeks titik (idx = y*kolom + x)
+export interface DataGaris { soal: GarisSoal[]; }
+
 export interface Paket {
   id: string;
   mesin: Mesin;
@@ -65,7 +69,7 @@ export interface Paket {
   usia_min: number;
   usia_max: number;
   target_detik?: number | null;  // Mode Tantangan: selesai ≤ target = bonus (opsional)
-  butir: DataTekan | DataSeret | DataCocok | DataMewarnai | DataDekode | DataUrutan | DataJalur | DataHitung | DataCocokkan | DataEjaKata;
+  butir: DataTekan | DataSeret | DataCocok | DataMewarnai | DataDekode | DataUrutan | DataJalur | DataHitung | DataCocokkan | DataEjaKata | DataGaris;
 }
 
 export interface HasilSelesai {

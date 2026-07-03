@@ -1,7 +1,7 @@
 // src/lib/game/butir.ts
-import type { Mesin, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode, DataUrutan, DataJalur, DataHitung, DataCocokkan, DataEjaKata } from './tipe';
+import type { Mesin, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode, DataUrutan, DataJalur, DataHitung, DataCocokkan, DataEjaKata, DataGaris } from './tipe';
 
-export function butirDariForm(mesin: Mesin, form: unknown): DataTekan | DataSeret | DataCocok | DataMewarnai | DataDekode | DataUrutan | DataJalur | DataHitung | DataCocokkan | DataEjaKata {
+export function butirDariForm(mesin: Mesin, form: unknown): DataTekan | DataSeret | DataCocok | DataMewarnai | DataDekode | DataUrutan | DataJalur | DataHitung | DataCocokkan | DataEjaKata | DataGaris {
   // form sudah berbentuk objek sesuai mesin; fungsi ini titik normalisasi tunggal
   if (mesin === 'tekan-sesuai') return form as DataTekan;
   if (mesin === 'seret-wadah') return form as DataSeret;
@@ -12,6 +12,7 @@ export function butirDariForm(mesin: Mesin, form: unknown): DataTekan | DataSere
   if (mesin === 'hitung') return form as DataHitung;
   if (mesin === 'cocokkan') return form as DataCocokkan;
   if (mesin === 'ejakata') return form as DataEjaKata;
+  if (mesin === 'garis') return form as DataGaris;
   return form as DataCocok;
 }
 
@@ -102,6 +103,17 @@ export function validasiButir(mesin: Mesin, butir: unknown): string {
     const b = butir as DataEjaKata;
     if (!b.soal?.length) return 'Butuh minimal 1 soal.';
     for (const sq of b.soal) { if (!sq.kata?.trim()) return 'Tiap soal butuh kata yang dieja.'; if (sq.kata.trim().length < 2) return 'Kata minimal 2 huruf.'; }
+    return '';
+  }
+  if (mesin === 'garis') {
+    const b = butir as DataGaris;
+    if (!b.soal?.length) return 'Butuh minimal 1 soal.';
+    for (const sq of b.soal) {
+      if (!sq.kolom || !sq.baris || sq.kolom < 2 || sq.baris < 2) return 'Ukuran grid titik minimal 2×2.';
+      if (!sq.garis?.length) return 'Tiap soal butuh minimal 1 garis (hubungkan 2 titik).';
+      const n = sq.kolom * sq.baris;
+      for (const g of sq.garis) if (g[0] < 0 || g[1] < 0 || g[0] >= n || g[1] >= n || g[0] === g[1]) return 'Garis menghubungkan 2 titik berbeda yang valid.';
+    }
     return '';
   }
   const b = butir as DataCocok;
