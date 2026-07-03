@@ -2,17 +2,8 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { DataGaris, HasilSelesai } from '@/lib/game/tipe';
+import { speak } from '@/lib/tts';
 
-function speak(t: string) {
-  try {
-    if (window.speechSynthesis) {
-      speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(t);
-      u.lang = 'id-ID'; u.rate = 0.9; u.pitch = 1.15;
-      speechSynthesis.speak(u);
-    }
-  } catch { /* abaikan */ }
-}
 const ek = (a: number, b: number) => (a < b ? `${a}-${b}` : `${b}-${a}`);
 
 function GridSVG({ kolom, baris, edges, gap = 62, interaktif = false, sel = null, onDot }: {

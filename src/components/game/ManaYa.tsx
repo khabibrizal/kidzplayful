@@ -3,17 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { DataTekan, HasilSelesai } from '@/lib/game/tipe';
 import Aset from './Aset';
+import { speak } from '@/lib/tts';
 
-function speak(t: string) {
-  try {
-    if (window.speechSynthesis) {
-      speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(t);
-      u.lang = 'id-ID'; u.rate = 0.9; u.pitch = 1.15;
-      speechSynthesis.speak(u);
-    }
-  } catch { /* abaikan */ }
-}
 function mix<T>(arr: T[], seed: number): T[] {
   const a = arr.slice();
   for (let k = 0; k < seed % 4; k++) a.push(a.shift() as T);

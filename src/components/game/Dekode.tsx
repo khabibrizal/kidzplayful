@@ -3,17 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { DataDekode, HasilSelesai } from '@/lib/game/tipe';
 import Aset from './Aset';
+import { speak } from '@/lib/tts';
 
-function speak(t: string) {
-  try {
-    if (window.speechSynthesis) {
-      speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(t);
-      u.lang = 'id-ID'; u.rate = 0.9; u.pitch = 1.15;
-      speechSynthesis.speak(u);
-    }
-  } catch { /* abaikan */ }
-}
 const isHex = (v: string) => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v.trim());
 function mix<T>(arr: T[], seed: number): T[] {
   const a = arr.slice();

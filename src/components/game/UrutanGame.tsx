@@ -4,17 +4,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { DataUrutan, HasilSelesai } from '@/lib/game/tipe';
 import Aset from './Aset';
+import { speak } from '@/lib/tts';
 
-function speak(t: string) {
-  try {
-    if (window.speechSynthesis) {
-      speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(t);
-      u.lang = 'id-ID'; u.rate = 0.9; u.pitch = 1.15;
-      speechSynthesis.speak(u);
-    }
-  } catch { /* abaikan */ }
-}
 const isHex = (v: string) => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v.trim());
 function acak<T>(arr: T[], seed: number): T[] {
   return arr.map((v, i) => ({ v, k: ((i + 1) * 9301 + seed * 49297) % 233 })).sort((a, b) => a.k - b.k).map((x) => x.v);

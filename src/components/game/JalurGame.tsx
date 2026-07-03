@@ -3,18 +3,9 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import type { DataJalur, HasilSelesai } from '@/lib/game/tipe';
+import { speak } from '@/lib/tts';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-function speak(t: string) {
-  try {
-    if (window.speechSynthesis) {
-      speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(t);
-      u.lang = 'id-ID'; u.rate = 0.9; u.pitch = 1.15;
-      speechSynthesis.speak(u);
-    }
-  } catch { /* abaikan */ }
-}
 const ARAH: { k: string; ic: string; dx: number; dy: number }[] = [
   { k: 'atas', ic: '⬆️', dx: 0, dy: -1 },
   { k: 'kiri', ic: '⬅️', dx: -1, dy: 0 },

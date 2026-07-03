@@ -5,17 +5,8 @@ import { createElement, useEffect, useMemo, useRef, useState } from 'react';
 import type { DataMewarnai, HasilSelesai } from '@/lib/game/tipe';
 import { TEMPLATES, WARNA_NAMA } from '@/lib/game/templates-mewarnai';
 import { sanitizeSvg } from '@/lib/game/svg-sanitize';
+import { speak } from '@/lib/tts';
 
-function speak(t: string) {
-  try {
-    if (window.speechSynthesis) {
-      speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(t);
-      u.lang = 'id-ID'; u.rate = 0.9; u.pitch = 1.15;
-      speechSynthesis.speak(u);
-    }
-  } catch { /* abaikan */ }
-}
 
 function PaletBar({ palette, dipilih, onPilih, bernomor = false }: { palette: string[]; dipilih: string; onPilih: (h: string) => void; bernomor?: boolean }) {
   return (
