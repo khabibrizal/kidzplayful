@@ -14,6 +14,9 @@ describe('laporanAnak', () => {
     expect(r.totalMenit).toBe(4); // (120+60+30)/60 = 3.5 -> round 4
     expect(r.perArea['kognitif']).toBe(2);
     expect(r.perArea['motorik-halus']).toBe(1);
+    expect(r.totalDetik).toBe(210);
+    expect(r.rataDetik).toBe(70); // 210/3
+    expect(r.tercepatDetik).toBe(30);
   });
   it('aman bila kosong', () => {
     const r = laporanAnak([]);

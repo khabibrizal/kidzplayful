@@ -1,6 +1,6 @@
 // src/components/game/GameRunner.tsx
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Paket, HasilSelesai, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode, DataUrutan, DataJalur, DataHitung } from '@/lib/game/tipe';
 import ManaYa from './ManaYa';
 import BeresBeres from './BeresBeres';
@@ -19,6 +19,15 @@ export default function GameRunner({
 }: { paket: Paket; anakId: string; temaId: string; onKeluar: () => void; onKoin: (k: number) => void }) {
   const [run, setRun] = useState(0);              // remount engine untuk "main lagi"
   const [hasil, setHasil] = useState<HasilSelesai | null>(null);
+  const [detik, setDetik] = useState(0);          // timer hidup saat bermain
+
+  useEffect(() => {
+    if (hasil) return;                            // berhenti saat selesai
+    setDetik(0);
+    const t = setInterval(() => setDetik((d) => d + 1), 1000);
+    return () => clearInterval(t);
+  }, [run, hasil]);
+  const jam = (d: number) => `${Math.floor(d / 60)}:${String(d % 60).padStart(2, '0')}`;
 
   async function selesai(h: HasilSelesai) {
     setHasil(h);
@@ -35,7 +44,7 @@ export default function GameRunner({
     return (
       <Reward
         bintang={hitungBintang(hasil.benar, hasil.total)}
-        benar={hasil.benar} total={hasil.total}
+        benar={hasil.benar} total={hasil.total} durasiDetik={hasil.durasiDetik}
         onLagi={() => { setHasil(null); setRun(run + 1); }}
         onSelesai={onKeluar}
       />
@@ -43,13 +52,20 @@ export default function GameRunner({
   }
 
   const key = `${paket.id}-${run}`;
-  if (paket.mesin === 'tekan-sesuai') return <ManaYa key={key} data={paket.butir as DataTekan} onSelesai={selesai} />;
-  if (paket.mesin === 'seret-wadah') return <BeresBeres key={key} data={paket.butir as DataSeret} onSelesai={selesai} />;
-  if (paket.mesin === 'cari-pasangan') return <CariPasangan key={key} data={paket.butir as DataCocok} onSelesai={selesai} />;
-  if (paket.mesin === 'mewarnai') return <MewarnaiGame key={key} data={paket.butir as DataMewarnai} onSelesai={selesai} />;
-  if (paket.mesin === 'dekode') return <Dekode key={key} data={paket.butir as DataDekode} onSelesai={selesai} />;
-  if (paket.mesin === 'urutan') return <UrutanGame key={key} data={paket.butir as DataUrutan} onSelesai={selesai} />;
-  if (paket.mesin === 'jalur') return <JalurGame key={key} data={paket.butir as DataJalur} onSelesai={selesai} />;
-  if (paket.mesin === 'hitung') return <HitungGame key={key} data={paket.butir as DataHitung} onSelesai={selesai} />;
-  return <div>Mesin belum didukung.</div>;
+  let engine: React.ReactNode = <div>Mesin belum didukung.</div>;
+  if (paket.mesin === 'tekan-sesuai') engine = <ManaYa key={key} data={paket.butir as DataTekan} onSelesai={selesai} />;
+  else if (paket.mesin === 'seret-wadah') engine = <BeresBeres key={key} data={paket.butir as DataSeret} onSelesai={selesai} />;
+  else if (paket.mesin === 'cari-pasangan') engine = <CariPasangan key={key} data={paket.butir as DataCocok} onSelesai={selesai} />;
+  else if (paket.mesin === 'mewarnai') engine = <MewarnaiGame key={key} data={paket.butir as DataMewarnai} onSelesai={selesai} />;
+  else if (paket.mesin === 'dekode') engine = <Dekode key={key} data={paket.butir as DataDekode} onSelesai={selesai} />;
+  else if (paket.mesin === 'urutan') engine = <UrutanGame key={key} data={paket.butir as DataUrutan} onSelesai={selesai} />;
+  else if (paket.mesin === 'jalur') engine = <JalurGame key={key} data={paket.butir as DataJalur} onSelesai={selesai} />;
+  else if (paket.mesin === 'hitung') engine = <HitungGame key={key} data={paket.butir as DataHitung} onSelesai={selesai} />;
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ alignSelf: 'center', background: '#fff', borderRadius: 99, padding: '4px 16px', boxShadow: '0 3px 0 #e6def5', fontWeight: 800, color: 'var(--lavender-d)', marginBottom: 8, fontVariantNumeric: 'tabular-nums' }}>⏱ {jam(detik)}</div>
+      {engine}
+    </div>
+  );
 }

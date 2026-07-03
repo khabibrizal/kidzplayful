@@ -47,9 +47,12 @@ export default async function LaporanAnakPage({ params }: { params: Promise<{ an
     <main style={{ maxWidth: 440, margin: '20px auto', padding: 16 }}>
       <Link href={`/anak/${anakId}`} style={{ color: 'var(--abu)', fontSize: 13 }}>← kembali</Link>
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 22, margin: '8px 0 14px' }}>📊 Perkembangan {anak.nama}</h1>
-      <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
         <Stat b={String(r.totalSesi)} l="Total main" /><Stat b={`⭐${r.totalBintang}`} l="Bintang" /><Stat b={`${r.totalMenit}m`} l="Total waktu" />
       </div>
+      {r.totalSesi > 0 && (
+        <div style={{ fontSize: 12, color: 'var(--abu)', textAlign: 'center', marginBottom: 14 }}>⏱ Rata-rata {r.rataDetik} detik/sesi · tercepat {r.tercepatDetik} detik</div>
+      )}
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '8px 0' }}>LATIHAN PER AREA</div>
       {Object.keys(LABEL).map((k) => {
         const n = r.perArea[k] ?? 0;
