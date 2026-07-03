@@ -14,7 +14,7 @@ export interface EventInput {
   gambarUrl: string | null;
   hargaPerAnak: number;
 }
-const COLS = 'id,judul,lokasi,tanggal,jam_mulai,jam_selesai,deskripsi,gambar_url,harga_per_anak,status,sertifikat_bg_url,dokumentasi_url';
+const COLS = 'id,judul,lokasi,tanggal,jam_mulai,jam_selesai,deskripsi,gambar_url,harga_per_anak,status,sertifikat_bg_url,dokumentasi_url,stiker_bg_url';
 
 async function adminDb() {
   const s = await createClient();
@@ -111,12 +111,13 @@ export async function reschedulePendaftaran(pendaftaranId: string, eventBaruId: 
 /** Simpan template sertifikat (JPEG) &/atau link dokumentasi pada sebuah event. */
 export async function simpanBerkasSertifikat(
   eventId: string,
-  patch: { sertifikatBgUrl?: string | null; dokumentasiUrl?: string | null },
+  patch: { sertifikatBgUrl?: string | null; dokumentasiUrl?: string | null; stikerBgUrl?: string | null },
 ): Promise<void> {
   const s = await adminDb();
   const upd: Record<string, string | null> = {};
   if ('sertifikatBgUrl' in patch) upd.sertifikat_bg_url = patch.sertifikatBgUrl?.trim() || null;
   if ('dokumentasiUrl' in patch) upd.dokumentasi_url = patch.dokumentasiUrl?.trim() || null;
+  if ('stikerBgUrl' in patch) upd.stiker_bg_url = patch.stikerBgUrl?.trim() || null;
   if (Object.keys(upd).length === 0) return;
   const { error } = await s.from('event').update(upd).eq('id', eventId);
   if (error) throw new Error(error.message);

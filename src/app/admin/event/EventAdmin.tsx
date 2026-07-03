@@ -148,8 +148,10 @@ function PanelSertifikat({ e, flash, onSaved }: {
 }) {
   const [bg, setBg] = useState<string | null>(e.sertifikat_bg_url);
   const [doc, setDoc] = useState(e.dokumentasi_url ?? '');
+  const [stiker, setStiker] = useState<string | null>(e.stiker_bg_url);
   const [busy, setBusy] = useState(false);
   const tplRef = useRef<HTMLInputElement>(null);
+  const stikerRef = useRef<HTMLInputElement>(null);
 
   async function generate() {
     const n = await generateSertifikatEvent(e.id);
@@ -184,6 +186,23 @@ function PanelSertifikat({ e, flash, onSaved }: {
     finally { setBusy(false); }
   }
 
+  async function unggahStiker(ev: React.ChangeEvent<HTMLInputElement>) {
+    const file = ev.target.files?.[0]; if (!file) return;
+    setBusy(true);
+    try {
+      const sb = createClient();
+      const ext = file.name.split('.').pop() || 'jpg';
+      const path = `event/stiker-${Date.now()}-${Math.floor(performance.now())}.${ext}`;
+      const { error } = await sb.storage.from('aset').upload(path, file, { upsert: false });
+      if (error) throw error;
+      const url = sb.storage.from('aset').getPublicUrl(path).data.publicUrl;
+      await simpanBerkasSertifikat(e.id, { stikerBgUrl: url });
+      setStiker(url); onSaved({ stiker_bg_url: url });
+      flash('Template stiker tersimpan ✓');
+    } catch (e2) { flash(e2 instanceof Error ? e2.message : 'Gagal unggah stiker'); }
+    finally { setBusy(false); if (stikerRef.current) stikerRef.current.value = ''; }
+  }
+
   return (
     <div style={{ marginTop: 8 }}>
       <div className={s.muted} style={{ fontSize: 12, marginBottom: 6 }}>
@@ -200,6 +219,16 @@ function PanelSertifikat({ e, flash, onSaved }: {
       </div>
       <div className={s.row} style={{ marginTop: 8 }}>
         <button type="button" className={s.btnSm} style={{ background: '#fff3d6', color: '#b88600' }} onClick={async () => { setBusy(true); try { await generate(); } finally { setBusy(false); } }} disabled={busy}>🔄 Generate ulang sertifikat</button>
+      </div>
+
+      <div style={{ marginTop: 10, borderTop: '1px dashed #e6e0f2', paddingTop: 8 }}>
+        <div className={s.muted} style={{ fontSize: 12, marginBottom: 6 }}>🏷️ Stiker nama (9×6 cm, 10/lembar F4) untuk <b>semua anak yang daftar</b>. Upload template (opsional, sisakan ruang untuk nama), lalu cetak.</div>
+        <div className={s.row} style={{ flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+          <button type="button" className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)' }} onClick={() => stikerRef.current?.click()} disabled={busy}>{busy ? '...' : '⬆ Template Stiker'}</button>
+          {stiker && <a className={s.muted} href={stiker} target="_blank" style={{ color: 'var(--biru-d)' }}>lihat</a>}
+          <input ref={stikerRef} type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" hidden onChange={unggahStiker} />
+          <Link href={`/stiker-event/${e.id}`} className={s.btnSm} style={{ background: '#dff5e6', color: '#1c7a43' }} target="_blank">🏷️ Cetak Stiker Nama</Link>
+        </div>
       </div>
     </div>
   );

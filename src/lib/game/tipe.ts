@@ -135,6 +135,7 @@ export interface EventKelas {
   status: 'tampil' | 'arsip';
   sertifikat_bg_url: string | null; // template sertifikat (JPEG)
   dokumentasi_url: string | null;   // link dokumentasi kegiatan
+  stiker_bg_url: string | null;     // template stiker nama (opsional)
 }
 
 export interface PendaftaranEvent {
