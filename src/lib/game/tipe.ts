@@ -1,5 +1,5 @@
 // src/lib/game/tipe.ts
-export type Mesin = 'tekan-sesuai' | 'seret-wadah' | 'cari-pasangan' | 'mewarnai' | 'dekode' | 'urutan' | 'jalur' | 'hitung' | 'cocokkan';
+export type Mesin = 'tekan-sesuai' | 'seret-wadah' | 'cari-pasangan' | 'mewarnai' | 'dekode' | 'urutan' | 'jalur' | 'hitung' | 'cocokkan' | 'ejakata';
 
 export interface ButirTekan { tanya: string; benar: string; salah: string[]; }
 export interface DataTekan { soal: ButirTekan[]; }
@@ -53,6 +53,10 @@ export interface DataHitung { legenda: HitungMap[]; soal: HitungSoal[]; }
 export interface CocokPair { kiri: string; kanan: string; } // emoji/gambar/#hex/teks
 export interface DataCocokkan { pasangan: CocokPair[]; }
 
+// Eja Kata: eja nama benda dari gambar dengan menyusun huruf berurutan.
+export interface EjaSoal { gambar?: string; kata: string; pengecoh?: string } // gambar: emoji/URL; kata: target; pengecoh: huruf pengganggu
+export interface DataEjaKata { soal: EjaSoal[]; }
+
 export interface Paket {
   id: string;
   mesin: Mesin;
@@ -61,7 +65,7 @@ export interface Paket {
   usia_min: number;
   usia_max: number;
   target_detik?: number | null;  // Mode Tantangan: selesai ≤ target = bonus (opsional)
-  butir: DataTekan | DataSeret | DataCocok | DataMewarnai | DataDekode | DataUrutan | DataJalur | DataHitung | DataCocokkan;
+  butir: DataTekan | DataSeret | DataCocok | DataMewarnai | DataDekode | DataUrutan | DataJalur | DataHitung | DataCocokkan | DataEjaKata;
 }
 
 export interface HasilSelesai {

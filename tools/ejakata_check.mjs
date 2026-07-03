@@ -1,0 +1,47 @@
+// Verifikasi e2e engine 'ejakata'. Prasyarat: migrasi 0036.
+// npm run build && npm start, lalu: node tools/ejakata_check.mjs
+import puppeteer from 'puppeteer-core';
+import fs from 'fs';
+const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
+const U = process.env.BASE || 'http://localhost:3000';
+const stamp = String(Date.now()).slice(-6);
+const env = fs.readFileSync('.env.local', 'utf8');
+const SU = (env.match(/NEXT_PUBLIC_SUPABASE_URL=(.*)/) || [])[1].trim().replace(/["\r]/g, '');
+const SK = (env.match(/NEXT_PUBLIC_SUPABASE_ANON_KEY=(.*)/) || [])[1].trim().replace(/["\r]/g, '');
+const b = await puppeteer.launch({ executablePath: CHROME, headless: 'new', args: ['--no-sandbox'] });
+const p = await b.newPage(); p.on('dialog', async (d) => { await d.accept(); });
+await p.goto(U + '/login', { waitUntil: 'networkidle2', timeout: 30000 });
+await p.type('input[type=email]', 'admin@kidzplayful.app'); await p.type('input[type=password]', 'Kidz!admin2026');
+await p.click('button[type=submit]'); await p.waitForFunction(() => location.pathname.startsWith('/pilih-anak'), { timeout: 30000 }).catch(() => {});
+const { TOK, UID } = await p.evaluate(async (su, sk) => { const j = await (await fetch(su + '/auth/v1/token?grant_type=password', { method: 'POST', headers: { apikey: sk, 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'admin@kidzplayful.app', password: 'Kidz!admin2026' }) })).json(); return { TOK: j.access_token, UID: j.user.id }; }, SU, SK);
+const post = (path, body, pref) => p.evaluate(async (su, p2, b2, pr, sk, tok) => { const r = await fetch(su + '/rest/v1/' + p2, { method: 'POST', headers: { apikey: sk, Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json', ...(pr ? { Prefer: pr } : {}) }, body: JSON.stringify(b2) }); const t = await r.text(); let j; try { j = JSON.parse(t); } catch { j = t; } return { status: r.status, j }; }, SU, path, body, pref, SK, TOK);
+
+const tema = (await post('tema', { nama: 'EjaUji ' + stamp, sampul: '✏️', status: 'disetujui', is_minggu_ini: false }, 'return=representation')).j[0];
+const butir = { soal: [{ gambar: '🍎', kata: 'APEL' }, { gambar: '🍐', kata: 'PIR' }] };
+const rE = await post('paket_aset', { tema_id: tema.id, mesin: 'ejakata', judul: 'Eja ' + stamp, area_skill: 'kognitif', usia_min: 4, usia_max: 6, sumber: 'manual', status: 'disetujui', butir }, 'return=representation');
+console.log('0. INSERT ejakata (CHECK 0036):', rE.status === 201 ? 'ok' : 'GAGAL ' + rE.status + ' ' + JSON.stringify(rE.j).slice(0, 140));
+const paketId = Array.isArray(rE.j) ? rE.j[0]?.id : null;
+const lahir = new Date(Date.now() - 5 * 365 * 864e5).toISOString().slice(0, 10);
+const childId = (await post('anak', { nama: 'AnakEja ' + stamp, ortu_id: UID, tanggal_lahir: lahir }, 'return=representation')).j[0]?.id;
+console.log('setup:', tema?.id && paketId && childId ? 'ok' : 'GAGAL');
+
+async function klik(teks) { const bs = await p.$$('button'); for (const bt of bs) { const t = await p.evaluate((el) => el.textContent.trim(), bt); if (t === teks) { const dis = await p.evaluate((el) => el.disabled, bt); if (!dis) { await bt.click(); return true; } } } return false; }
+async function eja(kata) { let ok = true; for (const c of kata.split('')) { const a = await klik(c); await new Promise((r) => setTimeout(r, 250)); ok = ok && a; } return ok; }
+
+await p.goto(`${U}/main/${childId}?paket=${paketId}`, { waitUntil: 'networkidle2', timeout: 30000 });
+await p.waitForFunction(() => document.body.innerText.includes('Eja namanya'), { timeout: 20000 }).catch(() => {});
+await new Promise((r) => setTimeout(r, 400));
+const e1 = await eja('APEL'); await new Promise((r) => setTimeout(r, 900));
+const e2 = await eja('PIR'); await new Promise((r) => setTimeout(r, 900));
+const reward = await p.waitForFunction(() => document.body.innerText.includes('Hebat'), { timeout: 15000 }).then(() => true).catch(() => false);
+const skor = await p.evaluate(() => { const m = document.body.innerText.match(/Benar\s+\d+\s+dari\s+\d+/); return m ? m[0] : '(?)'; });
+console.log('1. MAIN Eja (APEL, PIR):', e1 && e2 ? 'ok' : 'GAGAL', '| Reward:', reward ? 'MUNCUL' : 'GAGAL', '|', skor);
+
+await new Promise((r) => setTimeout(r, 2000));
+const hasil = await p.evaluate(async (su, sk, tok, cid) => (await (await fetch(`${su}/rest/v1/hasil_main?select=mesin,bintang&anak_id=eq.${cid}`, { headers: { apikey: sk, Authorization: 'Bearer ' + tok } })).json()), SU, SK, TOK, childId);
+console.log('2. hasil_main:', JSON.stringify(hasil), '| ejakata:', hasil.some((h) => h.mesin === 'ejakata'));
+
+await p.evaluate(async (su, sk, tok, tid) => { await fetch(`${su}/rest/v1/tema?id=eq.${tid}`, { method: 'DELETE', headers: { apikey: sk, Authorization: 'Bearer ' + tok } }); }, SU, SK, TOK, tema.id);
+if (childId) await p.evaluate(async (su, sk, tok, cid) => { await fetch(`${su}/rest/v1/anak?id=eq.${cid}`, { method: 'DELETE', headers: { apikey: sk, Authorization: 'Bearer ' + tok } }); }, SU, SK, TOK, childId);
+console.log('3. CLEANUP: selesai');
+await b.close();

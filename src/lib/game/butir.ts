@@ -1,7 +1,7 @@
 // src/lib/game/butir.ts
-import type { Mesin, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode, DataUrutan, DataJalur, DataHitung, DataCocokkan } from './tipe';
+import type { Mesin, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode, DataUrutan, DataJalur, DataHitung, DataCocokkan, DataEjaKata } from './tipe';
 
-export function butirDariForm(mesin: Mesin, form: unknown): DataTekan | DataSeret | DataCocok | DataMewarnai | DataDekode | DataUrutan | DataJalur | DataHitung | DataCocokkan {
+export function butirDariForm(mesin: Mesin, form: unknown): DataTekan | DataSeret | DataCocok | DataMewarnai | DataDekode | DataUrutan | DataJalur | DataHitung | DataCocokkan | DataEjaKata {
   // form sudah berbentuk objek sesuai mesin; fungsi ini titik normalisasi tunggal
   if (mesin === 'tekan-sesuai') return form as DataTekan;
   if (mesin === 'seret-wadah') return form as DataSeret;
@@ -11,6 +11,7 @@ export function butirDariForm(mesin: Mesin, form: unknown): DataTekan | DataSere
   if (mesin === 'jalur') return form as DataJalur;
   if (mesin === 'hitung') return form as DataHitung;
   if (mesin === 'cocokkan') return form as DataCocokkan;
+  if (mesin === 'ejakata') return form as DataEjaKata;
   return form as DataCocok;
 }
 
@@ -95,6 +96,12 @@ export function validasiButir(mesin: Mesin, butir: unknown): string {
     const b = butir as DataCocokkan;
     if (!b.pasangan || b.pasangan.length < 2) return 'Butuh minimal 2 pasangan.';
     for (const pr of b.pasangan) if (!pr.kiri?.trim() || !pr.kanan?.trim()) return 'Tiap pasangan butuh isi kiri dan kanan.';
+    return '';
+  }
+  if (mesin === 'ejakata') {
+    const b = butir as DataEjaKata;
+    if (!b.soal?.length) return 'Butuh minimal 1 soal.';
+    for (const sq of b.soal) { if (!sq.kata?.trim()) return 'Tiap soal butuh kata yang dieja.'; if (sq.kata.trim().length < 2) return 'Kata minimal 2 huruf.'; }
     return '';
   }
   const b = butir as DataCocok;

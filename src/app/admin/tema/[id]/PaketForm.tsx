@@ -1,7 +1,7 @@
 // src/app/admin/tema/[id]/PaketForm.tsx
 'use client';
 import { useState } from 'react';
-import type { Mesin, Paket, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode, DataUrutan, DataJalur, DataHitung, DataCocokkan } from '@/lib/game/tipe';
+import type { Mesin, Paket, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode, DataUrutan, DataJalur, DataHitung, DataCocokkan, DataEjaKata } from '@/lib/game/tipe';
 import { buatPaket, updatePaket } from '@/lib/data/admin-konten';
 import { validasiButir } from '@/lib/game/butir';
 import AsetInput from '@/components/admin/AsetInput';
@@ -11,7 +11,7 @@ import { sanitizeSvg, tandaiArea } from '@/lib/game/svg-sanitize';
 import TargetEditor from './TargetEditor';
 import s from '../../admin.module.css';
 
-const AREA: Record<Mesin, string> = { 'tekan-sesuai': 'kognitif', 'seret-wadah': 'motorik-halus', 'cari-pasangan': 'kognitif', 'mewarnai': 'kreativitas', 'dekode': 'kognitif', 'urutan': 'kognitif', 'jalur': 'kognitif', 'hitung': 'kognitif', 'cocokkan': 'kognitif' };
+const AREA: Record<Mesin, string> = { 'tekan-sesuai': 'kognitif', 'seret-wadah': 'motorik-halus', 'cari-pasangan': 'kognitif', 'mewarnai': 'kreativitas', 'dekode': 'kognitif', 'urutan': 'kognitif', 'jalur': 'kognitif', 'hitung': 'kognitif', 'cocokkan': 'kognitif', 'ejakata': 'kognitif' };
 type JSoal = { kolom: number; baris: number; mulai: [number, number]; tujuan: [number, number]; rintangan: [number, number][]; karakter: string; hadiah: string };
 
 const isHex = (v: string) => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v.trim());
@@ -60,6 +60,8 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
   const [hSoal, setHSoal] = useState<{ kiri: string; kanan: string; operasi: '+' | '-' }[]>([{ kiri: '', kanan: '', operasi: '+' }]);
   // cocokkan (asosiasi)
   const [cocokPairs, setCocokPairs] = useState<{ kiri: string; kanan: string }[]>([{ kiri: '', kanan: '' }, { kiri: '', kanan: '' }]);
+  // eja kata
+  const [ejaSoal, setEjaSoal] = useState<{ gambar: string; kata: string; pengecoh: string }[]>([{ gambar: '', kata: '', pengecoh: '' }]);
 
   async function pilihSvg(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]; if (!f) return;
@@ -104,6 +106,8 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
       };
     } else if (mesin === 'cocokkan') {
       butir = { pasangan: cocokPairs.filter((x) => x.kiri.trim() && x.kanan.trim()).map((x) => ({ kiri: x.kiri.trim(), kanan: x.kanan.trim() })) };
+    } else if (mesin === 'ejakata') {
+      butir = { soal: ejaSoal.filter((x) => x.kata.trim()).map((x) => ({ gambar: x.gambar.trim() || undefined, kata: x.kata.trim(), pengecoh: x.pengecoh.trim() || undefined })) };
     } else {
       butir = { pasangan: pasangan.filter(Boolean) };
     }
@@ -155,6 +159,9 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
     } else if (p.mesin === 'cocokkan') {
       const b = p.butir as DataCocokkan;
       setCocokPairs(b.pasangan?.length ? b.pasangan : [{ kiri: '', kanan: '' }, { kiri: '', kanan: '' }]);
+    } else if (p.mesin === 'ejakata') {
+      const b = p.butir as DataEjaKata;
+      setEjaSoal(b.soal?.length ? b.soal.map((x) => ({ gambar: x.gambar ?? '', kata: x.kata ?? '', pengecoh: x.pengecoh ?? '' })) : [{ gambar: '', kata: '', pengecoh: '' }]);
     }
   }
 
@@ -186,6 +193,7 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
           <option value="jalur">Arah & Jalur / Robot Grid (jalur)</option>
           <option value="hitung">Hitung-Kode (hitung)</option>
           <option value="cocokkan">Cocokkan / Asosiasi (cocokkan)</option>
+          <option value="ejakata">Eja Kata (ejakata)</option>
         </select>
         <input className={s.inp} value={judul} onChange={(e) => setJudul(e.target.value)} placeholder="Judul game" style={{ flex: 1 }} />
       </div>
@@ -514,6 +522,24 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
             </div>
           ))}
           <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => setCocokPairs([...cocokPairs, { kiri: '', kanan: '' }])}>+ pasangan</button>
+        </div>
+      )}
+
+      {mesin === 'ejakata' && (
+        <div style={{ marginTop: 10 }}>
+          <div className={s.muted} style={{ fontSize: 12 }}>Tiap soal: gambar/emoji petunjuk (opsional) + kata yang dieja. Pengecoh = huruf pengganggu tambahan (opsional). Anak mengetuk huruf berurutan.</div>
+          {ejaSoal.map((sq, i) => (
+            <div key={i} className={s.card} style={{ background: '#faf7ff' }}>
+              <div className={s.row} style={{ gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span className={s.muted} style={{ fontSize: 12 }}>Gambar:</span>
+                <AsetInput value={sq.gambar} onChange={(v) => setEjaSoal(ejaSoal.map((y, j) => j === i ? { ...y, gambar: v } : y))} placeholder="🍎 / gambar" />
+              </div>
+              <input className={s.inp} placeholder="kata (mis. APEL)" value={sq.kata} onChange={(e) => setEjaSoal(ejaSoal.map((y, j) => j === i ? { ...y, kata: e.target.value } : y))} style={{ width: '100%', marginTop: 6 }} />
+              <input className={s.inp} placeholder="huruf pengecoh (opsional, mis. RST)" value={sq.pengecoh} onChange={(e) => setEjaSoal(ejaSoal.map((y, j) => j === i ? { ...y, pengecoh: e.target.value } : y))} style={{ width: '100%', marginTop: 6 }} />
+              {ejaSoal.length > 1 && <button className={`${s.btnSm} ${s.danger}`} style={{ marginTop: 6 }} onClick={() => setEjaSoal(ejaSoal.filter((_, j) => j !== i))}>hapus soal</button>}
+            </div>
+          ))}
+          <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => setEjaSoal([...ejaSoal, { gambar: '', kata: '', pengecoh: '' }])}>+ soal</button>
         </div>
       )}
 

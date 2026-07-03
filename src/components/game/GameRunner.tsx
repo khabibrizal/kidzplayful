@@ -1,7 +1,7 @@
 // src/components/game/GameRunner.tsx
 'use client';
 import { useEffect, useState } from 'react';
-import type { Paket, HasilSelesai, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode, DataUrutan, DataJalur, DataHitung, DataCocokkan } from '@/lib/game/tipe';
+import type { Paket, HasilSelesai, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode, DataUrutan, DataJalur, DataHitung, DataCocokkan, DataEjaKata } from '@/lib/game/tipe';
 import ManaYa from './ManaYa';
 import BeresBeres from './BeresBeres';
 import CariPasangan from './CariPasangan';
@@ -11,6 +11,7 @@ import UrutanGame from './UrutanGame';
 import JalurGame from './JalurGame';
 import HitungGame from './HitungGame';
 import CocokkanGame from './CocokkanGame';
+import EjaKataGame from './EjaKataGame';
 import Reward from './Reward';
 import { catatHasil } from '@/lib/data/skor';
 import { hitungBintang } from '@/lib/domain/skor';
@@ -66,6 +67,7 @@ export default function GameRunner({
   else if (paket.mesin === 'jalur') engine = <JalurGame key={key} data={paket.butir as DataJalur} onSelesai={selesai} />;
   else if (paket.mesin === 'hitung') engine = <HitungGame key={key} data={paket.butir as DataHitung} onSelesai={selesai} />;
   else if (paket.mesin === 'cocokkan') engine = <CocokkanGame key={key} data={paket.butir as DataCocokkan} onSelesai={selesai} />;
+  else if (paket.mesin === 'ejakata') engine = <EjaKataGame key={key} data={paket.butir as DataEjaKata} onSelesai={selesai} />;
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
