@@ -13,6 +13,12 @@ import s from '../../admin.module.css';
 
 const AREA: Record<Mesin, string> = { 'tekan-sesuai': 'kognitif', 'seret-wadah': 'motorik-halus', 'cari-pasangan': 'kognitif', 'mewarnai': 'kreativitas', 'dekode': 'kognitif' };
 
+const isHex = (v: string) => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v.trim());
+function SimbolMini({ v, size = 22 }: { v: string; size?: number }) {
+  if (isHex(v)) return <span style={{ display: 'inline-block', width: size, height: size, borderRadius: 6, background: v, border: '1px solid #ddd' }} />;
+  return <Aset value={v} size={size} />;
+}
+
 type Soal = { tanya: string; benar: string; pengecoh: string[] };
 type Wadah = { kategori: string; label: string; emoji: string };
 type Benda = { emoji: string; kategori: string };
@@ -218,23 +224,38 @@ export default function PaketForm({ temaId }: { temaId: string }) {
           <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => setLegenda([...legenda, { simbol: '', nilai: '' }])}>+ legenda</button>
 
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', marginTop: 12 }}>Soal (urutan simbol untuk diterjemahkan anak)</div>
-          {dsoal.map((sq, i) => (
-            <div key={i} className={s.card} style={{ background: '#faf7ff' }}>
-              <div className={s.row} style={{ flexWrap: 'wrap', gap: 6, alignItems: 'center', minHeight: 28 }}>
-                <span className={s.muted} style={{ fontSize: 12 }}>Soal {i + 1}:</span>
-                {sq.length === 0 && <span className={s.muted} style={{ fontSize: 12 }}>(kosong — klik simbol di bawah)</span>}
-                {sq.map((sim, k) => <span key={k} style={{ background: '#fff', borderRadius: 8, padding: '2px 6px', boxShadow: '0 2px 0 #e6def5' }}><Aset value={sim} size={22} /></span>)}
-              </div>
-              <div className={s.row} style={{ flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
-                {legenda.filter((m) => m.simbol.trim()).map((m, k) => (
-                  <button key={k} className={s.btnSm} style={{ background: '#eef' }} onClick={() => setDsoal(dsoal.map((y, j) => j === i ? [...y, m.simbol] : y))}><Aset value={m.simbol} size={20} /></button>
-                ))}
-                {sq.length > 0 && <button className={s.btnSm} style={{ background: '#eee' }} onClick={() => setDsoal(dsoal.map((y, j) => j === i ? y.slice(0, -1) : y))}>⌫ hapus</button>}
-                {dsoal.length > 1 && <button className={`${s.btnSm} ${s.danger}`} onClick={() => setDsoal(dsoal.filter((_, j) => j !== i))}>hapus soal</button>}
-              </div>
+          {legenda.filter((m) => m.simbol.trim()).length === 0 && (
+            <div style={{ background: '#fff3d6', color: '#8a6d00', borderRadius: 10, padding: '8px 10px', fontSize: 12, marginTop: 4 }}>
+              ⚠️ Isi kolom <b>simbol</b> di Legenda dulu. Setelah itu tombol simbol muncul di sini untuk menyusun soal (klik simbol satu per satu).
             </div>
-          ))}
-          <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => setDsoal([...dsoal, []])}>+ soal</button>
+          )}
+          {dsoal.map((sq, i) => {
+            const simbolTerisi = legenda.filter((m) => m.simbol.trim());
+            return (
+              <div key={i} className={s.card} style={{ background: '#faf7ff' }}>
+                <div className={s.row} style={{ flexWrap: 'wrap', gap: 6, alignItems: 'center', minHeight: 30 }}>
+                  <span className={s.muted} style={{ fontSize: 12 }}>Soal {i + 1}:</span>
+                  {sq.length === 0 && <span className={s.muted} style={{ fontSize: 12 }}>(kosong — klik simbol di bawah)</span>}
+                  {sq.map((sim, k) => <span key={k} style={{ display: 'inline-flex', background: '#fff', borderRadius: 8, padding: '3px 6px', boxShadow: '0 2px 0 #e6def5' }}><SimbolMini v={sim} size={24} /></span>)}
+                </div>
+                {simbolTerisi.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <div className={s.muted} style={{ fontSize: 11, marginBottom: 4 }}>Klik simbol untuk menambah ke soal:</div>
+                    <div className={s.row} style={{ flexWrap: 'wrap', gap: 6 }}>
+                      {simbolTerisi.map((m, k) => (
+                        <button key={k} type="button" className={s.btnSm} style={{ background: '#eef', display: 'inline-flex', alignItems: 'center' }} onClick={() => setDsoal(dsoal.map((y, j) => j === i ? [...y, m.simbol] : y))}><SimbolMini v={m.simbol} size={22} /></button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className={s.row} style={{ flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                  {sq.length > 0 && <button type="button" className={s.btnSm} style={{ background: '#eee' }} onClick={() => setDsoal(dsoal.map((y, j) => j === i ? y.slice(0, -1) : y))}>⌫ hapus terakhir</button>}
+                  {dsoal.length > 1 && <button type="button" className={`${s.btnSm} ${s.danger}`} onClick={() => setDsoal(dsoal.filter((_, j) => j !== i))}>hapus soal</button>}
+                </div>
+              </div>
+            );
+          })}
+          <button type="button" className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => setDsoal([...dsoal, []])}>+ soal</button>
         </div>
       )}
 
