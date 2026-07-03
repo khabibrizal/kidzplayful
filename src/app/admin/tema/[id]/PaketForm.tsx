@@ -1,7 +1,7 @@
 // src/app/admin/tema/[id]/PaketForm.tsx
 'use client';
 import { useState } from 'react';
-import type { Mesin, Paket, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode, DataUrutan, DataJalur, DataHitung } from '@/lib/game/tipe';
+import type { Mesin, Paket, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode, DataUrutan, DataJalur, DataHitung, DataCocokkan } from '@/lib/game/tipe';
 import { buatPaket, updatePaket } from '@/lib/data/admin-konten';
 import { validasiButir } from '@/lib/game/butir';
 import AsetInput from '@/components/admin/AsetInput';
@@ -11,7 +11,7 @@ import { sanitizeSvg, tandaiArea } from '@/lib/game/svg-sanitize';
 import TargetEditor from './TargetEditor';
 import s from '../../admin.module.css';
 
-const AREA: Record<Mesin, string> = { 'tekan-sesuai': 'kognitif', 'seret-wadah': 'motorik-halus', 'cari-pasangan': 'kognitif', 'mewarnai': 'kreativitas', 'dekode': 'kognitif', 'urutan': 'kognitif', 'jalur': 'kognitif', 'hitung': 'kognitif' };
+const AREA: Record<Mesin, string> = { 'tekan-sesuai': 'kognitif', 'seret-wadah': 'motorik-halus', 'cari-pasangan': 'kognitif', 'mewarnai': 'kreativitas', 'dekode': 'kognitif', 'urutan': 'kognitif', 'jalur': 'kognitif', 'hitung': 'kognitif', 'cocokkan': 'kognitif' };
 type JSoal = { kolom: number; baris: number; mulai: [number, number]; tujuan: [number, number]; rintangan: [number, number][]; karakter: string; hadiah: string };
 
 const isHex = (v: string) => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v.trim());
@@ -58,6 +58,8 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
   // hitung-kode
   const [hLeg, setHLeg] = useState<{ simbol: string; nilai: string }[]>([{ simbol: '', nilai: '' }]);
   const [hSoal, setHSoal] = useState<{ kiri: string; kanan: string; operasi: '+' | '-' }[]>([{ kiri: '', kanan: '', operasi: '+' }]);
+  // cocokkan (asosiasi)
+  const [cocokPairs, setCocokPairs] = useState<{ kiri: string; kanan: string }[]>([{ kiri: '', kanan: '' }, { kiri: '', kanan: '' }]);
 
   async function pilihSvg(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]; if (!f) return;
@@ -100,6 +102,8 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
         legenda: hLeg.filter((m) => m.simbol.trim() && m.nilai.trim() !== '').map((m) => ({ simbol: m.simbol.trim(), nilai: Number(m.nilai) })),
         soal: hSoal.filter((sq) => sq.kiri && sq.kanan).map((sq) => ({ kiri: sq.kiri, kanan: sq.kanan, operasi: sq.operasi })),
       };
+    } else if (mesin === 'cocokkan') {
+      butir = { pasangan: cocokPairs.filter((x) => x.kiri.trim() && x.kanan.trim()).map((x) => ({ kiri: x.kiri.trim(), kanan: x.kanan.trim() })) };
     } else {
       butir = { pasangan: pasangan.filter(Boolean) };
     }
@@ -148,6 +152,9 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
       const b = p.butir as DataHitung;
       setHLeg((b.legenda ?? []).map((m) => ({ simbol: m.simbol ?? '', nilai: String(m.nilai ?? '') })));
       setHSoal((b.soal ?? []).map((sq) => ({ kiri: sq.kiri ?? '', kanan: sq.kanan ?? '', operasi: sq.operasi === '-' ? '-' : '+' })));
+    } else if (p.mesin === 'cocokkan') {
+      const b = p.butir as DataCocokkan;
+      setCocokPairs(b.pasangan?.length ? b.pasangan : [{ kiri: '', kanan: '' }, { kiri: '', kanan: '' }]);
     }
   }
 
@@ -178,6 +185,7 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
           <option value="urutan">Urutan & Pola (urutan)</option>
           <option value="jalur">Arah & Jalur / Robot Grid (jalur)</option>
           <option value="hitung">Hitung-Kode (hitung)</option>
+          <option value="cocokkan">Cocokkan / Asosiasi (cocokkan)</option>
         </select>
         <input className={s.inp} value={judul} onChange={(e) => setJudul(e.target.value)} placeholder="Judul game" style={{ flex: 1 }} />
       </div>
@@ -491,6 +499,21 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
             );
           })}
           <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => setHSoal([...hSoal, { kiri: '', kanan: '', operasi: '+' }])}>+ soal</button>
+        </div>
+      )}
+
+      {mesin === 'cocokkan' && (
+        <div style={{ marginTop: 10 }}>
+          <div className={s.muted} style={{ fontSize: 12 }}>Tiap baris = 1 pasangan (kiri ↔ kanan). Di game, kolom kanan diacak & anak memasangkannya. Minimal 2 pasangan. Isi bisa emoji/gambar/warna #hex/teks.</div>
+          {cocokPairs.map((pr, i) => (
+            <div key={i} className={s.row} style={{ marginTop: 6, gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+              <AsetInput value={pr.kiri} onChange={(v) => setCocokPairs(cocokPairs.map((y, j) => j === i ? { ...y, kiri: v } : y))} placeholder="kiri" />
+              <span className={s.muted}>↔</span>
+              <AsetInput value={pr.kanan} onChange={(v) => setCocokPairs(cocokPairs.map((y, j) => j === i ? { ...y, kanan: v } : y))} placeholder="kanan" />
+              {cocokPairs.length > 2 && <button className={`${s.btnSm} ${s.danger}`} onClick={() => setCocokPairs(cocokPairs.filter((_, j) => j !== i))}>×</button>}
+            </div>
+          ))}
+          <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => setCocokPairs([...cocokPairs, { kiri: '', kanan: '' }])}>+ pasangan</button>
         </div>
       )}
 
