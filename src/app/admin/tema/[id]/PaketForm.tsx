@@ -30,6 +30,7 @@ export default function PaketForm({ temaId }: { temaId: string }) {
   const [judul, setJudul] = useState('Mana Ya?');
   const [usiaMin, setUsiaMin] = useState(2);
   const [usiaMax, setUsiaMax] = useState(5);
+  const [targetDetik, setTargetDetik] = useState('');  // Mode Tantangan (opsional)
   const [err, setErr] = useState('');
 
   const [soal, setSoal] = useState<Soal[]>([{ tanya: '', benar: '', pengecoh: ['', ''] }]);
@@ -106,7 +107,7 @@ export default function PaketForm({ temaId }: { temaId: string }) {
     if (pesan) { setErr(pesan); return; }
     if (usiaMin > usiaMax) { setErr('Usia minimal tidak boleh lebih besar dari usia maksimal.'); return; }
     try {
-      await buatPaket({ temaId, mesin, judul, areaSkill: AREA[mesin], usiaMin, usiaMax, butir });
+      await buatPaket({ temaId, mesin, judul, areaSkill: AREA[mesin], usiaMin, usiaMax, targetDetik: targetDetik.trim() ? Number(targetDetik) : null, butir });
       location.reload();
     } catch (e) { setErr(e instanceof Error ? e.message : 'Gagal menyimpan. Cek koneksi & coba lagi.'); }
   }
@@ -132,6 +133,11 @@ export default function PaketForm({ temaId }: { temaId: string }) {
         <span className={s.muted}>–</span>
         <input className={s.inp} type="number" min={0} max={12} value={usiaMax} onChange={(e) => setUsiaMax(Number(e.target.value))} style={{ width: 64, marginBottom: 0 }} />
         <span className={s.muted} style={{ fontSize: 11 }}>tahun (game koding: 4–6)</span>
+      </div>
+      <div className={s.row} style={{ marginTop: 6, gap: 6, alignItems: 'center' }}>
+        <span className={s.muted} style={{ fontSize: 12 }}>⚡ Target waktu:</span>
+        <input className={s.inp} type="number" min={0} placeholder="detik" value={targetDetik} onChange={(e) => setTargetDetik(e.target.value)} style={{ width: 90, marginBottom: 0 }} />
+        <span className={s.muted} style={{ fontSize: 11 }}>detik — Mode Tantangan: selesai ≤ target = bonus ⭐+🪙 (kosongkan bila tanpa target)</span>
       </div>
 
       {mesin === 'tekan-sesuai' && (

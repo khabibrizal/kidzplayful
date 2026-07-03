@@ -45,7 +45,7 @@ export async function setMingguIni(id: string) {
 }
 
 export async function buatPaket(input: {
-  temaId: string; mesin: Mesin; judul: string; areaSkill: string; usiaMin: number; usiaMax: number; butir: unknown;
+  temaId: string; mesin: Mesin; judul: string; areaSkill: string; usiaMin: number; usiaMax: number; targetDetik?: number | null; butir: unknown;
 }) {
   const supabase = await db();
   const err = validasiButir(input.mesin, input.butir);
@@ -53,6 +53,7 @@ export async function buatPaket(input: {
   const { error } = await supabase.from('paket_aset').insert({
     tema_id: input.temaId, mesin: input.mesin, judul: input.judul.trim() || 'Game',
     area_skill: input.areaSkill, usia_min: input.usiaMin, usia_max: input.usiaMax,
+    target_detik: input.targetDetik && input.targetDetik > 0 ? Math.floor(input.targetDetik) : null,
     sumber: 'manual', status: 'disetujui', butir: input.butir,
   });
   if (error) throw new Error(error.message);

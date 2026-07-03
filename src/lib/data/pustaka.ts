@@ -14,7 +14,7 @@ export async function getPustaka(): Promise<TemaLengkap[]> {
   const ids = tema.map((t) => t.id);
   const { data: paket } = await supabase
     .from('paket_aset')
-    .select('id,tema_id,mesin,judul,area_skill,usia_min,usia_max,butir')
+    .select('id,tema_id,mesin,judul,area_skill,usia_min,usia_max,target_detik,butir')
     .in('tema_id', ids).eq('status', 'disetujui').order('urutan');
   const { data: video } = await supabase
     .from('video')

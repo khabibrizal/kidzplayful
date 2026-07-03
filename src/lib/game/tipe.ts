@@ -56,6 +56,7 @@ export interface Paket {
   area_skill: string;
   usia_min: number;
   usia_max: number;
+  target_detik?: number | null;  // Mode Tantangan: selesai ≤ target = bonus (opsional)
   butir: DataTekan | DataSeret | DataCocok | DataMewarnai | DataDekode | DataUrutan | DataJalur | DataHitung;
 }
 

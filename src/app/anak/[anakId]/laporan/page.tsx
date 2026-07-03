@@ -9,6 +9,7 @@ import { formatTanggal } from '@/lib/format';
 import CatatanCard from '@/components/CatatanCard';
 
 const LABEL: Record<string, string> = { 'kognitif': 'Kognitif', 'motorik-halus': 'Motorik Halus', 'sensorik': 'Sensorik', 'kemandirian': 'Kemandirian', 'kreativitas': 'Kreativitas' };
+const MESIN: Record<string, string> = { 'tekan-sesuai': 'Mana Ya', 'seret-wadah': 'Beres-Beres', 'cari-pasangan': 'Cari Pasangan', 'mewarnai': 'Mewarnai', 'dekode': 'Pecahkan Kode', 'urutan': 'Urutan & Pola', 'jalur': 'Robot Grid', 'hitung': 'Hitung-Kode' };
 
 function Stat({ b, l }: { b: string; l: string }) {
   return (
@@ -23,7 +24,7 @@ export default async function LaporanAnakPage({ params }: { params: Promise<{ an
   if (!user) redirect('/login');
   const { data: anak } = await supabase.from('anak').select('nama').eq('id', anakId).single();
   if (!anak) redirect('/pilih-anak');
-  const { data: rows } = await supabase.from('hasil_main').select('area_skill,bintang,durasi_detik,selesai').eq('anak_id', anakId);
+  const { data: rows } = await supabase.from('hasil_main').select('mesin,area_skill,bintang,durasi_detik,selesai').eq('anak_id', anakId);
   const r = laporanAnak((rows ?? []) as unknown as BarisHasil[]);
   const catatan = await getCatatanAnak(anakId);
   const sertifikat = await getSertifikatAnak(anakId);
@@ -64,6 +65,18 @@ export default async function LaporanAnakPage({ params }: { params: Promise<{ an
         );
       })}
       {r.totalSesi === 0 && <p style={{ color: 'var(--abu)', fontSize: 13 }}>Belum ada data — ajak {anak.nama} main dulu ya.</p>}
+
+      {Object.keys(r.perMesin).length > 0 && (
+        <>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '18px 0 8px' }}>⏱ WAKTU PER GAME</div>
+          {Object.entries(r.perMesin).map(([m, st]) => (
+            <div key={m} className="kp-card" style={{ padding: 12, marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 14 }}>
+              <b>{MESIN[m] ?? m}</b>
+              <span style={{ color: 'var(--abu)', fontSize: 13 }}>{st.count}x{st.tercepat > 0 ? ` · tercepat ${st.tercepat} dtk` : ''}</span>
+            </div>
+          ))}
+        </>
+      )}
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '18px 0 8px' }}>KEGIATAN (EVENT)</div>
       {blokEvent.length === 0

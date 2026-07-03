@@ -34,16 +34,19 @@ export default function GameRunner({
     try {
       const r = await catatHasil({
         anakId, temaId, mesin: paket.mesin, areaSkill: paket.area_skill,
-        benar: h.benar, total: h.total, durasiDetik: h.durasiDetik,
+        benar: h.benar, total: h.total, durasiDetik: h.durasiDetik, targetDetik: paket.target_detik ?? null,
       });
       onKoin(r.koin);
     } catch { /* offline/Tahap berikut: antrikan; untuk M2 abaikan diam */ }
   }
 
   if (hasil) {
+    const target = paket.target_detik ?? 0;
+    const bonus = target > 0 && hasil.durasiDetik > 0 && hasil.durasiDetik <= target;
+    const bintang = Math.min(3, hitungBintang(hasil.benar, hasil.total) + (bonus ? 1 : 0));
     return (
       <Reward
-        bintang={hitungBintang(hasil.benar, hasil.total)}
+        bintang={bintang} bonus={bonus} targetDetik={target || undefined}
         benar={hasil.benar} total={hasil.total} durasiDetik={hasil.durasiDetik}
         onLagi={() => { setHasil(null); setRun(run + 1); }}
         onSelesai={onKeluar}
@@ -64,7 +67,7 @@ export default function GameRunner({
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-      <div style={{ alignSelf: 'center', background: '#fff', borderRadius: 99, padding: '4px 16px', boxShadow: '0 3px 0 #e6def5', fontWeight: 800, color: 'var(--lavender-d)', marginBottom: 8, fontVariantNumeric: 'tabular-nums' }}>⏱ {jam(detik)}</div>
+      <div style={{ alignSelf: 'center', background: '#fff', borderRadius: 99, padding: '4px 16px', boxShadow: '0 3px 0 #e6def5', fontWeight: 800, color: paket.target_detik && detik > paket.target_detik ? 'var(--abu)' : 'var(--lavender-d)', marginBottom: 8, fontVariantNumeric: 'tabular-nums' }}>⏱ {jam(detik)}{paket.target_detik ? ` ⚡${jam(paket.target_detik)}` : ''}</div>
       {engine}
     </div>
   );
