@@ -1,5 +1,5 @@
 // src/lib/game/tipe.ts
-export type Mesin = 'tekan-sesuai' | 'seret-wadah' | 'cari-pasangan' | 'mewarnai' | 'dekode' | 'urutan' | 'jalur';
+export type Mesin = 'tekan-sesuai' | 'seret-wadah' | 'cari-pasangan' | 'mewarnai' | 'dekode' | 'urutan' | 'jalur' | 'hitung';
 
 export interface ButirTekan { tanya: string; benar: string; salah: string[]; }
 export interface DataTekan { soal: ButirTekan[]; }
@@ -44,6 +44,11 @@ export interface JalurSoal {
 }
 export interface DataJalur { soal: JalurSoal[]; }
 
+// Hitung-Kode: simbol -> angka, lalu operasi +/- (pilihan jawaban angka).
+export interface HitungMap { simbol: string; nilai: number; } // simbol: emoji/gambar/#hex; nilai: angka
+export interface HitungSoal { kiri: string; kanan: string; operasi: '+' | '-'; }
+export interface DataHitung { legenda: HitungMap[]; soal: HitungSoal[]; }
+
 export interface Paket {
   id: string;
   mesin: Mesin;
@@ -51,7 +56,7 @@ export interface Paket {
   area_skill: string;
   usia_min: number;
   usia_max: number;
-  butir: DataTekan | DataSeret | DataCocok | DataMewarnai | DataDekode | DataUrutan | DataJalur;
+  butir: DataTekan | DataSeret | DataCocok | DataMewarnai | DataDekode | DataUrutan | DataJalur | DataHitung;
 }
 
 export interface HasilSelesai {

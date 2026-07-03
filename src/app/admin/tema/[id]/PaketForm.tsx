@@ -11,7 +11,7 @@ import { sanitizeSvg, tandaiArea } from '@/lib/game/svg-sanitize';
 import TargetEditor from './TargetEditor';
 import s from '../../admin.module.css';
 
-const AREA: Record<Mesin, string> = { 'tekan-sesuai': 'kognitif', 'seret-wadah': 'motorik-halus', 'cari-pasangan': 'kognitif', 'mewarnai': 'kreativitas', 'dekode': 'kognitif', 'urutan': 'kognitif', 'jalur': 'kognitif' };
+const AREA: Record<Mesin, string> = { 'tekan-sesuai': 'kognitif', 'seret-wadah': 'motorik-halus', 'cari-pasangan': 'kognitif', 'mewarnai': 'kreativitas', 'dekode': 'kognitif', 'urutan': 'kognitif', 'jalur': 'kognitif', 'hitung': 'kognitif' };
 type JSoal = { kolom: number; baris: number; mulai: [number, number]; tujuan: [number, number]; rintangan: [number, number][]; karakter: string; hadiah: string };
 
 const isHex = (v: string) => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v.trim());
@@ -53,6 +53,9 @@ export default function PaketForm({ temaId }: { temaId: string }) {
   // arah & jalur (robot grid)
   const [jSoal, setJSoal] = useState<JSoal[]>([{ kolom: 4, baris: 4, mulai: [0, 3], tujuan: [3, 0], rintangan: [], karakter: '🐢', hadiah: '🎯' }]);
   const [jMode, setJMode] = useState<'mulai' | 'tujuan' | 'rintangan'>('rintangan');
+  // hitung-kode
+  const [hLeg, setHLeg] = useState<{ simbol: string; nilai: string }[]>([{ simbol: '', nilai: '' }]);
+  const [hSoal, setHSoal] = useState<{ kiri: string; kanan: string; operasi: '+' | '-' }[]>([{ kiri: '', kanan: '', operasi: '+' }]);
 
   async function pilihSvg(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]; if (!f) return;
@@ -90,6 +93,11 @@ export default function PaketForm({ temaId }: { temaId: string }) {
       }
     } else if (mesin === 'jalur') {
       butir = { soal: jSoal.map((sq) => ({ kolom: sq.kolom, baris: sq.baris, mulai: sq.mulai, tujuan: sq.tujuan, rintangan: sq.rintangan, karakter: sq.karakter.trim() || '🐢', hadiah: sq.hadiah.trim() || '🎯' })) };
+    } else if (mesin === 'hitung') {
+      butir = {
+        legenda: hLeg.filter((m) => m.simbol.trim() && m.nilai.trim() !== '').map((m) => ({ simbol: m.simbol.trim(), nilai: Number(m.nilai) })),
+        soal: hSoal.filter((sq) => sq.kiri && sq.kanan).map((sq) => ({ kiri: sq.kiri, kanan: sq.kanan, operasi: sq.operasi })),
+      };
     } else {
       butir = { pasangan: pasangan.filter(Boolean) };
     }
@@ -114,6 +122,7 @@ export default function PaketForm({ temaId }: { temaId: string }) {
           <option value="dekode">Pecahkan Kode (dekode)</option>
           <option value="urutan">Urutan & Pola (urutan)</option>
           <option value="jalur">Arah & Jalur / Robot Grid (jalur)</option>
+          <option value="hitung">Hitung-Kode (hitung)</option>
         </select>
         <input className={s.inp} value={judul} onChange={(e) => setJudul(e.target.value)} placeholder="Judul game" style={{ flex: 1 }} />
       </div>
@@ -384,6 +393,44 @@ export default function PaketForm({ temaId }: { temaId: string }) {
             </div>
           ))}
           <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => setJSoal([...jSoal, { kolom: 4, baris: 4, mulai: [0, 3], tujuan: [3, 0], rintangan: [], karakter: '🐢', hadiah: '🎯' }])}>+ soal</button>
+        </div>
+      )}
+
+      {mesin === 'hitung' && (
+        <div style={{ marginTop: 10 }}>
+          <div className={s.muted} style={{ fontSize: 12 }}>Tiap simbol punya <b>nilai angka</b>. Lalu buat soal: simbol {'{operasi}'} simbol → anak pilih hasilnya. (Untuk −, nilai kiri harus ≥ kanan.)</div>
+
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', marginTop: 8 }}>Legenda angka</div>
+          {hLeg.map((m, i) => (
+            <div key={i} className={s.row} style={{ marginTop: 6, gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+              <AsetInput value={m.simbol} onChange={(v) => setHLeg(hLeg.map((y, j) => j === i ? { ...y, simbol: v } : y))} placeholder="🍎 / #hex" />
+              <span className={s.muted}>=</span>
+              <input className={s.inp} type="number" placeholder="angka" value={m.nilai} onChange={(e) => setHLeg(hLeg.map((y, j) => j === i ? { ...y, nilai: e.target.value } : y))} style={{ width: 90, marginBottom: 0 }} />
+              {hLeg.length > 1 && <button className={`${s.btnSm} ${s.danger}`} onClick={() => setHLeg(hLeg.filter((_, j) => j !== i))}>×</button>}
+            </div>
+          ))}
+          <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => setHLeg([...hLeg, { simbol: '', nilai: '' }])}>+ legenda</button>
+
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', marginTop: 12 }}>Soal (pilih simbol dari legenda)</div>
+          {hSoal.map((sq, i) => {
+            const opsiSimbol = hLeg.filter((m) => m.simbol.trim());
+            return (
+              <div key={i} className={s.row} style={{ marginTop: 6, gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                <select className={s.inp} value={sq.kiri} onChange={(e) => setHSoal(hSoal.map((y, j) => j === i ? { ...y, kiri: e.target.value } : y))} style={{ marginBottom: 0 }}>
+                  <option value="">—</option>{opsiSimbol.map((m, k) => <option key={k} value={m.simbol}>{m.simbol} ({m.nilai})</option>)}
+                </select>
+                <select className={s.inp} value={sq.operasi} onChange={(e) => setHSoal(hSoal.map((y, j) => j === i ? { ...y, operasi: e.target.value as '+' | '-' } : y))} style={{ width: 60, marginBottom: 0 }}>
+                  <option value="+">+</option><option value="-">−</option>
+                </select>
+                <select className={s.inp} value={sq.kanan} onChange={(e) => setHSoal(hSoal.map((y, j) => j === i ? { ...y, kanan: e.target.value } : y))} style={{ marginBottom: 0 }}>
+                  <option value="">—</option>{opsiSimbol.map((m, k) => <option key={k} value={m.simbol}>{m.simbol} ({m.nilai})</option>)}
+                </select>
+                <span className={s.muted}>= ?</span>
+                {hSoal.length > 1 && <button className={`${s.btnSm} ${s.danger}`} onClick={() => setHSoal(hSoal.filter((_, j) => j !== i))}>×</button>}
+              </div>
+            );
+          })}
+          <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => setHSoal([...hSoal, { kiri: '', kanan: '', operasi: '+' }])}>+ soal</button>
         </div>
       )}
 

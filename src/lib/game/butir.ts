@@ -1,7 +1,7 @@
 // src/lib/game/butir.ts
-import type { Mesin, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode, DataUrutan, DataJalur } from './tipe';
+import type { Mesin, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode, DataUrutan, DataJalur, DataHitung } from './tipe';
 
-export function butirDariForm(mesin: Mesin, form: unknown): DataTekan | DataSeret | DataCocok | DataMewarnai | DataDekode | DataUrutan | DataJalur {
+export function butirDariForm(mesin: Mesin, form: unknown): DataTekan | DataSeret | DataCocok | DataMewarnai | DataDekode | DataUrutan | DataJalur | DataHitung {
   // form sudah berbentuk objek sesuai mesin; fungsi ini titik normalisasi tunggal
   if (mesin === 'tekan-sesuai') return form as DataTekan;
   if (mesin === 'seret-wadah') return form as DataSeret;
@@ -9,6 +9,7 @@ export function butirDariForm(mesin: Mesin, form: unknown): DataTekan | DataSere
   if (mesin === 'dekode') return form as DataDekode;
   if (mesin === 'urutan') return form as DataUrutan;
   if (mesin === 'jalur') return form as DataJalur;
+  if (mesin === 'hitung') return form as DataHitung;
   return form as DataCocok;
 }
 
@@ -73,6 +74,19 @@ export function validasiButir(mesin: Mesin, butir: unknown): string {
       const inB = (pt?: [number, number]) => !!pt && pt[0] >= 0 && pt[1] >= 0 && pt[0] < sq.kolom && pt[1] < sq.baris;
       if (!inB(sq.mulai) || !inB(sq.tujuan)) return 'Posisi mulai/tujuan di luar grid.';
       if (sq.mulai[0] === sq.tujuan[0] && sq.mulai[1] === sq.tujuan[1]) return 'Mulai dan tujuan tidak boleh sama.';
+    }
+    return '';
+  }
+  if (mesin === 'hitung') {
+    const b = butir as DataHitung;
+    if (!b.legenda?.length) return 'Legenda angka kosong.';
+    for (const m of b.legenda) { if (!m.simbol?.trim()) return 'Tiap legenda butuh simbol.'; if (typeof m.nilai !== 'number' || Number.isNaN(m.nilai)) return 'Tiap legenda butuh nilai angka.'; }
+    if (!b.soal?.length) return 'Butuh minimal 1 soal.';
+    const nilai = new Map(b.legenda.map((m) => [m.simbol, m.nilai]));
+    for (const sq of b.soal) {
+      if (!nilai.has(sq.kiri) || !nilai.has(sq.kanan)) return 'Simbol pada soal tidak ada di legenda.';
+      if (sq.operasi !== '+' && sq.operasi !== '-') return 'Operasi harus + atau -.';
+      if (sq.operasi === '-' && (nilai.get(sq.kiri)! < nilai.get(sq.kanan)!)) return 'Untuk pengurangan, nilai kiri harus ≥ nilai kanan (hindari hasil minus).';
     }
     return '';
   }
