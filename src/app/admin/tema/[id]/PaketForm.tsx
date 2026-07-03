@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import type { Mesin } from '@/lib/game/tipe';
 import { buatPaket } from '@/lib/data/admin-konten';
+import { validasiButir } from '@/lib/game/butir';
 import AsetInput from '@/components/admin/AsetInput';
 import Aset from '@/components/game/Aset';
 import { TEMPLATE_OPSI, TEMPLATES, PALETTE_DEFAULT } from '@/lib/game/templates-mewarnai';
@@ -70,10 +71,14 @@ export default function PaketForm({ temaId }: { temaId: string }) {
     } else {
       butir = { pasangan: pasangan.filter(Boolean) };
     }
+    // validasi di klien dulu → pesan ramah (server action di-redact di production)
+    const pesan = validasiButir(mesin, butir);
+    if (pesan) { setErr(pesan); return; }
+    if (usiaMin > usiaMax) { setErr('Usia minimal tidak boleh lebih besar dari usia maksimal.'); return; }
     try {
       await buatPaket({ temaId, mesin, judul, areaSkill: AREA[mesin], usiaMin, usiaMax, butir });
       location.reload();
-    } catch (e) { setErr(e instanceof Error ? e.message : 'Gagal menyimpan'); }
+    } catch (e) { setErr(e instanceof Error ? e.message : 'Gagal menyimpan. Cek koneksi & coba lagi.'); }
   }
 
   return (
