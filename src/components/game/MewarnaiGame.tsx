@@ -17,15 +17,18 @@ function speak(t: string) {
   } catch { /* abaikan */ }
 }
 
-function PaletBar({ palette, dipilih, onPilih }: { palette: string[]; dipilih: string; onPilih: (h: string) => void }) {
+function PaletBar({ palette, dipilih, onPilih, bernomor = false }: { palette: string[]; dipilih: string; onPilih: (h: string) => void; bernomor?: boolean }) {
   return (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', padding: '4px 0' }}>
-      {palette.map((hex) => (
-        <button key={hex} onClick={() => onPilih(hex)} aria-label={WARNA_NAMA[hex.toLowerCase()] ?? hex}
-          style={{
-            width: 40, height: 40, borderRadius: '50%', background: hex, cursor: 'pointer',
-            border: dipilih === hex ? '4px solid var(--lavender-d)' : '3px solid #fff', boxShadow: '0 3px 0 #e6def5',
-          }} />
+      {palette.map((hex, i) => (
+        <div key={hex} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+          <button onClick={() => onPilih(hex)} aria-label={`${bernomor ? `Warna ${i + 1} ` : ''}${WARNA_NAMA[hex.toLowerCase()] ?? hex}`}
+            style={{
+              width: 40, height: 40, borderRadius: '50%', background: hex, cursor: 'pointer',
+              border: dipilih === hex ? '4px solid var(--lavender-d)' : '3px solid #fff', boxShadow: '0 3px 0 #e6def5',
+            }} />
+          {bernomor && <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--lavender-d)' }}>{i + 1}</span>}
+        </div>
       ))}
     </div>
   );
@@ -110,7 +113,8 @@ function SvgMode({ data, onSelesai }: { data: DataMewarnai; onSelesai: (h: Hasil
   const [terisi, setTerisi] = useState(0);
   const [total, setTotal] = useState(0);
   const mulaiRef = useRef(Date.now());
-  const sesuai = data.mode === 'sesuai' && !!data.target;
+  const berkode = data.mode === 'berkode';                    // color-by-number
+  const sesuai = (data.mode === 'sesuai' || berkode) && !!data.target;
 
   useEffect(() => { warnaRef.current = dipilih; }, [dipilih]);
 
@@ -133,7 +137,30 @@ function SvgMode({ data, onSelesai }: { data: DataMewarnai; onSelesai: (h: Hasil
         setTerisi(Object.keys(isiRef.current).length);
       });
     });
-  }, [data.svg]);
+    // mode berkode: tempel label angka (urutan warna target di palette) di tengah tiap area
+    if (root && berkode && data.target) {
+      const svgNS = 'http://www.w3.org/2000/svg';
+      shapes.forEach((sh, i) => {
+        const k = sh.getAttribute('data-area') ?? String(i);
+        const tgt = data.target![k]; if (!tgt) return;
+        const idx = data.palette.indexOf(tgt); if (idx < 0) return;
+        try {
+          const bb = (sh as SVGGraphicsElement).getBBox();
+          const t = document.createElementNS(svgNS, 'text');
+          t.setAttribute('x', String(bb.x + bb.width / 2));
+          t.setAttribute('y', String(bb.y + bb.height / 2));
+          t.setAttribute('text-anchor', 'middle');
+          t.setAttribute('dominant-baseline', 'central');
+          t.setAttribute('font-size', String(Math.max(7, Math.min(bb.width, bb.height) * 0.4)));
+          t.setAttribute('fill', '#5b5170');
+          t.setAttribute('font-weight', '700');
+          (t as unknown as SVGElement).style.pointerEvents = 'none';
+          t.textContent = String(idx + 1);
+          root.appendChild(t);
+        } catch { /* getBBox bisa gagal utk shape tertentu */ }
+      });
+    }
+  }, [data.svg, data.mode, data.target, data.palette, berkode]);
 
   function pilih(hex: string) { setDipilih(hex); const n = WARNA_NAMA[hex.toLowerCase()]; if (n) speak(n); }
   function ulang() {
@@ -150,11 +177,14 @@ function SvgMode({ data, onSelesai }: { data: DataMewarnai; onSelesai: (h: Hasil
     onSelesai({ benar, total: sesuai && data.target ? Object.keys(data.target).length : total, durasiDetik: Math.round((Date.now() - mulaiRef.current) / 1000) });
   }
   const semua = total > 0 && terisi >= total;
-  const contoh = useMemo(() => (sesuai ? svgDenganWarna(data.svg ?? '', data.target ?? {}, 54) : ''), [sesuai, data.svg, data.target]);
+  const contoh = useMemo(() => (sesuai && !berkode ? svgDenganWarna(data.svg ?? '', data.target ?? {}, 54) : ''), [sesuai, berkode, data.svg, data.target]);
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-      {sesuai && contoh && (
+      {berkode && (
+        <div style={{ fontSize: 13, color: 'var(--abu)', textAlign: 'center' }}>🔢 Warnai tiap bagian sesuai <b>angkanya</b> ya!</div>
+      )}
+      {sesuai && !berkode && contoh && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--abu)' }}>
           Contoh:
           <span style={{ background: '#fff', borderRadius: 12, padding: 2, boxShadow: '0 2px 0 #e6def5' }} dangerouslySetInnerHTML={{ __html: contoh }} />
@@ -164,7 +194,7 @@ function SvgMode({ data, onSelesai }: { data: DataMewarnai; onSelesai: (h: Hasil
       <div style={{ background: '#fff', borderRadius: 24, padding: 8, boxShadow: '0 6px 0 #e6def5' }}>
         <div ref={hostRef} style={{ display: 'flex', justifyContent: 'center', touchAction: 'manipulation' }} />
       </div>
-      <PaletBar palette={data.palette} dipilih={dipilih} onPilih={pilih} />
+      <PaletBar palette={data.palette} dipilih={dipilih} onPilih={pilih} bernomor={berkode} />
       <div style={{ display: 'flex', gap: 8 }}>
         <button className="kp-btn putih" onClick={ulang}>↺ Ulang</button>
         <button className="kp-btn" onClick={selesai} disabled={!semua} style={semua ? undefined : { opacity: 0.5 }}>Selesai ✓</button>

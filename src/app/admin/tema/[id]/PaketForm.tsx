@@ -4,20 +4,24 @@ import { useState } from 'react';
 import type { Mesin } from '@/lib/game/tipe';
 import { buatPaket } from '@/lib/data/admin-konten';
 import AsetInput from '@/components/admin/AsetInput';
+import Aset from '@/components/game/Aset';
 import { TEMPLATE_OPSI, TEMPLATES, PALETTE_DEFAULT } from '@/lib/game/templates-mewarnai';
 import { sanitizeSvg, tandaiArea } from '@/lib/game/svg-sanitize';
 import TargetEditor from './TargetEditor';
 import s from '../../admin.module.css';
 
-const AREA: Record<Mesin, string> = { 'tekan-sesuai': 'kognitif', 'seret-wadah': 'motorik-halus', 'cari-pasangan': 'kognitif', 'mewarnai': 'kreativitas' };
+const AREA: Record<Mesin, string> = { 'tekan-sesuai': 'kognitif', 'seret-wadah': 'motorik-halus', 'cari-pasangan': 'kognitif', 'mewarnai': 'kreativitas', 'dekode': 'kognitif' };
 
 type Soal = { tanya: string; benar: string; pengecoh: string[] };
 type Wadah = { kategori: string; label: string; emoji: string };
 type Benda = { emoji: string; kategori: string };
+type LegRow = { simbol: string; nilai: string };
 
 export default function PaketForm({ temaId }: { temaId: string }) {
   const [mesin, setMesin] = useState<Mesin>('tekan-sesuai');
   const [judul, setJudul] = useState('Mana Ya?');
+  const [usiaMin, setUsiaMin] = useState(2);
+  const [usiaMax, setUsiaMax] = useState(5);
   const [err, setErr] = useState('');
 
   const [soal, setSoal] = useState<Soal[]>([{ tanya: '', benar: '', pengecoh: ['', ''] }]);
@@ -29,8 +33,11 @@ export default function PaketForm({ temaId }: { temaId: string }) {
   const [sumberMew, setSumberMew] = useState<'template' | 'svg'>('template');
   const [svgMarkup, setSvgMarkup] = useState('');
   const [svgArea, setSvgArea] = useState(0);
-  const [svgMode, setSvgMode] = useState<'bebas' | 'sesuai'>('bebas');
+  const [svgMode, setSvgMode] = useState<'bebas' | 'sesuai' | 'berkode'>('bebas');
   const [svgTarget, setSvgTarget] = useState<Record<string, string>>({});
+  // dekode ("Pecahkan Kode")
+  const [legenda, setLegenda] = useState<LegRow[]>([{ simbol: '', nilai: '' }]);
+  const [dsoal, setDsoal] = useState<string[][]>([[]]);
 
   async function pilihSvg(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]; if (!f) return;
@@ -50,15 +57,21 @@ export default function PaketForm({ temaId }: { temaId: string }) {
       butir = { wadah: wadah.filter((w) => w.kategori && w.emoji), benda: benda.filter((b) => b.emoji && b.kategori) };
     } else if (mesin === 'mewarnai') {
       if (sumberMew === 'svg') {
-        butir = { sumber: 'svg', svg: svgMarkup, palette: PALETTE_DEFAULT, mode: svgMode, target: svgMode === 'sesuai' ? svgTarget : undefined };
+        const perluTarget = svgMode === 'sesuai' || svgMode === 'berkode';
+        butir = { sumber: 'svg', svg: svgMarkup, palette: PALETTE_DEFAULT, mode: svgMode, target: perluTarget ? svgTarget : undefined };
       } else {
         butir = { sumber: 'template', template, palette: PALETTE_DEFAULT, mode: modeMew, target: modeMew === 'sesuai' ? TEMPLATES[template]?.target : undefined };
       }
+    } else if (mesin === 'dekode') {
+      butir = {
+        legenda: legenda.filter((m) => m.simbol.trim() && m.nilai.trim()).map((m) => ({ simbol: m.simbol.trim(), nilai: m.nilai.trim() })),
+        soal: dsoal.filter((sq) => sq.length > 0),
+      };
     } else {
       butir = { pasangan: pasangan.filter(Boolean) };
     }
     try {
-      await buatPaket({ temaId, mesin, judul, areaSkill: AREA[mesin], usiaMin: 2, usiaMax: 5, butir });
+      await buatPaket({ temaId, mesin, judul, areaSkill: AREA[mesin], usiaMin, usiaMax, butir });
       location.reload();
     } catch (e) { setErr(e instanceof Error ? e.message : 'Gagal menyimpan'); }
   }
@@ -71,8 +84,16 @@ export default function PaketForm({ temaId }: { temaId: string }) {
           <option value="seret-wadah">Beres-Beres (seret)</option>
           <option value="cari-pasangan">Cari Pasangan (cocok)</option>
           <option value="mewarnai">Mewarnai (warnai)</option>
+          <option value="dekode">Pecahkan Kode (dekode)</option>
         </select>
         <input className={s.inp} value={judul} onChange={(e) => setJudul(e.target.value)} placeholder="Judul game" style={{ flex: 1 }} />
+      </div>
+      <div className={s.row} style={{ marginTop: 6, gap: 6, alignItems: 'center' }}>
+        <span className={s.muted} style={{ fontSize: 12 }}>Usia:</span>
+        <input className={s.inp} type="number" min={0} max={12} value={usiaMin} onChange={(e) => setUsiaMin(Number(e.target.value))} style={{ width: 64, marginBottom: 0 }} />
+        <span className={s.muted}>–</span>
+        <input className={s.inp} type="number" min={0} max={12} value={usiaMax} onChange={(e) => setUsiaMax(Number(e.target.value))} style={{ width: 64, marginBottom: 0 }} />
+        <span className={s.muted} style={{ fontSize: 11 }}>tahun (game koding: 4–6)</span>
       </div>
 
       {mesin === 'tekan-sesuai' && (
@@ -162,15 +183,53 @@ export default function PaketForm({ temaId }: { temaId: string }) {
               {svgMarkup && (
                 <>
                   <div className={s.muted} style={{ fontSize: 12, marginTop: 4, color: '#2e9e63' }}>✓ SVG dimuat · {svgArea} area bisa diwarnai</div>
-                  <select className={s.inp} value={svgMode} onChange={(e) => setSvgMode(e.target.value as 'bebas' | 'sesuai')} style={{ width: '100%', marginTop: 6 }}>
+                  <select className={s.inp} value={svgMode} onChange={(e) => setSvgMode(e.target.value as 'bebas' | 'sesuai' | 'berkode')} style={{ width: '100%', marginTop: 6 }}>
                     <option value="bebas">Mode Bebas</option>
                     <option value="sesuai">Mode Sesuai contoh (atur warna target)</option>
+                    <option value="berkode">Mode Berkode / warnai sesuai angka (atur warna target)</option>
                   </select>
-                  {svgMode === 'sesuai' && <TargetEditor svg={svgMarkup} palette={PALETTE_DEFAULT} target={svgTarget} setTarget={setSvgTarget} />}
+                  {svgMode === 'berkode' && <div className={s.muted} style={{ fontSize: 11, marginTop: 4 }}>Angka tiap area = urutan warna target pada palet. Atur warna target per area di bawah.</div>}
+                  {(svgMode === 'sesuai' || svgMode === 'berkode') && <TargetEditor svg={svgMarkup} palette={PALETTE_DEFAULT} target={svgTarget} setTarget={setSvgTarget} />}
                 </>
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {mesin === 'dekode' && (
+        <div style={{ marginTop: 10 }}>
+          <div className={s.muted} style={{ fontSize: 12 }}>Legenda: tiap simbol (emoji/gambar/warna #hex) punya nilai (huruf/angka/kata). Lalu susun soal dari urutan simbol.</div>
+
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', marginTop: 8 }}>Legenda kode</div>
+          {legenda.map((m, i) => (
+            <div key={i} className={s.row} style={{ marginTop: 6, flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+              <AsetInput value={m.simbol} onChange={(v) => setLegenda(legenda.map((y, j) => j === i ? { ...y, simbol: v } : y))} placeholder="🔴 / #e74c3c / 🐱" />
+              <span className={s.muted}>→</span>
+              <input className={s.inp} placeholder="nilai (A / 1 / kata)" value={m.nilai} onChange={(e) => setLegenda(legenda.map((y, j) => j === i ? { ...y, nilai: e.target.value } : y))} style={{ width: 150, marginBottom: 0 }} />
+              {legenda.length > 1 && <button className={`${s.btnSm} ${s.danger}`} onClick={() => setLegenda(legenda.filter((_, j) => j !== i))}>×</button>}
+            </div>
+          ))}
+          <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => setLegenda([...legenda, { simbol: '', nilai: '' }])}>+ legenda</button>
+
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', marginTop: 12 }}>Soal (urutan simbol untuk diterjemahkan anak)</div>
+          {dsoal.map((sq, i) => (
+            <div key={i} className={s.card} style={{ background: '#faf7ff' }}>
+              <div className={s.row} style={{ flexWrap: 'wrap', gap: 6, alignItems: 'center', minHeight: 28 }}>
+                <span className={s.muted} style={{ fontSize: 12 }}>Soal {i + 1}:</span>
+                {sq.length === 0 && <span className={s.muted} style={{ fontSize: 12 }}>(kosong — klik simbol di bawah)</span>}
+                {sq.map((sim, k) => <span key={k} style={{ background: '#fff', borderRadius: 8, padding: '2px 6px', boxShadow: '0 2px 0 #e6def5' }}><Aset value={sim} size={22} /></span>)}
+              </div>
+              <div className={s.row} style={{ flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                {legenda.filter((m) => m.simbol.trim()).map((m, k) => (
+                  <button key={k} className={s.btnSm} style={{ background: '#eef' }} onClick={() => setDsoal(dsoal.map((y, j) => j === i ? [...y, m.simbol] : y))}><Aset value={m.simbol} size={20} /></button>
+                ))}
+                {sq.length > 0 && <button className={s.btnSm} style={{ background: '#eee' }} onClick={() => setDsoal(dsoal.map((y, j) => j === i ? y.slice(0, -1) : y))}>⌫ hapus</button>}
+                {dsoal.length > 1 && <button className={`${s.btnSm} ${s.danger}`} onClick={() => setDsoal(dsoal.filter((_, j) => j !== i))}>hapus soal</button>}
+              </div>
+            </div>
+          ))}
+          <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => setDsoal([...dsoal, []])}>+ soal</button>
         </div>
       )}
 

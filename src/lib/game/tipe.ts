@@ -1,5 +1,5 @@
 // src/lib/game/tipe.ts
-export type Mesin = 'tekan-sesuai' | 'seret-wadah' | 'cari-pasangan' | 'mewarnai';
+export type Mesin = 'tekan-sesuai' | 'seret-wadah' | 'cari-pasangan' | 'mewarnai' | 'dekode';
 
 export interface ButirTekan { tanya: string; benar: string; salah: string[]; }
 export interface DataTekan { soal: ButirTekan[]; }
@@ -15,9 +15,13 @@ export interface DataMewarnai {
   template?: string;                   // id template bawaan (sumber 'template')
   svg?: string;                        // markup SVG (sumber 'svg', sudah disanitasi)
   palette: string[];                   // pilihan warna (hex)
-  mode: 'bebas' | 'sesuai';
-  target?: Record<string, string>;     // areaId -> hex (mode 'sesuai')
+  mode: 'bebas' | 'sesuai' | 'berkode'; // berkode = color-by-number (nomor = urutan warna target di palette)
+  target?: Record<string, string>;     // areaId -> hex (mode 'sesuai'/'berkode')
 }
+
+// Dekode ("Pecahkan Kode"): legenda simbol->nilai, anak menerjemahkan sekuens simbol.
+export interface DekodeMap { simbol: string; nilai: string; } // simbol: emoji/gambar-URL/#hex; nilai: huruf/angka/kata/emoji
+export interface DataDekode { legenda: DekodeMap[]; soal: string[][]; } // tiap soal = urutan 'simbol' (harus ada di legenda)
 
 export interface Paket {
   id: string;
@@ -26,7 +30,7 @@ export interface Paket {
   area_skill: string;
   usia_min: number;
   usia_max: number;
-  butir: DataTekan | DataSeret | DataCocok | DataMewarnai;
+  butir: DataTekan | DataSeret | DataCocok | DataMewarnai | DataDekode;
 }
 
 export interface HasilSelesai {
