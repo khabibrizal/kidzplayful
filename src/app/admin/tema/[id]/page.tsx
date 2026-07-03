@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { hapusPaket, setStatusTema, setMingguIni } from '@/lib/data/admin-konten';
+import type { Paket } from '@/lib/game/tipe';
 import PaketForm from './PaketForm';
 import s from '../../admin.module.css';
 
@@ -9,7 +10,7 @@ export default async function KelolaTema({ params }: { params: Promise<{ id: str
   const { id } = await params;
   const supabase = await createClient();
   const { data: tema } = await supabase.from('tema').select('id,nama,sampul,status,is_minggu_ini').eq('id', id).single();
-  const { data: paket } = await supabase.from('paket_aset').select('id,mesin,judul').eq('tema_id', id).order('urutan');
+  const { data: paket } = await supabase.from('paket_aset').select('id,mesin,judul,area_skill,usia_min,usia_max,target_detik,butir').eq('tema_id', id).order('urutan');
 
   if (!tema) return <p>Tema tidak ditemukan. <Link href="/admin">kembali</Link></p>;
 
@@ -41,8 +42,8 @@ export default async function KelolaTema({ params }: { params: Promise<{ id: str
           </div>
         </div>
       ))}
-      <div className={s.muted} style={{ margin: '6px 0' }}>Tambah game dari worksheet:</div>
-      <PaketForm temaId={id} />
+      <div className={s.muted} style={{ margin: '6px 0' }}>Tambah / edit game:</div>
+      <PaketForm temaId={id} paketList={(paket ?? []) as unknown as Paket[]} />
 
       <div className={s.section}>Video</div>
       <p className={s.muted}>Video dikelola per kategori usia di <Link href="/admin/video">Kelola Video</Link>.</p>

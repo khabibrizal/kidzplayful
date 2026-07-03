@@ -60,6 +60,22 @@ export async function buatPaket(input: {
   revalidatePath(`/admin/tema/${input.temaId}`);
 }
 
+export async function updatePaket(input: {
+  id: string; temaId: string; mesin: Mesin; judul: string; areaSkill: string; usiaMin: number; usiaMax: number; targetDetik?: number | null; butir: unknown;
+}) {
+  const supabase = await db();
+  const err = validasiButir(input.mesin, input.butir);
+  if (err) throw new Error(err);
+  const { error } = await supabase.from('paket_aset').update({
+    mesin: input.mesin, judul: input.judul.trim() || 'Game',
+    area_skill: input.areaSkill, usia_min: input.usiaMin, usia_max: input.usiaMax,
+    target_detik: input.targetDetik && input.targetDetik > 0 ? Math.floor(input.targetDetik) : null,
+    butir: input.butir,
+  }).eq('id', input.id);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/admin/tema/${input.temaId}`);
+}
+
 export async function hapusPaket(id: string, temaId: string) {
   const supabase = await db();
   const { error } = await supabase.from('paket_aset').delete().eq('id', id);

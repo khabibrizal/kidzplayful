@@ -1,8 +1,8 @@
 // src/app/admin/tema/[id]/PaketForm.tsx
 'use client';
 import { useState } from 'react';
-import type { Mesin } from '@/lib/game/tipe';
-import { buatPaket } from '@/lib/data/admin-konten';
+import type { Mesin, Paket, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode, DataUrutan, DataJalur, DataHitung } from '@/lib/game/tipe';
+import { buatPaket, updatePaket } from '@/lib/data/admin-konten';
 import { validasiButir } from '@/lib/game/butir';
 import AsetInput from '@/components/admin/AsetInput';
 import Aset from '@/components/game/Aset';
@@ -25,7 +25,8 @@ type Wadah = { kategori: string; label: string; emoji: string };
 type Benda = { emoji: string; kategori: string };
 type LegRow = { simbol: string; nilai: string };
 
-export default function PaketForm({ temaId }: { temaId: string }) {
+export default function PaketForm({ temaId, paketList = [] }: { temaId: string; paketList?: Paket[] }) {
+  const [editId, setEditId] = useState<string | null>(null);
   const [mesin, setMesin] = useState<Mesin>('tekan-sesuai');
   const [judul, setJudul] = useState('Mana Ya?');
   const [usiaMin, setUsiaMin] = useState(2);
@@ -106,14 +107,67 @@ export default function PaketForm({ temaId }: { temaId: string }) {
     const pesan = validasiButir(mesin, butir);
     if (pesan) { setErr(pesan); return; }
     if (usiaMin > usiaMax) { setErr('Usia minimal tidak boleh lebih besar dari usia maksimal.'); return; }
+    const target = targetDetik.trim() ? Number(targetDetik) : null;
     try {
-      await buatPaket({ temaId, mesin, judul, areaSkill: AREA[mesin], usiaMin, usiaMax, targetDetik: targetDetik.trim() ? Number(targetDetik) : null, butir });
+      if (editId) await updatePaket({ id: editId, temaId, mesin, judul, areaSkill: AREA[mesin], usiaMin, usiaMax, targetDetik: target, butir });
+      else await buatPaket({ temaId, mesin, judul, areaSkill: AREA[mesin], usiaMin, usiaMax, targetDetik: target, butir });
       location.reload();
     } catch (e) { setErr(e instanceof Error ? e.message : 'Gagal menyimpan. Cek koneksi & coba lagi.'); }
   }
 
+  // Isi form dari paket yang sudah ada (mode edit)
+  function muatUntukEdit(p: Paket) {
+    setErr(''); setEditId(p.id); setMesin(p.mesin); setJudul(p.judul);
+    setUsiaMin(p.usia_min); setUsiaMax(p.usia_max); setTargetDetik(p.target_detik ? String(p.target_detik) : '');
+    if (p.mesin === 'tekan-sesuai') {
+      const b = p.butir as DataTekan;
+      setSoal((b.soal ?? []).map((x) => ({ tanya: x.tanya ?? '', benar: x.benar ?? '', pengecoh: x.salah?.length ? x.salah : ['', ''] })));
+    } else if (p.mesin === 'seret-wadah') {
+      const b = p.butir as DataSeret;
+      setWadah(b.wadah?.length ? b.wadah : [{ kategori: '', label: '', emoji: '' }]);
+      setBenda(b.benda?.length ? b.benda : [{ emoji: '', kategori: '' }]);
+    } else if (p.mesin === 'cari-pasangan') {
+      const b = p.butir as DataCocok;
+      setPasangan(b.pasangan?.length ? b.pasangan : ['', '']);
+    } else if (p.mesin === 'mewarnai') {
+      const b = p.butir as DataMewarnai;
+      if (b.sumber === 'svg') { setSumberMew('svg'); setSvgMarkup(b.svg ?? ''); setSvgMode(b.mode); setSvgTarget(b.target ?? {}); setSvgArea(((b.svg ?? '').match(/data-area/g) || []).length); }
+      else { setSumberMew('template'); setTemplate(b.template ?? TEMPLATE_OPSI[0]?.id ?? ''); setModeMew(b.mode === 'sesuai' ? 'sesuai' : 'bebas'); }
+    } else if (p.mesin === 'dekode') {
+      const b = p.butir as DataDekode;
+      setLegenda(b.legenda?.length ? b.legenda : [{ simbol: '', nilai: '' }]);
+      setDsoal(b.soal?.length ? b.soal : [[]]);
+    } else if (p.mesin === 'urutan') {
+      const b = p.butir as DataUrutan;
+      if (b.tipe === 'pola') { setUTipe('pola'); setPSoal((b.soal ?? []).map((x) => ({ tampil: x.tampil ?? [''], benar: x.benar ?? '', salah: x.salah?.length ? x.salah : [''] }))); }
+      else { setUTipe('urutkan'); setUSoal((b.soal ?? []).map((x) => ({ item: x.urut ?? ['', ''], petunjuk: x.petunjuk ?? '' }))); }
+    } else if (p.mesin === 'jalur') {
+      const b = p.butir as DataJalur;
+      setJSoal((b.soal ?? []).map((x) => ({ kolom: x.kolom, baris: x.baris, mulai: x.mulai, tujuan: x.tujuan, rintangan: x.rintangan ?? [], karakter: x.karakter ?? '🐢', hadiah: x.hadiah ?? '🎯' })));
+    } else if (p.mesin === 'hitung') {
+      const b = p.butir as DataHitung;
+      setHLeg((b.legenda ?? []).map((m) => ({ simbol: m.simbol ?? '', nilai: String(m.nilai ?? '') })));
+      setHSoal((b.soal ?? []).map((sq) => ({ kiri: sq.kiri ?? '', kanan: sq.kanan ?? '', operasi: sq.operasi === '-' ? '-' : '+' })));
+    }
+  }
+
   return (
     <div className={s.card}>
+      {paketList.length > 0 && (
+        <div style={{ marginBottom: 10 }}>
+          {editId ? (
+            <div style={{ background: '#fff3d6', borderRadius: 10, padding: '8px 10px', fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+              <span>✏️ Sedang mengedit: <b>{judul}</b></span>
+              <button type="button" className={s.btnSm} style={{ background: '#eee' }} onClick={() => location.reload()}>Batal edit</button>
+            </div>
+          ) : (
+            <select className={s.inp} value="" onChange={(e) => { const p = paketList.find((x) => x.id === e.target.value); if (p) muatUntukEdit(p); }} style={{ width: '100%' }}>
+              <option value="">✏️ Edit game yang ada… (atau isi form di bawah untuk game baru)</option>
+              {paketList.map((p) => <option key={p.id} value={p.id}>{p.judul} ({p.mesin})</option>)}
+            </select>
+          )}
+        </div>
+      )}
       <div className={s.row}>
         <select className={s.inp} value={mesin} onChange={(e) => setMesin(e.target.value as Mesin)}>
           <option value="tekan-sesuai">Mana Ya? (tekan)</option>
@@ -441,7 +495,7 @@ export default function PaketForm({ temaId }: { temaId: string }) {
       )}
 
       {err && <div style={{ color: '#c0392b', fontSize: 13, marginTop: 8 }}>{err}</div>}
-      <button className={s.btn} style={{ marginTop: 10 }} onClick={simpan}>💾 Simpan paket</button>
+      <button className={s.btn} style={{ marginTop: 10 }} onClick={simpan}>{editId ? '💾 Simpan perubahan' : '💾 Simpan paket'}</button>
     </div>
   );
 }
