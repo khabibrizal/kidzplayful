@@ -47,7 +47,7 @@ Ringkasan navigasi seluruh codebase, dihasilkan dari **knowledge graph** (`/grap
 - **Keamanan utama = RLS** per tabel + guard `getAnakTerjamin`/`getAdminTerjamin`/`getGuruTerjamin`/`adminDb`. Query "milik sendiri" selalu `.eq(..user.id)`.
 - **Peran:** `profiles.is_admin` / `is_guru` (fungsi `is_admin()`/`is_guru()`); trigger `cegah_self_admin` cegah promosi diri.
 - **Total uang dihitung ulang di server**; harga di-snapshot (item_pesanan).
-- **Migrasi** SQL berurutan `supabase/migrations/0001..0028` (dijalankan di Supabase SQL Editor).
+- **Migrasi** SQL berurutan `supabase/migrations/0001..0037` (dijalankan di Supabase SQL Editor).
 
 ## Update terbaru (setelah snapshot graf)
 - **Game Mewarnai** (`mesin:'mewarnai'`): `components/game/MewarnaiGame.tsx`, `lib/game/templates-mewarnai.ts` (template bawaan), `lib/game/svg-sanitize.ts` (upload SVG aman), admin `TargetEditor.tsx` (mode sesuai). Mode Bebas/Sesuai, skor area `kreativitas`. Migrasi 0025 (izin mesin).
@@ -68,6 +68,16 @@ Ringkasan navigasi seluruh codebase, dihasilkan dari **knowledge graph** (`/grap
 - **Komunitas topik** (migrasi **0028**): `postingan.topik` (teks bebas) menggantikan pemakaian `tema_id`; opsi topik = judul Kelas Bermain + Event + Game (`getTopikOptions`, datalist di `Compose`); tombol **"Bagikan pengalaman"** dari materi prefill `?topik=<judul>`.
 - **Analitik**: `/admin/analitik` — DAU/WAU/MAU akun ortu, aktivitas 30 hari (sesi main, pendaftaran, pesanan, postingan, komentar), game & ortu teraktif (data Supabase, RLS admin baca 0006) + **Vercel Web Analytics** (`@vercel/analytics` `<Analytics/>` di layout; aktifkan Web Analytics di dashboard Vercel).
 - **Logo baru** transparan; `components/Logo.tsx` default `plate=false` (tanpa kotak hitam).
+
+### 2026-07-03 — Game Koding TK (buku "Coding Anak TK") + timer/tantangan
+- **11 engine game data-driven** (mesin + butir). Pola: `tipe.ts` (union `Mesin`+`DataX`) → `butir.ts` (butirDariForm/validasiButir) → `components/game/*.tsx` (`{data,onSelesai}`) → `GameRunner.tsx` (dispatch+timer+bonus) → `PaketForm.tsx` (buat+edit, `AREA`) → migrasi ALTER CHECK `paket_aset_mesin_check`. Detail per engine: `docs/DOKUMENTASI-KIDZPLAYFUL.md` §15d.
+  - Dasar: `tekan-sesuai` (ManaYa), `seret-wadah` (BeresBeres), `cari-pasangan`, `mewarnai` (MewarnaiGame; +mode **berkode** color-by-number).
+  - Baru sesi ini: **`dekode`** (Pecahkan Kode, 0029), **`urutan`** (Urutan&Pola urutkan/pola, 0030), **`jalur`** (Robot Grid, 0031), **`hitung`** (Hitung-Kode, 0032), **`cocokkan`** (Asosiasi, 0035), **`ejakata`** (Eja Kata, 0036), **`garis`** (Titik&Garis, 0037).
+  - Cakup ~30/30 lembar buku. Contoh tiap engine ada di tema **"Contoh Koding"**.
+- **Timer + Mode Tantangan** (migrasi **0033** `paket_aset.target_detik`): timer ⏱ live di GameRunner + waktu di Reward; selesai ≤ target → +1 bintang(maks3)+koin bonus+badge ⚡ (dihitung di `catatHasil`). Rapor: `laporan-anak.ts` +`rataDetik/tercepatDetik/perMesin` → section "Waktu per game".
+- **Edit paket game**: `updatePaket()` + dropdown "Edit game yang ada" di PaketForm (hidrasi butir per mesin).
+- **Stiker Nama** (migrasi **0034** `event.stiker_bg_url`): `/stiker-event/[id]` (`StikerSheet.tsx`) — lembar F4 10 stiker 9×6cm (nama+kelas) utk semua anak yang DAFTAR; upload template di panel event.
+- Skrip e2e tiap engine: `tools/{koding,urutan,jalur,hitung,cocokkan,ejakata,garis,bonus,stiker}_check.mjs`.
 
 ## Catatan
 - `mockups/` (demo.js/index.html) = prototipe statis, terpisah dari app Next.js.

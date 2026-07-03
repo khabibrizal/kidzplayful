@@ -82,7 +82,7 @@ npm run lint
 
 ## 7. Skema Database (per tabel)
 
-Migrasi `supabase/migrations/0001..0028` (jalankan berurutan di SQL Editor).
+Migrasi `supabase/migrations/0001..0037` (jalankan berurutan di SQL Editor).
 
 ### `profiles` (0001; +is_admin 0004; +nama_tampilan 0010; +no_wa 0015; +is_guru 0020; +alamat 0023)
 `id(PK), email, pin_ortu, is_admin, is_guru, nama_tampilan, no_wa, created_at`. RLS: profil sendiri; admin baca semua + **admin update profil** (untuk set/cabut guru). **Trigger `cegah_self_admin` (0012, diperluas 0020):** non-admin tak bisa mengubah `is_admin`/`is_guru` (hanya admin / SQL).
@@ -286,6 +286,75 @@ Logo baru **berlatar transparan**; `components/Logo.tsx` default `plate=false` (
 
 ---
 
+## 15d. Referensi Engine Game (terperinci)
+
+Semua game **data-driven**: 1 `mesin` (engine/komponen) + `butir` (data soal, jsonb). Menambah engine = `tipe.ts` (union `Mesin` + interface `DataX`) → `butir.ts` (normalisasi+validasi) → komponen `components/game/*.tsx` → `GameRunner.tsx` (dispatch) → `PaketForm.tsx` (form admin + `AREA`) → migrasi ALTER CHECK `paket_aset_mesin_check`.
+
+### Alur & fungsi bersama (semua engine)
+- **Kontrak komponen**: `export default function X({ data, onSelesai }: { data: DataX; onSelesai: (h: HasilSelesai) => void })`. Tiap engine menghitung sendiri `{ benar, total, durasiDetik }` lalu memanggil `onSelesai(...)`. Skor **first-try** (benar dihitung bila tak ada kesalahan sebelum jawaban benar).
+- **`GameRunner.tsx`** (`src/components/game/`): pembungkus semua game. `useEffect` timer hidup (⏱, berhenti saat selesai); `selesai(h)` → `catatHasil({..,targetDetik})` → `onKoin`; render `<Reward>` (hitung bonus cepat: `durasiDetik ≤ target` ⇒ +1 bintang maks 3 + badge ⚡) dan dispatch `if (paket.mesin===…) engine = <…/>`.
+- **`butir.ts`** (`src/lib/game/`): `butirDariForm(mesin,form)` (normalisasi) & `validasiButir(mesin,butir)` (pesan Indonesia; dipanggil di klien PaketForm & server `buatPaket/updatePaket`).
+- **`skor.ts`** (`src/lib/data/`): `catatHasil({anakId,temaId,mesin,areaSkill,benar,total,durasiDetik,targetDetik?})` → tulis `hasil_main` + `bintang` (bonus bila di bawah target) + koin (`benar` + bonus). `hitungBintang` di `domain/skor.ts` (≥99%→3, ≥60%→2, else 1).
+- **`pustaka.ts`** (`getPustaka`): baca `paket_aset` (`disetujui`) termasuk `target_detik`. Filter usia via `cocokUsia(umur, usia_min, usia_max)` di `PilihGame.tsx`.
+- **`PaketForm.tsx`**: buat **& edit** paket (dropdown "Edit game yang ada" → hidrasi state dari `butir` per mesin), input usia & `⚡ target waktu`.
+- **`paket_aset`** kolom: `mesin, judul, area_skill, usia_min, usia_max, target_detik, butir(jsonb), status, urutan`. CHECK `mesin` dibatasi (perlu migrasi tiap engine baru).
+- Render aset per item pakai `components/game/Aset.tsx` (emoji/gambar-URL) atau helper lokal `Sim`/`SimbolMini` (tambah swatch utk `#hex`).
+
+### 1. `tekan-sesuai` — "Mana Ya?" (kognitif)
+Anak menekan jawaban benar dari beberapa pilihan (emoji/gambar). **butir** `DataTekan { soal: {tanya, benar, salah[]}[] }`. Komponen `ManaYa.tsx` (`pilih()`, TTS `speak`, `mix()` acak pilihan). Lembar buku: —.
+
+### 2. `seret-wadah` — "Beres-Beres" (motorik-halus)
+Seret benda ke wadah kategori yang tepat. **butir** `DataSeret { wadah:{kategori,label,emoji}[]; benda:{emoji,kategori}[] }`. Komponen `BeresBeres.tsx`.
+
+### 3. `cari-pasangan` — "Cari Pasangan" (kognitif)
+Buka kartu cari pasangan identik (memori). **butir** `DataCocok { pasangan: string[] }` (tiap entri digandakan). Komponen `CariPasangan.tsx`.
+
+### 4. `mewarnai` — "Mewarnai" (kreativitas)
+**butir** `DataMewarnai { sumber:'template'|'svg', template?, svg?, palette[], mode:'bebas'|'sesuai'|'berkode', target? }`. Komponen `MewarnaiGame.tsx`: `TemplateMode` (template bawaan) & `SvgMode` (SVG upload, `data-area` per shape). `PaletBar` (opsi `bernomor` utk berkode), `GambarTpl`. Mode: **bebas** (bintang saat selesai), **sesuai** (cocokkan warna target), **berkode / color-by-number** (tiap area diberi label angka = urutan warna target di `palette`, palet bernomor; skor jalur `sesuai`). Lembar: **12, 15**.
+
+### 5. `dekode` — "Pecahkan Kode" (kognitif) — migrasi 0029
+Legenda simbol→nilai; anak menerjemahkan sekuens simbol per posisi (tap nilai benar). **butir** `DataDekode { legenda:{simbol,nilai}[]; soal:string[][] }` (tiap soal = urutan simbol yang harus ada di legenda). Komponen `Dekode.tsx` (`tap()`, `Simbol` hex/emoji/gambar). Lembar: **4, 9, 10, 14, 20, 21, 22, 25, 26**.
+
+### 6. `urutan` — "Urutan & Pola" (kognitif) — migrasi 0030
+**butir** `DataUrutan { tipe:'urutkan'|'pola', soal: {urut[],petunjuk?} | {tampil[],benar,salah[]} }`. Komponen `UrutanGame.tsx`: `UrutkanMode` (item teracak, ketuk berurutan sesuai `urut`; ada `petunjuk`) & `PolaMode` (lanjutkan pola: pilih item berikutnya). Helper `acak()`. Lembar: **2, 16, 28, 30**.
+
+### 7. `jalur` — "Arah & Jalur / Robot Grid" (kognitif) — migrasi 0031
+Grid; anak menyusun **urutan perintah arah** (⬆️⬅️➡️⬇️) lalu **Jalan** → karakter berjalan (animasi) ke tujuan; keluar grid/kena rintangan = gagal. **butir** `DataJalur { soal:{kolom,baris,mulai[x,y],tujuan[x,y],rintangan[][],karakter,hadiah}[] }`. Komponen `JalurGame.tsx` (`jalan()` async `sleep`, `ARAH`). Editor admin: klik sel set mulai/tujuan/rintangan. Melatih *sequencing*. Lembar: **3, 7, 19, 29**.
+
+### 8. `hitung` — "Hitung-Kode" (kognitif) — migrasi 0032
+Legenda simbol→angka; soal `kiri {+/−} kanan = ?` → pilih hasil (pilihan angka auto-generate; − dijaga ≥0). **butir** `DataHitung { legenda:{simbol,nilai:number}[]; soal:{kiri,kanan,operasi:'+'|'-'}[] }`. Komponen `HitungGame.tsx` (`opsiAngka()`). Lembar: **1, 17, 18, 23**.
+
+### 9. `cocokkan` — "Cocokkan / Asosiasi" (kognitif) — migrasi 0035
+Dua kolom: ketuk item kiri lalu pasangannya di kanan (kanan diacak). **butir** `DataCocokkan { pasangan:{kiri,kanan}[] }`. Komponen `CocokkanGame.tsx` (`tapKanan()`, cocok→terkunci). Lembar: **8, 13, 27**.
+
+### 10. `ejakata` — "Eja Kata" (kognitif) — migrasi 0036
+Gambar/emoji petunjuk + slot huruf panduan; anak ketuk huruf berurutan dari tumpukan (acak + `pengecoh`) mengeja kata. **butir** `DataEjaKata { soal:{gambar?,kata,pengecoh?}[] }`. Komponen `EjaKataGame.tsx` (`tap()`, huruf di-uppercase). Lembar: **5**.
+
+### 11. `garis` — "Titik & Garis" (motorik-halus) — migrasi 0037
+Tampil contoh pola garis; anak ketuk **2 titik** pada grid untuk membuat garis, meniru contoh (dinilai otomatis via himpunan sisi). **butir** `DataGaris { soal:{kolom,baris,garis:[a,b][]}[] }` (indeks titik = `y*kolom+x`; sisi tak-berarah). Komponen `GarisGame.tsx` (`GridSVG`, `ek()` kunci sisi). Editor admin: klik 2 titik toggle garis. Lembar: **6, 24**.
+
+> **Contoh siap-main** untuk seluruh engine koding ada di tema **"Contoh Koding"** (dibuat via REST admin). Menutup ~30 dari 30 lembar buku *Coding Anak TK*.
+
+---
+
+## 15e. Fitur & Peningkatan (2026-07-03)
+
+### Timer & Mode Tantangan — migrasi 0033
+- `durasi_detik` sudah diukur tiap engine; kini **timer ⏱ tampil live** saat main (di `GameRunner`) & **waktu selesai** di `Reward`.
+- **Mode Tantangan**: kolom `paket_aset.target_detik` (opsional, diisi admin). Selesai **≤ target** → **+1 bintang (maks 3)** + **koin bonus** + badge **"⚡ Cepat! Bonus"** (dihitung di `catatHasil`). Timer bar menampilkan target.
+- **Rapor anak**: `laporan-anak.ts` tambah `totalDetik/rataDetik/tercepatDetik` + `perMesin` → section **"⏱ Waktu per game"** (jumlah main + tercepat per jenis game) & baris "rata-rata/sesi · tercepat".
+
+### Edit paket game
+`updatePaket()` (`admin-konten.ts`) + dropdown **"Edit game yang ada"** di `PaketForm` → hidrasi form dari `butir` (semua engine) → **Simpan perubahan**. (Sebelumnya hanya buat & hapus.)
+
+### Stiker Nama per event — migrasi 0034
+Kolom `event.stiker_bg_url`. Panel event: **⬆ Template Stiker** + **🏷️ Cetak Stiker Nama** → halaman `/stiker-event/[id]` (`components/StikerSheet.tsx`): lembar **F4 berisi 10 stiker 9×6 cm** (grid 2×5), **nama anak + judul kelas** di atas template (atau desain pastel), untuk **semua anak yang DAFTAR** (bukan hadir). Tombol Unduh/Cetak PDF (`@page 215×330mm`).
+
+### Urutan migrasi lanjutan
+… → **0026** sertifikat (`event.sertifikat_bg_url`/`dokumentasi_url`, `pendaftaran_event.hadir_anak_ids`, tabel `sertifikat`) → **0027** reschedule (`event_asal_id`,`alasan_reschedule`) → **0028** postingan topik (`postingan.topik`) → **0029** mesin dekode → **0030** mesin urutan → **0031** mesin jalur → **0032** mesin hitung → **0033** `paket_aset.target_detik` → **0034** `event.stiker_bg_url` → **0035** mesin cocokkan → **0036** mesin ejakata → **0037** mesin garis. (0029–0037 mesin = ALTER CHECK `paket_aset_mesin_check`.)
+
+---
+
 ## 15. Glosarium
 
 - `bahan` (jsonb): `[{nama, link, produk_id}]` — produk_id → Store internal.
@@ -294,8 +363,11 @@ Logo baru **berlatar transparan**; `components/Logo.tsx` default `plate=false` (
 - `is_admin` / `is_guru` (profiles): penanda peran.
 - `harga_per_anak`, `pesanan.status`, `produk.stok`, `keranjang_item` (badge), `reminder_terkirim` (penanda WA H-1 sudah dikirim).
 - `mode_default` (anak): <2 → Mode Ortu, ≥2 → Mode Anak. `jenis_kelamin`: 'laki-laki'|'perempuan'.
-- `DataMewarnai` (butir game mewarnai): `{sumber:'template'|'svg', template?, svg?, palette[], mode:'bebas'|'sesuai', target?}`.
+- `DataMewarnai` (butir game mewarnai): `{sumber:'template'|'svg', template?, svg?, palette[], mode:'bebas'|'sesuai'|'berkode', target?}`.
+- **`mesin`** (11 engine): `tekan-sesuai, seret-wadah, cari-pasangan, mewarnai, dekode, urutan, jalur, hitung, cocokkan, ejakata, garis` (lihat §15d).
+- `target_detik` (paket): Mode Tantangan — selesai ≤ target = bonus ⭐/🪙. `hasil_main.durasi_detik` = lama main per sesi (dipakai timer & Rapor).
+- `event.stiker_bg_url` / `sertifikat_bg_url` / `dokumentasi_url`: template stiker / template sertifikat / link dokumentasi per event.
 
 ---
 
-*Mengikuti kode terkini per 2026-07-02 (E-Sertifikat + Reschedule + pendaftaran per-anak + Rapor collapse + koreksi ongkir + nav admin persisten + embed YouTube materi + topik komunitas + Analitik/Vercel Analytics + logo baru). Regenerasi PDF: `python tools/md2pdf.py docs/DOKUMENTASI-KIDZPLAYFUL.md` lalu cetak HTML→PDF via Chrome.*
+*Mengikuti kode terkini per 2026-07-03. Sesi 2026-07-02/03: E-Sertifikat, Reschedule, pendaftaran per-anak, Rapor collapse + waktu per game, koreksi ongkir, nav admin persisten, embed YouTube materi, topik komunitas, Analitik + Vercel Analytics, logo baru, **9 engine game koding** (dekode/urutan/jalur/hitung/cocokkan/ejakata/garis + mewarnai-berkode), **timer & Mode Tantangan**, **edit paket**, **Stiker Nama F4**. Migrasi s/d 0037. Regenerasi PDF: `python tools/md2pdf.py docs/DOKUMENTASI-KIDZPLAYFUL.md` lalu cetak HTML→PDF via Chrome.*
