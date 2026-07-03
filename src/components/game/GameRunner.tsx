@@ -1,13 +1,14 @@
 // src/components/game/GameRunner.tsx
 'use client';
 import { useState } from 'react';
-import type { Paket, HasilSelesai, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode, DataUrutan } from '@/lib/game/tipe';
+import type { Paket, HasilSelesai, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode, DataUrutan, DataJalur } from '@/lib/game/tipe';
 import ManaYa from './ManaYa';
 import BeresBeres from './BeresBeres';
 import CariPasangan from './CariPasangan';
 import MewarnaiGame from './MewarnaiGame';
 import Dekode from './Dekode';
 import UrutanGame from './UrutanGame';
+import JalurGame from './JalurGame';
 import Reward from './Reward';
 import { catatHasil } from '@/lib/data/skor';
 import { hitungBintang } from '@/lib/domain/skor';
@@ -47,5 +48,6 @@ export default function GameRunner({
   if (paket.mesin === 'mewarnai') return <MewarnaiGame key={key} data={paket.butir as DataMewarnai} onSelesai={selesai} />;
   if (paket.mesin === 'dekode') return <Dekode key={key} data={paket.butir as DataDekode} onSelesai={selesai} />;
   if (paket.mesin === 'urutan') return <UrutanGame key={key} data={paket.butir as DataUrutan} onSelesai={selesai} />;
+  if (paket.mesin === 'jalur') return <JalurGame key={key} data={paket.butir as DataJalur} onSelesai={selesai} />;
   return <div>Mesin belum didukung.</div>;
 }

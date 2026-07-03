@@ -1,13 +1,14 @@
 // src/lib/game/butir.ts
-import type { Mesin, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode, DataUrutan } from './tipe';
+import type { Mesin, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode, DataUrutan, DataJalur } from './tipe';
 
-export function butirDariForm(mesin: Mesin, form: unknown): DataTekan | DataSeret | DataCocok | DataMewarnai | DataDekode | DataUrutan {
+export function butirDariForm(mesin: Mesin, form: unknown): DataTekan | DataSeret | DataCocok | DataMewarnai | DataDekode | DataUrutan | DataJalur {
   // form sudah berbentuk objek sesuai mesin; fungsi ini titik normalisasi tunggal
   if (mesin === 'tekan-sesuai') return form as DataTekan;
   if (mesin === 'seret-wadah') return form as DataSeret;
   if (mesin === 'mewarnai') return form as DataMewarnai;
   if (mesin === 'dekode') return form as DataDekode;
   if (mesin === 'urutan') return form as DataUrutan;
+  if (mesin === 'jalur') return form as DataJalur;
   return form as DataCocok;
 }
 
@@ -61,6 +62,17 @@ export function validasiButir(mesin: Mesin, butir: unknown): string {
         if (!sq.benar?.trim()) return 'Tiap soal "pola" butuh jawaban benar.';
         if (!sq.salah?.length) return 'Tiap soal "pola" butuh minimal 1 pengecoh.';
       }
+    }
+    return '';
+  }
+  if (mesin === 'jalur') {
+    const b = butir as DataJalur;
+    if (!b.soal?.length) return 'Butuh minimal 1 soal.';
+    for (const sq of b.soal) {
+      if (!sq.kolom || !sq.baris || sq.kolom < 2 || sq.baris < 2) return 'Ukuran grid minimal 2×2.';
+      const inB = (pt?: [number, number]) => !!pt && pt[0] >= 0 && pt[1] >= 0 && pt[0] < sq.kolom && pt[1] < sq.baris;
+      if (!inB(sq.mulai) || !inB(sq.tujuan)) return 'Posisi mulai/tujuan di luar grid.';
+      if (sq.mulai[0] === sq.tujuan[0] && sq.mulai[1] === sq.tujuan[1]) return 'Mulai dan tujuan tidak boleh sama.';
     }
     return '';
   }

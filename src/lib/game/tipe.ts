@@ -1,5 +1,5 @@
 // src/lib/game/tipe.ts
-export type Mesin = 'tekan-sesuai' | 'seret-wadah' | 'cari-pasangan' | 'mewarnai' | 'dekode' | 'urutan';
+export type Mesin = 'tekan-sesuai' | 'seret-wadah' | 'cari-pasangan' | 'mewarnai' | 'dekode' | 'urutan' | 'jalur';
 
 export interface ButirTekan { tanya: string; benar: string; salah: string[]; }
 export interface DataTekan { soal: ButirTekan[]; }
@@ -33,6 +33,17 @@ export interface UrutanSoal {
 }
 export interface DataUrutan { tipe: 'urutkan' | 'pola'; soal: UrutanSoal[]; }
 
+// Arah & Jalur (Robot Grid): anak menyusun perintah arah → karakter jalan ke tujuan.
+export interface JalurSoal {
+  kolom: number; baris: number;           // ukuran grid
+  mulai: [number, number];                // posisi awal [x,y] (kolom,baris) 0-index
+  tujuan: [number, number];               // posisi tujuan
+  rintangan?: [number, number][];         // sel yang tak boleh dilewati
+  karakter?: string;                      // emoji karakter (default 🐢)
+  hadiah?: string;                        // emoji tujuan (default 🎯)
+}
+export interface DataJalur { soal: JalurSoal[]; }
+
 export interface Paket {
   id: string;
   mesin: Mesin;
@@ -40,7 +51,7 @@ export interface Paket {
   area_skill: string;
   usia_min: number;
   usia_max: number;
-  butir: DataTekan | DataSeret | DataCocok | DataMewarnai | DataDekode | DataUrutan;
+  butir: DataTekan | DataSeret | DataCocok | DataMewarnai | DataDekode | DataUrutan | DataJalur;
 }
 
 export interface HasilSelesai {

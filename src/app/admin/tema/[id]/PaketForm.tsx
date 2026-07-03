@@ -11,7 +11,8 @@ import { sanitizeSvg, tandaiArea } from '@/lib/game/svg-sanitize';
 import TargetEditor from './TargetEditor';
 import s from '../../admin.module.css';
 
-const AREA: Record<Mesin, string> = { 'tekan-sesuai': 'kognitif', 'seret-wadah': 'motorik-halus', 'cari-pasangan': 'kognitif', 'mewarnai': 'kreativitas', 'dekode': 'kognitif', 'urutan': 'kognitif' };
+const AREA: Record<Mesin, string> = { 'tekan-sesuai': 'kognitif', 'seret-wadah': 'motorik-halus', 'cari-pasangan': 'kognitif', 'mewarnai': 'kreativitas', 'dekode': 'kognitif', 'urutan': 'kognitif', 'jalur': 'kognitif' };
+type JSoal = { kolom: number; baris: number; mulai: [number, number]; tujuan: [number, number]; rintangan: [number, number][]; karakter: string; hadiah: string };
 
 const isHex = (v: string) => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v.trim());
 function SimbolMini({ v, size = 22 }: { v: string; size?: number }) {
@@ -49,6 +50,9 @@ export default function PaketForm({ temaId }: { temaId: string }) {
   const [uTipe, setUTipe] = useState<'urutkan' | 'pola'>('urutkan');
   const [uSoal, setUSoal] = useState<{ item: string[]; petunjuk: string }[]>([{ item: ['', ''], petunjuk: '' }]);
   const [pSoal, setPSoal] = useState<{ tampil: string[]; benar: string; salah: string[] }[]>([{ tampil: ['', '', ''], benar: '', salah: [''] }]);
+  // arah & jalur (robot grid)
+  const [jSoal, setJSoal] = useState<JSoal[]>([{ kolom: 4, baris: 4, mulai: [0, 3], tujuan: [3, 0], rintangan: [], karakter: '🐢', hadiah: '🎯' }]);
+  const [jMode, setJMode] = useState<'mulai' | 'tujuan' | 'rintangan'>('rintangan');
 
   async function pilihSvg(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]; if (!f) return;
@@ -84,6 +88,8 @@ export default function PaketForm({ temaId }: { temaId: string }) {
       } else {
         butir = { tipe: 'pola', soal: pSoal.map((x) => ({ tampil: x.tampil.filter(Boolean), benar: x.benar.trim(), salah: x.salah.filter(Boolean) })).filter((x) => x.benar && x.tampil.length >= 1 && x.salah.length >= 1) };
       }
+    } else if (mesin === 'jalur') {
+      butir = { soal: jSoal.map((sq) => ({ kolom: sq.kolom, baris: sq.baris, mulai: sq.mulai, tujuan: sq.tujuan, rintangan: sq.rintangan, karakter: sq.karakter.trim() || '🐢', hadiah: sq.hadiah.trim() || '🎯' })) };
     } else {
       butir = { pasangan: pasangan.filter(Boolean) };
     }
@@ -107,6 +113,7 @@ export default function PaketForm({ temaId }: { temaId: string }) {
           <option value="mewarnai">Mewarnai (warnai)</option>
           <option value="dekode">Pecahkan Kode (dekode)</option>
           <option value="urutan">Urutan & Pola (urutan)</option>
+          <option value="jalur">Arah & Jalur / Robot Grid (jalur)</option>
         </select>
         <input className={s.inp} value={judul} onChange={(e) => setJudul(e.target.value)} placeholder="Judul game" style={{ flex: 1 }} />
       </div>
@@ -329,6 +336,54 @@ export default function PaketForm({ temaId }: { temaId: string }) {
               <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => setPSoal([...pSoal, { tampil: ['', '', ''], benar: '', salah: [''] }])}>+ soal</button>
             </div>
           )}
+        </div>
+      )}
+
+      {mesin === 'jalur' && (
+        <div style={{ marginTop: 10 }}>
+          <div className={s.muted} style={{ fontSize: 12 }}>Atur grid: pilih mode lalu klik sel. 🐢 = mulai, 🎯 = tujuan, 🧱 = rintangan. Anak menyusun perintah arah agar karakter sampai tujuan.</div>
+          <div className={s.row} style={{ gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+            {(['mulai', 'tujuan', 'rintangan'] as const).map((m) => (
+              <button key={m} className={s.btnSm} style={{ background: jMode === m ? 'var(--lavender-d)' : '#efe7fb', color: jMode === m ? '#fff' : 'var(--lavender-d)' }} onClick={() => setJMode(m)}>
+                {m === 'mulai' ? '🐢 Set Mulai' : m === 'tujuan' ? '🎯 Set Tujuan' : '🧱 Rintangan'}
+              </button>
+            ))}
+          </div>
+          {jSoal.map((sq, i) => (
+            <div key={i} className={s.card} style={{ background: '#faf7ff' }}>
+              <div className={s.row} style={{ gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                <span className={s.muted} style={{ fontSize: 12 }}>Grid</span>
+                <input className={s.inp} type="number" min={2} max={6} value={sq.kolom} onChange={(e) => { const v = Math.max(2, Math.min(6, Number(e.target.value) || 2)); setJSoal(jSoal.map((y, j) => j === i ? { ...y, kolom: v, mulai: [Math.min(y.mulai[0], v - 1), y.mulai[1]], tujuan: [Math.min(y.tujuan[0], v - 1), y.tujuan[1]], rintangan: y.rintangan.filter((r) => r[0] < v) } : y)); }} style={{ width: 56, marginBottom: 0 }} />
+                <span className={s.muted}>×</span>
+                <input className={s.inp} type="number" min={2} max={6} value={sq.baris} onChange={(e) => { const v = Math.max(2, Math.min(6, Number(e.target.value) || 2)); setJSoal(jSoal.map((y, j) => j === i ? { ...y, baris: v, mulai: [y.mulai[0], Math.min(y.mulai[1], v - 1)], tujuan: [y.tujuan[0], Math.min(y.tujuan[1], v - 1)], rintangan: y.rintangan.filter((r) => r[1] < v) } : y)); }} style={{ width: 56, marginBottom: 0 }} />
+                <AsetInput value={sq.karakter} onChange={(v) => setJSoal(jSoal.map((y, j) => j === i ? { ...y, karakter: v } : y))} placeholder="🐢" width={70} />
+                <AsetInput value={sq.hadiah} onChange={(v) => setJSoal(jSoal.map((y, j) => j === i ? { ...y, hadiah: v } : y))} placeholder="🎯" width={70} />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${sq.kolom}, 34px)`, gap: 3, marginTop: 8, justifyContent: 'start' }}>
+                {Array.from({ length: sq.baris * sq.kolom }).map((_, idx) => {
+                  const x = idx % sq.kolom, y = Math.floor(idx / sq.kolom);
+                  const isM = sq.mulai[0] === x && sq.mulai[1] === y;
+                  const isT = sq.tujuan[0] === x && sq.tujuan[1] === y;
+                  const isR = sq.rintangan.some((r) => r[0] === x && r[1] === y);
+                  return (
+                    <button key={idx} type="button" onClick={() => setJSoal(jSoal.map((yy, j) => {
+                      if (j !== i) return yy;
+                      if (jMode === 'mulai') return { ...yy, mulai: [x, y] as [number, number] };
+                      if (jMode === 'tujuan') return { ...yy, tujuan: [x, y] as [number, number] };
+                      if ((yy.mulai[0] === x && yy.mulai[1] === y) || (yy.tujuan[0] === x && yy.tujuan[1] === y)) return yy;
+                      const has = yy.rintangan.some((r) => r[0] === x && r[1] === y);
+                      return { ...yy, rintangan: has ? yy.rintangan.filter((r) => !(r[0] === x && r[1] === y)) : [...yy.rintangan, [x, y] as [number, number]] };
+                    }))}
+                      style={{ width: 34, height: 34, borderRadius: 6, border: '1px solid #e0d8f2', background: isR ? '#cdbff0' : '#fff', fontSize: 18, cursor: 'pointer', padding: 0 }}>
+                      {isM ? (sq.karakter || '🐢') : isT ? (sq.hadiah || '🎯') : isR ? '🧱' : ''}
+                    </button>
+                  );
+                })}
+              </div>
+              {jSoal.length > 1 && <button className={`${s.btnSm} ${s.danger}`} style={{ marginTop: 8 }} onClick={() => setJSoal(jSoal.filter((_, j) => j !== i))}>hapus soal</button>}
+            </div>
+          ))}
+          <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => setJSoal([...jSoal, { kolom: 4, baris: 4, mulai: [0, 3], tujuan: [3, 0], rintangan: [], karakter: '🐢', hadiah: '🎯' }])}>+ soal</button>
         </div>
       )}
 
