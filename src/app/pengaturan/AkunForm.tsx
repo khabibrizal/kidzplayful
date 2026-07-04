@@ -15,9 +15,11 @@ export default function AkunForm({ email }: { email: string }) {
     setLoading(true);
     const supabase = createClient();
     const { error } = await supabase.auth.updateUser({ password: sandi });
+    if (error) { setLoading(false); setMsg(error.message); return; }
+    // keamanan: keluarkan semua perangkat/sesi lain setelah ganti password
+    try { await supabase.auth.signOut({ scope: 'others' }); } catch { /* abaikan */ }
     setLoading(false);
-    if (error) setMsg(error.message);
-    else { setMsg('Kata sandi diganti ✓'); setSandi(''); }
+    setMsg('Kata sandi diganti ✓ — perangkat lain otomatis keluar.'); setSandi('');
   }
 
   async function logout() {

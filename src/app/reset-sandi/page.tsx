@@ -22,8 +22,10 @@ export default function ResetSandiPage() {
     const supabase = createClient();
     // Sesi pemulihan dibentuk otomatis dari tautan email (detectSessionInUrl).
     const { error } = await supabase.auth.updateUser({ password: sandi });
+    if (error) { setLoading(false); return setErr('Tautan reset tidak valid/kedaluwarsa. Minta tautan baru di halaman Lupa Kata Sandi.'); }
+    // keamanan: keluarkan semua perangkat/sesi lain setelah ganti password
+    try { await supabase.auth.signOut({ scope: 'others' }); } catch { /* abaikan */ }
     setLoading(false);
-    if (error) return setErr('Tautan reset tidak valid/kedaluwarsa. Minta tautan baru di halaman Lupa Kata Sandi.');
     setSukses(true);
     setTimeout(() => router.push('/pilih-anak'), 1500);
   }
