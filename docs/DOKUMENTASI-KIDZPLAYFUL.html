@@ -442,7 +442,25 @@ Ortu → lihat di /kelas-saya &amp; /event (📋 Catatan) &amp; Rapor anak
 <h3 id="stiker-nama-per-event-migrasi-0034">Stiker Nama per event — migrasi 0034</h3>
 <p>Kolom <code>event.stiker_bg_url</code>. Panel event: <strong>⬆ Template Stiker</strong> + <strong>🏷️ Cetak Stiker Nama</strong> → halaman <code>/stiker-event/[id]</code> (<code>components/StikerSheet.tsx</code>): lembar <strong>F4 berisi 10 stiker 9×6 cm</strong> (grid 2×5), <strong>nama anak + judul kelas</strong> di atas template (atau desain pastel), untuk <strong>semua anak yang DAFTAR</strong> (bukan hadir). Tombol Unduh/Cetak PDF (<code>@page 215×330mm</code>).</p>
 <h3 id="urutan-migrasi-lanjutan">Urutan migrasi lanjutan</h3>
-<p>… → <strong>0026</strong> sertifikat (<code>event.sertifikat_bg_url</code>/<code>dokumentasi_url</code>, <code>pendaftaran_event.hadir_anak_ids</code>, tabel <code>sertifikat</code>) → <strong>0027</strong> reschedule (<code>event_asal_id</code>,<code>alasan_reschedule</code>) → <strong>0028</strong> postingan topik (<code>postingan.topik</code>) → <strong>0029</strong> mesin dekode → <strong>0030</strong> mesin urutan → <strong>0031</strong> mesin jalur → <strong>0032</strong> mesin hitung → <strong>0033</strong> <code>paket_aset.target_detik</code> → <strong>0034</strong> <code>event.stiker_bg_url</code> → <strong>0035</strong> mesin cocokkan → <strong>0036</strong> mesin ejakata → <strong>0037</strong> mesin garis. (0029–0037 mesin = ALTER CHECK <code>paket_aset_mesin_check</code>.)</p>
+<p>… → <strong>0026</strong> sertifikat (<code>event.sertifikat_bg_url</code>/<code>dokumentasi_url</code>, <code>pendaftaran_event.hadir_anak_ids</code>, tabel <code>sertifikat</code>) → <strong>0027</strong> reschedule (<code>event_asal_id</code>,<code>alasan_reschedule</code>) → <strong>0028</strong> postingan topik (<code>postingan.topik</code>) → <strong>0029</strong> mesin dekode → <strong>0030</strong> mesin urutan → <strong>0031</strong> mesin jalur → <strong>0032</strong> mesin hitung → <strong>0033</strong> <code>paket_aset.target_detik</code> → <strong>0034</strong> <code>event.stiker_bg_url</code> → <strong>0035</strong> mesin cocokkan → <strong>0036</strong> mesin ejakata → <strong>0037</strong> mesin garis → <strong>0038</strong> tabel <code>pengaturan_pembayaran</code>. (0029–0037 mesin = ALTER CHECK <code>paket_aset_mesin_check</code>.)</p>
+<hr />
+<h2 id="15f-fitur-peningkatan-2026-07-04">15f. Fitur &amp; Peningkatan (2026-07-04)</h2>
+<h3 id="master-pengaturan-pembayaran-dinamis-migrasi-0038">Master Pengaturan Pembayaran (dinamis) — migrasi 0038</h3>
+<p>Harga langganan &amp; nomor rekening tak lagi hardcode; kini master tunggal yang diedit admin.
+- <strong>Tabel <code>pengaturan_pembayaran</code></strong> (baris tunggal <code>id=1</code>): <code>harga_langganan_nominal</code>, <code>harga_langganan_teks</code>, <code>bank_teks</code>, <code>qris_url</code>, <code>wa_nomor</code>, <code>updated_at</code>. RLS: <strong>baca</strong> untuk semua user terautentikasi, <strong>ubah</strong> hanya <code>is_admin()</code>. Migrasi meng-<code>insert</code> baris default.
+- <strong><code>lib/data/pengaturan-bayar.ts</code></strong>: <code>getPengaturanBayar()</code> (baca, dengan fallback <code>DEFAULT_BAYAR</code> bila tabel/baris belum ada → app tetap jalan) + tipe <code>PengaturanBayar</code>.
+- <strong><code>lib/data/admin-bisnis.ts</code></strong>: <code>simpanPengaturanBayar(formData)</code> (<code>adminDb()</code> guard → update baris → <code>revalidatePath</code>).
+- <strong>Halaman admin <code>/admin/pengaturan-bayar</code></strong> (menu <strong>💰 Pembayaran</strong> di <code>AdminNav</code>): form edit harga (nominal + teks), rekening, URL QRIS, nomor WA.
+- <strong>Dipakai dinamis</strong> di: <code>/pengaturan</code> (kartu Langganan member), <code>/pesanan/[id]</code> (instruksi transfer Toko), dan <strong>default nominal</strong> di <code>AktifkanForm</code> admin.</p>
+<h3 id="komunitas-perbaikan-pemilih-topik">Komunitas — perbaikan pemilih topik</h3>
+<p><code>komunitas/Compose.tsx</code>: pemilih topik dari <code>&lt;input list=datalist&gt;</code> diganti <strong><code>&lt;select&gt;</code></strong> berisi seluruh opsi (judul Kelas Bermain + Event + Game) + opsi <strong>"✏️ Ketik topik sendiri…"</strong>. Memperbaiki bug datalist yang memfilter opsi oleh teks di kotak sehingga topik tak bisa diganti kecuali dihapus dulu. Auto-isi topik dari judul materi tetap jalan (masuk daftar → terpilih; di luar daftar → mode ketik sendiri).</p>
+<h3 id="catatan-operasional-reset-password-akun">Catatan operasional — reset password akun</h3>
+<p>Reset password user (mis. akun admin) via <strong>Supabase SQL Editor</strong> bila Dashboard tak punya tombolnya:</p>
+<pre><code class="language-sql">update auth.users
+set encrypted_password = crypt('&lt;password-baru&gt;', gen_salt('bf')), updated_at = now()
+where email = '&lt;email&gt;';
+</code></pre>
+<p>(bila error <code>function crypt does not exist</code>, pakai prefix <code>extensions.crypt(...)</code> / <code>extensions.gen_salt('bf')</code>). <code>.env.local</code> hanya berisi anon key — reset password tak bisa dari kode aplikasi.</p>
 <hr />
 <h2 id="15-glosarium">15. Glosarium</h2>
 <ul>
@@ -456,6 +474,7 @@ Ortu → lihat di /kelas-saya &amp; /event (📋 Catatan) &amp; Rapor anak
 <li><strong><code>mesin</code></strong> (11 engine): <code>tekan-sesuai, seret-wadah, cari-pasangan, mewarnai, dekode, urutan, jalur, hitung, cocokkan, ejakata, garis</code> (lihat §15d).</li>
 <li><code>target_detik</code> (paket): Mode Tantangan — selesai ≤ target = bonus ⭐/🪙. <code>hasil_main.durasi_detik</code> = lama main per sesi (dipakai timer &amp; Rapor).</li>
 <li><code>event.stiker_bg_url</code> / <code>sertifikat_bg_url</code> / <code>dokumentasi_url</code>: template stiker / template sertifikat / link dokumentasi per event.</li>
+<li><code>pengaturan_pembayaran</code> (baris tunggal <code>id=1</code>): master harga langganan + rekening/QRIS/WA transfer, diedit di <code>/admin/pengaturan-bayar</code>, dibaca via <code>getPengaturanBayar()</code>.</li>
 </ul>
 <hr />
 <p><em>Mengikuti kode terkini per 2026-07-03. Sesi 2026-07-02/03: E-Sertifikat, Reschedule, pendaftaran per-anak, Rapor collapse + waktu per game, koreksi ongkir, nav admin persisten, embed YouTube materi, topik komunitas, Analitik + Vercel Analytics, logo baru, </em><em>9 engine game koding</em><em> (dekode/urutan/jalur/hitung/cocokkan/ejakata/garis + mewarnai-berkode), </em><em>timer &amp; Mode Tantangan</em><em>, </em><em>edit paket</em><em>, </em><em>Stiker Nama F4</em><em>. Migrasi s/d 0037. Regenerasi PDF: <code>python tools/md2pdf.py docs/DOKUMENTASI-KIDZPLAYFUL.md</code> lalu cetak HTML→PDF via Chrome.</em></p></body></html>

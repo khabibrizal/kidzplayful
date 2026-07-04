@@ -351,7 +351,31 @@ Tampil contoh pola garis; anak ketuk **2 titik** pada grid untuk membuat garis, 
 Kolom `event.stiker_bg_url`. Panel event: **⬆ Template Stiker** + **🏷️ Cetak Stiker Nama** → halaman `/stiker-event/[id]` (`components/StikerSheet.tsx`): lembar **F4 berisi 10 stiker 9×6 cm** (grid 2×5), **nama anak + judul kelas** di atas template (atau desain pastel), untuk **semua anak yang DAFTAR** (bukan hadir). Tombol Unduh/Cetak PDF (`@page 215×330mm`).
 
 ### Urutan migrasi lanjutan
-… → **0026** sertifikat (`event.sertifikat_bg_url`/`dokumentasi_url`, `pendaftaran_event.hadir_anak_ids`, tabel `sertifikat`) → **0027** reschedule (`event_asal_id`,`alasan_reschedule`) → **0028** postingan topik (`postingan.topik`) → **0029** mesin dekode → **0030** mesin urutan → **0031** mesin jalur → **0032** mesin hitung → **0033** `paket_aset.target_detik` → **0034** `event.stiker_bg_url` → **0035** mesin cocokkan → **0036** mesin ejakata → **0037** mesin garis. (0029–0037 mesin = ALTER CHECK `paket_aset_mesin_check`.)
+… → **0026** sertifikat (`event.sertifikat_bg_url`/`dokumentasi_url`, `pendaftaran_event.hadir_anak_ids`, tabel `sertifikat`) → **0027** reschedule (`event_asal_id`,`alasan_reschedule`) → **0028** postingan topik (`postingan.topik`) → **0029** mesin dekode → **0030** mesin urutan → **0031** mesin jalur → **0032** mesin hitung → **0033** `paket_aset.target_detik` → **0034** `event.stiker_bg_url` → **0035** mesin cocokkan → **0036** mesin ejakata → **0037** mesin garis → **0038** tabel `pengaturan_pembayaran`. (0029–0037 mesin = ALTER CHECK `paket_aset_mesin_check`.)
+
+---
+
+## 15f. Fitur & Peningkatan (2026-07-04)
+
+### Master Pengaturan Pembayaran (dinamis) — migrasi 0038
+Harga langganan & nomor rekening tak lagi hardcode; kini master tunggal yang diedit admin.
+- **Tabel `pengaturan_pembayaran`** (baris tunggal `id=1`): `harga_langganan_nominal`, `harga_langganan_teks`, `bank_teks`, `qris_url`, `wa_nomor`, `updated_at`. RLS: **baca** untuk semua user terautentikasi, **ubah** hanya `is_admin()`. Migrasi meng-`insert` baris default.
+- **`lib/data/pengaturan-bayar.ts`**: `getPengaturanBayar()` (baca, dengan fallback `DEFAULT_BAYAR` bila tabel/baris belum ada → app tetap jalan) + tipe `PengaturanBayar`.
+- **`lib/data/admin-bisnis.ts`**: `simpanPengaturanBayar(formData)` (`adminDb()` guard → update baris → `revalidatePath`).
+- **Halaman admin `/admin/pengaturan-bayar`** (menu **💰 Pembayaran** di `AdminNav`): form edit harga (nominal + teks), rekening, URL QRIS, nomor WA.
+- **Dipakai dinamis** di: `/pengaturan` (kartu Langganan member), `/pesanan/[id]` (instruksi transfer Toko), dan **default nominal** di `AktifkanForm` admin.
+
+### Komunitas — perbaikan pemilih topik
+`komunitas/Compose.tsx`: pemilih topik dari `<input list=datalist>` diganti **`<select>`** berisi seluruh opsi (judul Kelas Bermain + Event + Game) + opsi **"✏️ Ketik topik sendiri…"**. Memperbaiki bug datalist yang memfilter opsi oleh teks di kotak sehingga topik tak bisa diganti kecuali dihapus dulu. Auto-isi topik dari judul materi tetap jalan (masuk daftar → terpilih; di luar daftar → mode ketik sendiri).
+
+### Catatan operasional — reset password akun
+Reset password user (mis. akun admin) via **Supabase SQL Editor** bila Dashboard tak punya tombolnya:
+```sql
+update auth.users
+set encrypted_password = crypt('<password-baru>', gen_salt('bf')), updated_at = now()
+where email = '<email>';
+```
+(bila error `function crypt does not exist`, pakai prefix `extensions.crypt(...)` / `extensions.gen_salt('bf')`). `.env.local` hanya berisi anon key — reset password tak bisa dari kode aplikasi.
 
 ---
 
@@ -367,6 +391,7 @@ Kolom `event.stiker_bg_url`. Panel event: **⬆ Template Stiker** + **🏷️ Ce
 - **`mesin`** (11 engine): `tekan-sesuai, seret-wadah, cari-pasangan, mewarnai, dekode, urutan, jalur, hitung, cocokkan, ejakata, garis` (lihat §15d).
 - `target_detik` (paket): Mode Tantangan — selesai ≤ target = bonus ⭐/🪙. `hasil_main.durasi_detik` = lama main per sesi (dipakai timer & Rapor).
 - `event.stiker_bg_url` / `sertifikat_bg_url` / `dokumentasi_url`: template stiker / template sertifikat / link dokumentasi per event.
+- `pengaturan_pembayaran` (baris tunggal `id=1`): master harga langganan + rekening/QRIS/WA transfer, diedit di `/admin/pengaturan-bayar`, dibaca via `getPengaturanBayar()`.
 
 ---
 
