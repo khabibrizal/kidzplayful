@@ -69,10 +69,18 @@ export async function setOngkir(pesananId: string, ongkir: number): Promise<void
 export async function verifikasiPesanan(pesananId: string): Promise<void> {
   const s = await adminDb();
   const { data: items } = await s.from('item_pesanan').select('produk_id,qty').eq('pesanan_id', pesananId);
+  // kurangi stok tiap produk — ambil semua stok dalam 1 query (hindari N+1), lalu update paralel
+  const qtyPerProduk = new Map<string, number>();
   for (const it of items ?? []) {
     if (!it.produk_id) continue;
-    const { data: pr } = await s.from('produk').select('stok').eq('id', it.produk_id).single();
-    if (pr) await s.from('produk').update({ stok: Math.max(0, (pr.stok ?? 0) - (it.qty ?? 0)) }).eq('id', it.produk_id);
+    qtyPerProduk.set(it.produk_id, (qtyPerProduk.get(it.produk_id) ?? 0) + (it.qty ?? 0));
+  }
+  const ids = [...qtyPerProduk.keys()];
+  if (ids.length) {
+    const { data: produk } = await s.from('produk').select('id,stok').in('id', ids);
+    await Promise.all((produk ?? []).map((pr) =>
+      s.from('produk').update({ stok: Math.max(0, (pr.stok ?? 0) - (qtyPerProduk.get(pr.id) ?? 0)) }).eq('id', pr.id),
+    ));
   }
   const { error } = await s.from('pesanan').update({ status: 'diproses', updated_at: new Date().toISOString() }).eq('id', pesananId);
   if (error) throw new Error(error.message);

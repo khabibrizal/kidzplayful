@@ -14,9 +14,11 @@ function Stat({ b, l }: { b: string; l: string }) {
 
 export default async function Laporan() {
   const supabase = await createClient();
-  const { data: lang } = await supabase.from('langganan').select('trial_mulai,aktif_sampai,nominal');
-  const { data: hasil } = await supabase.from('hasil_main').select('mesin,durasi_detik,tema_id');
-  const { data: tema } = await supabase.from('tema').select('id,nama');
+  const [{ data: lang }, { data: hasil }, { data: tema }] = await Promise.all([
+    supabase.from('langganan').select('trial_mulai,aktif_sampai,nominal'),
+    supabase.from('hasil_main').select('mesin,durasi_detik,tema_id'),
+    supabase.from('tema').select('id,nama'),
+  ]);
 
   const r = ringkasanLangganan((lang ?? []) as unknown as BarisLangganan[], new Date());
 

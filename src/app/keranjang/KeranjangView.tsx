@@ -2,6 +2,7 @@
 'use client';
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { setQtyKeranjang, hapusKeranjang, checkout } from '@/lib/data/keranjang-actions';
 import type { KeranjangItem } from '@/lib/game/tipe';
@@ -61,8 +62,7 @@ export default function KeranjangView({ awal, profil }: { awal: KeranjangItem[];
         <div key={it.produk_id} className="kp-card" style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 9 }}>
           <div style={{ width: 52, height: 52, borderRadius: 13, background: '#f3eefc', display: 'grid', placeItems: 'center', fontSize: 26, flex: '0 0 auto', overflow: 'hidden' }}>
             {it.produk.gambar_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={it.produk.gambar_url} alt={it.produk.nama} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <Image src={it.produk.gambar_url} alt={it.produk.nama} width={52} height={52} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : <span>🧸</span>}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>

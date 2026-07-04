@@ -24,10 +24,13 @@ export default async function LaporanAnakPage({ params }: { params: Promise<{ an
   if (!user) redirect('/login');
   const { data: anak } = await supabase.from('anak').select('nama').eq('id', anakId).single();
   if (!anak) redirect('/pilih-anak');
-  const { data: rows } = await supabase.from('hasil_main').select('mesin,area_skill,bintang,durasi_detik,selesai').eq('anak_id', anakId);
+  // 3 query independen (semua by anakId) → jalankan paralel
+  const [{ data: rows }, catatan, sertifikat] = await Promise.all([
+    supabase.from('hasil_main').select('mesin,area_skill,bintang,durasi_detik,selesai').eq('anak_id', anakId),
+    getCatatanAnak(anakId),
+    getSertifikatAnak(anakId),
+  ]);
   const r = laporanAnak((rows ?? []) as unknown as BarisHasil[]);
-  const catatan = await getCatatanAnak(anakId);
-  const sertifikat = await getSertifikatAnak(anakId);
 
   const maxArea = Math.max(1, ...Object.values(r.perArea));
 

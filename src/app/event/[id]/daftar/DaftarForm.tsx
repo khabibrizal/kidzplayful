@@ -2,6 +2,7 @@
 'use client';
 import { useRef, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { daftarEvent } from '@/lib/data/event-actions';
@@ -61,8 +62,7 @@ export default function DaftarForm({ ev, anak }: { ev: EventKelas; anak: { id: s
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 22, margin: '10px 0 12px' }}>Daftar: {ev.judul}</h1>
 
       {ev.gambar_url && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={ev.gambar_url} alt={ev.judul} style={{ width: '100%', height: 160, objectFit: 'cover', borderRadius: 16, marginBottom: 10 }} />
+        <Image src={ev.gambar_url} alt={ev.judul} width={480} height={160} style={{ width: '100%', height: 160, objectFit: 'cover', borderRadius: 16, marginBottom: 10 }} />
       )}
       <div className="kp-card" style={{ marginBottom: 12 }}>
         {ev.tanggal && <div>📅 {formatTanggal(ev.tanggal)}</div>}
