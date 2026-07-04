@@ -12,6 +12,7 @@ const MENU: { href: string; label: string }[] = [
   { href: '/admin/kelas-bermain', label: '🎈 Kelas Bermain' },
   { href: '/admin/video', label: '📺 Video' },
   { href: '/admin/langganan', label: '💳 Langganan' },
+  { href: '/admin/pengaturan-bayar', label: '💰 Pembayaran' },
   { href: '/admin/laporan', label: '📊 Laporan' },
   { href: '/admin/komunitas', label: '💬 Komunitas' },
   { href: '/admin/guru', label: '🍎 Guru' },

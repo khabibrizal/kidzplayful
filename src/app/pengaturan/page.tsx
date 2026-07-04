@@ -3,26 +3,21 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { statusLangganan } from '@/lib/domain/trial';
+import { getPengaturanBayar } from '@/lib/data/pengaturan-bayar';
 import PinForm from './PinForm';
 import AkunForm from './AkunForm';
 import NamaForm from './NamaForm';
 import ProfilPengirimanForm from './ProfilPengirimanForm';
 import BottomNav from '@/components/BottomNav';
 
-const BAYAR = {
-  bank: 'BCA 1234567890 a.n. KidzPlayful',   // GANTI dgn rekening Anda
-  qris: '',                                   // (opsional) URL gambar QRIS
-  wa: '6281234567890',                        // GANTI dgn nomor WhatsApp Anda
-  harga: 'Rp 35.000 / bulan',
-};
-
 export default async function Pengaturan() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
-  const [{ data: prof }, { data: lang }] = await Promise.all([
+  const [{ data: prof }, { data: lang }, bayar] = await Promise.all([
     supabase.from('profiles').select('pin_ortu,nama_tampilan,no_wa,alamat').eq('id', user.id).single(),
     supabase.from('langganan').select('trial_mulai,aktif_sampai').eq('ortu_id', user.id).single(),
+    getPengaturanBayar(),
   ]);
   const status = lang ? statusLangganan({ trialMulai: new Date(lang.trial_mulai + 'T00:00:00Z'), aktifSampai: lang.aktif_sampai ? new Date(lang.aktif_sampai + 'T00:00:00Z') : null }, new Date()) : 'kadaluarsa';
   const waText = encodeURIComponent('Halo, saya sudah transfer untuk langganan KidzPlayful. Email: ' + (user.email ?? ''));
@@ -47,15 +42,15 @@ export default async function Pengaturan() {
         <p>Status: <b>{status}</b></p>
         {status !== 'aktif' && (
           <>
-            <p style={{ fontSize: 14, marginTop: 8 }}>Langganan {BAYAR.harga}. Untuk berlangganan:</p>
+            <p style={{ fontSize: 14, marginTop: 8 }}>Langganan {bayar.harga_langganan_teks}. Untuk berlangganan:</p>
             <ol style={{ fontSize: 14, margin: '8px 0 8px 18px', lineHeight: 1.7 }}>
-              <li>Transfer ke <b>{BAYAR.bank}</b></li>
-              {BAYAR.qris && <li>atau scan QRIS</li>}
+              <li>Transfer ke <b>{bayar.bank_teks}</b></li>
+              {bayar.qris_url && <li>atau scan QRIS</li>}
               <li>Konfirmasi via WhatsApp, akun diaktifkan &lt; 1×24 jam.</li>
             </ol>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            {BAYAR.qris && <img src={BAYAR.qris} alt="QRIS" style={{ width: 180, margin: '6px 0' }} />}
-            <a className="kp-btn mint" style={{ display: 'inline-block' }} href={`https://wa.me/${BAYAR.wa}?text=${waText}`} target="_blank">Konfirmasi via WhatsApp</a>
+            {bayar.qris_url && <img src={bayar.qris_url} alt="QRIS" style={{ width: 180, margin: '6px 0' }} />}
+            <a className="kp-btn mint" style={{ display: 'inline-block' }} href={`https://wa.me/${bayar.wa_nomor}?text=${waText}`} target="_blank">Konfirmasi via WhatsApp</a>
           </>
         )}
         {status === 'aktif' && <p style={{ color: '#2e9e63' }}>Langganan aktif. Terima kasih! 🎉</p>}

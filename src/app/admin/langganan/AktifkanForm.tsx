@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { aktifkanLangganan } from '@/lib/data/admin-bisnis';
 import s from '../admin.module.css';
 
-export default function AktifkanForm({ ortuId }: { ortuId: string }) {
-  const [nominal, setNominal] = useState('35000');
+export default function AktifkanForm({ ortuId, nominalDefault = '35000' }: { ortuId: string; nominalDefault?: string }) {
+  const [nominal, setNominal] = useState(nominalDefault);
   const [via, setVia] = useState('transfer');
   const [loading, setLoading] = useState(false);
 

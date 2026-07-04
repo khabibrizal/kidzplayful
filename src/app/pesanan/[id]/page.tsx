@@ -4,9 +4,8 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getPesanan } from '@/lib/data/pesanan';
 import { formatRupiah, STATUS_PESANAN } from '@/lib/format';
+import { getPengaturanBayar } from '@/lib/data/pengaturan-bayar';
 import BuktiUpload from './BuktiUpload';
-
-const BANK = 'BCA 1234567890 a.n. KidzPlayful'; // GANTI dengan rekening Anda
 
 export default async function PesananDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -14,6 +13,7 @@ export default async function PesananDetailPage({ params }: { params: Promise<{ 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
   const o = await getPesanan(id);
+  const { bank_teks: BANK } = await getPengaturanBayar();
   if (!o || o.ortu_id !== user.id) redirect('/pesanan');
   const st = STATUS_PESANAN[o.status] ?? { teks: o.status, warna: 'var(--abu)', bg: '#eee' };
 

@@ -24,3 +24,20 @@ export async function aktifkanLangganan(ortuId: string, nominal: number, dibayar
   if (error) throw new Error(error.message);
   revalidatePath('/admin/langganan');
 }
+
+export async function simpanPengaturanBayar(formData: FormData) {
+  const { supabase } = await adminDb();
+  const nominal = Number(String(formData.get('harga_nominal') ?? '').replace(/[^0-9]/g, '')) || 0;
+  const patch = {
+    harga_langganan_nominal: nominal,
+    harga_langganan_teks: String(formData.get('harga_teks') ?? '').trim() || `Rp ${nominal.toLocaleString('id-ID')} / bulan`,
+    bank_teks: String(formData.get('bank_teks') ?? '').trim(),
+    qris_url: String(formData.get('qris_url') ?? '').trim(),
+    wa_nomor: String(formData.get('wa_nomor') ?? '').replace(/[^0-9]/g, ''),
+    updated_at: new Date().toISOString(),
+  };
+  const { error } = await supabase.from('pengaturan_pembayaran').update(patch).eq('id', 1);
+  if (error) throw new Error(error.message);
+  revalidatePath('/admin/pengaturan-bayar');
+  revalidatePath('/pengaturan');
+}

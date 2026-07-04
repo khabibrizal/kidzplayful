@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { statusLangganan } from '@/lib/domain/trial';
+import { getPengaturanBayar } from '@/lib/data/pengaturan-bayar';
 import AktifkanForm from './AktifkanForm';
 import s from '../admin.module.css';
 
@@ -13,10 +14,13 @@ type Row = {
 
 export default async function Langganan() {
   const supabase = await createClient();
-  const { data } = await supabase
-    .from('profiles')
-    .select('id,email,anak(nama),langganan(status,nominal,trial_mulai,aktif_sampai)')
-    .order('created_at', { ascending: false });
+  const [{ data }, bayar] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('id,email,anak(nama),langganan(status,nominal,trial_mulai,aktif_sampai)')
+      .order('created_at', { ascending: false }),
+    getPengaturanBayar(),
+  ]);
   const rows = (data ?? []) as unknown as Row[];
   const now = new Date();
 
@@ -42,7 +46,7 @@ export default async function Langganan() {
               <span style={{ flex: 1 }}><b>{m.email}</b><br /><span className={s.muted}>{m.anak.map((a) => a.nama).join(', ') || 'belum ada anak'}</span></span>
               <span className={`${s.tag} ${warna[st] ?? ''}`}>{st}</span>
             </div>
-            {st !== 'aktif' && <div style={{ marginTop: 8 }}><AktifkanForm ortuId={m.id} /></div>}
+            {st !== 'aktif' && <div style={{ marginTop: 8 }}><AktifkanForm ortuId={m.id} nominalDefault={String(bayar.harga_langganan_nominal)} /></div>}
           </div>
         );
       })}
