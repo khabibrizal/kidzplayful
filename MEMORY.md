@@ -47,7 +47,7 @@ Ringkasan navigasi seluruh codebase, dihasilkan dari **knowledge graph** (`/grap
 - **Keamanan utama = RLS** per tabel + guard `getAnakTerjamin`/`getAdminTerjamin`/`getGuruTerjamin`/`adminDb`. Query "milik sendiri" selalu `.eq(..user.id)`.
 - **Peran:** `profiles.is_admin` / `is_guru` (fungsi `is_admin()`/`is_guru()`); trigger `cegah_self_admin` cegah promosi diri.
 - **Total uang dihitung ulang di server**; harga di-snapshot (item_pesanan).
-- **Migrasi** SQL berurutan `supabase/migrations/0001..0037` (dijalankan di Supabase SQL Editor).
+- **Migrasi** SQL berurutan `supabase/migrations/0001..0041` (dijalankan di Supabase SQL Editor). Seed konten di `supabase/seed/`.
 
 ## Update terbaru (setelah snapshot graf)
 - **Game Mewarnai** (`mesin:'mewarnai'`): `components/game/MewarnaiGame.tsx`, `lib/game/templates-mewarnai.ts` (template bawaan), `lib/game/svg-sanitize.ts` (upload SVG aman), admin `TargetEditor.tsx` (mode sesuai). Mode Bebas/Sesuai, skor area `kreativitas`. Migrasi 0025 (izin mesin).
@@ -78,6 +78,17 @@ Ringkasan navigasi seluruh codebase, dihasilkan dari **knowledge graph** (`/grap
 - **Edit paket game**: `updatePaket()` + dropdown "Edit game yang ada" di PaketForm (hidrasi butir per mesin).
 - **Stiker Nama** (migrasi **0034** `event.stiker_bg_url`): `/stiker-event/[id]` (`StikerSheet.tsx`) — lembar F4 10 stiker 9×6cm (nama+kelas) utk semua anak yang DAFTAR; upload template di panel event.
 - Skrip e2e tiap engine: `tools/{koding,urutan,jalur,hitung,cocokkan,ejakata,garis,bonus,stiker}_check.mjs`.
+
+### 2026-07-04 s.d. 07-06 — Pembayaran dinamis, performa, SEO & Blog
+- **Master Pembayaran** (migrasi **0038** `pengaturan_pembayaran`, baris tunggal id=1): harga langganan + rekening/QRIS/WA **dinamis** diedit admin di `/admin/pengaturan-bayar` (menu 💰 Pembayaran). `lib/data/pengaturan-bayar.ts` `getPengaturanBayar()` (fallback `DEFAULT_BAYAR`) + `simpanPengaturanBayar` di `admin-bisnis.ts`. Dibaca di `/pengaturan`, `/pesanan/[id]`, default nominal `AktifkanForm`. (Sebelumnya hardcode di 2 tempat.)
+- **Komunitas** — pemilih topik `Compose.tsx`: `datalist` → **`<select>`** + "Ketik sendiri" (fix bug tak bisa ganti topik kecuali dihapus).
+- **Performa** (migrasi **0039** index + **0040** RPC): 0039 = 11 index kolom yang sering difilter (`pendaftaran_event`, `pesanan`, `item_pesanan`, `catatan_perkembangan`, `sertifikat`, `suka`, partial `postingan` tampil). 0040 = RPC `laporan_engagement()` (SECURITY DEFINER + guard admin, agregasi `hasil_main` di DB) + index `hasil_main(mesin|tema_id)`. Pagination admin (`admin/Pager.tsx`, `/admin/pesanan` 20/hal, `/admin/langganan` 30/hal), N+1 stok `verifikasiPesanan` via `.in()`, `next/image` di keranjang & daftar event.
+- **SEO** (KUNCI: semua halaman internal redirect ke `/login` → hanya `/` & `/artikel` yang bisa di-crawl):
+  - `app/page.tsx` = **landing publik** server-static (H1 kata kunci, fitur, usia, FAQ, NAP). App di balik login tak diubah.
+  - Metadata lengkap `layout.tsx` (OG/twitter/keywords/robots/canonical/**verification.google**). `app/robots.ts` (disallow area privat), `app/sitemap.ts` (async + artikel), `app/opengraph-image.tsx` (next/og). JSON-LD Organization/WebSite/LocalBusiness+ChildCare/FAQPage (helper `bersih()` buang field kosong).
+  - NAP `PROFIL` di `page.tsx`: telp **+6282233684933** + **Surabaya** terisi; alamat/jam/email kosong (opsional). **Search Console terverifikasi** (URL prefix, meta tag) + sitemap submitted. TODO: Google Business Profile.
+- **Blog/Artikel** (migrasi **0041** tabel `artikel`): publik `/artikel` (+ **pencarian `?q`**) & `/artikel/[slug]` (generateMetadata + JSON-LD BlogPosting). Renderer `components/ArtikelBody.tsx` (markdown minimal, **tanpa dep & tanpa dangerouslySetInnerHTML**). Admin menu **📝 Artikel** (`/admin/artikel` + editor `ArtikelForm`, upload sampul bucket `aset`). Data `lib/data/artikel.ts` + `artikel-admin.ts`; `slugify` di `lib/slug.ts`. Seed **6 artikel** `supabase/seed/artikel_awal.sql`. Kartu "📖 Artikel & Tips" di Beranda (`/pilih-anak`, 3 terbaru). Halaman artikel **sadar login**: sembunyikan CTA "Coba Gratis"/"Daftar Gratis" saat login, nav ke Beranda.
+- **Ops**: reset password user via SQL Editor (`update auth.users set encrypted_password = crypt(...)`); `.env.local` hanya anon key.
 
 ## Catatan
 - `mockups/` (demo.js/index.html) = prototipe statis, terpisah dari app Next.js.
