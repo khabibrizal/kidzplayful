@@ -16,7 +16,9 @@ export async function getReminderPendaftaran(): Promise<ReminderRow[]> {
   const { data } = await s
     .from('pendaftaran_event')
     .select('id, reminder_terkirim, anak_nama, event:event_id(id,judul,lokasi,tanggal,jam_mulai,jam_selesai), ortu:ortu_id(nama_tampilan,no_wa)')
-    .eq('status', 'diterima');
+    .eq('status', 'diterima')
+    .order('created_at', { ascending: false })
+    .limit(500); // batas aman; reminder hanya untuk event mendatang
   const rows: ReminderRow[] = (data ?? []).map((r) => {
     const ev = (Array.isArray(r.event) ? r.event[0] : r.event) as ReminderRow['event'];
     const ortu = (Array.isArray(r.ortu) ? r.ortu[0] : r.ortu) as { nama_tampilan?: string; no_wa?: string } | null;

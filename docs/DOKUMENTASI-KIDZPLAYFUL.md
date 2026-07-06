@@ -351,7 +351,7 @@ Tampil contoh pola garis; anak ketuk **2 titik** pada grid untuk membuat garis, 
 Kolom `event.stiker_bg_url`. Panel event: **⬆ Template Stiker** + **🏷️ Cetak Stiker Nama** → halaman `/stiker-event/[id]` (`components/StikerSheet.tsx`): lembar **F4 berisi 10 stiker 9×6 cm** (grid 2×5), **nama anak + judul kelas** di atas template (atau desain pastel), untuk **semua anak yang DAFTAR** (bukan hadir). Tombol Unduh/Cetak PDF (`@page 215×330mm`).
 
 ### Urutan migrasi lanjutan
-… → **0026** sertifikat (`event.sertifikat_bg_url`/`dokumentasi_url`, `pendaftaran_event.hadir_anak_ids`, tabel `sertifikat`) → **0027** reschedule (`event_asal_id`,`alasan_reschedule`) → **0028** postingan topik (`postingan.topik`) → **0029** mesin dekode → **0030** mesin urutan → **0031** mesin jalur → **0032** mesin hitung → **0033** `paket_aset.target_detik` → **0034** `event.stiker_bg_url` → **0035** mesin cocokkan → **0036** mesin ejakata → **0037** mesin garis → **0038** tabel `pengaturan_pembayaran`. (0029–0037 mesin = ALTER CHECK `paket_aset_mesin_check`.)
+… → **0026** sertifikat (`event.sertifikat_bg_url`/`dokumentasi_url`, `pendaftaran_event.hadir_anak_ids`, tabel `sertifikat`) → **0027** reschedule (`event_asal_id`,`alasan_reschedule`) → **0028** postingan topik (`postingan.topik`) → **0029** mesin dekode → **0030** mesin urutan → **0031** mesin jalur → **0032** mesin hitung → **0033** `paket_aset.target_detik` → **0034** `event.stiker_bg_url` → **0035** mesin cocokkan → **0036** mesin ejakata → **0037** mesin garis → **0038** tabel `pengaturan_pembayaran` → **0039** index performa → **0040** RPC `laporan_engagement` + index `hasil_main`. (0029–0037 mesin = ALTER CHECK `paket_aset_mesin_check`.)
 
 ---
 
@@ -367,6 +367,15 @@ Harga langganan & nomor rekening tak lagi hardcode; kini master tunggal yang die
 
 ### Komunitas — perbaikan pemilih topik
 `komunitas/Compose.tsx`: pemilih topik dari `<input list=datalist>` diganti **`<select>`** berisi seluruh opsi (judul Kelas Bermain + Event + Game) + opsi **"✏️ Ketik topik sendiri…"**. Memperbaiki bug datalist yang memfilter opsi oleh teks di kotak sehingga topik tak bisa diganti kecuali dihapus dulu. Auto-isi topik dari judul materi tetap jalan (masuk daftar → terpilih; di luar daftar → mode ketik sendiri).
+
+### Optimasi performa — migrasi 0039 & 0040
+Hasil scan performa (codebase sudah sehat: tak ada `select('*')`, caching & `next/image` terpasang). Perbaikan:
+- **Migrasi 0039** — 11 index untuk kolom yang sering difilter: `pendaftaran_event(ortu_id|event_id|event_id,status)`, `pesanan(ortu_id)`, `item_pesanan(pesanan_id)`, `catatan_perkembangan(anak_id|ortu_id)`, `sertifikat(anak_id|ortu_id)`, `suka(ortu_id)`, partial `postingan(created_at desc) where status='tampil'`.
+- **Migrasi 0040** — RPC `laporan_engagement()` (SECURITY DEFINER + guard `is_admin()`) menghitung agregasi `hasil_main` di DB (tak menarik semua baris ke app) + index `hasil_main(mesin|tema_id)`. Dipakai `/admin/laporan`.
+- **Query paralel**: `anak/[anakId]/laporan` & `/admin/laporan` → `Promise.all`.
+- **N+1 dihindari**: `verifikasiPesanan` ambil stok via `.in()` + update paralel.
+- **Pagination admin**: komponen `admin/Pager.tsx`; `/admin/pesanan` (20/hal) & `/admin/langganan` (30/hal) via `?hal=N` + `range()`/`count:'exact'`. `getReminderPendaftaran` diberi cap `limit(500)`.
+- **`next/image`**: keranjang & daftar event (dari `<img>`).
 
 ### Catatan operasional — reset password akun
 Reset password user (mis. akun admin) via **Supabase SQL Editor** bila Dashboard tak punya tombolnya:

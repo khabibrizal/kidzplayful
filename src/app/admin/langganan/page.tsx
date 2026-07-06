@@ -4,7 +4,10 @@ import { createClient } from '@/lib/supabase/server';
 import { statusLangganan } from '@/lib/domain/trial';
 import { getPengaturanBayar } from '@/lib/data/pengaturan-bayar';
 import AktifkanForm from './AktifkanForm';
+import Pager from '../Pager';
 import s from '../admin.module.css';
+
+const PER_HAL = 30;
 
 type Row = {
   id: string; email: string;
@@ -12,16 +15,22 @@ type Row = {
   langganan: { status: string; nominal: number; trial_mulai: string; aktif_sampai: string | null } | null;
 };
 
-export default async function Langganan() {
+export default async function Langganan({ searchParams }: { searchParams: Promise<{ hal?: string }> }) {
+  const { hal } = await searchParams;
+  const halNum = Math.max(1, Number(hal) || 1);
+  const from = (halNum - 1) * PER_HAL;
   const supabase = await createClient();
-  const [{ data }, bayar] = await Promise.all([
+  const [{ data, count }, bayar] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id,email,anak(nama),langganan(status,nominal,trial_mulai,aktif_sampai)')
-      .order('created_at', { ascending: false }),
+      .select('id,email,anak(nama),langganan(status,nominal,trial_mulai,aktif_sampai)', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(from, from + PER_HAL - 1),
     getPengaturanBayar(),
   ]);
   const rows = (data ?? []) as unknown as Row[];
+  const total = count ?? 0;
+  const totalHal = Math.max(1, Math.ceil(total / PER_HAL));
   const now = new Date();
 
   function statusEfektif(l: Row['langganan']) {
@@ -51,6 +60,7 @@ export default async function Langganan() {
         );
       })}
       {rows.length === 0 && <p className={s.muted}>Belum ada member.</p>}
+      <Pager hal={halNum} totalHal={totalHal} total={total} basePath="/admin/langganan" />
     </div>
   );
 }

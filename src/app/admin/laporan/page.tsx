@@ -14,26 +14,19 @@ function Stat({ b, l }: { b: string; l: string }) {
 
 export default async function Laporan() {
   const supabase = await createClient();
-  const [{ data: lang }, { data: hasil }, { data: tema }] = await Promise.all([
+  // agregasi hasil_main dihitung di DB via RPC (tak menarik semua baris ke app)
+  const [{ data: lang }, { data: eng }] = await Promise.all([
     supabase.from('langganan').select('trial_mulai,aktif_sampai,nominal'),
-    supabase.from('hasil_main').select('mesin,durasi_detik,tema_id'),
-    supabase.from('tema').select('id,nama'),
+    supabase.rpc('laporan_engagement'),
   ]);
 
   const r = ringkasanLangganan((lang ?? []) as unknown as BarisLangganan[], new Date());
 
-  const rows = hasil ?? [];
-  const totalSesi = rows.length;
-  const rataMenit = totalSesi ? Math.round((rows.reduce((a, x) => a + (x.durasi_detik || 0), 0) / totalSesi / 60) * 10) / 10 : 0;
-  const hitung = <T extends string>(arr: (T | null)[]) => {
-    const m = new Map<string, number>();
-    for (const v of arr) if (v) m.set(v, (m.get(v) ?? 0) + 1);
-    return [...m.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '-';
-  };
-  const mesinPopuler = hitung(rows.map((x) => x.mesin as string));
-  const temaMap = new Map((tema ?? []).map((t) => [t.id, t.nama]));
-  const temaPopulerId = hitung(rows.map((x) => x.tema_id as string | null));
-  const temaPopuler = temaMap.get(temaPopulerId) ?? '-';
+  const e = (eng ?? {}) as { total_sesi?: number; total_detik?: number; mesin_populer?: string | null; tema_populer?: string | null };
+  const totalSesi = e.total_sesi ?? 0;
+  const rataMenit = totalSesi ? Math.round(((e.total_detik ?? 0) / totalSesi / 60) * 10) / 10 : 0;
+  const mesinPopuler = e.mesin_populer ?? '-';
+  const temaPopuler = e.tema_populer ?? '-';
 
   return (
     <div>
