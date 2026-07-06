@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import Logo from '@/components/Logo';
 import ArtikelBody from '@/components/ArtikelBody';
+import { createClient } from '@/lib/supabase/server';
 import { getArtikelBySlug } from '@/lib/data/artikel';
 
 const BASE = 'https://www.kidzplayful.com';
@@ -41,6 +42,10 @@ export default async function ArtikelDetailPage({ params }: { params: Promise<{ 
   const a = await getArtikelBySlug(slug);
   if (!a) notFound();
 
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const masuk = !!user;
+
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'BlogPosting',
@@ -60,8 +65,10 @@ export default async function ArtikelDetailPage({ params }: { params: Promise<{ 
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <main style={{ maxWidth: 720, margin: '0 auto', padding: '18px 20px 60px' }}>
         <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 }}>
-          <Link href="/"><Logo height={36} /></Link>
-          <Link href="/daftar" className="kp-btn" style={{ padding: '10px 20px', fontSize: 15 }}>Coba Gratis</Link>
+          <Link href={masuk ? '/pilih-anak' : '/'}><Logo height={36} /></Link>
+          {masuk
+            ? <Link href="/pilih-anak" className="kp-btn putih" style={{ padding: '10px 20px', fontSize: 15 }}>← Beranda</Link>
+            : <Link href="/daftar" className="kp-btn" style={{ padding: '10px 20px', fontSize: 15 }}>Coba Gratis</Link>}
         </header>
 
         <Link href="/artikel" style={{ color: 'var(--abu)', fontSize: 13 }}>← Semua artikel</Link>
@@ -78,13 +85,19 @@ export default async function ArtikelDetailPage({ params }: { params: Promise<{ 
           <ArtikelBody isi={a.isi} />
         </article>
 
-        <div style={{ marginTop: 34, textAlign: 'center' }}>
-          <div className="kp-card" style={{ background: 'linear-gradient(150deg,#e9dcff,#d4ecff)', padding: 26 }}>
-            <h2 style={{ color: 'var(--lavender-d)', fontSize: 22, marginBottom: 8 }}>Yuk, main sambil belajar bareng KidzPlayful</h2>
-            <p style={{ color: 'var(--tinta)', fontSize: 14, marginBottom: 16 }}>Kelas bermain & game edukasi anak 0–6 tahun. Coba gratis 14 hari.</p>
-            <Link href="/daftar" className="kp-btn mint">Daftar Gratis ▶</Link>
+        {masuk ? (
+          <div style={{ marginTop: 34, textAlign: 'center' }}>
+            <Link href="/artikel" className="kp-btn putih">← Kembali ke daftar artikel</Link>
           </div>
-        </div>
+        ) : (
+          <div style={{ marginTop: 34, textAlign: 'center' }}>
+            <div className="kp-card" style={{ background: 'linear-gradient(150deg,#e9dcff,#d4ecff)', padding: 26 }}>
+              <h2 style={{ color: 'var(--lavender-d)', fontSize: 22, marginBottom: 8 }}>Yuk, main sambil belajar bareng KidzPlayful</h2>
+              <p style={{ color: 'var(--tinta)', fontSize: 14, marginBottom: 16 }}>Kelas bermain & game edukasi anak 0–6 tahun. Coba gratis 14 hari.</p>
+              <Link href="/daftar" className="kp-btn mint">Daftar Gratis ▶</Link>
+            </div>
+          </div>
+        )}
       </main>
     </>
   );

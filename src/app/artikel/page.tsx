@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
 import Logo from '@/components/Logo';
+import { createClient } from '@/lib/supabase/server';
 import { getArtikelTerbit } from '@/lib/data/artikel';
 
 export const metadata: Metadata = {
@@ -19,12 +20,17 @@ function tanggal(iso: string | null) {
 export default async function ArtikelListPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { q } = await searchParams;
   const cari = (q ?? '').trim();
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const masuk = !!user;
   const artikel = await getArtikelTerbit({ q: cari });
   return (
     <main style={{ maxWidth: 900, margin: '0 auto', padding: '18px 20px 50px' }}>
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-        <Link href="/"><Logo height={38} /></Link>
-        <Link href="/daftar" className="kp-btn" style={{ padding: '10px 20px', fontSize: 15 }}>Coba Gratis</Link>
+        <Link href={masuk ? '/pilih-anak' : '/'}><Logo height={38} /></Link>
+        {masuk
+          ? <Link href="/pilih-anak" className="kp-btn putih" style={{ padding: '10px 20px', fontSize: 15 }}>← Beranda</Link>
+          : <Link href="/daftar" className="kp-btn" style={{ padding: '10px 20px', fontSize: 15 }}>Coba Gratis</Link>}
       </header>
 
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 'clamp(26px,4vw,36px)', marginBottom: 8 }}>Artikel & Tips Bermain Anak</h1>
