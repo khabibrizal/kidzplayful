@@ -16,14 +16,24 @@ export interface Artikel {
 
 export type ArtikelRingkas = Pick<Artikel, 'slug' | 'judul' | 'ringkasan' | 'sampul_url' | 'terbit_pada'>;
 
-/** Daftar artikel yang sudah terbit (untuk /artikel & sitemap). */
-export async function getArtikelTerbit(): Promise<ArtikelRingkas[]> {
+/** Daftar artikel yang sudah terbit (untuk /artikel & sitemap). Opsional cari (q) & batas (limit). */
+export async function getArtikelTerbit(opts?: { q?: string; limit?: number }): Promise<ArtikelRingkas[]> {
   const s = await createClient();
-  const { data } = await s
+  let query = s
     .from('artikel')
     .select('slug,judul,ringkasan,sampul_url,terbit_pada')
     .eq('status', 'terbit')
     .order('terbit_pada', { ascending: false });
+
+  const q = opts?.q?.trim();
+  if (q) {
+    // bersihkan karakter yang mengganggu sintaks filter PostgREST
+    const aman = q.replace(/[,()%*]/g, ' ').trim();
+    if (aman) query = query.or(`judul.ilike.%${aman}%,ringkasan.ilike.%${aman}%`);
+  }
+  if (opts?.limit) query = query.limit(opts.limit);
+
+  const { data } = await query;
   return (data ?? []) as ArtikelRingkas[];
 }
 

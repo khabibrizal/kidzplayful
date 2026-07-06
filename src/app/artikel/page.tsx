@@ -16,8 +16,10 @@ function tanggal(iso: string | null) {
   return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-export default async function ArtikelListPage() {
-  const artikel = await getArtikelTerbit();
+export default async function ArtikelListPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  const { q } = await searchParams;
+  const cari = (q ?? '').trim();
+  const artikel = await getArtikelTerbit({ q: cari });
   return (
     <main style={{ maxWidth: 900, margin: '0 auto', padding: '18px 20px 50px' }}>
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
@@ -26,12 +28,23 @@ export default async function ArtikelListPage() {
       </header>
 
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 'clamp(26px,4vw,36px)', marginBottom: 8 }}>Artikel & Tips Bermain Anak</h1>
-      <p style={{ color: 'var(--tinta)', marginBottom: 24, lineHeight: 1.6 }}>
+      <p style={{ color: 'var(--tinta)', marginBottom: 18, lineHeight: 1.6 }}>
         Tips kelas bermain, game edukasi, screen time sehat, dan tumbuh kembang anak usia 0–6 tahun.
       </p>
 
+      <form method="get" action="/artikel" style={{ display: 'flex', gap: 8, marginBottom: 24, maxWidth: 460 }}>
+        <input className="kp-input" name="q" defaultValue={cari} placeholder="Cari artikel…" style={{ flex: 1, marginBottom: 0 }} />
+        <button className="kp-btn" type="submit" style={{ padding: '12px 22px', fontSize: 15 }}>Cari</button>
+      </form>
+
+      {cari && (
+        <p style={{ color: 'var(--abu)', fontSize: 13, marginBottom: 16 }}>
+          {artikel.length} hasil untuk “{cari}” · <Link href="/artikel" style={{ color: 'var(--biru-d)' }}>reset</Link>
+        </p>
+      )}
+
       {artikel.length === 0 ? (
-        <p style={{ color: 'var(--abu)' }}>Belum ada artikel. Nantikan tulisan pertama kami ya! 🌿</p>
+        <p style={{ color: 'var(--abu)' }}>{cari ? `Tidak ada artikel yang cocok dengan “${cari}”.` : 'Belum ada artikel. Nantikan tulisan pertama kami ya! 🌿'}</p>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 18 }}>
           {artikel.map((a) => (
