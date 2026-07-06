@@ -27,6 +27,7 @@ export const metadata: Metadata = {
   category: "education",
   icons: { icon: "/logo.png", apple: "/logo.png" },
   alternates: { canonical: "/" },
+  verification: { google: "oggZgjg3SP77x9YpEI3wV-ZF9LpvEpSNcQ7XxK5MC1I" },
   openGraph: {
     type: "website",
     locale: "id_ID",
