@@ -351,7 +351,7 @@ Tampil contoh pola garis; anak ketuk **2 titik** pada grid untuk membuat garis, 
 Kolom `event.stiker_bg_url`. Panel event: **⬆ Template Stiker** + **🏷️ Cetak Stiker Nama** → halaman `/stiker-event/[id]` (`components/StikerSheet.tsx`): lembar **F4 berisi 10 stiker 9×6 cm** (grid 2×5), **nama anak + judul kelas** di atas template (atau desain pastel), untuk **semua anak yang DAFTAR** (bukan hadir). Tombol Unduh/Cetak PDF (`@page 215×330mm`).
 
 ### Urutan migrasi lanjutan
-… → **0026** sertifikat (`event.sertifikat_bg_url`/`dokumentasi_url`, `pendaftaran_event.hadir_anak_ids`, tabel `sertifikat`) → **0027** reschedule (`event_asal_id`,`alasan_reschedule`) → **0028** postingan topik (`postingan.topik`) → **0029** mesin dekode → **0030** mesin urutan → **0031** mesin jalur → **0032** mesin hitung → **0033** `paket_aset.target_detik` → **0034** `event.stiker_bg_url` → **0035** mesin cocokkan → **0036** mesin ejakata → **0037** mesin garis → **0038** tabel `pengaturan_pembayaran` → **0039** index performa → **0040** RPC `laporan_engagement` + index `hasil_main`. (0029–0037 mesin = ALTER CHECK `paket_aset_mesin_check`.)
+… → **0026** sertifikat (`event.sertifikat_bg_url`/`dokumentasi_url`, `pendaftaran_event.hadir_anak_ids`, tabel `sertifikat`) → **0027** reschedule (`event_asal_id`,`alasan_reschedule`) → **0028** postingan topik (`postingan.topik`) → **0029** mesin dekode → **0030** mesin urutan → **0031** mesin jalur → **0032** mesin hitung → **0033** `paket_aset.target_detik` → **0034** `event.stiker_bg_url` → **0035** mesin cocokkan → **0036** mesin ejakata → **0037** mesin garis → **0038** tabel `pengaturan_pembayaran` → **0039** index performa → **0040** RPC `laporan_engagement` + index `hasil_main` → **0041** tabel `artikel` (blog). (0029–0037 mesin = ALTER CHECK `paket_aset_mesin_check`.)
 
 ---
 
@@ -386,6 +386,14 @@ Karena semua halaman internal redirect ke `/login` (tak bisa di-crawl), SEO difo
 - **`app/opengraph-image.tsx`** — OG image 1200×630 via `next/og` (mandiri, tanpa aset eksternal).
 - **JSON-LD** di landing (`@graph`): `Organization`, `WebSite`, `LocalBusiness`+`ChildCare` (NAP), `FAQPage`.
 - **⚠️ Wajib diisi:** objek `PROFIL` di `app/page.tsx` (alamat, kota, telp, email, jam buka) masih placeholder — ganti dengan data usaha asli agar SEO lokal akurat. Lalu: verifikasi domain di **Google Search Console** + submit `sitemap.xml`, dan buat **Google Business Profile** untuk kelas offline.
+
+### Blog / Artikel publik — migrasi 0041
+Halaman konten publik untuk memperkuat SEO (menambah halaman yang bisa di-crawl & diranking).
+- **Tabel `artikel`** (`slug` unik, `judul`, `ringkasan`, `isi` markdown, `sampul_url`, `status` draf/terbit, `terbit_pada`). RLS: publik/anon baca yang `terbit`, admin kelola semua. Index `(status, terbit_pada desc)`.
+- **Publik**: `/artikel` (daftar terbit) + `/artikel/[slug]` (detail, `generateMetadata` per-artikel + OpenGraph article + **JSON-LD BlogPosting**). Isi dirender oleh `components/ArtikelBody.tsx` — renderer markdown minimal **tanpa dependency & tanpa dangerouslySetInnerHTML** (aman): `##`/`###`, paragraf, `- list`, `**tebal**`, `[teks](url)`.
+- **Admin** (menu **📝 Artikel**): `/admin/artikel` (tulis judul → draf → editor) + `/admin/artikel/[id]` (`ArtikelForm`: judul, slug auto, ringkasan, sampul upload ke bucket `aset`, isi, Simpan/Terbitkan/Draf/Hapus). Data: `lib/data/artikel.ts` (baca) + `lib/data/artikel-admin.ts` (CRUD, `'use server'`). `slugify` di `lib/slug.ts` (dipakai server & client).
+- **Sitemap dinamis**: `app/sitemap.ts` kini async → menyertakan semua artikel terbit + `/artikel`.
+- Link "Artikel" ditambahkan di header & footer landing.
 
 ### Catatan operasional — reset password akun
 Reset password user (mis. akun admin) via **Supabase SQL Editor** bila Dashboard tak punya tombolnya:

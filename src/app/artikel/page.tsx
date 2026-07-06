@@ -1,0 +1,55 @@
+// src/app/artikel/page.tsx — daftar artikel publik (blog)
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import Image from 'next/image';
+import Logo from '@/components/Logo';
+import { getArtikelTerbit } from '@/lib/data/artikel';
+
+export const metadata: Metadata = {
+  title: 'Artikel & Tips Bermain untuk Anak',
+  description: 'Kumpulan artikel dan tips seputar kelas bermain, game edukasi, screen time sehat, dan tumbuh kembang anak usia 0–6 tahun dari KidzPlayful.',
+  alternates: { canonical: '/artikel' },
+};
+
+function tanggal(iso: string | null) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+export default async function ArtikelListPage() {
+  const artikel = await getArtikelTerbit();
+  return (
+    <main style={{ maxWidth: 900, margin: '0 auto', padding: '18px 20px 50px' }}>
+      <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+        <Link href="/"><Logo height={38} /></Link>
+        <Link href="/daftar" className="kp-btn" style={{ padding: '10px 20px', fontSize: 15 }}>Coba Gratis</Link>
+      </header>
+
+      <h1 style={{ color: 'var(--lavender-d)', fontSize: 'clamp(26px,4vw,36px)', marginBottom: 8 }}>Artikel & Tips Bermain Anak</h1>
+      <p style={{ color: 'var(--tinta)', marginBottom: 24, lineHeight: 1.6 }}>
+        Tips kelas bermain, game edukasi, screen time sehat, dan tumbuh kembang anak usia 0–6 tahun.
+      </p>
+
+      {artikel.length === 0 ? (
+        <p style={{ color: 'var(--abu)' }}>Belum ada artikel. Nantikan tulisan pertama kami ya! 🌿</p>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 18 }}>
+          {artikel.map((a) => (
+            <Link key={a.slug} href={`/artikel/${a.slug}`} className="kp-card" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
+              {a.sampul_url && (
+                <span style={{ position: 'relative', display: 'block', width: '100%', aspectRatio: '16 / 9', background: '#efe7fb' }}>
+                  <Image src={a.sampul_url} alt={a.judul} fill sizes="(max-width:600px) 100vw, 300px" style={{ objectFit: 'cover' }} />
+                </span>
+              )}
+              <span style={{ padding: 16, display: 'block' }}>
+                <span style={{ display: 'block', fontSize: 12, color: 'var(--abu)', marginBottom: 6 }}>{tanggal(a.terbit_pada)}</span>
+                <span style={{ display: 'block', fontWeight: 700, color: 'var(--lavender-d)', fontSize: 17, lineHeight: 1.3, marginBottom: 6 }}>{a.judul}</span>
+                <span style={{ display: 'block', fontSize: 14, color: 'var(--tinta)', lineHeight: 1.5 }}>{a.ringkasan}</span>
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
+    </main>
+  );
+}

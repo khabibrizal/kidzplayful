@@ -118,7 +118,8 @@ export default function Home() {
         {/* Header */}
         <header style={{ ...seksi, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px' }}>
           <Logo height={40} />
-          <nav style={{ display: 'flex', gap: 10 }}>
+          <nav style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <a href="/artikel" style={{ color: 'var(--lavender-d)', fontWeight: 700, fontSize: 15, textDecoration: 'none', padding: '0 6px' }}>Artikel</a>
             <a href="/login" className="kp-btn putih" style={{ padding: '10px 20px', fontSize: 15 }}>Masuk</a>
             <a href="/daftar" className="kp-btn" style={{ padding: '10px 20px', fontSize: 15 }}>Daftar</a>
           </nav>
@@ -193,6 +194,9 @@ export default function Home() {
         <footer style={{ ...seksi, textAlign: 'center', padding: '28px 20px', color: 'var(--abu)', fontSize: 13, lineHeight: 1.7 }}>
           <Logo height={32} />
           <p style={{ marginTop: 10 }}>
+            <a href="/artikel" style={{ color: 'var(--lavender-d)', fontWeight: 700, textDecoration: 'none' }}>Artikel &amp; Tips Bermain Anak</a>
+          </p>
+          <p style={{ marginTop: 6 }}>
             {[PROFIL.alamat, PROFIL.kota, PROFIL.provinsi, PROFIL.kodePos].filter(Boolean).join(', ')}<br />
             Telp/WA: {PROFIL.telp}{PROFIL.email ? ` · ${PROFIL.email}` : ''}
           </p>

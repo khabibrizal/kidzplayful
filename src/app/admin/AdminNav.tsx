@@ -10,6 +10,7 @@ const MENU: { href: string; label: string }[] = [
   { href: '/admin/produk', label: '🛍️ Produk' },
   { href: '/admin/pesanan', label: '📦 Pesanan' },
   { href: '/admin/kelas-bermain', label: '🎈 Kelas Bermain' },
+  { href: '/admin/artikel', label: '📝 Artikel' },
   { href: '/admin/video', label: '📺 Video' },
   { href: '/admin/langganan', label: '💳 Langganan' },
   { href: '/admin/pengaturan-bayar', label: '💰 Pembayaran' },
