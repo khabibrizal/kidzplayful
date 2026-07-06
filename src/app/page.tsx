@@ -3,17 +3,17 @@
 import type { Metadata } from 'next';
 import Logo from '@/components/Logo';
 
-// ⚠️ GANTI dengan data usaha ASLI (dipakai untuk SEO lokal / structured data).
+// Data usaha (SEO lokal / structured data). Field kosong otomatis diabaikan.
 const PROFIL = {
   nama: 'KidzPlayful',
-  telp: '+6281234567890',
-  email: 'halo@kidzplayful.com',
-  alamat: 'Jl. Contoh No. 123',
+  telp: '+6282233684933',
+  email: '',           // ← isi email asli bila ada
+  alamat: '',          // ← isi alamat jalan kelas offline bila sudah ada
   kota: 'Surabaya',
   provinsi: 'Jawa Timur',
   kodePos: '60111',
   negara: 'ID',
-  jamBuka: 'Mo-Sa 09:00-17:00',
+  jamBuka: '',         // ← mis. 'Mo-Sa 09:00-17:00'
 };
 
 const BASE = 'https://www.kidzplayful.com';
@@ -46,11 +46,24 @@ const FAQ = [
   { t: 'Berapa biayanya?', j: 'Anda bisa mencoba gratis selama 14 hari tanpa kartu kredit. Setelah itu tersedia langganan bulanan dengan harga terjangkau.' },
 ];
 
+// Buang properti kosong/undefined agar JSON-LD bersih.
+function bersih<T extends Record<string, unknown>>(obj: T): T {
+  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== '' && v != null)) as T;
+}
+
 function jsonLd() {
+  const alamat = bersih({
+    '@type': 'PostalAddress',
+    streetAddress: PROFIL.alamat,
+    addressLocality: PROFIL.kota,
+    addressRegion: PROFIL.provinsi,
+    postalCode: PROFIL.kodePos,
+    addressCountry: PROFIL.negara,
+  });
   return {
     '@context': 'https://schema.org',
     '@graph': [
-      {
+      bersih({
         '@type': 'Organization',
         '@id': `${BASE}/#organization`,
         name: PROFIL.nama,
@@ -59,7 +72,7 @@ function jsonLd() {
         email: PROFIL.email,
         telephone: PROFIL.telp,
         description: 'Kelas bermain (playgroup) & game edukasi anak usia 0–6 tahun.',
-      },
+      }),
       {
         '@type': 'WebSite',
         '@id': `${BASE}/#website`,
@@ -68,7 +81,7 @@ function jsonLd() {
         inLanguage: 'id-ID',
         publisher: { '@id': `${BASE}/#organization` },
       },
-      {
+      bersih({
         '@type': ['LocalBusiness', 'ChildCare'],
         '@id': `${BASE}/#localbusiness`,
         name: PROFIL.nama,
@@ -78,15 +91,9 @@ function jsonLd() {
         image: `${BASE}/logo.png`,
         priceRange: 'Rp',
         openingHours: PROFIL.jamBuka,
-        address: {
-          '@type': 'PostalAddress',
-          streetAddress: PROFIL.alamat,
-          addressLocality: PROFIL.kota,
-          addressRegion: PROFIL.provinsi,
-          postalCode: PROFIL.kodePos,
-          addressCountry: PROFIL.negara,
-        },
-      },
+        areaServed: PROFIL.kota,
+        address: alamat,
+      }),
       {
         '@type': 'FAQPage',
         '@id': `${BASE}/#faq`,
@@ -186,8 +193,8 @@ export default function Home() {
         <footer style={{ ...seksi, textAlign: 'center', padding: '28px 20px', color: 'var(--abu)', fontSize: 13, lineHeight: 1.7 }}>
           <Logo height={32} />
           <p style={{ marginTop: 10 }}>
-            {PROFIL.alamat}, {PROFIL.kota}, {PROFIL.provinsi} {PROFIL.kodePos}<br />
-            Telp/WA: {PROFIL.telp} · {PROFIL.email}
+            {[PROFIL.alamat, PROFIL.kota, PROFIL.provinsi, PROFIL.kodePos].filter(Boolean).join(', ')}<br />
+            Telp/WA: {PROFIL.telp}{PROFIL.email ? ` · ${PROFIL.email}` : ''}
           </p>
           <p style={{ marginTop: 8 }}>© {new Date().getFullYear()} {PROFIL.nama}. Kelas bermain &amp; game edukasi anak.</p>
         </footer>
