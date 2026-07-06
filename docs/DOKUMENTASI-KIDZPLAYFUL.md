@@ -355,7 +355,7 @@ Kolom `event.stiker_bg_url`. Panel event: **⬆ Template Stiker** + **🏷️ Ce
 
 ---
 
-## 15f. Fitur & Peningkatan (2026-07-04)
+## 15f. Fitur & Peningkatan (2026-07-04 s.d. 2026-07-06)
 
 ### Master Pengaturan Pembayaran (dinamis) — migrasi 0038
 Harga langganan & nomor rekening tak lagi hardcode; kini master tunggal yang diedit admin.
@@ -384,8 +384,10 @@ Karena semua halaman internal redirect ke `/login` (tak bisa di-crawl), SEO difo
 - **`app/robots.ts`** — allow `/`, disallow area privat (`/admin,/main,/anak,/ortu,/pengaturan,/pesanan,/store,/event,/komunitas,…`), tunjuk sitemap.
 - **`app/sitemap.ts`** — URL publik (`/`, `/daftar`, `/login`).
 - **`app/opengraph-image.tsx`** — OG image 1200×630 via `next/og` (mandiri, tanpa aset eksternal).
-- **JSON-LD** di landing (`@graph`): `Organization`, `WebSite`, `LocalBusiness`+`ChildCare` (NAP), `FAQPage`.
-- **⚠️ Wajib diisi:** objek `PROFIL` di `app/page.tsx` (alamat, kota, telp, email, jam buka) masih placeholder — ganti dengan data usaha asli agar SEO lokal akurat. Lalu: verifikasi domain di **Google Search Console** + submit `sitemap.xml`, dan buat **Google Business Profile** untuk kelas offline.
+- **JSON-LD** di landing (`@graph`): `Organization`, `WebSite`, `LocalBusiness`+`ChildCare` (NAP), `FAQPage`. Helper `bersih()` membuang field kosong agar JSON-LD tidak berisi nilai kosong.
+- **NAP** (`PROFIL` di `app/page.tsx`): telp **+6282233684933** + kota **Surabaya, Jawa Timur 60111** sudah diisi; `alamat`/`jamBuka`/`email` masih kosong (opsional, isi bila sudah ada — field kosong otomatis diabaikan).
+- **Verifikasi Google Search Console**: `metadata.verification.google` di `app/layout.tsx` (tipe properti **URL prefix** `https://www.kidzplayful.com`, metode HTML tag). **Terverifikasi**, `sitemap.xml` sudah disubmit (Success). *Tipe properti "Domain" butuh DNS TXT — tidak dipakai.*
+- **TODO manual**: buat **Google Business Profile** untuk kelas offline (SEO lokal/Maps) begitu alamat lengkap tersedia.
 
 ### Blog / Artikel publik — migrasi 0041
 Halaman konten publik untuk memperkuat SEO (menambah halaman yang bisa di-crawl & diranking).
@@ -394,6 +396,10 @@ Halaman konten publik untuk memperkuat SEO (menambah halaman yang bisa di-crawl 
 - **Admin** (menu **📝 Artikel**): `/admin/artikel` (tulis judul → draf → editor) + `/admin/artikel/[id]` (`ArtikelForm`: judul, slug auto, ringkasan, sampul upload ke bucket `aset`, isi, Simpan/Terbitkan/Draf/Hapus). Data: `lib/data/artikel.ts` (baca) + `lib/data/artikel-admin.ts` (CRUD, `'use server'`). `slugify` di `lib/slug.ts` (dipakai server & client).
 - **Sitemap dinamis**: `app/sitemap.ts` kini async → menyertakan semua artikel terbit + `/artikel`.
 - Link "Artikel" ditambahkan di header & footer landing.
+- **Seed konten** `supabase/seed/artikel_awal.sql` — 6 artikel SEO awal (kelas bermain, screen time, sensorik-motorik, koding TK, rapor, memilih playgroup) status `terbit`, dollar-quoted, `on conflict (slug) do nothing`.
+- **Kartu "📖 Artikel & Tips" di Beranda** (`/pilih-anak`): 3 artikel terbaru (`getArtikelTerbit({ limit: 3 })`) + link "Lihat semua" → `/artikel`. Tak ditaruh di `BottomNav` (sudah penuh 6 item).
+- **Filter pencarian** di `/artikel`: form GET `?q=` → `getArtikelTerbit({ q })` (`ilike` judul/ringkasan, karakter pengganggu dibersihkan).
+- **Halaman artikel sadar login** (`/artikel` & `/artikel/[slug]` cek `getUser()`): saat **sudah login**, CTA "Coba Gratis"/"Daftar Gratis" disembunyikan, logo + tombol mengarah ke `/pilih-anak`, dan detail menampilkan tombol "← Kembali ke daftar artikel". Pengunjung anonim tetap melihat CTA pemasaran.
 
 ### Catatan operasional — reset password akun
 Reset password user (mis. akun admin) via **Supabase SQL Editor** bila Dashboard tak punya tombolnya:
