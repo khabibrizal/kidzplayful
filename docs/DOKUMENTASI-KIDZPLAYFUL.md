@@ -377,6 +377,16 @@ Hasil scan performa (codebase sudah sehat: tak ada `select('*')`, caching & `nex
 - **Pagination admin**: komponen `admin/Pager.tsx`; `/admin/pesanan` (20/hal) & `/admin/langganan` (30/hal) via `?hal=N` + `range()`/`count:'exact'`. `getReminderPendaftaran` diberi cap `limit(500)`.
 - **`next/image`**: keranjang & daftar event (dari `<img>`).
 
+### SEO — landing page publik + metadata + structured data
+Karena semua halaman internal redirect ke `/login` (tak bisa di-crawl), SEO difokuskan ke halaman depan `/`.
+- **`app/page.tsx`** dirombak jadi **landing page publik** server-rendered (prerendered **static**): hero + H1 kaya kata kunci, fitur, tahap usia, FAQ, CTA, footer NAP. Aplikasi di balik login **tidak diubah**.
+- **Metadata** (`app/layout.tsx`): `title.template`, `description`, `keywords`, `openGraph`, `twitter`, `robots` (index+follow, googleBot max-preview), `alternates.canonical`, `metadataBase`.
+- **`app/robots.ts`** — allow `/`, disallow area privat (`/admin,/main,/anak,/ortu,/pengaturan,/pesanan,/store,/event,/komunitas,…`), tunjuk sitemap.
+- **`app/sitemap.ts`** — URL publik (`/`, `/daftar`, `/login`).
+- **`app/opengraph-image.tsx`** — OG image 1200×630 via `next/og` (mandiri, tanpa aset eksternal).
+- **JSON-LD** di landing (`@graph`): `Organization`, `WebSite`, `LocalBusiness`+`ChildCare` (NAP), `FAQPage`.
+- **⚠️ Wajib diisi:** objek `PROFIL` di `app/page.tsx` (alamat, kota, telp, email, jam buka) masih placeholder — ganti dengan data usaha asli agar SEO lokal akurat. Lalu: verifikasi domain di **Google Search Console** + submit `sitemap.xml`, dan buat **Google Business Profile** untuk kelas offline.
+
 ### Catatan operasional — reset password akun
 Reset password user (mis. akun admin) via **Supabase SQL Editor** bila Dashboard tak punya tombolnya:
 ```sql

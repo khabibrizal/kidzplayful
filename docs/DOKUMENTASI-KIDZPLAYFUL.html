@@ -462,6 +462,15 @@ Ortu → lihat di /kelas-saya &amp; /event (📋 Catatan) &amp; Rapor anak
 - <strong>N+1 dihindari</strong>: <code>verifikasiPesanan</code> ambil stok via <code>.in()</code> + update paralel.
 - <strong>Pagination admin</strong>: komponen <code>admin/Pager.tsx</code>; <code>/admin/pesanan</code> (20/hal) &amp; <code>/admin/langganan</code> (30/hal) via <code>?hal=N</code> + <code>range()</code>/<code>count:'exact'</code>. <code>getReminderPendaftaran</code> diberi cap <code>limit(500)</code>.
 - <strong><code>next/image</code></strong>: keranjang &amp; daftar event (dari <code>&lt;img&gt;</code>).</p>
+<h3 id="seo-landing-page-publik-metadata-structured-data">SEO — landing page publik + metadata + structured data</h3>
+<p>Karena semua halaman internal redirect ke <code>/login</code> (tak bisa di-crawl), SEO difokuskan ke halaman depan <code>/</code>.
+- <strong><code>app/page.tsx</code></strong> dirombak jadi <strong>landing page publik</strong> server-rendered (prerendered <strong>static</strong>): hero + H1 kaya kata kunci, fitur, tahap usia, FAQ, CTA, footer NAP. Aplikasi di balik login <strong>tidak diubah</strong>.
+- <strong>Metadata</strong> (<code>app/layout.tsx</code>): <code>title.template</code>, <code>description</code>, <code>keywords</code>, <code>openGraph</code>, <code>twitter</code>, <code>robots</code> (index+follow, googleBot max-preview), <code>alternates.canonical</code>, <code>metadataBase</code>.
+- <strong><code>app/robots.ts</code></strong> — allow <code>/</code>, disallow area privat (<code>/admin,/main,/anak,/ortu,/pengaturan,/pesanan,/store,/event,/komunitas,…</code>), tunjuk sitemap.
+- <strong><code>app/sitemap.ts</code></strong> — URL publik (<code>/</code>, <code>/daftar</code>, <code>/login</code>).
+- <strong><code>app/opengraph-image.tsx</code></strong> — OG image 1200×630 via <code>next/og</code> (mandiri, tanpa aset eksternal).
+- <strong>JSON-LD</strong> di landing (<code>@graph</code>): <code>Organization</code>, <code>WebSite</code>, <code>LocalBusiness</code>+<code>ChildCare</code> (NAP), <code>FAQPage</code>.
+- <strong>⚠️ Wajib diisi:</strong> objek <code>PROFIL</code> di <code>app/page.tsx</code> (alamat, kota, telp, email, jam buka) masih placeholder — ganti dengan data usaha asli agar SEO lokal akurat. Lalu: verifikasi domain di <strong>Google Search Console</strong> + submit <code>sitemap.xml</code>, dan buat <strong>Google Business Profile</strong> untuk kelas offline.</p>
 <h3 id="catatan-operasional-reset-password-akun">Catatan operasional — reset password akun</h3>
 <p>Reset password user (mis. akun admin) via <strong>Supabase SQL Editor</strong> bila Dashboard tak punya tombolnya:</p>
 <pre><code class="language-sql">update auth.users
