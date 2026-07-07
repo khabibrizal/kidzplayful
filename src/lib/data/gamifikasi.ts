@@ -4,7 +4,7 @@ import { tanggalWIB, LENCANA, lencanaByKode, tantanganHariIni, progresTantangan 
 import { progresTantanganKustom, type SyaratItem, type RowMain } from '@/lib/domain/tantangan-kustom';
 import { umurTahun } from '@/lib/domain/anak';
 
-export interface TantanganKustomRingkas { id: string; judul: string; emoji: string; done: number; total: number; selesai: boolean; }
+export interface TantanganKustomRingkas { id: string; judul: string; deskripsi: string; emoji: string; done: number; total: number; selesai: boolean; }
 
 export interface GamifikasiAnak {
   streak: number;
@@ -15,7 +15,7 @@ export interface GamifikasiAnak {
   kustom: TantanganKustomRingkas[];
 }
 
-type RawKustom = { id: string; judul: string; lencana_kode: string; syarat: SyaratItem[]; usia_min: number; usia_max: number };
+type RawKustom = { id: string; judul: string; deskripsi: string; lencana_kode: string; syarat: SyaratItem[]; usia_min: number; usia_max: number };
 
 export async function getGamifikasiAnak(anakId: string): Promise<GamifikasiAnak> {
   const today = tanggalWIB();
@@ -32,7 +32,7 @@ export async function getGamifikasiAnak(anakId: string): Promise<GamifikasiAnak>
       s.from('anak').select('streak,koin,tanggal_lahir').eq('id', anakId).single(),
       s.from('hasil_main').select('mesin,bintang,tanggal,tema_id,paket_id').eq('anak_id', anakId),
       s.from('lencana_anak').select('kode').eq('anak_id', anakId),
-      s.from('tantangan_kustom').select('id,judul,lencana_kode,syarat,usia_min,usia_max').eq('aktif', true),
+      s.from('tantangan_kustom').select('id,judul,deskripsi,lencana_kode,syarat,usia_min,usia_max').eq('aktif', true),
       s.from('tantangan_kustom_anak').select('tantangan_id').eq('anak_id', anakId),
     ]);
     if (e1) return kosong;
@@ -51,7 +51,7 @@ export async function getGamifikasiAnak(anakId: string): Promise<GamifikasiAnak>
       .map((k) => {
       const p = progresTantanganKustom(k.syarat ?? [], allRows);
       return {
-        id: k.id, judul: k.judul,
+        id: k.id, judul: k.judul, deskripsi: k.deskripsi ?? '',
         emoji: lencanaByKode(k.lencana_kode)?.emoji ?? '🏅',
         done: p.done, total: p.total,
         selesai: doneSet.has(k.id) || p.selesai,

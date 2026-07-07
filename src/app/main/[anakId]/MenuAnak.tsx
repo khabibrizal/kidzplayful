@@ -29,6 +29,7 @@ export default function MenuAnak({
 }) {
   const router = useRouter();
   const [gami, setGami] = useState<GamifikasiAnak>(gamiAwal);
+  const [misi, setMisi] = useState<GamifikasiAnak['kustom'][number] | null>(null);
   const mingguIni = pustaka.find((t) => t.tema.is_minggu_ini) ?? pustaka[0] ?? null;
   // Deep-link: jika datang dari "Pilih Game" dengan ?paket=<id>, langsung mainkan game itu.
   const findAwal = () =>
@@ -278,9 +279,11 @@ export default function MenuAnak({
           <div style={{ marginTop: 10 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--abu)', marginBottom: 4 }}>🏆 MISI</div>
             {gami.kustom.map((k) => (
-              <div key={k.id} className="kp-card" style={{ padding: 10, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, opacity: k.selesai ? 0.7 : 1 }}>
+              <div key={k.id} role="button" tabIndex={0} onClick={() => setMisi(k)}
+                onKeyDown={(e) => { if (e.key === 'Enter') setMisi(k); }}
+                className="kp-card" style={{ padding: 10, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, opacity: k.selesai ? 0.7 : 1, cursor: 'pointer' }}>
                 <span style={{ fontSize: 22 }}>{k.emoji}</span>
-                <div style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: 13, color: 'var(--tinta)' }}>{k.judul}</div>
+                <div style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: 13, color: 'var(--tinta)' }}>{k.judul} <span style={{ color: 'var(--abu)' }}>ℹ️</span></div>
                 {k.selesai
                   ? <span className="kp-coin" style={{ color: '#1c7a43' }}>✓</span>
                   : <span style={{ fontWeight: 800, color: 'var(--lavender-d)' }}>{k.done}/{k.total}</span>}
@@ -300,6 +303,21 @@ export default function MenuAnak({
       <button className="kp-btn putih" onClick={() => setPinUntuk('keluar')}
         style={{ display: 'block', margin: '4px auto 0' }}>👨‍👩‍👧 Mode Orang Tua</button>
       <div className={s.foot}>Sisa waktu hari ini: {sisaMnt} menit</div>
+      {misi && (
+        <div onClick={() => setMisi(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(43,36,64,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 85 }}>
+          <div onClick={(e) => e.stopPropagation()} className="kp-card" style={{ maxWidth: 360, width: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <span style={{ fontSize: 34 }}>{misi.emoji}</span>
+              <h3 style={{ color: 'var(--lavender-d)', fontSize: 18, flex: 1 }}>{misi.judul}</h3>
+            </div>
+            <p style={{ color: 'var(--tinta)', lineHeight: 1.6, fontSize: 14, whiteSpace: 'pre-wrap' }}>{misi.deskripsi || 'Ayo selesaikan misi ini untuk dapat hadiah! 🎁'}</p>
+            <div style={{ marginTop: 10, fontSize: 13, color: misi.selesai ? '#1c7a43' : 'var(--abu)', fontWeight: 700 }}>
+              {misi.selesai ? '✓ Sudah selesai!' : `Progres: ${misi.done}/${misi.total} syarat`}
+            </div>
+            <button className="kp-btn" style={{ width: '100%', marginTop: 14 }} onClick={() => setMisi(null)}>Tutup</button>
+          </div>
+        </div>
+      )}
       {pinUntuk && (
         <PinGate pinTersimpan={pinTersimpan}
           onSukses={() => { setPinUntuk(null); router.push('/pilih-anak'); }}
