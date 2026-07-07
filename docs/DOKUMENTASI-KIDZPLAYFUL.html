@@ -501,6 +501,10 @@ Ortu → lihat di /kelas-saya &amp; /event (📋 Catatan) &amp; Rapor anak
 <li><strong><code>catatHasil</code></strong> (<code>lib/data/skor.ts</code>) diperluas: setelah insert <code>hasil_main</code>, hitung streak (main hari-ini setelah kemarin → +1; bolong → reset 1), progres tantangan (dari main hari ini) + bonus koin 1×/hari, dan lencana baru dari agregat. Dibungkus <strong>try/catch</strong> → bila migrasi 0042 belum ada, fallback ke koin dasar (main tetap jalan). Return diperkaya <code>{streak, lencanaBaru, tantangan}</code>.</li>
 <li><strong>Tampilan:</strong> layar <strong>Reward</strong> (streak 🔥 / lencana baru 🏅 / tantangan selesai 🎯 dari nilai balik <code>catatHasil</code>), <strong>Menu Anak</strong> (chip streak + kartu tantangan hari ini + galeri lencana; live-update via <code>onGamifikasi</code>), <strong>Rapor anak</strong> (galeri 8 lencana + streak). Reader <code>lib/data/gamifikasi.ts</code> <code>getGamifikasiAnak()</code> (juga ber-fallback).</li>
 </ul>
+<h3 id="panel-gamifikasi-anak-admin-migrasi-0043">Panel Gamifikasi Anak (admin) — migrasi 0043</h3>
+<p>Admin dapat mengatur streak, koin, dan lencana tiap anak (koreksi/apresiasi).
+- <strong>Migrasi 0043</strong>: policy <code>admin update anak</code> + <code>admin kelola lencana</code> (<code>is_admin()</code>), melengkapi <code>admin baca anak</code> yang sudah ada (0006).
+- <strong>Halaman <code>/admin/anak</code></strong> (menu <strong>🧒 Anak</strong> di <code>AdminNav</code>): daftar anak (nama + email ortu) + <code>AnakGamiForm</code> (input streak &amp; koin + Simpan; chip 8 lencana untuk beri/cabut). Data <code>lib/data/admin-anak.ts</code> (<code>getAnakUntukAdmin</code>, embed <code>ortu:ortu_id(email)</code>+<code>lencana_anak</code>) + <code>admin-anak-actions.ts</code> (<code>setStreakKoin</code> — juga patok <code>streak_terakhir=hari ini</code>; <code>toggleLencana</code>).</p>
 <h3 id="catatan-operasional-reset-password-akun">Catatan operasional — reset password akun</h3>
 <p>Reset password user (mis. akun admin) via <strong>Supabase SQL Editor</strong> bila Dashboard tak punya tombolnya:</p>
 <pre><code class="language-sql">update auth.users

@@ -419,6 +419,11 @@ Kartu **"🌱 Langkah Awal"** di Beranda (`/pilih-anak`) — `components/Onboard
 - **`catatHasil`** (`lib/data/skor.ts`) diperluas: setelah insert `hasil_main`, hitung streak (main hari-ini setelah kemarin → +1; bolong → reset 1), progres tantangan (dari main hari ini) + bonus koin 1×/hari, dan lencana baru dari agregat. Dibungkus **try/catch** → bila migrasi 0042 belum ada, fallback ke koin dasar (main tetap jalan). Return diperkaya `{streak, lencanaBaru, tantangan}`.
 - **Tampilan:** layar **Reward** (streak 🔥 / lencana baru 🏅 / tantangan selesai 🎯 dari nilai balik `catatHasil`), **Menu Anak** (chip streak + kartu tantangan hari ini + galeri lencana; live-update via `onGamifikasi`), **Rapor anak** (galeri 8 lencana + streak). Reader `lib/data/gamifikasi.ts` `getGamifikasiAnak()` (juga ber-fallback).
 
+### Panel Gamifikasi Anak (admin) — migrasi 0043
+Admin dapat mengatur streak, koin, dan lencana tiap anak (koreksi/apresiasi).
+- **Migrasi 0043**: policy `admin update anak` + `admin kelola lencana` (`is_admin()`), melengkapi `admin baca anak` yang sudah ada (0006).
+- **Halaman `/admin/anak`** (menu **🧒 Anak** di `AdminNav`): daftar anak (nama + email ortu) + `AnakGamiForm` (input streak & koin + Simpan; chip 8 lencana untuk beri/cabut). Data `lib/data/admin-anak.ts` (`getAnakUntukAdmin`, embed `ortu:ortu_id(email)`+`lencana_anak`) + `admin-anak-actions.ts` (`setStreakKoin` — juga patok `streak_terakhir=hari ini`; `toggleLencana`).
+
 ### Catatan operasional — reset password akun
 Reset password user (mis. akun admin) via **Supabase SQL Editor** bila Dashboard tak punya tombolnya:
 ```sql
