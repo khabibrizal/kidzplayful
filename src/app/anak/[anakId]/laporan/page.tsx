@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { laporanAnak, type BarisHasil } from '@/lib/domain/laporan-anak';
 import { getCatatanAnak } from '@/lib/data/catatan';
 import { getSertifikatAnak } from '@/lib/data/sertifikat';
+import { getGamifikasiAnak } from '@/lib/data/gamifikasi';
 import { formatTanggal } from '@/lib/format';
 import CatatanCard from '@/components/CatatanCard';
 
@@ -25,10 +26,11 @@ export default async function LaporanAnakPage({ params }: { params: Promise<{ an
   const { data: anak } = await supabase.from('anak').select('nama').eq('id', anakId).single();
   if (!anak) redirect('/pilih-anak');
   // 3 query independen (semua by anakId) → jalankan paralel
-  const [{ data: rows }, catatan, sertifikat] = await Promise.all([
+  const [{ data: rows }, catatan, sertifikat, gami] = await Promise.all([
     supabase.from('hasil_main').select('mesin,area_skill,bintang,durasi_detik,selesai').eq('anak_id', anakId),
     getCatatanAnak(anakId),
     getSertifikatAnak(anakId),
+    getGamifikasiAnak(anakId),
   ]);
   const r = laporanAnak((rows ?? []) as unknown as BarisHasil[]);
 
@@ -57,6 +59,23 @@ export default async function LaporanAnakPage({ params }: { params: Promise<{ an
       {r.totalSesi > 0 && (
         <div style={{ fontSize: 12, color: 'var(--abu)', textAlign: 'center', marginBottom: 14 }}>⏱ Rata-rata {r.rataDetik} detik/sesi · tercepat {r.tercepatDetik} detik</div>
       )}
+
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '8px 0' }}>LENCANA & STREAK</div>
+      <div className="kp-card" style={{ marginBottom: 8 }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+          <span className="kp-coin" style={{ color: '#d1660a' }}>🔥 Streak {gami.streak} hari</span>
+          <span className="kp-coin" style={{ color: '#7c5cd6' }}>🏅 {gami.jumlahLencana}/{gami.lencana.length} lencana</span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+          {gami.lencana.map((l) => (
+            <div key={l.kode} title={l.syarat} style={{ textAlign: 'center', opacity: l.dapat ? 1 : 0.4 }}>
+              <div style={{ fontSize: 30, filter: l.dapat ? 'none' : 'grayscale(1)' }}>{l.emoji}</div>
+              <div style={{ fontSize: 10, color: l.dapat ? 'var(--tinta)' : 'var(--abu)', fontWeight: l.dapat ? 700 : 500, lineHeight: 1.2 }}>{l.judul}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '8px 0' }}>LATIHAN PER AREA</div>
       {Object.keys(LABEL).map((k) => {
         const n = r.perArea[k] ?? 0;

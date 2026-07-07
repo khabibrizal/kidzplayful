@@ -17,11 +17,14 @@ import Reward from './Reward';
 import { catatHasil } from '@/lib/data/skor';
 import { hitungBintang } from '@/lib/domain/skor';
 
+type HasilCatat = Awaited<ReturnType<typeof catatHasil>>;
+
 export default function GameRunner({
-  paket, anakId, temaId, onKeluar, onKoin,
-}: { paket: Paket; anakId: string; temaId: string; onKeluar: () => void; onKoin: (k: number) => void }) {
+  paket, anakId, temaId, onKeluar, onKoin, onGamifikasi,
+}: { paket: Paket; anakId: string; temaId: string; onKeluar: () => void; onKoin: (k: number) => void; onGamifikasi?: (r: HasilCatat) => void }) {
   const [run, setRun] = useState(0);              // remount engine untuk "main lagi"
   const [hasil, setHasil] = useState<HasilSelesai | null>(null);
+  const [extra, setExtra] = useState<HasilCatat | null>(null); // streak/lencana/tantangan dari server
   const [detik, setDetik] = useState(0);          // timer hidup saat bermain
 
   useEffect(() => {
@@ -40,6 +43,8 @@ export default function GameRunner({
         benar: h.benar, total: h.total, durasiDetik: h.durasiDetik, targetDetik: paket.target_detik ?? null,
       });
       onKoin(r.koin);
+      setExtra(r);
+      onGamifikasi?.(r);
     } catch { /* offline/Tahap berikut: antrikan; untuk M2 abaikan diam */ }
   }
 
@@ -51,7 +56,8 @@ export default function GameRunner({
       <Reward
         bintang={bintang} bonus={bonus} targetDetik={target || undefined}
         benar={hasil.benar} total={hasil.total} durasiDetik={hasil.durasiDetik}
-        onLagi={() => { setHasil(null); setRun(run + 1); }}
+        streak={extra?.streak} lencanaBaru={extra?.lencanaBaru} tantangan={extra?.tantangan}
+        onLagi={() => { setHasil(null); setExtra(null); setRun(run + 1); }}
         onSelesai={onKeluar}
       />
     );

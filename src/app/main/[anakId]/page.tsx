@@ -8,6 +8,7 @@ import { kategoriUsia } from '@/lib/domain/usia';
 import { getVideoByKategori } from '@/lib/data/video';
 import { getKelasAktifCached } from '@/lib/data/publik';
 import { getFavoritIds } from '@/lib/data/favorit';
+import { getGamifikasiAnak } from '@/lib/data/gamifikasi';
 import MenuAnak from './MenuAnak';
 
 export default async function MainPage({ params, searchParams }: { params: Promise<{ anakId: string }>; searchParams: Promise<{ paket?: string }> }) {
@@ -19,12 +20,13 @@ export default async function MainPage({ params, searchParams }: { params: Promi
   const { data: { user: u } } = await supabase.auth.getUser();
 
   // Ambil semua data sisanya paralel
-  const [video, pustaka, kelasList, favIds, { data: prof }] = await Promise.all([
+  const [video, pustaka, kelasList, favIds, { data: prof }, gami] = await Promise.all([
     getVideoByKategori(kategoriUsia(umur)),
     getPustaka(),
     getKelasAktifCached(),
     getFavoritIds(),
     supabase.from('profiles').select('pin_ortu').eq('id', u!.id).single(),
+    getGamifikasiAnak(anakId),
   ]);
   if (pustaka.length === 0) redirect('/pilih-anak');
 
@@ -37,6 +39,7 @@ export default async function MainPage({ params, searchParams }: { params: Promi
       paketAwal={paketAwal}
       kelasList={kelasList}
       favIds={favIds}
+      gamiAwal={gami}
     />
   );
 }

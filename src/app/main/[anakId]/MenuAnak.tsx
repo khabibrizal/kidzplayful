@@ -15,17 +15,20 @@ import { catatRiwayatKelas } from '@/lib/data/riwayat-actions';
 import { waktuHabis, kunciHari, sisaDetik } from '@/lib/domain/waktu';
 import Pewi from '@/components/ui/Pewi';
 import Logo from '@/components/Logo';
+import type { GamifikasiAnak } from '@/lib/data/gamifikasi';
 import s from './main.module.css';
 
 type Layar = 'menu' | 'kelas' | 'kelas-detail' | 'daftar' | 'pustaka' | 'video' | 'main' | 'istirahat';
 
 export default function MenuAnak({
-  anak, pustaka, pinTersimpan, video, paketAwal, kelasList, favIds,
+  anak, pustaka, pinTersimpan, video, paketAwal, kelasList, favIds, gamiAwal,
 }: {
   anak: { id: string; nama: string; koin: number; batas_menit: number };
   pustaka: TemaLengkap[]; pinTersimpan: string | null; video: Video[]; paketAwal?: string; kelasList: KelasBermain[]; favIds: string[];
+  gamiAwal: GamifikasiAnak;
 }) {
   const router = useRouter();
+  const [gami, setGami] = useState<GamifikasiAnak>(gamiAwal);
   const mingguIni = pustaka.find((t) => t.tema.is_minggu_ini) ?? pustaka[0] ?? null;
   // Deep-link: jika datang dari "Pilih Game" dengan ?paket=<id>, langsung mainkan game itu.
   const findAwal = () =>
@@ -63,6 +66,14 @@ export default function MenuAnak({
     setTemaTerpilih(tema); setAktif(p); setLayar('main');
   }
 
+  // perbarui streak/lencana/tantangan di menu setelah selesai main
+  function terapkanGami(r: { streak: number; lencanaBaru: { kode: string }[]; tantangan: { judul: string; emoji: string; target: number; progress: number; selesai: boolean } }) {
+    setGami((g) => {
+      const lencana = g.lencana.map((l) => ({ ...l, dapat: l.dapat || r.lencanaBaru.some((b) => b.kode === l.kode) }));
+      return { ...g, streak: r.streak, lencana, jumlahLencana: lencana.filter((l) => l.dapat).length, tantangan: { ...g.tantangan, ...r.tantangan } };
+    });
+  }
+
   if (layar === 'istirahat') {
     return (
       <div className={s.wrap}>
@@ -90,7 +101,7 @@ export default function MenuAnak({
           <div className="kp-coin">🪙 {koin}</div>
         </div>
         <GameRunner paket={aktif} anakId={anak.id} temaId={temaTerpilih.tema.id}
-          onKeluar={() => setLayar('daftar')} onKoin={setKoin} />
+          onKeluar={() => setLayar('daftar')} onKoin={setKoin} onGamifikasi={terapkanGami} />
       </div>
     );
   }
@@ -240,6 +251,31 @@ export default function MenuAnak({
         <Logo height={40} />
         <h2 style={{ color: 'var(--lavender-d)', margin: '10px 0 2px' }}>Hai, {anak.nama}! 👋</h2>
       </div>
+
+      {/* Gamifikasi: streak + tantangan harian + lencana */}
+      <div style={{ margin: '8px 0 2px' }}>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 8, flexWrap: 'wrap' }}>
+          <span className="kp-coin" style={{ color: '#d1660a' }}>🔥 {gami.streak} hari</span>
+          <span className="kp-coin" style={{ color: '#7c5cd6' }}>🏅 {gami.jumlahLencana}/{gami.lencana.length}</span>
+        </div>
+        <div className="kp-card" style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 26 }}>{gami.tantangan.emoji}</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 11, color: 'var(--abu)', fontWeight: 700 }}>TANTANGAN HARI INI</div>
+            <div style={{ fontWeight: 700, color: 'var(--tinta)', fontSize: 14 }}>{gami.tantangan.judul}</div>
+          </div>
+          {gami.tantangan.selesai
+            ? <span className="kp-coin" style={{ color: '#1c7a43' }}>✓</span>
+            : <span style={{ fontWeight: 800, color: 'var(--lavender-d)' }}>{gami.tantangan.progress}/{gami.tantangan.target}</span>}
+        </div>
+        <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginTop: 8, flexWrap: 'wrap' }}>
+          {gami.lencana.map((l) => (
+            <span key={l.kode} title={l.dapat ? l.judul : `${l.judul} — ${l.syarat}`}
+              style={{ fontSize: 22, filter: l.dapat ? 'none' : 'grayscale(1)', opacity: l.dapat ? 1 : 0.35 }}>{l.emoji}</span>
+          ))}
+        </div>
+      </div>
+
       <div className={s.menu}>
         <button className="kp-tile mint" onClick={() => setLayar('kelas')}>
           <span className="emo">🎈</span><div>Main Hari Ini<small>Yuk main!</small></div>

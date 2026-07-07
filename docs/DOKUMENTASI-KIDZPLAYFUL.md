@@ -413,6 +413,12 @@ Kartu **"🌱 Langkah Awal"** di Beranda (`/pilih-anak`) — `components/Onboard
 - Sumber kebenaran: `adaAnak` (jumlah anak), `adaAktivitas` (count `hasil_main` via embedded `anak!inner(ortu_id)`), `statusAktif` (langganan). Langkah "coba game" terkunci 🔒 sampai ada anak; link ke `/main/[id]` atau `/pilih-game/[id]` sesuai `mode_default`.
 - Kartu **hilang otomatis** saat aktivasi inti tercapai (ada anak **dan** pernah main). Langkah 1 menaut ke `#tambah-anak` (form tambah anak diberi anchor).
 
+### Gamifikasi retensi: streak + lencana + tantangan harian — migrasi 0042 (Roadmap Fase 2 #10)
+- **Migrasi 0042**: kolom `anak.streak` & `anak.streak_terakhir` (date); tabel `lencana_anak(anak_id,kode,didapat_pada)` & `tantangan_anak(anak_id,tanggal,kode,selesai)` (RLS: ortu kelola milik anaknya via `anak.ortu_id = auth.uid()`).
+- **Logika murni** `lib/domain/gamifikasi.ts`: `tanggalWIB()` (kalender WIB), **8 lencana** (`LENCANA`+`evaluasiLencana`: pertama/rajin/juara/koin100/streak3/streak7/sempurna/penjelajah), **tantangan harian rotasi** (`TANTANGAN_POOL` 4 item, `tantanganHariIni` deterministik by tanggal, `progresTantangan`, `BONUS_TANTANGAN=5`).
+- **`catatHasil`** (`lib/data/skor.ts`) diperluas: setelah insert `hasil_main`, hitung streak (main hari-ini setelah kemarin → +1; bolong → reset 1), progres tantangan (dari main hari ini) + bonus koin 1×/hari, dan lencana baru dari agregat. Dibungkus **try/catch** → bila migrasi 0042 belum ada, fallback ke koin dasar (main tetap jalan). Return diperkaya `{streak, lencanaBaru, tantangan}`.
+- **Tampilan:** layar **Reward** (streak 🔥 / lencana baru 🏅 / tantangan selesai 🎯 dari nilai balik `catatHasil`), **Menu Anak** (chip streak + kartu tantangan hari ini + galeri lencana; live-update via `onGamifikasi`), **Rapor anak** (galeri 8 lencana + streak). Reader `lib/data/gamifikasi.ts` `getGamifikasiAnak()` (juga ber-fallback).
+
 ### Catatan operasional — reset password akun
 Reset password user (mis. akun admin) via **Supabase SQL Editor** bila Dashboard tak punya tombolnya:
 ```sql
