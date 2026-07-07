@@ -21,15 +21,15 @@ const BASE = 'https://www.kidzplayful.com';
 export const metadata: Metadata = {
   title: 'Kelas Bermain & Game Edukasi Anak Usia 0–6 Tahun',
   description:
-    'KidzPlayful: kelas bermain (playgroup) online & offline plus game edukasi anak dengan screen time terkontrol. Melatih sensorik, motorik, dan koding anak. Coba gratis 14 hari.',
+    'KidzPlayful: kelas bermain online & offline plus game edukasi anak dengan screen time terkontrol. Melatih sensorik, motorik, dan koding anak. Coba gratis 14 hari.',
   alternates: { canonical: '/' },
 };
 
 const FITUR = [
   { emo: '🎮', judul: 'Game edukasi anak', teks: 'Puluhan game melatih sensorik, motorik halus, kognitif, bahasa, hingga berpikir komputasional (koding) — dirancang per usia.' },
   { emo: '⏱️', judul: 'Screen time terkontrol', teks: 'Durasi & konten terukur, tanpa iklan. Setiap sesi punya tujuan belajar, aman untuk anak.' },
-  { emo: '🎈', judul: 'Kelas bermain online & offline', teks: 'Ikuti event kelas bermain (playgroup) di lokasi kami, dan lanjutkan aktivitasnya lewat aplikasi di rumah.' },
-  { emo: '📊', judul: 'Rapor perkembangan & e-sertifikat', teks: 'Pantau tumbuh kembang anak per aspek PAUD, lengkap dengan catatan guru dan e-sertifikat kelas.' },
+  { emo: '🎈', judul: 'Kelas bermain online & offline', teks: 'Ikuti event kelas bermain di lokasi kami, dan lanjutkan aktivitasnya lewat aplikasi di rumah.' },
+  { emo: '📊', judul: 'Catatan perkembangan & e-sertifikat', teks: 'Pantau tumbuh kembang anak per aspek PAUD, lengkap dengan catatan guru dan e-sertifikat kelas.' },
 ];
 
 const USIA = [
@@ -41,8 +41,8 @@ const USIA = [
 const FAQ = [
   { t: 'Apa itu KidzPlayful?', j: 'KidzPlayful adalah Play-Based Learning Ecosystem yang menghubungkan pengalaman bermain anak di rumah, kelas, dan dunia digital dalam satu perjalanan tumbuh kembang yang terukur — tempat orang tua menemukan inspirasi untuk mendampingi anak setiap hari.' },
   { t: 'Untuk usia berapa?', j: 'Untuk anak usia 0–6 tahun. Konten dan tingkat kesulitan game menyesuaikan usia anak: 0–2 tahun (sensorik-motorik), 2–4 tahun (kognitif-bahasa), dan 4–6 tahun (koding/computational thinking).' },
-  { t: 'Apakah aman untuk screen time anak?', j: 'Ya. Setiap sesi dirancang dengan tujuan belajar, tanpa iklan, dan durasinya terkontrol. Orang tua dapat memantau aktivitas serta perkembangan anak lewat rapor.' },
-  { t: 'Apakah ada kelas bermain offline?', j: `Ada. Kami mengadakan event kelas bermain (playgroup) offline${PROFIL.kota ? ` di ${PROFIL.kota}` : ''}. Setiap peserta mendapatkan catatan perkembangan dan e-sertifikat, lalu bisa melanjutkan aktivitas di rumah lewat aplikasi.` },
+  { t: 'Apakah aman untuk screen time anak?', j: 'Ya. Setiap sesi dirancang dengan tujuan belajar, tanpa iklan, dan durasinya terkontrol. Orang tua dapat memantau aktivitas serta perkembangan anak lewat catatan perkembangan.' },
+  { t: 'Apakah ada kelas bermain offline?', j: `Ada. Kami mengadakan event kelas bermain offline${PROFIL.kota ? ` di ${PROFIL.kota}` : ''}. Setiap peserta mendapatkan catatan perkembangan dan e-sertifikat, lalu bisa melanjutkan aktivitas di rumah lewat aplikasi.` },
   { t: 'Berapa biayanya?', j: 'Anda bisa mencoba gratis selama 14 hari tanpa kartu kredit. Setelah itu tersedia langganan bulanan dengan harga terjangkau.' },
 ];
 
@@ -71,7 +71,7 @@ function jsonLd() {
         logo: `${BASE}/logo.png`,
         email: PROFIL.email,
         telephone: PROFIL.telp,
-        description: 'Kelas bermain (playgroup) & game edukasi anak usia 0–6 tahun.',
+        description: 'Play-Based Learning Ecosystem untuk anak usia 0–6 tahun.',
       }),
       {
         '@type': 'WebSite',
@@ -132,7 +132,7 @@ export default function Home() {
             Kelas Bermain & Game Edukasi Anak — Main Sambil Belajar
           </h1>
           <p style={{ fontSize: 'clamp(15px, 2.4vw, 19px)', color: 'var(--tinta)', maxWidth: 680, margin: '0 auto 26px', lineHeight: 1.6 }}>
-            KidzPlayful memadukan <b>kelas bermain (playgroup)</b> online &amp; offline dengan <b>game edukasi</b> ber-<b>screen time terkontrol</b> — melatih sensorik, motorik, kognitif, hingga berpikir komputasional (koding).
+            KidzPlayful memadukan <b>kelas bermain</b> online &amp; offline dengan <b>game edukasi</b> ber-<b>screen time terkontrol</b> — melatih sensorik, motorik, kognitif, hingga berpikir komputasional (koding).
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
             <a href="/daftar" className="kp-btn mint">Mulai Gratis 14 Hari ▶</a>
@@ -204,7 +204,7 @@ export default function Home() {
             {[PROFIL.alamat, PROFIL.kota, PROFIL.provinsi, PROFIL.kodePos].filter(Boolean).join(', ')}<br />
             Telp/WA: {PROFIL.telp}{PROFIL.email ? ` · ${PROFIL.email}` : ''}
           </p>
-          <p style={{ marginTop: 8 }}>© {new Date().getFullYear()} {PROFIL.nama}. Kelas bermain &amp; game edukasi anak.</p>
+          <p style={{ marginTop: 8 }}>© {new Date().getFullYear()} {PROFIL.nama}. Play-Based Learning Ecosystem.</p>
         </footer>
       </main>
     </>

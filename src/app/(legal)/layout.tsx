@@ -29,7 +29,7 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
               <Link key={t.href} href={t.href} style={{ color: 'var(--lavender-d)', textDecoration: 'none', fontWeight: 600 }}>{t.label}</Link>
             ))}
           </div>
-          <div>© 2026 {PROFIL.nama} · Kelas bermain &amp; game edukasi anak · {PROFIL.kota}, {PROFIL.provinsi}</div>
+          <div>© 2026 {PROFIL.nama} · Play-Based Learning Ecosystem · {PROFIL.kota}, {PROFIL.provinsi}</div>
         </div>
       </footer>
     </div>
