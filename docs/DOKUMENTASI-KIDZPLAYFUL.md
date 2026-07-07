@@ -401,6 +401,12 @@ Halaman konten publik untuk memperkuat SEO (menambah halaman yang bisa di-crawl 
 - **Filter pencarian** di `/artikel`: form GET `?q=` → `getArtikelTerbit({ q })` (`ilike` judul/ringkasan, karakter pengganggu dibersihkan).
 - **Halaman artikel sadar login** (`/artikel` & `/artikel/[slug]` cek `getUser()`): saat **sudah login**, CTA "Coba Gratis"/"Daftar Gratis" disembunyikan, logo + tombol mengarah ke `/pilih-anak`, dan detail menampilkan tombol "← Kembali ke daftar artikel". Pengunjung anonim tetap melihat CTA pemasaran.
 
+### Halaman legal & publik (Roadmap Fase 0 #1)
+Halaman statis publik (server-rendered, prerendered **static**) via route group `src/app/(legal)/` dengan `layout.tsx` bersama (header logo + footer link legal):
+- `/kebijakan-privasi`, `/syarat-ketentuan`, `/tentang`, `/kontak`. Tiap halaman punya `metadata` (title/description/canonical) sendiri.
+- Identitas & kontak di `lib/profil.ts` (`PROFIL`, `WA_LINK`, `LEGAL_DIPERBARUI`); pengelola = brand "KidzPlayful", kontak = WhatsApp **+62 822-3368-4933** (tanpa email). Gaya prosa bersama di `(legal)/gaya.ts`.
+- Privasi disesuaikan data nyata app (akun ortu, profil anak, hasil main, bukti transfer manual, analitik anonim; akun dibuat orang tua/wali). Tautan legal ditambah di footer landing + `sitemap.xml`.
+
 ### Catatan operasional — reset password akun
 Reset password user (mis. akun admin) via **Supabase SQL Editor** bila Dashboard tak punya tombolnya:
 ```sql

@@ -484,6 +484,11 @@ Ortu → lihat di /kelas-saya &amp; /event (📋 Catatan) &amp; Rapor anak
 - <strong>Kartu "📖 Artikel &amp; Tips" di Beranda</strong> (<code>/pilih-anak</code>): 3 artikel terbaru (<code>getArtikelTerbit({ limit: 3 })</code>) + link "Lihat semua" → <code>/artikel</code>. Tak ditaruh di <code>BottomNav</code> (sudah penuh 6 item).
 - <strong>Filter pencarian</strong> di <code>/artikel</code>: form GET <code>?q=</code> → <code>getArtikelTerbit({ q })</code> (<code>ilike</code> judul/ringkasan, karakter pengganggu dibersihkan).
 - <strong>Halaman artikel sadar login</strong> (<code>/artikel</code> &amp; <code>/artikel/[slug]</code> cek <code>getUser()</code>): saat <strong>sudah login</strong>, CTA "Coba Gratis"/"Daftar Gratis" disembunyikan, logo + tombol mengarah ke <code>/pilih-anak</code>, dan detail menampilkan tombol "← Kembali ke daftar artikel". Pengunjung anonim tetap melihat CTA pemasaran.</p>
+<h3 id="halaman-legal-publik-roadmap-fase-0-1">Halaman legal &amp; publik (Roadmap Fase 0 #1)</h3>
+<p>Halaman statis publik (server-rendered, prerendered <strong>static</strong>) via route group <code>src/app/(legal)/</code> dengan <code>layout.tsx</code> bersama (header logo + footer link legal):
+- <code>/kebijakan-privasi</code>, <code>/syarat-ketentuan</code>, <code>/tentang</code>, <code>/kontak</code>. Tiap halaman punya <code>metadata</code> (title/description/canonical) sendiri.
+- Identitas &amp; kontak di <code>lib/profil.ts</code> (<code>PROFIL</code>, <code>WA_LINK</code>, <code>LEGAL_DIPERBARUI</code>); pengelola = brand "KidzPlayful", kontak = WhatsApp <strong>+62 822-3368-4933</strong> (tanpa email). Gaya prosa bersama di <code>(legal)/gaya.ts</code>.
+- Privasi disesuaikan data nyata app (akun ortu, profil anak, hasil main, bukti transfer manual, analitik anonim; akun dibuat orang tua/wali). Tautan legal ditambah di footer landing + <code>sitemap.xml</code>.</p>
 <h3 id="catatan-operasional-reset-password-akun">Catatan operasional — reset password akun</h3>
 <p>Reset password user (mis. akun admin) via <strong>Supabase SQL Editor</strong> bila Dashboard tak punya tombolnya:</p>
 <pre><code class="language-sql">update auth.users

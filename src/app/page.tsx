@@ -193,8 +193,12 @@ export default function Home() {
         {/* Footer / NAP */}
         <footer style={{ ...seksi, textAlign: 'center', padding: '28px 20px', color: 'var(--abu)', fontSize: 13, lineHeight: 1.7 }}>
           <Logo height={32} />
-          <p style={{ marginTop: 10 }}>
-            <a href="/artikel" style={{ color: 'var(--lavender-d)', fontWeight: 700, textDecoration: 'none' }}>Artikel &amp; Tips Bermain Anak</a>
+          <p style={{ marginTop: 10, display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <a href="/artikel" style={{ color: 'var(--lavender-d)', fontWeight: 700, textDecoration: 'none' }}>Artikel</a>
+            <a href="/tentang" style={{ color: 'var(--lavender-d)', fontWeight: 700, textDecoration: 'none' }}>Tentang</a>
+            <a href="/kontak" style={{ color: 'var(--lavender-d)', fontWeight: 700, textDecoration: 'none' }}>Kontak</a>
+            <a href="/kebijakan-privasi" style={{ color: 'var(--lavender-d)', fontWeight: 700, textDecoration: 'none' }}>Privasi</a>
+            <a href="/syarat-ketentuan" style={{ color: 'var(--lavender-d)', fontWeight: 700, textDecoration: 'none' }}>S&amp;K</a>
           </p>
           <p style={{ marginTop: 6 }}>
             {[PROFIL.alamat, PROFIL.kota, PROFIL.provinsi, PROFIL.kodePos].filter(Boolean).join(', ')}<br />
