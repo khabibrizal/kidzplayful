@@ -407,6 +407,12 @@ Halaman statis publik (server-rendered, prerendered **static**) via route group 
 - Identitas & kontak di `lib/profil.ts` (`PROFIL`, `WA_LINK`, `LEGAL_DIPERBARUI`); pengelola = brand "KidzPlayful", kontak = WhatsApp **+62 822-3368-4933** (tanpa email). Gaya prosa bersama di `(legal)/gaya.ts`.
 - Privasi disesuaikan data nyata app (akun ortu, profil anak, hasil main, bukti transfer manual, analitik anonim; akun dibuat orang tua/wali). Tautan legal ditambah di footer landing + `sitemap.xml`.
 
+### Onboarding ortu baru (Roadmap Fase 0 #6)
+Kartu **"🌱 Langkah Awal"** di Beranda (`/pilih-anak`) — `components/OnboardingChecklist.tsx` (server, data-driven, bukan flag palsu):
+- 3 langkah: (1) Tambah profil anak, (2) Coba game pertama, (3) Aktifkan langganan — dengan progres `(N/3)` & centang.
+- Sumber kebenaran: `adaAnak` (jumlah anak), `adaAktivitas` (count `hasil_main` via embedded `anak!inner(ortu_id)`), `statusAktif` (langganan). Langkah "coba game" terkunci 🔒 sampai ada anak; link ke `/main/[id]` atau `/pilih-game/[id]` sesuai `mode_default`.
+- Kartu **hilang otomatis** saat aktivasi inti tercapai (ada anak **dan** pernah main). Langkah 1 menaut ke `#tambah-anak` (form tambah anak diberi anchor).
+
 ### Catatan operasional — reset password akun
 Reset password user (mis. akun admin) via **Supabase SQL Editor** bila Dashboard tak punya tombolnya:
 ```sql

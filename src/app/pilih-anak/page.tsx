@@ -7,6 +7,7 @@ import { getStatusPendaftaranSaya, getPesertaPerEvent } from '@/lib/data/event';
 import { getEventTampilCached } from '@/lib/data/publik';
 import { getArtikelTerbit } from '@/lib/data/artikel';
 import EventCarousel from '@/components/EventCarousel';
+import OnboardingChecklist from '@/components/OnboardingChecklist';
 import BottomNav from '@/components/BottomNav';
 import { tambahAnak } from './actions';
 import Pewi from '@/components/ui/Pewi';
@@ -17,7 +18,7 @@ export default async function PilihAnakPage() {
   if (!user) redirect('/login');
 
   // Jalankan paralel (hindari round-trip berurutan ke Supabase)
-  const [{ data: anakList }, { data: lang }, { data: prof }, events, statusEvent, peserta, artikel] = await Promise.all([
+  const [{ data: anakList }, { data: lang }, { data: prof }, events, statusEvent, peserta, artikel, { count: jumlahAktivitas }] = await Promise.all([
     supabase.from('anak').select('id,nama,tanggal_lahir,mode_default,jenis_kelamin').order('created_at'),
     supabase.from('langganan').select('trial_mulai,aktif_sampai').eq('ortu_id', user.id).single(),
     supabase.from('profiles').select('nama_tampilan').eq('id', user.id).single(),
@@ -25,8 +26,11 @@ export default async function PilihAnakPage() {
     getStatusPendaftaranSaya(),
     getPesertaPerEvent(),
     getArtikelTerbit({ limit: 3 }),
+    supabase.from('hasil_main').select('id, anak!inner(ortu_id)', { count: 'exact', head: true }).eq('anak.ortu_id', user.id),
   ]);
   const jumlahAnak = (anakList ?? []).length;
+  const anak0 = (anakList ?? [])[0];
+  const gameHref = anak0 ? (anak0.mode_default === 'ortu' ? `/pilih-game/${anak0.id}` : `/main/${anak0.id}`) : null;
   const sisaMap: Record<string, number> = {};
   for (const ev of events) sisaMap[ev.id] = jumlahAnak - (peserta[ev.id]?.length ?? 0);
 
@@ -50,6 +54,13 @@ export default async function PilihAnakPage() {
         Status langganan: <b>{status}</b>
         {!bolehAkses(status) && ' — silakan perpanjang untuk lanjut.'}
       </p>
+
+      <OnboardingChecklist
+        adaAnak={jumlahAnak > 0}
+        adaAktivitas={(jumlahAktivitas ?? 0) > 0}
+        statusAktif={status === 'aktif'}
+        gameHref={gameHref}
+      />
 
       <Link href="/favorit" className="kp-btn putih"
         style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
@@ -88,7 +99,7 @@ export default async function PilihAnakPage() {
         </div>
       )}
 
-      <details className="kp-card" style={{ marginTop: 16 }}>
+      <details id="tambah-anak" className="kp-card" style={{ marginTop: 16, scrollMarginTop: 16 }}>
         <summary className="kp-btn putih" style={{ display: 'inline-block', textAlign: 'center' }}>➕ Tambah data anak</summary>
         <form action={tambahAnak} style={{ marginTop: 12 }}>
           <input className="kp-input" name="nama" placeholder="Nama anak" required />

@@ -489,6 +489,11 @@ Ortu → lihat di /kelas-saya &amp; /event (📋 Catatan) &amp; Rapor anak
 - <code>/kebijakan-privasi</code>, <code>/syarat-ketentuan</code>, <code>/tentang</code>, <code>/kontak</code>. Tiap halaman punya <code>metadata</code> (title/description/canonical) sendiri.
 - Identitas &amp; kontak di <code>lib/profil.ts</code> (<code>PROFIL</code>, <code>WA_LINK</code>, <code>LEGAL_DIPERBARUI</code>); pengelola = brand "KidzPlayful", kontak = WhatsApp <strong>+62 822-3368-4933</strong> (tanpa email). Gaya prosa bersama di <code>(legal)/gaya.ts</code>.
 - Privasi disesuaikan data nyata app (akun ortu, profil anak, hasil main, bukti transfer manual, analitik anonim; akun dibuat orang tua/wali). Tautan legal ditambah di footer landing + <code>sitemap.xml</code>.</p>
+<h3 id="onboarding-ortu-baru-roadmap-fase-0-6">Onboarding ortu baru (Roadmap Fase 0 #6)</h3>
+<p>Kartu <strong>"🌱 Langkah Awal"</strong> di Beranda (<code>/pilih-anak</code>) — <code>components/OnboardingChecklist.tsx</code> (server, data-driven, bukan flag palsu):
+- 3 langkah: (1) Tambah profil anak, (2) Coba game pertama, (3) Aktifkan langganan — dengan progres <code>(N/3)</code> &amp; centang.
+- Sumber kebenaran: <code>adaAnak</code> (jumlah anak), <code>adaAktivitas</code> (count <code>hasil_main</code> via embedded <code>anak!inner(ortu_id)</code>), <code>statusAktif</code> (langganan). Langkah "coba game" terkunci 🔒 sampai ada anak; link ke <code>/main/[id]</code> atau <code>/pilih-game/[id]</code> sesuai <code>mode_default</code>.
+- Kartu <strong>hilang otomatis</strong> saat aktivasi inti tercapai (ada anak <strong>dan</strong> pernah main). Langkah 1 menaut ke <code>#tambah-anak</code> (form tambah anak diberi anchor).</p>
 <h3 id="catatan-operasional-reset-password-akun">Catatan operasional — reset password akun</h3>
 <p>Reset password user (mis. akun admin) via <strong>Supabase SQL Editor</strong> bila Dashboard tak punya tombolnya:</p>
 <pre><code class="language-sql">update auth.users
