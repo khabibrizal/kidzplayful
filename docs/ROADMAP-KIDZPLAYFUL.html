@@ -1,0 +1,199 @@
+<!DOCTYPE html><html lang="id"><head><meta charset="utf-8">
+<title>Dokumentasi KidzPlayful</title><style>
+@page { size: A4; margin: 15mm 14mm; }
+* { box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; color:#222; line-height:1.55; font-size:11pt; }
+h1 { font-size:20pt; color:#5a2ca0; border-bottom:3px solid #efe7fb; padding-bottom:6px; }
+h2 { font-size:14pt; color:#3a78d6; margin-top:20px; border-bottom:1px solid #eee; padding-bottom:3px; page-break-after:avoid; }
+h3 { font-size:12pt; color:#2ba8a3; margin-top:14px; page-break-after:avoid; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:9.5pt; page-break-inside:avoid; }
+th,td { border:1px solid #ddd; padding:5px 8px; text-align:left; vertical-align:top; }
+th { background:#f4f0fb; color:#444; }
+code { background:#f3f3f7; padding:1px 5px; border-radius:4px; font-size:9pt; color:#a13; }
+pre { background:#f7f7fb; border:1px solid #e6e6ee; border-radius:8px; padding:10px 12px; overflow:auto; font-size:8.5pt; line-height:1.4; page-break-inside:avoid; white-space:pre-wrap; }
+pre code { background:none; color:#333; padding:0; }
+blockquote { border-left:4px solid #ffc93c; background:#fffdf3; margin:10px 0; padding:6px 14px; color:#665; }
+hr { border:none; border-top:1px solid #e2e2ea; margin:16px 0; }
+a { color:#3a78d6; text-decoration:none; }
+ul,ol { margin:8px 0 8px 6px; padding-left:20px; }
+li { margin:3px 0; }
+</style></head>
+<body><h1 id="roadmap-pengembangan-kidzplayful">Roadmap Pengembangan KidzPlayful</h1>
+<p><strong>Dokumen rencana kerja fitur mendatang</strong>
+Disusun: 6 Juli 2026 · Status produk: <strong>pra-launch</strong> · Platform: Next.js 16 + Supabase (Vercel), www.kidzplayful.com</p>
+<hr />
+<h2 id="1-ringkasan-eksekutif">1. Ringkasan Eksekutif</h2>
+<p>KidzPlayful sudah memiliki fondasi produk yang lengkap: aplikasi kelas bermain &amp; game edukasi anak usia 0–6 tahun, lengkap dengan langganan, 11 engine game, rapor perkembangan, e-sertifikat, event kelas bermain, toko, komunitas, dashboard admin, REST API mobile, dan paket SEO (landing + blog + Search Console).</p>
+<p>Karena produk <strong>belum diluncurkan resmi</strong>, roadmap ini disusun bukan sebagai "kerjakan semua sekaligus", melainkan <strong>berurutan berdasarkan prioritas</strong>: dahulukan hal yang menghalangi peluncuran &amp; membangun kepercayaan, lalu mesin monetisasi &amp; operasi, kemudian pertumbuhan, dan terakhir retensi jangka panjang. Dengan urutan ini, keempat tujuan bisnis — <strong>monetisasi, pertumbuhan, retensi, dan efisiensi operasional</strong> — tetap tercapai secara bertahap.</p>
+<p><strong>Prinsip:</strong> setiap fitur besar akan melewati siklus perancangan (brainstorm → spesifikasi → rencana implementasi) tersendiri saat mulai dikerjakan. Dokumen ini adalah <strong>peta prioritas</strong>, bukan spesifikasi teknis.</p>
+<p><strong>Keterangan Effort:</strong> S = ≤1 hari · M = 2–4 hari · L = 1–2 minggu.</p>
+<hr />
+<h2 id="2-kondisi-saat-ini">2. Kondisi Saat Ini</h2>
+<p><strong>Sudah tersedia:</strong> Auth orang tua + profil anak · Langganan (trial/aktif, <em>aktivasi manual</em>) · 11 engine game + reward/koin · Rapor per anak + e-sertifikat · Event kelas bermain (pendaftaran, absensi, reschedule, stiker, catatan PAUD guru) · Toko (keranjang → checkout → pesanan, <em>bayar manual + bukti</em>) · Komunitas forum · Kelas bermain + video · Dashboard admin (analitik DAU/WAU/MAU, laporan, guru, reminder WA manual) · REST API untuk app Flutter · Konfigurasi pembayaran dinamis · SEO (landing, blog + pencarian, sitemap, Search Console).</p>
+<p><strong>Belum tersedia (peluang roadmap):</strong> pembayaran otomatis (payment gateway), email transaksional, push notification, PWA, program referral/promo, onboarding, ulasan/testimoni, halaman legal, kurikulum terstruktur, streak/badge, multi-bahasa, cron auto-expire langganan.</p>
+<hr />
+<h2 id="3-roadmap-per-fase">3. Roadmap per Fase</h2>
+<h3 id="fase-0-fondasi-sebelum-launch-prioritas-tertinggi">🔴 Fase 0 — Fondasi Sebelum Launch (prioritas tertinggi)</h3>
+<p><em>Tujuan: bisa menerima uang otomatis, dipercaya orang tua, dan tidak menumpuk kerja manual sejak hari pertama.</em></p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Fitur</th>
+<th>Tujuan</th>
+<th>Effort</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Halaman legal</strong> (Kebijakan Privasi, S&amp;K, Tentang Kami)</td>
+<td>Kepercayaan + syarat Google Ads/Play Store</td>
+<td>S</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Pembayaran otomatis (payment gateway)</strong> — Midtrans/Xendit + webhook, auto-aktivasi langganan &amp; pesanan</td>
+<td>Monetisasi + efisiensi</td>
+<td>L</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Email transaksional</strong> — welcome, trial habis, pembayaran diterima, pengingat event</td>
+<td>Retensi + operasi</td>
+<td>M</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Auto-expire langganan + reminder trial (cron)</strong></td>
+<td>Monetisasi (nudge bayar) + efisiensi</td>
+<td>M</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Hapus akun &amp; privasi data anak</strong></td>
+<td>Kepatuhan data anak + syarat app store</td>
+<td>S–M</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>Onboarding orang tua baru</strong> (tur singkat pasca-daftar)</td>
+<td>Aktivasi + kesan pertama</td>
+<td>S–M</td>
+</tr>
+</tbody>
+</table>
+<h3 id="fase-1-pertumbuhan-akuisisi">🟠 Fase 1 — Pertumbuhan / Akuisisi</h3>
+<p><em>Tujuan: mendatangkan &amp; meyakinkan orang tua baru setelah launch.</em></p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Fitur</th>
+<th>Tujuan</th>
+<th>Effort</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>7</td>
+<td><strong>Testimoni &amp; ulasan</strong> (landing + rating produk toko)</td>
+<td>Social proof → konversi &amp; SEO</td>
+<td>M</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>Referral / undang teman + kode promo/voucher</strong></td>
+<td>Pertumbuhan + monetisasi</td>
+<td>L</td>
+</tr>
+<tr>
+<td>9</td>
+<td><strong>Lanjutan SEO konten</strong> (jadwal artikel, kategori/tag, internal link)</td>
+<td>Akuisisi organik</td>
+<td>S (berulang)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="fase-2-retensi-engagement">🟡 Fase 2 — Retensi &amp; Engagement</h3>
+<p><em>Tujuan: membuat anak &amp; orang tua aktif lebih lama, mengurangi churn.</em></p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Fitur</th>
+<th>Tujuan</th>
+<th>Effort</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>10</td>
+<td><strong>Streak harian + badge/lencana + tantangan harian</strong></td>
+<td>Engagement</td>
+<td>M–L</td>
+</tr>
+<tr>
+<td>11</td>
+<td><strong>Jalur belajar terstruktur (kurikulum per usia)</strong></td>
+<td>Retensi + nilai produk</td>
+<td>L</td>
+</tr>
+<tr>
+<td>12</td>
+<td><strong>PWA installable + push notification</strong></td>
+<td>Retensi</td>
+<td>M–L</td>
+</tr>
+</tbody>
+</table>
+<h3 id="fase-3-skala-ekspansi">⚪ Fase 3 — Skala &amp; Ekspansi</h3>
+<p><em>Tujuan: mendukung pertumbuhan lokasi &amp; platform (jangka panjang).</em></p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Fitur</th>
+<th>Tujuan</th>
+<th>Effort</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>13</td>
+<td><strong>Multi-lokasi / jadwal kelas offline</strong> (hybrid)</td>
+<td>Ekspansi cabang</td>
+<td>L</td>
+</tr>
+<tr>
+<td>14</td>
+<td><strong>Kelengkapan app mobile Flutter</strong> + push native</td>
+<td>Jangkauan platform</td>
+<td>L</td>
+</tr>
+<tr>
+<td>15</td>
+<td><strong>Analitik lanjutan</strong> (cohort, funnel trial→bayar, churn)</td>
+<td>Keputusan berbasis data</td>
+<td>M</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4-rekomendasi-langkah-pertama">4. Rekomendasi Langkah Pertama</h2>
+<p>Untuk tahap pra-launch, mulai dari <strong>Fase 0</strong> dengan urutan berikut:</p>
+<ol>
+<li><strong>Halaman legal</strong> — cepat dikerjakan, tetapi menjadi penghalang untuk beriklan &amp; mendaftar app store.</li>
+<li><strong>Pembayaran otomatis</strong> — paling berdampak ke monetisasi &amp; efisiensi; karena porsinya paling besar, sebaiknya dimulai lebih awal.</li>
+<li><strong>Email transaksional</strong> — fondasi yang akan dipakai oleh reminder trial (#4) dan notifikasi lain.</li>
+</ol>
+<hr />
+<h2 id="5-catatan-pelaksanaan">5. Catatan Pelaksanaan</h2>
+<ul>
+<li>Dokumen ini adalah <strong>peta prioritas</strong>, bukan spesifikasi implementasi. Setiap fitur besar (payment gateway, referral, kurikulum, dll.) akan melewati perancangan tersendiri saat dipilih untuk dikerjakan.</li>
+<li>Migrasi database dijalankan manual di Supabase SQL Editor (sesuai kebiasaan proyek).</li>
+<li>Fitur baru mengikuti pola arsitektur yang ada: baca = Server Component, tulis = Server Action, keamanan = RLS + guard peran.</li>
+<li>Roadmap bersifat hidup — prioritas dapat disesuaikan seiring masukan pengguna nyata setelah peluncuran.</li>
+</ul>
+<hr />
+<p><em>KidzPlayful — main sambil belajar. Kelas bermain &amp; game edukasi anak usia 0–6 tahun.</em></p></body></html>
