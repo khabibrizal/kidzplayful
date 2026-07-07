@@ -8,10 +8,10 @@ type LencanaBaru = { emoji?: string; judul?: string };
 type TantanganInfo = { emoji: string; judul: string; progress: number; target: number; bonusBaru: boolean };
 
 export default function Reward({
-  bintang, benar, total, durasiDetik, bonus, targetDetik, streak, lencanaBaru, tantangan, onLagi, onSelesai,
+  bintang, benar, total, durasiDetik, bonus, targetDetik, streak, lencanaBaru, tantangan, kustomBaru, onLagi, onSelesai,
 }: {
   bintang: number; benar: number; total: number; durasiDetik?: number; bonus?: boolean; targetDetik?: number;
-  streak?: number; lencanaBaru?: LencanaBaru[]; tantangan?: TantanganInfo;
+  streak?: number; lencanaBaru?: LencanaBaru[]; tantangan?: TantanganInfo; kustomBaru?: { emoji: string; judul: string }[];
   onLagi: () => void; onSelesai: () => void;
 }) {
   const s = '⭐'.repeat(bintang);
@@ -34,6 +34,9 @@ export default function Reward({
       {tantangan?.bonusBaru && (
         <p className="kp-pop" style={{ fontWeight: 800, background: '#dff5e6', color: '#1c7a43', borderRadius: 99, padding: '6px 14px', marginTop: 4 }}>🎯 Tantangan harian selesai! 🪙 +{BONUS_TANTANGAN}</p>
       )}
+      {(kustomBaru ?? []).map((k, i) => (
+        <p key={`k${i}`} className="kp-pop" style={{ fontWeight: 800, background: '#e6f7ee', color: '#1c7a43', borderRadius: 99, padding: '6px 14px', marginTop: 4 }}>🏆 Misi selesai: {k.emoji} {k.judul}</p>
+      ))}
       {(lencanaBaru ?? []).map((l, i) => (
         <p key={i} className="kp-pop" style={{ fontWeight: 800, background: '#efe7fb', color: '#7c5cd6', borderRadius: 99, padding: '6px 14px', marginTop: 4 }}>🏅 Lencana baru: {l.emoji} {l.judul}</p>
       ))}

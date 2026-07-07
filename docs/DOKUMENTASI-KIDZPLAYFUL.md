@@ -424,6 +424,14 @@ Admin dapat mengatur streak, koin, dan lencana tiap anak (koreksi/apresiasi).
 - **Migrasi 0043**: policy `admin update anak` + `admin kelola lencana` (`is_admin()`), melengkapi `admin baca anak` yang sudah ada (0006).
 - **Halaman `/admin/anak`** (menu **🧒 Anak** di `AdminNav`): daftar anak (nama + email ortu) + `AnakGamiForm` (input streak & koin + Simpan; chip 8 lencana untuk beri/cabut). Data `lib/data/admin-anak.ts` (`getAnakUntukAdmin`, embed `ortu:ortu_id(email)`+`lencana_anak`) + `admin-anak-actions.ts` (`setStreakKoin` — juga patok `streak_terakhir=hari ini`; `toggleLencana`).
 
+### Stok Tantangan Kustom (quest builder admin) — migrasi 0044
+Admin membuat "stok" misi kustom yang berjalan berdampingan dengan gamifikasi otomatis.
+- **Migrasi 0044**: `hasil_main.paket_id` (catat game spesifik yang diselesaikan) + tabel `tantangan_kustom` (judul, deskripsi, `lencana_kode` hadiah, `bonus_koin`, `syarat` jsonb, `aktif`) + `tantangan_kustom_anak` (penyelesaian per anak). RLS: baca aktif (authenticated), admin kelola.
+- **Syarat kombinasi** (`syarat` = array `SyaratItem {tipe:'paket'|'mesin'|'tema'|'apa', ref, jumlah, minBintang}`) — semua item harus terpenuhi. Logika murni `lib/domain/tantangan-kustom.ts` (`cocokItem`, `progresTantanganKustom`, `ringkasSyarat`, `MESIN_LIST`).
+- **Admin** (menu **🏆 Tantangan**): `/admin/tantangan` (`TantanganForm` buat/edit dgn baris syarat dinamis + pilih game/jenis/tema; `TantanganList` toggle aktif/hapus). Data `lib/data/tantangan-kustom.ts` (+ opsi game/tema) & `tantangan-kustom-actions.ts`.
+- **Evaluasi**: di `catatHasil` — setelah main, tantangan aktif yang syaratnya terpenuhi & belum selesai → beri lencana hadiah + bonus koin + tandai selesai (`tantangan_kustom_anak`). Semua di dalam try/catch (fallback pra-migrasi; `paket_id` di-set via update terpisah agar aman).
+- **Tampilan**: layar **Reward** ("🏆 Misi selesai"), **Menu Anak** (section 🏆 MISI dgn progres n/total). Reader `getGamifikasiAnak` mengembalikan `kustom[]`.
+
 ### Catatan operasional — reset password akun
 Reset password user (mis. akun admin) via **Supabase SQL Editor** bila Dashboard tak punya tombolnya:
 ```sql

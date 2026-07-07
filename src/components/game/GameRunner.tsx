@@ -39,7 +39,7 @@ export default function GameRunner({
     setHasil(h);
     try {
       const r = await catatHasil({
-        anakId, temaId, mesin: paket.mesin, areaSkill: paket.area_skill,
+        anakId, temaId, paketId: paket.id, mesin: paket.mesin, areaSkill: paket.area_skill,
         benar: h.benar, total: h.total, durasiDetik: h.durasiDetik, targetDetik: paket.target_detik ?? null,
       });
       onKoin(r.koin);
@@ -56,7 +56,7 @@ export default function GameRunner({
       <Reward
         bintang={bintang} bonus={bonus} targetDetik={target || undefined}
         benar={hasil.benar} total={hasil.total} durasiDetik={hasil.durasiDetik}
-        streak={extra?.streak} lencanaBaru={extra?.lencanaBaru} tantangan={extra?.tantangan}
+        streak={extra?.streak} lencanaBaru={extra?.lencanaBaru} tantangan={extra?.tantangan} kustomBaru={extra?.kustomBaru}
         onLagi={() => { setHasil(null); setExtra(null); setRun(run + 1); }}
         onSelesai={onKeluar}
       />

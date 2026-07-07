@@ -274,6 +274,20 @@ export default function MenuAnak({
               style={{ fontSize: 22, filter: l.dapat ? 'none' : 'grayscale(1)', opacity: l.dapat ? 1 : 0.35 }}>{l.emoji}</span>
           ))}
         </div>
+        {gami.kustom.length > 0 && (
+          <div style={{ marginTop: 10 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--abu)', marginBottom: 4 }}>🏆 MISI</div>
+            {gami.kustom.map((k) => (
+              <div key={k.id} className="kp-card" style={{ padding: 10, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, opacity: k.selesai ? 0.7 : 1 }}>
+                <span style={{ fontSize: 22 }}>{k.emoji}</span>
+                <div style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: 13, color: 'var(--tinta)' }}>{k.judul}</div>
+                {k.selesai
+                  ? <span className="kp-coin" style={{ color: '#1c7a43' }}>✓</span>
+                  : <span style={{ fontWeight: 800, color: 'var(--lavender-d)' }}>{k.done}/{k.total}</span>}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className={s.menu}>
