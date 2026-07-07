@@ -3,12 +3,12 @@ import { createClient } from '@/lib/supabase/server';
 import type { SyaratItem } from '@/lib/domain/tantangan-kustom';
 
 export interface TantanganRow {
-  id: string; judul: string; deskripsi: string; lencana_kode: string; bonus_koin: number; syarat: SyaratItem[]; aktif: boolean;
+  id: string; judul: string; deskripsi: string; lencana_kode: string; bonus_koin: number; syarat: SyaratItem[]; aktif: boolean; usia_min: number; usia_max: number;
 }
 
 export async function getTantanganAdmin(): Promise<TantanganRow[]> {
   const s = await createClient();
-  const { data } = await s.from('tantangan_kustom').select('id,judul,deskripsi,lencana_kode,bonus_koin,syarat,aktif').order('created_at', { ascending: false });
+  const { data } = await s.from('tantangan_kustom').select('id,judul,deskripsi,lencana_kode,bonus_koin,syarat,aktif,usia_min,usia_max').order('created_at', { ascending: false });
   return (data ?? []) as unknown as TantanganRow[];
 }
 

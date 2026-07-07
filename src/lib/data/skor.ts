@@ -7,6 +7,7 @@ import {
   tantanganHariIni, progresTantangan, BONUS_TANTANGAN, type LencanaDef,
 } from '@/lib/domain/gamifikasi';
 import { progresTantanganKustom, type SyaratItem, type RowMain } from '@/lib/domain/tantangan-kustom';
+import { umurTahun } from '@/lib/domain/anak';
 
 const KOIN_BONUS_CEPAT = 3;
 
@@ -57,11 +58,11 @@ export async function catatHasil(input: {
     }
     const kemarin = tanggalWIB(new Date(Date.now() - 86400000));
     const [{ data: anak }, { data: rows }, { data: lencAda }, { data: tantAda }, { data: kustomDef }, { data: kustomDone }] = await Promise.all([
-      supabase.from('anak').select('koin,streak,streak_terakhir').eq('id', input.anakId).single(),
+      supabase.from('anak').select('koin,streak,streak_terakhir,tanggal_lahir').eq('id', input.anakId).single(),
       supabase.from('hasil_main').select('mesin,bintang,tanggal,tema_id,paket_id').eq('anak_id', input.anakId),
       supabase.from('lencana_anak').select('kode').eq('anak_id', input.anakId),
       supabase.from('tantangan_anak').select('selesai').eq('anak_id', input.anakId).eq('tanggal', today).maybeSingle(),
-      supabase.from('tantangan_kustom').select('id,judul,lencana_kode,bonus_koin,syarat').eq('aktif', true),
+      supabase.from('tantangan_kustom').select('id,judul,lencana_kode,bonus_koin,syarat,usia_min,usia_max').eq('aktif', true),
       supabase.from('tantangan_kustom_anak').select('tantangan_id').eq('anak_id', input.anakId),
     ]);
 
@@ -87,11 +88,12 @@ export async function catatHasil(input: {
       jenisMesin: new Set(allRows.map((r) => r.mesin)).size,
     }).filter((k) => !sudah.has(k));
 
-    // tantangan kustom (quest admin)
-    type KustomDef = { id: string; judul: string; lencana_kode: string; bonus_koin: number; syarat: SyaratItem[] };
+    // tantangan kustom (quest admin) — hanya yang cocok umur anak
+    type KustomDef = { id: string; judul: string; lencana_kode: string; bonus_koin: number; syarat: SyaratItem[]; usia_min: number; usia_max: number };
+    const umur = anak?.tanggal_lahir ? umurTahun(new Date((anak.tanggal_lahir as string) + 'T00:00:00Z'), new Date()) : 0;
     const doneSet = new Set((kustomDone ?? []).map((k) => k.tantangan_id as string));
     const kustomBaru: KustomDef[] = ((kustomDef ?? []) as KustomDef[]).filter(
-      (k) => !doneSet.has(k.id) && progresTantanganKustom(k.syarat ?? [], allRows).selesai,
+      (k) => umur >= (k.usia_min ?? 0) && umur <= (k.usia_max ?? 99) && !doneSet.has(k.id) && progresTantanganKustom(k.syarat ?? [], allRows).selesai,
     );
     const bonusKustom = kustomBaru.reduce((a, k) => a + (k.bonus_koin || 0), 0);
 

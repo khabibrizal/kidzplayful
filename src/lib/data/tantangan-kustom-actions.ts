@@ -25,13 +25,15 @@ function bersihkanSyarat(syarat: SyaratItem[]): SyaratItem[] {
 }
 
 export async function simpanTantangan(input: {
-  id?: string; judul: string; deskripsi: string; lencanaKode: string; bonusKoin: number; syarat: SyaratItem[]; aktif: boolean;
+  id?: string; judul: string; deskripsi: string; lencanaKode: string; bonusKoin: number; syarat: SyaratItem[]; aktif: boolean; usiaMin: number; usiaMax: number;
 }) {
   const s = await adminDb();
   const judul = input.judul.trim();
   if (!judul) throw new Error('Judul tantangan wajib diisi.');
   const syarat = bersihkanSyarat(input.syarat);
   if (syarat.length === 0) throw new Error('Tambahkan minimal 1 syarat game.');
+  const uMin = Math.min(99, Math.max(0, Math.floor(Number(input.usiaMin) || 0)));
+  const uMax = Math.min(99, Math.max(uMin, Math.floor(Number(input.usiaMax) || 99)));
   const baris = {
     judul,
     deskripsi: input.deskripsi.trim(),
@@ -39,6 +41,8 @@ export async function simpanTantangan(input: {
     bonus_koin: Math.max(0, Math.floor(Number(input.bonusKoin) || 0)),
     syarat,
     aktif: input.aktif,
+    usia_min: uMin,
+    usia_max: uMax,
   };
   const q = input.id
     ? s.from('tantangan_kustom').update(baris).eq('id', input.id)

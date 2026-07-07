@@ -431,6 +431,7 @@ Admin membuat "stok" misi kustom yang berjalan berdampingan dengan gamifikasi ot
 - **Admin** (menu **🏆 Tantangan**): `/admin/tantangan` (`TantanganForm` buat/edit dgn baris syarat dinamis + pilih game/jenis/tema; `TantanganList` toggle aktif/hapus). Data `lib/data/tantangan-kustom.ts` (+ opsi game/tema) & `tantangan-kustom-actions.ts`.
 - **Evaluasi**: di `catatHasil` — setelah main, tantangan aktif yang syaratnya terpenuhi & belum selesai → beri lencana hadiah + bonus koin + tandai selesai (`tantangan_kustom_anak`). Semua di dalam try/catch (fallback pra-migrasi; `paket_id` di-set via update terpisah agar aman).
 - **Tampilan**: layar **Reward** ("🏆 Misi selesai"), **Menu Anak** (section 🏆 MISI dgn progres n/total). Reader `getGamifikasiAnak` mengembalikan `kustom[]`.
+- **Rentang usia** (migrasi **0045**: `tantangan_kustom.usia_min`/`usia_max`, default 0–99): tantangan hanya tampil & dievaluasi untuk anak yang umurnya (dari `tanggal_lahir`, `umurTahun`) masuk rentang. Difilter di `getGamifikasiAnak` & `catatHasil`; input usia di `TantanganForm`, tampil di `TantanganList`.
 
 ### Catatan operasional — reset password akun
 Reset password user (mis. akun admin) via **Supabase SQL Editor** bila Dashboard tak punya tombolnya:

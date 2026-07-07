@@ -19,6 +19,8 @@ export default function TantanganForm({ opsi, lencana, awal }: { opsi: OpsiTanta
   const [deskripsi, setDeskripsi] = useState(awal?.deskripsi ?? '');
   const [lencanaKode, setLencanaKode] = useState(awal?.lencana_kode ?? lencana[0]?.kode ?? '');
   const [bonusKoin, setBonusKoin] = useState(String(awal?.bonus_koin ?? 10));
+  const [usiaMin, setUsiaMin] = useState(String(awal?.usia_min ?? 0));
+  const [usiaMax, setUsiaMax] = useState(String(awal?.usia_max ?? 6));
   const [aktif, setAktif] = useState(awal?.aktif ?? true);
   const [syarat, setSyarat] = useState<SyaratItem[]>(awal?.syarat?.length ? awal.syarat : [{ tipe: 'apa', ref: null, jumlah: 1, minBintang: 0 }]);
   const [busy, setBusy] = useState(false);
@@ -37,7 +39,7 @@ export default function TantanganForm({ opsi, lencana, awal }: { opsi: OpsiTanta
   async function simpan() {
     setBusy(true); setMsg('');
     try {
-      await simpanTantangan({ id: awal?.id, judul, deskripsi, lencanaKode, bonusKoin: Number(bonusKoin), syarat, aktif });
+      await simpanTantangan({ id: awal?.id, judul, deskripsi, lencanaKode, bonusKoin: Number(bonusKoin), syarat, aktif, usiaMin: Number(usiaMin), usiaMax: Number(usiaMax) });
       setMsg('Tersimpan ✓');
       setTimeout(() => location.reload(), 500);
     } catch (e) { setMsg(e instanceof Error ? e.message : 'Gagal'); setBusy(false); }
@@ -82,6 +84,10 @@ export default function TantanganForm({ opsi, lencana, awal }: { opsi: OpsiTanta
         </label>
         <label style={{ fontSize: 12, color: 'var(--abu)' }}>🪙 Bonus
           <input className={s.inp} value={bonusKoin} onChange={(e) => setBonusKoin(e.target.value)} inputMode="numeric" style={{ width: 70, marginLeft: 6 }} />
+        </label>
+        <label style={{ fontSize: 12, color: 'var(--abu)' }}>Usia
+          <input className={s.inp} value={usiaMin} onChange={(e) => setUsiaMin(e.target.value)} inputMode="numeric" style={{ width: 46, margin: '0 4px' }} title="usia min" />–
+          <input className={s.inp} value={usiaMax} onChange={(e) => setUsiaMax(e.target.value)} inputMode="numeric" style={{ width: 46, marginLeft: 4 }} title="usia maks" /> th
         </label>
         <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
           <input type="checkbox" checked={aktif} onChange={(e) => setAktif(e.target.checked)} /> Aktif

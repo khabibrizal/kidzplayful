@@ -26,6 +26,7 @@ export default function TantanganList({ list, opsi, lencana }: { list: Tantangan
           <div className={s.row}>
             <span style={{ flex: 1 }}>
               <b>{lencanaByKode(t.lencana_kode)?.emoji ?? '🏅'} {t.judul}</b>
+              <span className={s.muted}> · usia {t.usia_min}–{t.usia_max} th</span>
               {t.bonus_koin > 0 && <span className={s.muted}> · 🪙+{t.bonus_koin}</span>}
               <br />
               <span className={s.muted}>{(t.syarat ?? []).map((it) => ringkasSyarat(it, labelPaket, labelTema)).join(' · ')}</span>
