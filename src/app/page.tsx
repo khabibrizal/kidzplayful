@@ -39,7 +39,7 @@ const USIA = [
 ];
 
 const FAQ = [
-  { t: 'Apa itu KidzPlayful?', j: 'KidzPlayful adalah layanan kelas bermain (playgroup) dan game edukasi digital untuk anak usia 0–6 tahun. Kami memadukan kelas bermain online & offline dengan aktivitas yang melatih sensorik, motorik, kognitif, dan berpikir komputasional (koding).' },
+  { t: 'Apa itu KidzPlayful?', j: 'KidzPlayful adalah Play-Based Learning Ecosystem yang menghubungkan pengalaman bermain anak di rumah, kelas, dan dunia digital dalam satu perjalanan tumbuh kembang yang terukur — tempat orang tua menemukan inspirasi untuk mendampingi anak setiap hari.' },
   { t: 'Untuk usia berapa?', j: 'Untuk anak usia 0–6 tahun. Konten dan tingkat kesulitan game menyesuaikan usia anak: 0–2 tahun (sensorik-motorik), 2–4 tahun (kognitif-bahasa), dan 4–6 tahun (koding/computational thinking).' },
   { t: 'Apakah aman untuk screen time anak?', j: 'Ya. Setiap sesi dirancang dengan tujuan belajar, tanpa iklan, dan durasinya terkontrol. Orang tua dapat memantau aktivitas serta perkembangan anak lewat rapor.' },
   { t: 'Apakah ada kelas bermain offline?', j: `Ada. Kami mengadakan event kelas bermain (playgroup) offline${PROFIL.kota ? ` di ${PROFIL.kota}` : ''}. Setiap peserta mendapatkan catatan perkembangan dan e-sertifikat, lalu bisa melanjutkan aktivitas di rumah lewat aplikasi.` },
