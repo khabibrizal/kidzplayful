@@ -138,7 +138,6 @@ export default function Home() {
             <a href="/daftar" className="kp-btn mint">Mulai Gratis 14 Hari ▶</a>
             <a href="/login" className="kp-btn putih">Masuk</a>
           </div>
-          <p style={{ fontSize: 13, color: 'var(--abu)', marginTop: 16 }}>Gratis 14 hari · tanpa kartu · aman untuk anak</p>
         </section>
 
         {/* Fitur */}
