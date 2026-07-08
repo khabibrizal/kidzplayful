@@ -18,11 +18,9 @@ img,video{max-width:100%;height:auto}
 input,select,textarea,button{max-width:100%}
 *{min-width:0}
 
-/* ==== Kontainer & grid responsif (mobile-first; melebar hanya di layar besar) ==== */
-/* Default = lebar kolom HP (tampilan mobile TIDAK berubah); membesar di breakpoint. */
-.kp-page{ max-width:480px; margin:0 auto; }
-@media (min-width:820px){ .kp-page{ max-width:760px; } }
-@media (min-width:1100px){ .kp-page{ max-width:980px; } }
+/* ==== Kontainer & grid responsif (mobile-first; mengisi lebar layar sampai batas) ==== */
+/* Fluid: di HP tetap sempit (jauh di bawah cap), di tablet/desktop mengisi hingga 1040px. */
+.kp-page{ width:100%; max-width:1040px; margin:0 auto; }
 
 .kp-grid-produk{ display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
 @media (min-width:560px){ .kp-grid-produk{ grid-template-columns:repeat(3,1fr); } }
