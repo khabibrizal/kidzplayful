@@ -31,7 +31,7 @@ export default function StoreView({ produk }: { produk: Produk[] }) {
       {tampil.length === 0 ? (
         <p style={{ color: 'var(--abu)' }}>Belum ada produk{aktif !== 'Semua' ? ' di kategori ini' : ''}.</p>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div className="kp-grid-produk">
           {tampil.map((p) => <ProdukCard key={p.id} p={p} />)}
         </div>
       )}

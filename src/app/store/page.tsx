@@ -12,7 +12,7 @@ export default async function StorePage() {
   const produk = await getProdukTampilCached();
 
   return (
-    <main style={{ maxWidth: 480, margin: '24px auto', padding: 16, paddingBottom: 90 }}>
+    <main className="kp-page" style={{ padding: 16, paddingBottom: 90, marginTop: 24 }}>
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 24, margin: '4px 0 14px' }}>🛒 Store</h1>
       <StoreView produk={produk} />
       <BottomNav />
