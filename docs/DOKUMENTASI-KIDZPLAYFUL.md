@@ -445,10 +445,10 @@ Merekam menu/fitur yang dibuka user untuk analitik "sedang buka apa" & "fitur te
 - **Reader** `lib/data/aktivitas.ts` `getAktivitasRingkas()` (fallback aman): aktivitas terakhir per user hari ini, fitur terpopuler hari ini & 7 hari (WIB) + `FITUR_LABEL`.
 - **Dashboard** `/admin/analitik` tambah 3 seksi: "Sedang aktif hari ini (buka menu apa)", "Fitur terpopuler hari ini", "Fitur terpopuler (7 hari)".
 
-### Masukan / Feedback aplikasi — migrasi 0047
-- **Migrasi 0047**: tabel `feedback` (`ortu_id`, `rating` 1–5 opsional, `pesan`, `dibuat_at`). RLS: user kirim milik sendiri, admin baca semua.
-- **Customer**: di `/pengaturan` (profil) ada seksi **"MASUKAN UNTUK APLIKASI"** → `FeedbackForm` (tombol "💬 Beri Masukan" → rating bintang opsional + textarea → `kirimFeedback`, `lib/data/feedback-actions.ts`).
-- **Admin**: `/admin/feedback` (menu **⭐ Masukan**) menampilkan semua masukan (rating, pesan, email, waktu WIB). Reader `lib/data/feedback.ts`.
+### Masukan / Feedback aplikasi — migrasi 0047 & 0048
+- **Migrasi 0047** tabel `feedback` + **0048** kolom `jawaban jsonb` (survei terstruktur). RLS: user kirim milik sendiri, admin baca semua.
+- **Customer**: seksi **"MASUKAN UNTUK APLIKASI"** di `/pengaturan` → `FeedbackForm` = **survei 8 pertanyaan** (Q1 positioning, Q2 fitur favorit + Lainnya, Q3 UI/UX, Q4 kekurangan, Q5 kesediaan Ya/Mungkin/Tidak, Q6 harga wajar, Q7 rekomendasi NPS 1–10, Q8 saran utama). Bentuk jawaban di `lib/feedback-tipe.ts` (`JawabanFeedback`, `FITUR_OPSI`, dll.), action `kirimFeedback(jawaban)`.
+- **Admin**: `/admin/feedback` (menu **⭐ Masukan**) — kartu per responden (email, waktu WIB, tag NPS/kesediaan/harga + jawaban teks) + ringkasan **rata-rata NPS**. Reader `lib/data/feedback.ts`.
 
 ### Catatan operasional — reset password akun
 Reset password user (mis. akun admin) via **Supabase SQL Editor** bila Dashboard tak punya tombolnya:
