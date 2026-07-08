@@ -31,6 +31,8 @@ export default async function PilihAnakPage() {
   const jumlahAnak = (anakList ?? []).length;
   const anak0 = (anakList ?? [])[0];
   const gameHref = anak0 ? (anak0.mode_default === 'ortu' ? `/pilih-game/${anak0.id}` : `/main/${anak0.id}`) : null;
+  // batas tanggal lahir: maksimal kemarin (WIB) — tidak boleh hari ini/masa depan
+  const maksTgl = new Date(Date.now() + 7 * 3600 * 1000 - 86400000).toISOString().slice(0, 10);
   const sisaMap: Record<string, number> = {};
   for (const ev of events) sisaMap[ev.id] = jumlahAnak - (peserta[ev.id]?.length ?? 0);
 
@@ -108,7 +110,7 @@ export default async function PilihAnakPage() {
             <option value="laki-laki">Laki-laki</option>
             <option value="perempuan">Perempuan</option>
           </select>
-          <input className="kp-input" name="tanggal_lahir" type="date" required />
+          <input className="kp-input" name="tanggal_lahir" type="date" max={maksTgl} required />
           <button className="kp-btn mint" type="submit" style={{ width: '100%' }}>Tambah anak</button>
         </form>
       </details>

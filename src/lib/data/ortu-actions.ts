@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { umurTahun, modeDefault } from '@/lib/domain/anak';
+import { tanggalWIB } from '@/lib/domain/gamifikasi';
 
 async function sesi() {
   const supabase = await createClient();
@@ -15,6 +16,7 @@ async function sesi() {
 export async function updateAnak(anakId: string, nama: string, tanggalLahir: string, jenisKelamin?: string) {
   const { supabase } = await sesi();
   if (!nama.trim() || !tanggalLahir) throw new Error('Nama & tanggal lahir wajib.');
+  if (tanggalLahir >= tanggalWIB()) throw new Error('Tanggal lahir harus sebelum hari ini.');
   const umur = umurTahun(new Date(tanggalLahir + 'T00:00:00Z'), new Date());
   const jk = jenisKelamin === 'laki-laki' || jenisKelamin === 'perempuan' ? jenisKelamin : null;
   const { error } = await supabase.from('anak')

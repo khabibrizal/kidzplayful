@@ -9,6 +9,7 @@ export default function KelolaAnak({ anak }: { anak: { id: string; nama: string;
   const [jk, setJk] = useState(anak.jenis_kelamin ?? '');
   const [batas, setBatasState] = useState(anak.batas_menit);
   const [msg, setMsg] = useState('');
+  const maksTgl = new Date(Date.now() + 7 * 3600 * 1000 - 86400000).toISOString().slice(0, 10); // maksimal kemarin (WIB)
 
   async function simpan() {
     setMsg('');
@@ -31,7 +32,7 @@ export default function KelolaAnak({ anak }: { anak: { id: string; nama: string;
         <option value="perempuan">Perempuan</option>
       </select>
       <label style={{ fontSize: 12, color: 'var(--abu)' }}>Tanggal lahir</label>
-      <input className="kp-input" type="date" value={tgl} onChange={(e) => setTgl(e.target.value)} />
+      <input className="kp-input" type="date" max={maksTgl} value={tgl} onChange={(e) => setTgl(e.target.value)} />
       <label style={{ fontSize: 12, color: 'var(--abu)' }}>Batas waktu main / hari</label>
       <select className="kp-input" value={batas} onChange={(e) => setBatasState(Number(e.target.value))}>
         <option value={15}>15 menit</option><option value={20}>20 menit</option>

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { umurTahun, modeDefault } from '@/lib/domain/anak';
+import { tanggalWIB } from '@/lib/domain/gamifikasi';
 
 export async function tambahAnak(formData: FormData) {
   const nama = String(formData.get('nama') ?? '').trim();
@@ -11,6 +12,7 @@ export async function tambahAnak(formData: FormData) {
   const jk = String(formData.get('jenis_kelamin') ?? '');
   const jenisKelamin = jk === 'laki-laki' || jk === 'perempuan' ? jk : null;
   if (!nama || !tgl) throw new Error('Nama dan tanggal lahir wajib diisi.');
+  if (tgl >= tanggalWIB()) throw new Error('Tanggal lahir harus sebelum hari ini.');
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
