@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Baloo_2, Quicksand } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
@@ -37,11 +37,19 @@ export const metadata: Metadata = {
     description: DESKRIPSI,
   },
   twitter: { card: "summary_large_image", title: JUDUL, description: DESKRIPSI },
+  formatDetection: { telephone: false },
   robots: {
     index: true,
     follow: true,
     googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 },
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#efe6ff",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
