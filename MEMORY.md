@@ -47,7 +47,7 @@ Ringkasan navigasi seluruh codebase, dihasilkan dari **knowledge graph** (`/grap
 - **Keamanan utama = RLS** per tabel + guard `getAnakTerjamin`/`getAdminTerjamin`/`getGuruTerjamin`/`adminDb`. Query "milik sendiri" selalu `.eq(..user.id)`.
 - **Peran:** `profiles.is_admin` / `is_guru` (fungsi `is_admin()`/`is_guru()`); trigger `cegah_self_admin` cegah promosi diri.
 - **Total uang dihitung ulang di server**; harga di-snapshot (item_pesanan).
-- **Migrasi** SQL berurutan `supabase/migrations/0001..0041` (dijalankan di Supabase SQL Editor). Seed konten di `supabase/seed/`.
+- **Migrasi** SQL berurutan `supabase/migrations/0001..0048` (dijalankan di Supabase SQL Editor). Seed konten di `supabase/seed/`.
 
 ## Update terbaru (setelah snapshot graf)
 - **Game Mewarnai** (`mesin:'mewarnai'`): `components/game/MewarnaiGame.tsx`, `lib/game/templates-mewarnai.ts` (template bawaan), `lib/game/svg-sanitize.ts` (upload SVG aman), admin `TargetEditor.tsx` (mode sesuai). Mode Bebas/Sesuai, skor area `kreativitas`. Migrasi 0025 (izin mesin).
@@ -101,6 +101,9 @@ Tabel `aktivitas` (ortu_id/anak_id/fitur/dibuat_at, RLS insert-sendiri + admin-b
 
 ### Feedback aplikasi (migrasi 0047 + 0048)
 Tabel `feedback` + kolom `jawaban jsonb` (survei terstruktur, RLS kirim-sendiri + admin-baca). Customer: seksi "Masukan untuk Aplikasi" di `/pengaturan` = **survei 8 pertanyaan** (`FeedbackForm`, tipe di `lib/feedback-tipe.ts`, action `feedback-actions.ts`). Admin `/admin/feedback` (menu ⭐ Masukan) tampil per-responden + rata-rata NPS (reader `lib/data/feedback.ts`).
+
+### Perbaikan lain (terkini)
+Validasi tgl lahir anak < hari ini (tambah/update/API, input `max`). Kelola Langganan tampil tgl+jam daftar (`profiles.created_at`). Unduh PDF dihapus dari materi kelas bermain (`/kelas/[id]`, Mode Anak/Ortu) — e-sertifikat/stiker tetap. DAU/WAU/MAU kini termasuk log `aktivitas`. Konten: `/tentang` ditulis ulang, FAQ+footer "Play-Based Learning Ecosystem".
 
 ## Catatan
 - `mockups/` (demo.js/index.html) = prototipe statis, terpisah dari app Next.js.

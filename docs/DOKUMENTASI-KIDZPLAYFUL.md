@@ -351,7 +351,7 @@ Tampil contoh pola garis; anak ketuk **2 titik** pada grid untuk membuat garis, 
 Kolom `event.stiker_bg_url`. Panel event: **⬆ Template Stiker** + **🏷️ Cetak Stiker Nama** → halaman `/stiker-event/[id]` (`components/StikerSheet.tsx`): lembar **F4 berisi 10 stiker 9×6 cm** (grid 2×5), **nama anak + judul kelas** di atas template (atau desain pastel), untuk **semua anak yang DAFTAR** (bukan hadir). Tombol Unduh/Cetak PDF (`@page 215×330mm`).
 
 ### Urutan migrasi lanjutan
-… → **0026** sertifikat (`event.sertifikat_bg_url`/`dokumentasi_url`, `pendaftaran_event.hadir_anak_ids`, tabel `sertifikat`) → **0027** reschedule (`event_asal_id`,`alasan_reschedule`) → **0028** postingan topik (`postingan.topik`) → **0029** mesin dekode → **0030** mesin urutan → **0031** mesin jalur → **0032** mesin hitung → **0033** `paket_aset.target_detik` → **0034** `event.stiker_bg_url` → **0035** mesin cocokkan → **0036** mesin ejakata → **0037** mesin garis → **0038** tabel `pengaturan_pembayaran` → **0039** index performa → **0040** RPC `laporan_engagement` + index `hasil_main` → **0041** tabel `artikel` (blog). (0029–0037 mesin = ALTER CHECK `paket_aset_mesin_check`.)
+… → **0026** sertifikat (`event.sertifikat_bg_url`/`dokumentasi_url`, `pendaftaran_event.hadir_anak_ids`, tabel `sertifikat`) → **0027** reschedule (`event_asal_id`,`alasan_reschedule`) → **0028** postingan topik (`postingan.topik`) → **0029** mesin dekode → **0030** mesin urutan → **0031** mesin jalur → **0032** mesin hitung → **0033** `paket_aset.target_detik` → **0034** `event.stiker_bg_url` → **0035** mesin cocokkan → **0036** mesin ejakata → **0037** mesin garis → **0038** tabel `pengaturan_pembayaran` → **0039** index performa → **0040** RPC `laporan_engagement` + index `hasil_main` → **0041** tabel `artikel` (blog) → **0042** gamifikasi (`anak.streak`, `lencana_anak`, `tantangan_anak`) → **0043** RLS admin gamifikasi → **0044** `tantangan_kustom` + `hasil_main.paket_id` → **0045** `tantangan_kustom.usia_min/max` → **0046** tabel `aktivitas` → **0047** tabel `feedback` → **0048** `feedback.jawaban` jsonb. (0029–0037 mesin = ALTER CHECK `paket_aset_mesin_check`.)
 
 ---
 
@@ -449,6 +449,13 @@ Merekam menu/fitur yang dibuka user untuk analitik "sedang buka apa" & "fitur te
 - **Migrasi 0047** tabel `feedback` + **0048** kolom `jawaban jsonb` (survei terstruktur). RLS: user kirim milik sendiri, admin baca semua.
 - **Customer**: seksi **"MASUKAN UNTUK APLIKASI"** di `/pengaturan` → `FeedbackForm` = **survei 8 pertanyaan** (Q1 positioning, Q2 fitur favorit + Lainnya, Q3 UI/UX, Q4 kekurangan, Q5 kesediaan Ya/Mungkin/Tidak, Q6 harga wajar, Q7 rekomendasi NPS 1–10, Q8 saran utama). Bentuk jawaban di `lib/feedback-tipe.ts` (`JawabanFeedback`, `FITUR_OPSI`, dll.), action `kirimFeedback(jawaban)`.
 - **Admin**: `/admin/feedback` (menu **⭐ Masukan**) — kartu per responden (email, waktu WIB, tag NPS/kesediaan/harga + jawaban teks) + ringkasan **rata-rata NPS**. Reader `lib/data/feedback.ts`.
+
+### Perbaikan & penyesuaian lain (terkini)
+- **Validasi tanggal lahir anak**: `tambahAnak`, `updateAnak`, & `POST /api/anak` menolak tanggal ≥ hari ini (WIB); input `type=date` diberi `max` = kemarin. (Anak <2 th tetap Mode Ortu = desain: bayi → aktivitas kelas bermain, bukan game solo.)
+- **Kelola Langganan**: tiap kartu member menampilkan **tanggal & jam pendaftaran** (`profiles.created_at`, WIB).
+- **Materi kelas bermain**: tombol/tautan **Unduh PDF dihilangkan** dari `/kelas/[id]`, Mode Anak, & Mode Ortu (materi tetap tampil inline; Worksheet/Ide/Bagikan tetap ada). E-sertifikat & stiker tetap punya Unduh PDF.
+- **Analitik DAU/WAU/MAU** kini menyertakan **log aktivitas (buka menu)** agar konsisten dengan daftar "Sedang aktif hari ini".
+- **Konten**: halaman `/tentang` ditulis ulang (visi/misi/fitur/nilai/filosofi); FAQ landing "Apa itu KidzPlayful" → "Play-Based Learning Ecosystem"; footer landing → "Play-Based Learning Ecosystem"; teks "Gratis 14 hari…" di hero dihapus.
 
 ### Catatan operasional — reset password akun
 Reset password user (mis. akun admin) via **Supabase SQL Editor** bila Dashboard tak punya tombolnya:
