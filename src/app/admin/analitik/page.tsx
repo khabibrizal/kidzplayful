@@ -25,7 +25,7 @@ export default async function AnalitikPage() {
   const db = await createClient();
   const d1 = isoLalu(1), d7 = isoLalu(7), d30 = isoLalu(30);
 
-  const [anak, hasil, pend, pesn, post, kom, profs, akt] = await Promise.all([
+  const [anak, hasil, pend, pesn, post, kom, profs, akt, aktEv] = await Promise.all([
     db.from('anak').select('id,ortu_id'),
     db.from('hasil_main').select('anak_id,tanggal,mesin').gte('tanggal', d30),
     db.from('pendaftaran_event').select('ortu_id,created_at').gte('created_at', d30),
@@ -34,6 +34,7 @@ export default async function AnalitikPage() {
     db.from('komentar').select('ortu_id,created_at').gte('created_at', d30),
     db.from('profiles').select('id,nama_tampilan'),
     getAktivitasRingkas(),
+    db.from('aktivitas').select('ortu_id,dibuat_at').gte('dibuat_at', d30),
   ]);
 
   const anakOrtu = new Map<string, string>((anak.data ?? []).map((a) => [a.id as string, a.ortu_id as string]));
@@ -47,6 +48,7 @@ export default async function AnalitikPage() {
   for (const r of pesn.data ?? []) ev.push({ ortu: r.ortu_id as string, ts: r.created_at as string });
   for (const r of post.data ?? []) ev.push({ ortu: r.ortu_id as string, ts: r.created_at as string });
   for (const r of kom.data ?? []) ev.push({ ortu: r.ortu_id as string, ts: r.created_at as string });
+  for (const r of aktEv.data ?? []) ev.push({ ortu: r.ortu_id as string, ts: r.dibuat_at as string }); // buka menu (log aktivitas)
 
   const aktifSejak = (sejak: string) => new Set(ev.filter((e) => e.ts >= sejak).map((e) => e.ortu)).size;
   const dau = aktifSejak(d1), wau = aktifSejak(d7), mau = aktifSejak(d30);
@@ -77,7 +79,7 @@ export default async function AnalitikPage() {
         <Kartu b={wau} l="Aktif 7 hari" sub="WAU" />
         <Kartu b={mau} l="Aktif 30 hari" sub="MAU" />
       </div>
-      <div className={s.muted} style={{ fontSize: 11, marginTop: 4 }}>Aktif = akun yang anaknya main / mendaftar event / memesan / posting / komentar pada periode itu.</div>
+      <div className={s.muted} style={{ fontSize: 11, marginTop: 4 }}>Aktif = akun yang membuka aplikasi (buka menu) / anaknya main / mendaftar event / memesan / posting / komentar pada periode itu.</div>
 
       <div className={s.section} style={{ marginTop: 16 }}>Total akun & anak</div>
       <div className={s.row} style={{ gap: 10, flexWrap: 'wrap' }}>
