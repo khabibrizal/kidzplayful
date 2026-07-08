@@ -525,6 +525,12 @@ Ortu → lihat di /kelas-saya &amp; /event (📋 Catatan) &amp; Rapor anak
 - <strong>Perekam</strong>: <code>components/RekamAktivitas.tsx</code> (client, 1× saat mount) memanggil <code>catatAktivitas(fitur, anakId?)</code> (<code>lib/data/aktivitas-actions.ts</code>, fire-and-forget). Dipasang di menu utama: Beranda (<code>beranda</code>), Menu Anak (<code>game</code>), <code>store</code>, <code>event</code>, <code>komunitas</code>, <code>kelas</code>(kelas-saya), <code>pesanan</code>, Rapor (<code>rapor</code>).
 - <strong>Reader</strong> <code>lib/data/aktivitas.ts</code> <code>getAktivitasRingkas()</code> (fallback aman): aktivitas terakhir per user hari ini, fitur terpopuler hari ini &amp; 7 hari (WIB) + <code>FITUR_LABEL</code>.
 - <strong>Dashboard</strong> <code>/admin/analitik</code> tambah 3 seksi: "Sedang aktif hari ini (buka menu apa)", "Fitur terpopuler hari ini", "Fitur terpopuler (7 hari)".</p>
+<h3 id="masukan-feedback-aplikasi-migrasi-0047">Masukan / Feedback aplikasi — migrasi 0047</h3>
+<ul>
+<li><strong>Migrasi 0047</strong>: tabel <code>feedback</code> (<code>ortu_id</code>, <code>rating</code> 1–5 opsional, <code>pesan</code>, <code>dibuat_at</code>). RLS: user kirim milik sendiri, admin baca semua.</li>
+<li><strong>Customer</strong>: di <code>/pengaturan</code> (profil) ada seksi <strong>"MASUKAN UNTUK APLIKASI"</strong> → <code>FeedbackForm</code> (tombol "💬 Beri Masukan" → rating bintang opsional + textarea → <code>kirimFeedback</code>, <code>lib/data/feedback-actions.ts</code>).</li>
+<li><strong>Admin</strong>: <code>/admin/feedback</code> (menu <strong>⭐ Masukan</strong>) menampilkan semua masukan (rating, pesan, email, waktu WIB). Reader <code>lib/data/feedback.ts</code>.</li>
+</ul>
 <h3 id="catatan-operasional-reset-password-akun">Catatan operasional — reset password akun</h3>
 <p>Reset password user (mis. akun admin) via <strong>Supabase SQL Editor</strong> bila Dashboard tak punya tombolnya:</p>
 <pre><code class="language-sql">update auth.users

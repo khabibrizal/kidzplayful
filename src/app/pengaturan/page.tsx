@@ -8,6 +8,7 @@ import PinForm from './PinForm';
 import AkunForm from './AkunForm';
 import NamaForm from './NamaForm';
 import ProfilPengirimanForm from './ProfilPengirimanForm';
+import FeedbackForm from './FeedbackForm';
 import BottomNav from '@/components/BottomNav';
 
 export default async function Pengaturan() {
@@ -55,6 +56,10 @@ export default async function Pengaturan() {
         )}
         {status === 'aktif' && <p style={{ color: '#2e9e63' }}>Langganan aktif. Terima kasih! 🎉</p>}
       </div>
+
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '16px 0 8px' }}>MASUKAN UNTUK APLIKASI</div>
+      <FeedbackForm />
+
       <BottomNav />
     </main>
   );

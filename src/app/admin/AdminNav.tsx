@@ -18,6 +18,7 @@ const MENU: { href: string; label: string }[] = [
   { href: '/admin/pengaturan-bayar', label: '💰 Pembayaran' },
   { href: '/admin/laporan', label: '📊 Laporan' },
   { href: '/admin/komunitas', label: '💬 Komunitas' },
+  { href: '/admin/feedback', label: '⭐ Masukan' },
   { href: '/admin/guru', label: '🍎 Guru' },
   { href: '/admin/reminder', label: '📣 Reminder' },
 ];

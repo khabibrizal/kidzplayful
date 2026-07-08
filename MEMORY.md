@@ -99,6 +99,9 @@ Ringkasan navigasi seluruh codebase, dihasilkan dari **knowledge graph** (`/grap
 ### Log aktivitas & analitik fitur (migrasi 0046)
 Tabel `aktivitas` (ortu_id/anak_id/fitur/dibuat_at, RLS insert-sendiri + admin-baca). `components/RekamAktivitas.tsx` (mount→`catatAktivitas`, `lib/data/aktivitas-actions.ts`) dipasang di menu utama (beranda/game/store/event/komunitas/kelas/pesanan/rapor). Reader `lib/data/aktivitas.ts` `getAktivitasRingkas` (per-user hari ini + fitur terpopuler hari ini/7h, WIB). `/admin/analitik` +3 seksi. Semua ber-fallback (aman pra-migrasi).
 
+### Feedback aplikasi (migrasi 0047)
+Tabel `feedback` (ortu_id/rating 1-5 opsional/pesan, RLS kirim-sendiri + admin-baca). Customer: seksi "Masukan untuk Aplikasi" di `/pengaturan` (`FeedbackForm` + `feedback-actions.ts`). Admin: `/admin/feedback` (menu ⭐ Masukan, reader `lib/data/feedback.ts`).
+
 ## Catatan
 - `mockups/` (demo.js/index.html) = prototipe statis, terpisah dari app Next.js.
 - `tools/*.mjs` = skrip verifikasi e2e produksi (puppeteer).
