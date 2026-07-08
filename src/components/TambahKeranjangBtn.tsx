@@ -7,8 +7,9 @@ export default function TambahKeranjangBtn({ produkId, habis }: { produkId: stri
   const [ok, setOk] = useState(false);
   const [pending, start] = useTransition();
 
+  const gaya: React.CSSProperties = { marginTop: 6, width: '100%', padding: '9px 10px', fontSize: 13.5 };
   if (habis) {
-    return <button className="kp-btn" disabled style={{ marginTop: 6, width: '100%', background: '#f0ecf9', color: 'var(--abu)', boxShadow: 'none' }}>Stok habis</button>;
+    return <button className="kp-btn" disabled style={{ ...gaya, background: '#f0ecf9', color: 'var(--abu)', boxShadow: 'none' }}>Stok habis</button>;
   }
   function klik() {
     start(async () => {
@@ -16,7 +17,7 @@ export default function TambahKeranjangBtn({ produkId, habis }: { produkId: stri
     });
   }
   return (
-    <button className="kp-btn" onClick={klik} disabled={pending} style={{ marginTop: 6, width: '100%' }}>
+    <button className="kp-btn" onClick={klik} disabled={pending} style={{ ...gaya, boxShadow: '0 4px 0 #7d63b8' }}>
       {ok ? '✓ Ditambah' : '+ Keranjang'}
     </button>
   );
