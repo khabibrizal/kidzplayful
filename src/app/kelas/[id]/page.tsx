@@ -5,7 +5,6 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import type { KelasBermain } from '@/lib/game/tipe';
 import BeliBtn from '@/components/BeliBtn';
-import UnduhPdfBtn from '@/components/UnduhPdfBtn';
 import YoutubeEmbed from '@/components/YoutubeEmbed';
 import { youtubeId } from '@/lib/youtube';
 import { rekamRiwayat } from '@/lib/data/riwayat-kelas';
@@ -26,9 +25,8 @@ export default async function KelasDetailPage({ params }: { params: Promise<{ id
 
   return (
     <main style={{ maxWidth: 480, margin: '24px auto', padding: 16 }}>
-      <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="no-print">
         <Link href="/pilih-anak" style={{ color: 'var(--abu)', fontSize: 13 }}>← Kembali</Link>
-        <UnduhPdfBtn judul={kelas.judul} />
       </div>
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 24, margin: '10px 0 14px' }}>🎈 {kelas.judul}</h1>
 

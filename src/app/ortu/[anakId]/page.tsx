@@ -57,7 +57,6 @@ export default async function ModeOrtu({ params }: { params: Promise<{ anakId: s
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {k.link_ide && !youtubeId(k.link_ide) && <a className="kp-btn" href={k.link_ide} target="_blank" style={{ marginTop: 10, fontSize: 14, padding: '11px 20px' }}>▶ Lihat ide</a>}
             {k.worksheet_url && <a className="kp-btn mint" href={k.worksheet_url} target="_blank" style={{ marginTop: 10, fontSize: 14, padding: '11px 20px' }}>📄 Unduh Worksheet</a>}
-            <Link className="kp-btn putih" href={`/kelas/${k.id}`} style={{ marginTop: 10, fontSize: 14, padding: '11px 20px' }}>⬇ Unduh PDF</Link>
           </div>
         </div>
       ))}
