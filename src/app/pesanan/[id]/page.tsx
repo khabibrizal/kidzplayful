@@ -18,7 +18,7 @@ export default async function PesananDetailPage({ params }: { params: Promise<{ 
   const st = STATUS_PESANAN[o.status] ?? { teks: o.status, warna: 'var(--abu)', bg: '#eee' };
 
   return (
-    <main style={{ maxWidth: 480, margin: '24px auto', padding: 16, paddingBottom: 40 }}>
+    <main className="kp-page-narrow" style={{ padding: 16, paddingBottom: 40, marginTop: 24 }}>
       <Link href="/pesanan" style={{ color: 'var(--abu)', fontSize: 13 }}>← Pesanan saya</Link>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '10px 0 14px' }}>
         <h1 style={{ color: 'var(--lavender-d)', fontSize: 20, margin: 0 }}>Pesanan #{o.id.slice(0, 8)}</h1>

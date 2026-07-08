@@ -433,6 +433,11 @@ Admin membuat "stok" misi kustom yang berjalan berdampingan dengan gamifikasi ot
 - **Tampilan**: layar **Reward** ("🏆 Misi selesai"), **Menu Anak** (section 🏆 MISI dgn progres n/total; **klik misi → popup deskripsi** yang diisi admin + progres). Reader `getGamifikasiAnak` mengembalikan `kustom[]` (termasuk `deskripsi`).
 - **Rentang usia** (migrasi **0045**: `tantangan_kustom.usia_min`/`usia_max`, default 0–99): tantangan hanya tampil & dievaluasi untuk anak yang umurnya (dari `tanggal_lahir`, `umurTahun`) masuk rentang. Difilter di `getGamifikasiAnak` & `catatHasil`; input usia di `TantanganForm`, tampil di `TantanganList`.
 
+### Responsif (mobile-first → tablet/desktop)
+- **Poles global**: `viewport` eksplisit (`layout.tsx`), `body{overflow-x:hidden}`, `img/video/kontrol max-width:100%`, `*{min-width:0}`, shell game `100dvh`. Verifikasi puppeteer tanpa overflow di 320–1280px.
+- **Kelas utilitas** (`globals.css`): `.kp-page` (fluid, isi lebar s.d. 1040px), `.kp-page-narrow` (≤680px, form/baca), `.kp-grid-produk` (2→3→4 kolom), `.kp-grid-kartu` (1→2→3 kolom).
+- **Diterapkan**: halaman daftar/kartu pakai `.kp-page` + grid (Store, Beranda `/pilih-anak` [kartu anak & artikel], `/event`, `/kelas-saya`, `/favorit`, `/pesanan`); halaman form/detail pakai `.kp-page-narrow` (`/keranjang`, `/komunitas`, `/pengaturan`, `/pesanan/[id]`, rapor); admin `.wrap` dilebarkan 760→1040. Tombol "+ Keranjang" dikecilkan agar proporsional di grid tablet. **Default mobile tak berubah** (breakpoint hanya menambah di layar besar). Layar game anak tetap kolom HP (didesain untuk sentuh).
+
 ### Catatan operasional — reset password akun
 Reset password user (mis. akun admin) via **Supabase SQL Editor** bila Dashboard tak punya tombolnya:
 ```sql

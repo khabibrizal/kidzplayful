@@ -16,7 +16,7 @@ export default async function Komunitas({ searchParams }: { searchParams: Promis
   const [opsiTopik, feed] = await Promise.all([getTopikOptions(), getFeed()]);
 
   return (
-    <main style={{ maxWidth: 480, margin: '20px auto', padding: 16, paddingBottom: 90 }}>
+    <main className="kp-page-narrow" style={{ padding: 16, paddingBottom: 90, marginTop: 20 }}>
       <Link href="/pilih-anak" style={{ color: 'var(--abu)', fontSize: 13 }}>← kembali</Link>
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 22, margin: '8px 0 4px' }}>💬 Komunitas</h1>
       <p style={{ color: 'var(--abu)', fontSize: 12, marginBottom: 12 }}>Berbagi cerita & tips dengan sesama orang tua. Mohon santun & jaga privasi anak. 🌿</p>

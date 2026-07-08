@@ -13,7 +13,7 @@ export default async function PesananPage() {
   const list = await getPesananSaya();
 
   return (
-    <main style={{ maxWidth: 480, margin: '24px auto', padding: 16, paddingBottom: 90 }}>
+    <main className="kp-page" style={{ padding: 16, paddingBottom: 90, marginTop: 24 }}>
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 24, margin: '4px 0 14px' }}>📦 Pesanan Saya</h1>
       {list.length === 0 ? (
         <div style={{ textAlign: 'center', color: 'var(--abu)', padding: '24px 0' }}>
@@ -21,10 +21,10 @@ export default async function PesananPage() {
           <p>Belum ada pesanan.</p>
           <Link href="/store" className="kp-btn" style={{ display: 'inline-block', marginTop: 8 }}>Mulai belanja</Link>
         </div>
-      ) : list.map((o) => {
+      ) : <div className="kp-grid-kartu">{list.map((o) => {
         const st = STATUS_PESANAN[o.status] ?? { teks: o.status, warna: 'var(--abu)', bg: '#eee' };
         return (
-          <Link key={o.id} href={`/pesanan/${o.id}`} className="kp-card" style={{ display: 'block', marginBottom: 10, textDecoration: 'none', color: 'inherit' }}>
+          <Link key={o.id} href={`/pesanan/${o.id}`} className="kp-card" style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: 12, color: 'var(--abu)' }}>#{o.id.slice(0, 8)}</span>
               <span style={{ fontSize: 12, fontWeight: 700, color: st.warna, background: st.bg, borderRadius: 99, padding: '3px 10px' }}>{st.teks}</span>
@@ -35,7 +35,7 @@ export default async function PesananPage() {
             </div>
           </Link>
         );
-      })}
+      })}</div>}
       <BottomNav />
     </main>
   );

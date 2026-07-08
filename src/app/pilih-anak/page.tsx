@@ -45,7 +45,7 @@ export default async function PilihAnakPage() {
     : 'kadaluarsa';
 
   return (
-    <main style={{ maxWidth: 420, margin: '30px auto', padding: 16, paddingBottom: 90 }}>
+    <main className="kp-page" style={{ padding: 16, paddingBottom: 90, marginTop: 30 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <Pewi size={64} />
         <h1 style={{ color: 'var(--lavender-d)', fontSize: 24 }}>Hai Kak {prof?.nama_tampilan || 'Kakak'} 👋</h1>
@@ -70,8 +70,8 @@ export default async function PilihAnakPage() {
       <EventCarousel events={events} statusMap={statusEvent} sisaMap={sisaMap} pesertaMap={peserta} />
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '10px 0' }}>PROFIL ANAK</div>
-      {(anakList ?? []).map((a) => (
-        <div key={a.id} className="kp-card" style={{ marginBottom: 10 }}>
+      <div className="kp-grid-kartu">{(anakList ?? []).map((a) => (
+        <div key={a.id} className="kp-card">
           <a href={a.mode_default === 'ortu' ? `/ortu/${a.id}` : `/main/${a.id}`} style={{ display: 'flex', gap: 12, alignItems: 'center', textDecoration: 'none', color: 'inherit' }}>
             <span style={{ fontSize: 30 }}>{a.jenis_kelamin === 'laki-laki' ? '👦' : a.jenis_kelamin === 'perempuan' ? '👧' : '🧒'}</span>
             <span><b>{a.nama}</b><br /><small style={{ color: 'var(--abu)' }}>mode {a.mode_default}</small></span>
@@ -79,7 +79,7 @@ export default async function PilihAnakPage() {
           <a href={`/pilih-game/${a.id}`} style={{ display: 'inline-block', marginTop: 8, fontSize: 12, color: 'var(--biru-d)' }}>🎯 Pilih game (orang tua)</a>
           <a href={`/anak/${a.id}`} style={{ display: 'inline-block', marginTop: 8, marginLeft: 12, fontSize: 12, color: 'var(--biru-d)' }}>⚙️ Kelola</a>
         </div>
-      ))}
+      ))}</div>
       {(anakList ?? []).length === 0 && (
         <p style={{ color: 'var(--abu)', fontSize: 13 }}>Belum ada profil anak. Tambahkan di bawah.</p>
       )}
@@ -90,12 +90,12 @@ export default async function PilihAnakPage() {
             <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)' }}>📖 ARTIKEL & TIPS</span>
             <Link href="/artikel" style={{ fontSize: 12, color: 'var(--biru-d)' }}>Lihat semua →</Link>
           </div>
-          {artikel.map((a) => (
-            <Link key={a.slug} href={`/artikel/${a.slug}`} className="kp-card" style={{ display: 'block', marginBottom: 8, textDecoration: 'none', color: 'inherit', padding: 12 }}>
+          <div className="kp-grid-kartu">{artikel.map((a) => (
+            <Link key={a.slug} href={`/artikel/${a.slug}`} className="kp-card" style={{ display: 'block', textDecoration: 'none', color: 'inherit', padding: 12 }}>
               <div style={{ fontWeight: 700, color: 'var(--lavender-d)', fontSize: 14, lineHeight: 1.3 }}>{a.judul}</div>
               {a.ringkasan && <div style={{ fontSize: 12, color: 'var(--abu)', marginTop: 4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{a.ringkasan}</div>}
             </Link>
-          ))}
+          ))}</div>
         </div>
       )}
 

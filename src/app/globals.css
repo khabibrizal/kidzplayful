@@ -21,6 +21,12 @@ input,select,textarea,button{max-width:100%}
 /* ==== Kontainer & grid responsif (mobile-first; mengisi lebar layar sampai batas) ==== */
 /* Fluid: di HP tetap sempit (jauh di bawah cap), di tablet/desktop mengisi hingga 1040px. */
 .kp-page{ width:100%; max-width:1040px; margin:0 auto; }
+.kp-page-narrow{ width:100%; max-width:680px; margin:0 auto; }
+
+/* grid kartu umum (daftar) — 1 kolom di HP, melebar di layar besar */
+.kp-grid-kartu{ display:grid; grid-template-columns:1fr; gap:12px; }
+@media (min-width:640px){ .kp-grid-kartu{ grid-template-columns:repeat(2,1fr); } }
+@media (min-width:980px){ .kp-grid-kartu{ grid-template-columns:repeat(3,1fr); } }
 
 .kp-grid-produk{ display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
 @media (min-width:560px){ .kp-grid-produk{ grid-template-columns:repeat(3,1fr); } }

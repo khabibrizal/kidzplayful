@@ -50,7 +50,7 @@ export default async function LaporanAnakPage({ params }: { params: Promise<{ an
   const blokEvent = [...blokMap.values()].sort((a, b) => (b.tanggal ?? '').localeCompare(a.tanggal ?? ''));
 
   return (
-    <main style={{ maxWidth: 440, margin: '20px auto', padding: 16 }}>
+    <main className="kp-page-narrow" style={{ padding: 16, marginTop: 20 }}>
       <Link href={`/anak/${anakId}`} style={{ color: 'var(--abu)', fontSize: 13 }}>← kembali</Link>
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 22, margin: '8px 0 14px' }}>📊 Perkembangan {anak.nama}</h1>
       <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>

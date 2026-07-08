@@ -22,12 +22,12 @@ export default async function EventListPage() {
   const jumlahAnak = totalAnak ?? 0;
 
   return (
-    <main style={{ maxWidth: 480, margin: '24px auto', padding: 16, paddingBottom: 90 }}>
+    <main className="kp-page" style={{ padding: 16, paddingBottom: 90, marginTop: 24 }}>
       <Link href="/pilih-anak" style={{ color: 'var(--abu)', fontSize: 13 }}>← Kembali</Link>
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 24, margin: '10px 0 16px' }}>✨ Event Kelas Bermain</h1>
       {events.length === 0
         ? <p style={{ color: 'var(--abu)' }}>Belum ada event saat ini.</p>
-        : events.map((ev) => <div key={ev.id} style={{ marginBottom: 14 }}><EventCard ev={ev} status={statusEvent[ev.id]} peserta={peserta[ev.id]} sisaAnak={jumlahAnak - (peserta[ev.id]?.length ?? 0)} catatanHref={adaCatatan.has(ev.id) ? `/catatan/${ev.id}` : undefined} /></div>)}
+        : <div className="kp-grid-kartu">{events.map((ev) => <div key={ev.id}><EventCard ev={ev} status={statusEvent[ev.id]} peserta={peserta[ev.id]} sisaAnak={jumlahAnak - (peserta[ev.id]?.length ?? 0)} catatanHref={adaCatatan.has(ev.id) ? `/catatan/${ev.id}` : undefined} /></div>)}</div>}
       <BottomNav />
     </main>
   );

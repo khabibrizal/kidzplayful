@@ -23,7 +23,7 @@ export default async function Pengaturan() {
   const waText = encodeURIComponent('Halo, saya sudah transfer untuk langganan KidzPlayful. Email: ' + (user.email ?? ''));
 
   return (
-    <main style={{ maxWidth: 440, margin: '20px auto', padding: 16, paddingBottom: 90 }}>
+    <main className="kp-page-narrow" style={{ padding: 16, paddingBottom: 90, marginTop: 20 }}>
       <Link href="/pilih-anak" style={{ color: 'var(--abu)', fontSize: 13 }}>← kembali</Link>
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 22, margin: '8px 0 14px' }}>⚙️ Pengaturan</h1>
 

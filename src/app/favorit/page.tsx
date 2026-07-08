@@ -15,7 +15,7 @@ export default async function FavoritPage() {
   const favorit = await getFavoritKelas();
 
   return (
-    <main style={{ maxWidth: 420, margin: '30px auto', padding: 16, paddingBottom: 90 }}>
+    <main className="kp-page" style={{ padding: 16, paddingBottom: 90, marginTop: 30 }}>
       <Link href="/pilih-anak" style={{ color: 'var(--abu)', fontSize: 13 }}>← Kembali</Link>
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 24, margin: '10px 0 16px' }}>❤️ Kelas Bermain Favorit</h1>
 
@@ -24,9 +24,9 @@ export default async function FavoritPage() {
           Belum ada favorit. Tandai kelas bermain dengan ikon 🤍 di Mode Anak untuk menyimpannya di sini.
         </p>
       ) : (
-        favorit.map((k) => (
+        <div className="kp-grid-kartu">{favorit.map((k) => (
           <div key={k.id} className="kp-card"
-            style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <a href={`/kelas/${k.id}`}
               style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'inherit', flex: 1 }}>
               <span style={{ fontSize: 22 }}>🎈</span>
@@ -34,7 +34,7 @@ export default async function FavoritPage() {
             </a>
             <FavoritBtn kelasId={k.id} awal={true} />
           </div>
-        ))
+        ))}</div>
       )}
       <BottomNav />
     </main>
