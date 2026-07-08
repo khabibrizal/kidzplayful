@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getProdukTampilCached } from '@/lib/data/publik';
 import StoreView from './StoreView';
+import RekamAktivitas from '@/components/RekamAktivitas';
 import BottomNav from '@/components/BottomNav';
 
 export default async function StorePage() {
@@ -13,6 +14,7 @@ export default async function StorePage() {
 
   return (
     <main className="kp-page" style={{ padding: 16, paddingBottom: 90, marginTop: 24 }}>
+      <RekamAktivitas fitur="store" />
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 24, margin: '4px 0 14px' }}>🛒 Store</h1>
       <StoreView produk={produk} />
       <BottomNav />

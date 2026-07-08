@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getRiwayatKelas } from '@/lib/data/riwayat-kelas';
 import { getEventDiikuti } from '@/lib/data/event';
 import { formatTanggal } from '@/lib/format';
+import RekamAktivitas from '@/components/RekamAktivitas';
 import BottomNav from '@/components/BottomNav';
 
 const STATUS: Record<string, { teks: string; warna: string; bg: string }> = {
@@ -21,6 +22,7 @@ export default async function KelasSayaPage() {
 
   return (
     <main className="kp-page" style={{ padding: 16, paddingBottom: 90, marginTop: 24 }}>
+      <RekamAktivitas fitur="kelas" />
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 24, margin: '6px 0 14px' }}>🎈 Kelas Bermain Saya</h1>
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '0 0 8px' }}>KELAS BERMAIN YANG DIIKUTI</div>

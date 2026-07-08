@@ -96,6 +96,9 @@ Ringkasan navigasi seluruh codebase, dihasilkan dari **knowledge graph** (`/grap
 ### 2026-07 — Responsif mobile-first→tablet/desktop
 - Poles global: `viewport` di `layout.tsx`, `body overflow-x:hidden`, `img/kontrol max-width:100%`, `*{min-width:0}`. Kelas utilitas di `globals.css`: `.kp-page` (fluid≤1040), `.kp-page-narrow` (≤680), `.kp-grid-produk` (2→3→4), `.kp-grid-kartu` (1→2→3). Halaman daftar/kartu (Store, `/pilih-anak`, `/event`, `/kelas-saya`, `/favorit`, `/pesanan`) pakai `.kp-page`+grid; form/detail (`/keranjang`,`/komunitas`,`/pengaturan`,`/pesanan/[id]`,rapor) pakai `.kp-page-narrow`; admin `.wrap` 760→1040. Layar game anak TETAP kolom HP. Default mobile tak berubah (perubahan hanya via breakpoint). Verifikasi puppeteer tanpa overflow 320–1280px.
 
+### Log aktivitas & analitik fitur (migrasi 0046)
+Tabel `aktivitas` (ortu_id/anak_id/fitur/dibuat_at, RLS insert-sendiri + admin-baca). `components/RekamAktivitas.tsx` (mount→`catatAktivitas`, `lib/data/aktivitas-actions.ts`) dipasang di menu utama (beranda/game/store/event/komunitas/kelas/pesanan/rapor). Reader `lib/data/aktivitas.ts` `getAktivitasRingkas` (per-user hari ini + fitur terpopuler hari ini/7h, WIB). `/admin/analitik` +3 seksi. Semua ber-fallback (aman pra-migrasi).
+
 ## Catatan
 - `mockups/` (demo.js/index.html) = prototipe statis, terpisah dari app Next.js.
 - `tools/*.mjs` = skrip verifikasi e2e produksi (puppeteer).

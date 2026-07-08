@@ -8,6 +8,7 @@ import { getEventTampilCached } from '@/lib/data/publik';
 import { getArtikelTerbit } from '@/lib/data/artikel';
 import EventCarousel from '@/components/EventCarousel';
 import OnboardingChecklist from '@/components/OnboardingChecklist';
+import RekamAktivitas from '@/components/RekamAktivitas';
 import BottomNav from '@/components/BottomNav';
 import { tambahAnak } from './actions';
 import Pewi from '@/components/ui/Pewi';
@@ -48,6 +49,7 @@ export default async function PilihAnakPage() {
 
   return (
     <main className="kp-page" style={{ padding: 16, paddingBottom: 90, marginTop: 30 }}>
+      <RekamAktivitas fitur="beranda" />
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <Pewi size={64} />
         <h1 style={{ color: 'var(--lavender-d)', fontSize: 24 }}>Hai Kak {prof?.nama_tampilan || 'Kakak'} 👋</h1>

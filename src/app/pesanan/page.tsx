@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getPesananSaya } from '@/lib/data/pesanan';
 import { formatRupiah, STATUS_PESANAN } from '@/lib/format';
+import RekamAktivitas from '@/components/RekamAktivitas';
 import BottomNav from '@/components/BottomNav';
 
 export default async function PesananPage() {
@@ -14,6 +15,7 @@ export default async function PesananPage() {
 
   return (
     <main className="kp-page" style={{ padding: 16, paddingBottom: 90, marginTop: 24 }}>
+      <RekamAktivitas fitur="pesanan" />
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 24, margin: '4px 0 14px' }}>📦 Pesanan Saya</h1>
       {list.length === 0 ? (
         <div style={{ textAlign: 'center', color: 'var(--abu)', padding: '24px 0' }}>

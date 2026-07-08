@@ -6,6 +6,7 @@ import { getStatusPendaftaranSaya, getPesertaPerEvent } from '@/lib/data/event';
 import { getEventTampilCached } from '@/lib/data/publik';
 import { getEventBerCatatan } from '@/lib/data/catatan';
 import EventCard from '@/components/EventCard';
+import RekamAktivitas from '@/components/RekamAktivitas';
 import BottomNav from '@/components/BottomNav';
 
 export default async function EventListPage() {
@@ -23,6 +24,7 @@ export default async function EventListPage() {
 
   return (
     <main className="kp-page" style={{ padding: 16, paddingBottom: 90, marginTop: 24 }}>
+      <RekamAktivitas fitur="event" />
       <Link href="/pilih-anak" style={{ color: 'var(--abu)', fontSize: 13 }}>← Kembali</Link>
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 24, margin: '10px 0 16px' }}>✨ Event Kelas Bermain</h1>
       {events.length === 0

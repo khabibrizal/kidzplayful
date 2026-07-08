@@ -438,6 +438,13 @@ Admin membuat "stok" misi kustom yang berjalan berdampingan dengan gamifikasi ot
 - **Kelas utilitas** (`globals.css`): `.kp-page` (fluid, isi lebar s.d. 1040px), `.kp-page-narrow` (≤680px, form/baca), `.kp-grid-produk` (2→3→4 kolom), `.kp-grid-kartu` (1→2→3 kolom).
 - **Diterapkan**: halaman daftar/kartu pakai `.kp-page` + grid (Store, Beranda `/pilih-anak` [kartu anak & artikel], `/event`, `/kelas-saya`, `/favorit`, `/pesanan`); halaman form/detail pakai `.kp-page-narrow` (`/keranjang`, `/komunitas`, `/pengaturan`, `/pesanan/[id]`, rapor); admin `.wrap` dilebarkan 760→1040. Tombol "+ Keranjang" dikecilkan agar proporsional di grid tablet. **Default mobile tak berubah** (breakpoint hanya menambah di layar besar). Layar game anak tetap kolom HP (didesain untuk sentuh).
 
+### Log Aktivitas & Analitik penggunaan fitur — migrasi 0046
+Merekam menu/fitur yang dibuka user untuk analitik "sedang buka apa" & "fitur terpopuler".
+- **Migrasi 0046**: tabel `aktivitas` (`ortu_id`, `anak_id?`, `fitur`, `dibuat_at`). RLS: user insert milik sendiri, admin baca semua. Index waktu/fitur/ortu.
+- **Perekam**: `components/RekamAktivitas.tsx` (client, 1× saat mount) memanggil `catatAktivitas(fitur, anakId?)` (`lib/data/aktivitas-actions.ts`, fire-and-forget). Dipasang di menu utama: Beranda (`beranda`), Menu Anak (`game`), `store`, `event`, `komunitas`, `kelas`(kelas-saya), `pesanan`, Rapor (`rapor`).
+- **Reader** `lib/data/aktivitas.ts` `getAktivitasRingkas()` (fallback aman): aktivitas terakhir per user hari ini, fitur terpopuler hari ini & 7 hari (WIB) + `FITUR_LABEL`.
+- **Dashboard** `/admin/analitik` tambah 3 seksi: "Sedang aktif hari ini (buka menu apa)", "Fitur terpopuler hari ini", "Fitur terpopuler (7 hari)".
+
 ### Catatan operasional — reset password akun
 Reset password user (mis. akun admin) via **Supabase SQL Editor** bila Dashboard tak punya tombolnya:
 ```sql

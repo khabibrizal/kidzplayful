@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getFeed, getTopikOptions } from '@/lib/data/komunitas';
 import Compose from './Compose';
+import RekamAktivitas from '@/components/RekamAktivitas';
 import SukaBtn from './SukaBtn';
 import LaporBtn from './LaporBtn';
 import BottomNav from '@/components/BottomNav';
@@ -17,6 +18,7 @@ export default async function Komunitas({ searchParams }: { searchParams: Promis
 
   return (
     <main className="kp-page-narrow" style={{ padding: 16, paddingBottom: 90, marginTop: 20 }}>
+      <RekamAktivitas fitur="komunitas" />
       <Link href="/pilih-anak" style={{ color: 'var(--abu)', fontSize: 13 }}>← kembali</Link>
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 22, margin: '8px 0 4px' }}>💬 Komunitas</h1>
       <p style={{ color: 'var(--abu)', fontSize: 12, marginBottom: 12 }}>Berbagi cerita & tips dengan sesama orang tua. Mohon santun & jaga privasi anak. 🌿</p>

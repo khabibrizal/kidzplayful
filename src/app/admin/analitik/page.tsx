@@ -1,6 +1,11 @@
 // src/app/admin/analitik/page.tsx — analitik user aktif & aktivitas (data dari Supabase)
 import { createClient } from '@/lib/supabase/server';
+import { getAktivitasRingkas, labelFitur } from '@/lib/data/aktivitas';
 import s from '../admin.module.css';
+
+function jam(iso: string) {
+  return new Date(iso).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) + ' WIB';
+}
 
 const HARI = 864e5;
 const isoLalu = (n: number) => new Date(Date.now() - n * HARI).toISOString();
@@ -20,7 +25,7 @@ export default async function AnalitikPage() {
   const db = await createClient();
   const d1 = isoLalu(1), d7 = isoLalu(7), d30 = isoLalu(30);
 
-  const [anak, hasil, pend, pesn, post, kom, profs] = await Promise.all([
+  const [anak, hasil, pend, pesn, post, kom, profs, akt] = await Promise.all([
     db.from('anak').select('id,ortu_id'),
     db.from('hasil_main').select('anak_id,tanggal,mesin').gte('tanggal', d30),
     db.from('pendaftaran_event').select('ortu_id,created_at').gte('created_at', d30),
@@ -28,6 +33,7 @@ export default async function AnalitikPage() {
     db.from('postingan').select('ortu_id,created_at').gte('created_at', d30),
     db.from('komentar').select('ortu_id,created_at').gte('created_at', d30),
     db.from('profiles').select('id,nama_tampilan'),
+    getAktivitasRingkas(),
   ]);
 
   const anakOrtu = new Map<string, string>((anak.data ?? []).map((a) => [a.id as string, a.ortu_id as string]));
@@ -87,6 +93,34 @@ export default async function AnalitikPage() {
         <Kartu b={cPost} l="Postingan" />
         <Kartu b={cKom} l="Komentar" />
       </div>
+
+      <div className={s.section} style={{ marginTop: 16 }}>Sedang aktif hari ini (buka menu apa)</div>
+      {akt.perUser.length === 0
+        ? <p className={s.muted}>Belum ada aktivitas hari ini.</p>
+        : akt.perUser.slice(0, 20).map((u, i) => (
+          <div key={i} className={s.card} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', gap: 8 }}>
+            <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</span>
+            <span><b style={{ color: 'var(--lavender-d)' }}>{labelFitur(u.fitur)}</b> <span className={s.muted}>· {jam(u.waktu)}</span></span>
+          </div>
+        ))}
+
+      <div className={s.section} style={{ marginTop: 16 }}>Fitur terpopuler hari ini</div>
+      {akt.populerHariIni.length === 0
+        ? <p className={s.muted}>Belum ada aktivitas hari ini.</p>
+        : akt.populerHariIni.map((f) => (
+          <div key={f.fitur} className={s.card} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px' }}>
+            <b>{labelFitur(f.fitur)}</b><span className={s.muted}>{f.n}x</span>
+          </div>
+        ))}
+
+      <div className={s.section} style={{ marginTop: 16 }}>Fitur terpopuler (7 hari)</div>
+      {akt.populer7h.length === 0
+        ? <p className={s.muted}>Belum ada aktivitas.</p>
+        : akt.populer7h.map((f) => (
+          <div key={f.fitur} className={s.card} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px' }}>
+            <b>{labelFitur(f.fitur)}</b><span className={s.muted}>{f.n}x</span>
+          </div>
+        ))}
 
       <div className={s.section} style={{ marginTop: 16 }}>Game terpopuler (30 hari)</div>
       {topGame.length === 0

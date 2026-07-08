@@ -8,6 +8,7 @@ import { getSertifikatAnak } from '@/lib/data/sertifikat';
 import { getGamifikasiAnak } from '@/lib/data/gamifikasi';
 import { formatTanggal } from '@/lib/format';
 import CatatanCard from '@/components/CatatanCard';
+import RekamAktivitas from '@/components/RekamAktivitas';
 
 const LABEL: Record<string, string> = { 'kognitif': 'Kognitif', 'motorik-halus': 'Motorik Halus', 'sensorik': 'Sensorik', 'kemandirian': 'Kemandirian', 'kreativitas': 'Kreativitas' };
 const MESIN: Record<string, string> = { 'tekan-sesuai': 'Mana Ya', 'seret-wadah': 'Beres-Beres', 'cari-pasangan': 'Cari Pasangan', 'mewarnai': 'Mewarnai', 'dekode': 'Pecahkan Kode', 'urutan': 'Urutan & Pola', 'jalur': 'Robot Grid', 'hitung': 'Hitung-Kode' };
@@ -51,6 +52,7 @@ export default async function LaporanAnakPage({ params }: { params: Promise<{ an
 
   return (
     <main className="kp-page-narrow" style={{ padding: 16, marginTop: 20 }}>
+      <RekamAktivitas fitur="rapor" anakId={anakId} />
       <Link href={`/anak/${anakId}`} style={{ color: 'var(--abu)', fontSize: 13 }}>← kembali</Link>
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 22, margin: '8px 0 14px' }}>📊 Perkembangan {anak.nama}</h1>
       <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>

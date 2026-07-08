@@ -9,6 +9,7 @@ import { getVideoByKategori } from '@/lib/data/video';
 import { getKelasAktifCached } from '@/lib/data/publik';
 import { getFavoritIds } from '@/lib/data/favorit';
 import { getGamifikasiAnak } from '@/lib/data/gamifikasi';
+import RekamAktivitas from '@/components/RekamAktivitas';
 import MenuAnak from './MenuAnak';
 
 export default async function MainPage({ params, searchParams }: { params: Promise<{ anakId: string }>; searchParams: Promise<{ paket?: string }> }) {
@@ -31,6 +32,8 @@ export default async function MainPage({ params, searchParams }: { params: Promi
   if (pustaka.length === 0) redirect('/pilih-anak');
 
   return (
+    <>
+    <RekamAktivitas fitur="game" anakId={anakId} />
     <MenuAnak
       anak={{ id: anak.id, nama: anak.nama, koin: anak.koin, batas_menit: anak.batas_menit }}
       pustaka={pustaka}
@@ -41,5 +44,6 @@ export default async function MainPage({ params, searchParams }: { params: Promi
       favIds={favIds}
       gamiAwal={gami}
     />
+    </>
   );
 }
