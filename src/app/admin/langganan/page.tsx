@@ -10,10 +10,15 @@ import s from '../admin.module.css';
 const PER_HAL = 30;
 
 type Row = {
-  id: string; email: string;
+  id: string; email: string; created_at: string;
   anak: { nama: string }[];
   langganan: { status: string; nominal: number; trial_mulai: string; aktif_sampai: string | null } | null;
 };
+
+function tglJam(iso: string | null): string {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) + ' WIB';
+}
 
 export default async function Langganan({ searchParams }: { searchParams: Promise<{ hal?: string }> }) {
   const { hal } = await searchParams;
@@ -23,7 +28,7 @@ export default async function Langganan({ searchParams }: { searchParams: Promis
   const [{ data, count }, bayar] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id,email,anak(nama),langganan(status,nominal,trial_mulai,aktif_sampai)', { count: 'exact' })
+      .select('id,email,created_at,anak(nama),langganan(status,nominal,trial_mulai,aktif_sampai)', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(from, from + PER_HAL - 1),
     getPengaturanBayar(),
@@ -55,6 +60,7 @@ export default async function Langganan({ searchParams }: { searchParams: Promis
               <span style={{ flex: 1 }}><b>{m.email}</b><br /><span className={s.muted}>{m.anak.map((a) => a.nama).join(', ') || 'belum ada anak'}</span></span>
               <span className={`${s.tag} ${warna[st] ?? ''}`}>{st}</span>
             </div>
+            <div className={s.muted} style={{ marginTop: 6 }}>🗓️ Daftar: {tglJam(m.created_at)}</div>
             {st !== 'aktif' && <div style={{ marginTop: 8 }}><AktifkanForm ortuId={m.id} nominalDefault={String(bayar.harga_langganan_nominal)} /></div>}
           </div>
         );
