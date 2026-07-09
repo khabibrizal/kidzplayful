@@ -65,6 +65,29 @@ export async function checkout(input: { penerima: string; noHp: string; alamat: 
   const hargaItem = (p: typeof list[number]['p']) => hargaProdukUntuk(p, status);
   const subtotal = list.reduce((a, it) => a + hargaItem(it.p) * it.qty, 0);
 
+  // Anti pesanan dobel: bila sudah ada pesanan IDENTIK berstatus 'menunggu_ongkir'
+  // yang dibuat < 10 menit lalu (mis. user submit lagi karena mengira gagal),
+  // pakai pesanan itu — jangan buat duplikat. (Re-order sungguhan tetap bisa
+  // setelah 10 menit atau setelah admin mengisi ongkir.)
+  const tandaItem = (arr: { produk_id: string; qty: number }[]) =>
+    arr.map((i) => `${i.produk_id}:${i.qty}`).sort().join('|');
+  const tandaBaru = tandaItem(list.map((it) => ({ produk_id: it.p.id, qty: it.qty })));
+  const sejak = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const { data: terkini } = await s
+    .from('pesanan')
+    .select('id, subtotal, item:item_pesanan(produk_id, qty)')
+    .eq('ortu_id', user.id)
+    .eq('status', 'menunggu_ongkir')
+    .gte('created_at', sejak);
+  const kembar = (terkini ?? []).find(
+    (o) => o.subtotal === subtotal && tandaItem((o.item ?? []) as { produk_id: string; qty: number }[]) === tandaBaru,
+  );
+  if (kembar) {
+    await s.from('keranjang_item').delete().eq('ortu_id', user.id);
+    revalidatePath('/keranjang'); revalidatePath('/pesanan');
+    return kembar.id as string; // arahkan ke pesanan yang sudah ada, bukan bikin baru
+  }
+
   const { data: pesanan, error: e1 } = await s.from('pesanan').insert({
     ortu_id: user.id, status: 'menunggu_ongkir',
     subtotal, ongkir: 0, total: subtotal,

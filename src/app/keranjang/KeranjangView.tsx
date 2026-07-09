@@ -44,6 +44,7 @@ export default function KeranjangView({ awal, profil, status = 'kadaluarsa' }: {
         const id = await checkout({ penerima, noHp, alamat, catatan });
         window.dispatchEvent(new Event('keranjang:update'));
         router.push(`/pesanan/${id}`);
+        router.refresh(); // pastikan detail & daftar pesanan tampil versi terbaru (bukan cache)
       } catch (e) { setErr(e instanceof Error ? e.message : 'Gagal membuat pesanan'); }
     });
   }
