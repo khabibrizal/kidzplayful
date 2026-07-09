@@ -10,6 +10,7 @@ const LINK = [
   { href: '/admin/keuangan/transaksi', label: '📒 Transaksi' },
   { href: '/admin/keuangan/expense', label: '💸 Pengeluaran' },
   { href: '/admin/keuangan/aset', label: '🖥️ Aset' },
+  { href: '/admin/keuangan/anggaran', label: '🎯 Anggaran' },
   { href: '/admin/keuangan/laporan', label: '📈 Laporan' },
   { href: '/admin/keuangan/pajak', label: '🧾 Pajak' },
 ];
