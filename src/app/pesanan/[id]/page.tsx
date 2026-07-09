@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getPesanan } from '@/lib/data/pesanan';
-import { formatRupiah, STATUS_PESANAN } from '@/lib/format';
+import { formatRupiah, STATUS_PESANAN, linkWa } from '@/lib/format';
 import { getPengaturanBayar } from '@/lib/data/pengaturan-bayar';
 import BuktiUpload from './BuktiUpload';
 
@@ -13,15 +13,19 @@ export default async function PesananDetailPage({ params }: { params: Promise<{ 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
   const o = await getPesanan(id);
-  const { bank_teks: BANK } = await getPengaturanBayar();
+  const cfg = await getPengaturanBayar();
+  const BANK = cfg.bank_teks;
   if (!o || o.ortu_id !== user.id) redirect('/pesanan');
   const st = STATUS_PESANAN[o.status] ?? { teks: o.status, warna: 'var(--abu)', bg: '#eee' };
+  const no8 = o.id.slice(0, 8);
+  const waOngkir = linkWa(cfg.wa_nomor, `Halo Admin KidzPlayful 🙏 Saya sudah checkout pesanan #${no8} (barang ${formatRupiah(o.subtotal)}). Mohon dihitung ongkirnya ya. Terima kasih.`);
+  const waBayar = linkWa(cfg.wa_nomor, `Halo Admin KidzPlayful 🙏 Saya sudah bayar & unggah bukti untuk pesanan #${no8} (total ${formatRupiah(o.total)}). Mohon diverifikasi ya. Terima kasih.`);
 
   return (
     <main className="kp-page-narrow" style={{ padding: 16, paddingBottom: 40, marginTop: 24 }}>
       <Link href="/pesanan" style={{ color: 'var(--abu)', fontSize: 13 }}>← Pesanan saya</Link>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '10px 0 14px' }}>
-        <h1 style={{ color: 'var(--lavender-d)', fontSize: 20, margin: 0 }}>Pesanan #{o.id.slice(0, 8)}</h1>
+        <h1 style={{ color: 'var(--lavender-d)', fontSize: 20, margin: 0 }}>🧾 Invoice #{no8}</h1>
         <span style={{ fontSize: 12, fontWeight: 700, color: st.warna, background: st.bg, borderRadius: 99, padding: '4px 11px' }}>{st.teks}</span>
       </div>
 
@@ -46,7 +50,10 @@ export default async function PesananDetailPage({ params }: { params: Promise<{ 
       </div>
 
       {o.status === 'menunggu_ongkir' && (
-        <div className="kp-card" style={{ background: '#fff3d6' }}>Menunggu admin menghitung ongkir. Kami beri tahu lewat status pesanan ini ya.</div>
+        <div className="kp-card" style={{ background: '#fff3d6' }}>
+          <p style={{ margin: 0, fontSize: 14 }}>Menunggu admin menghitung ongkir. Klik tombol di bawah agar admin segera memprosesnya.</p>
+          {waOngkir && <a className="kp-btn mint" href={waOngkir} target="_blank" style={{ display: 'inline-block', marginTop: 10 }}>💬 Konfirmasi ongkir via WhatsApp</a>}
+        </div>
       )}
 
       {o.status === 'menunggu_bayar' && (
@@ -58,7 +65,10 @@ export default async function PesananDetailPage({ params }: { params: Promise<{ 
       )}
 
       {o.status === 'dibayar' && (
-        <div className="kp-card" style={{ background: '#d6e6ff' }}>Bukti diterima ✓ Menunggu verifikasi admin. {o.bukti_url && <a href={o.bukti_url} target="_blank" style={{ color: 'var(--biru-d)' }}>lihat bukti</a>}</div>
+        <div className="kp-card" style={{ background: '#d6e6ff' }}>
+          <p style={{ margin: 0 }}>Bukti diterima ✓ Menunggu verifikasi admin. {o.bukti_url && <a href={o.bukti_url} target="_blank" style={{ color: 'var(--biru-d)' }}>lihat bukti</a>}</p>
+          {waBayar && <a className="kp-btn mint" href={waBayar} target="_blank" style={{ display: 'inline-block', marginTop: 10 }}>💬 Konfirmasi pembayaran via WhatsApp</a>}
+        </div>
       )}
       {o.status === 'diproses' && <div className="kp-card" style={{ background: '#efe7fb' }}>Pembayaran terverifikasi. Pesanan sedang diproses 📦</div>}
       {o.status === 'dikirim' && <div className="kp-card" style={{ background: '#dff5e6' }}>Pesanan dikirim 🚚 {o.no_resi && <>Resi: <b>{o.no_resi}</b></>}</div>}

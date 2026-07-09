@@ -458,6 +458,13 @@ Diskon **persentase per-produk** untuk 2 tier (Trial & Berlangganan), diskon **E
 - **Tampilan**: harga normal **dicoret** + harga dibayar + badge **"−X%"** + baris "Trial −a% / Langganan −b%" (yang berlaku ditebalkan) di `ProdukCard`, `ProdukDetail`; event tampil harga coret + "diskon berlangganan −X%".
 - **Admin**: form Produk input **Diskon Trial (%)**, **Diskon Langganan (%)**, **Berat (gram)**; form Event input **Diskon Berlangganan (%)**.
 
+### Invoice & konfirmasi WA ke admin (semua transaksi)
+Master WA admin = **`pengaturan_pembayaran.wa_nomor`** (dinamis, diedit di `/admin/pengaturan-bayar` — label "Nomor WhatsApp Admin"). Helper `linkWa()` (`lib/format.ts`) membangun tautan wa.me + pesan.
+- **Store**: `/pesanan/[id]` = **🧾 Invoice** (item, subtotal, ongkir, total, alamat). Tombol **"💬 Konfirmasi ongkir via WhatsApp"** saat status `menunggu_ongkir`; **"💬 Konfirmasi pembayaran via WhatsApp"** saat `dibayar` (setelah upload bukti). Pesan berisi no invoice + nominal.
+- **Event**: setelah daftar (+ upload bukti) `DaftarForm` menampilkan layar sukses berisi **ringkasan/invoice** (event, jumlah anak, total) + tombol **"💬 Konfirmasi ke Admin via WhatsApp"**. `waNomor` dikirim dari page via `getPengaturanBayar`.
+- **Langganan**: `/pengaturan` menampilkan harga + instruksi transfer + tombol **"Konfirmasi via WhatsApp"** (sudah pakai master WA).
+Semua tombol WA memakai master WA yang sama → admin tahu ada transaksi masuk & segera memproses via dashboard.
+
 ### Perbaikan & penyesuaian lain (terkini)
 - **Validasi tanggal lahir anak**: `tambahAnak`, `updateAnak`, & `POST /api/anak` menolak tanggal ≥ hari ini (WIB); input `type=date` diberi `max` = kemarin. (Anak <2 th tetap Mode Ortu = desain: bayi → aktivitas kelas bermain, bukan game solo.)
 - **Kelola Langganan**: tiap kartu member menampilkan **tanggal & jam pendaftaran** (`profiles.created_at`, WIB).

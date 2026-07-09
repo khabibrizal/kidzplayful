@@ -7,14 +7,15 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { daftarEvent } from '@/lib/data/event-actions';
 import type { EventKelas } from '@/lib/game/tipe';
-import { formatTanggal, formatRupiah } from '@/lib/format';
+import { formatTanggal, formatRupiah, linkWa } from '@/lib/format';
 import { hargaEventUntuk, persenEventUntuk } from '@/lib/domain/harga';
 
-export default function DaftarForm({ ev, anak, status = 'kadaluarsa' }: { ev: EventKelas; anak: { id: string; nama: string }[]; status?: string }) {
+export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor }: { ev: EventKelas; anak: { id: string; nama: string }[]; status?: string; waNomor?: string }) {
   const [pilih, setPilih] = useState<Set<string>>(new Set());
   const [buktiUrl, setBuktiUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [sukses, setSukses] = useState(false);
   const [err, setErr] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -51,13 +52,31 @@ export default function DaftarForm({ ev, anak, status = 'kadaluarsa' }: { ev: Ev
     setSubmitting(true); setErr('');
     try {
       await daftarEvent(ev.id, [...pilih], buktiUrl);
-      // sukses → kembali ke dashboard (status muncul sebagai badge di kartu event)
-      router.push('/pilih-anak');
-      router.refresh();
+      setSukses(true); // tampilkan invoice + tombol konfirmasi WA
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Gagal mendaftar');
       setSubmitting(false);
     }
+  }
+
+  if (sukses) {
+    const waMsg = `Halo Admin KidzPlayful 🙏 Saya baru mendaftar event "${ev.judul}" untuk ${pilih.size} anak (total ${formatRupiah(total)})${buktiUrl ? ' dan sudah upload bukti bayar' : ''}. Mohon diproses ya. Terima kasih.`;
+    const wa = linkWa(waNomor, waMsg);
+    return (
+      <main className="kp-page-narrow" style={{ padding: 16, marginTop: 24, textAlign: 'center' }}>
+        <div style={{ fontSize: 44 }}>✅</div>
+        <h1 style={{ color: 'var(--lavender-d)', fontSize: 22, margin: '6px 0' }}>Pendaftaran terkirim!</h1>
+        <div className="kp-card" style={{ textAlign: 'left', marginTop: 8 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)' }}>🧾 RINGKASAN</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}><span>{ev.judul}</span></div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--abu)', marginTop: 4 }}><span>{pilih.size} anak × {formatRupiah(hargaAnak)}</span></div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: 16, borderTop: '1px dashed #e2dbf0', marginTop: 8, paddingTop: 8 }}><span>Total</span><span>{formatRupiah(total)}</span></div>
+        </div>
+        <p style={{ color: 'var(--abu)', fontSize: 13, margin: '12px 0' }}>Beri tahu admin agar pendaftaran & pembayaranmu segera diproses ya 🙏</p>
+        {wa && <a className="kp-btn mint" href={wa} target="_blank" style={{ display: 'block' }}>💬 Konfirmasi ke Admin via WhatsApp</a>}
+        <button className="kp-btn putih" style={{ width: '100%', marginTop: 8 }} onClick={() => { router.push('/pilih-anak'); router.refresh(); }}>Selesai</button>
+      </main>
+    );
   }
 
   return (

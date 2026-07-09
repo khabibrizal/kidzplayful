@@ -102,6 +102,10 @@ Tabel `aktivitas` (ortu_id/anak_id/fitur/dibuat_at, RLS insert-sendiri + admin-b
 ### Feedback aplikasi (migrasi 0047 + 0048)
 Tabel `feedback` + kolom `jawaban jsonb` (survei terstruktur, RLS kirim-sendiri + admin-baca). Customer: seksi "Masukan untuk Aplikasi" di `/pengaturan` = **survei 8 pertanyaan** (`FeedbackForm`, tipe di `lib/feedback-tipe.ts`, action `feedback-actions.ts`). Admin `/admin/feedback` (menu ⭐ Masukan) tampil per-responden + rata-rata NPS (reader `lib/data/feedback.ts`).
 
+### Diskon Store/Event + Invoice & WA admin (migrasi 0049/0050)
+Diskon **persentase per-produk** (`produk.diskon_trial_persen`/`diskon_langganan_persen`, `berat_gram`) & event (`event.diskon_langganan_persen`, khusus aktif). Logika `lib/domain/harga.ts` (aktif→langganan, selain→trial; event hanya aktif), status via `lib/data/langganan-status.ts`. Harga aktual di `checkout`+`daftarEvent`; tampilan badge "−X%" coret di ProdukCard/Detail. Admin input % di ProdukAdmin/EventAdmin.
+**Invoice & konfirmasi WA**: master WA admin = `pengaturan_pembayaran.wa_nomor` (`/admin/pengaturan-bayar`), `linkWa()` di `format.ts`. Store `/pesanan/[id]`=invoice + WA konfirmasi ongkir(`menunggu_ongkir`)/pembayaran(`dibayar`); Event `DaftarForm` layar sukses=invoice+WA; Langganan `/pengaturan` WA. Satu nomor WA utk semua notifikasi transaksi.
+
 ### Perbaikan lain (terkini)
 Validasi tgl lahir anak < hari ini (tambah/update/API, input `max`). Kelola Langganan tampil tgl+jam daftar (`profiles.created_at`). Unduh PDF dihapus dari materi kelas bermain (`/kelas/[id]`, Mode Anak/Ortu) — e-sertifikat/stiker tetap. DAU/WAU/MAU kini termasuk log `aktivitas`. Konten: `/tentang` ditulis ulang, FAQ+footer "Play-Based Learning Ecosystem".
 
