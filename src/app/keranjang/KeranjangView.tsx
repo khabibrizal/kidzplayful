@@ -7,17 +7,19 @@ import { useRouter } from 'next/navigation';
 import { setQtyKeranjang, hapusKeranjang, checkout } from '@/lib/data/keranjang-actions';
 import type { KeranjangItem } from '@/lib/game/tipe';
 import { formatRupiah } from '@/lib/format';
+import { hargaProdukUntuk } from '@/lib/domain/harga';
 
-export default function KeranjangView({ awal, profil }: { awal: KeranjangItem[]; profil?: { nama: string; noWa: string; alamat: string } }) {
+export default function KeranjangView({ awal, profil, status = 'kadaluarsa' }: { awal: KeranjangItem[]; profil?: { nama: string; noWa: string; alamat: string }; status?: string }) {
   const router = useRouter();
   const [items, setItems] = useState<KeranjangItem[]>(awal);
+  const hb = (p: KeranjangItem['produk']) => hargaProdukUntuk(p, status);
   const [penerima, setPenerima] = useState(profil?.nama ?? '');
   const [noHp, setNoHp] = useState(profil?.noWa ?? '');
   const [alamat, setAlamat] = useState(profil?.alamat ?? '');
   const [catatan, setCatatan] = useState('');
   const [err, setErr] = useState('');
   const [pending, start] = useTransition();
-  const subtotal = items.reduce((a, it) => a + it.produk.harga * it.qty, 0);
+  const subtotal = items.reduce((a, it) => a + hb(it.produk) * it.qty, 0);
 
   function ubahQty(produkId: string, qty: number) {
     const it = items.find((x) => x.produk_id === produkId);
@@ -67,7 +69,7 @@ export default function KeranjangView({ awal, profil }: { awal: KeranjangItem[];
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 700, fontSize: 13 }}>{it.produk.nama}</div>
-            <div style={{ fontWeight: 800, color: 'var(--lavender-d)', fontSize: 13 }}>{formatRupiah(it.produk.harga)}</div>
+            <div style={{ fontWeight: 800, color: 'var(--lavender-d)', fontSize: 13 }}>{formatRupiah(hb(it.produk))}{hb(it.produk) < it.produk.harga && <span style={{ textDecoration: 'line-through', color: 'var(--abu)', fontWeight: 500, fontSize: 11, marginLeft: 5 }}>{formatRupiah(it.produk.harga)}</span>}</div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: 13 }}>
             <button onClick={() => ubahQty(it.produk_id, it.qty - 1)} style={{ border: 'none', background: '#f0ecf9', color: 'var(--lavender-d)', width: 26, height: 26, borderRadius: 8, fontWeight: 800, cursor: 'pointer' }}>−</button>

@@ -8,8 +8,8 @@ const anon = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEX
   auth: { persistSession: false },
 });
 
-const E = 'id,judul,lokasi,tanggal,jam_mulai,jam_selesai,deskripsi,gambar_url,harga_per_anak,status';
-const P = 'id,nama,deskripsi,kategori,harga,stok,gambar_url,status';
+const E = 'id,judul,lokasi,tanggal,jam_mulai,jam_selesai,deskripsi,gambar_url,harga_per_anak,harga_langganan,status';
+const P = 'id,nama,deskripsi,kategori,harga,harga_diskon_trial,harga_diskon_langganan,berat_gram,stok,gambar_url,status';
 const K = 'id,judul,aktivitas,bahan,link_ide,worksheet_url,status';
 
 export const getEventTampilCached = unstable_cache(

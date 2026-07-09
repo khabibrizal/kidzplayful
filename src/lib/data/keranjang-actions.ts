@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { getJumlahKeranjang } from './keranjang';
+import { getStatusLangganan } from './langganan-status';
+import { hargaProdukUntuk } from '@/lib/domain/harga';
 
 /** Untuk badge keranjang di bottom nav (dipanggil dari Client). */
 export async function jumlahKeranjang(): Promise<number> {
@@ -50,7 +52,7 @@ export async function checkout(input: { penerima: string; noHp: string; alamat: 
 
   const { data: items } = await s
     .from('keranjang_item')
-    .select('qty, produk:produk_id(id,nama,harga,stok,status)')
+    .select('qty, produk:produk_id(id,nama,harga,harga_diskon_trial,harga_diskon_langganan,stok,status)')
     .eq('ortu_id', user.id);
   const list = (items ?? []).map((r) => ({ qty: r.qty, p: Array.isArray(r.produk) ? r.produk[0] : r.produk })).filter((x) => x.p);
   if (!list.length) throw new Error('Keranjang kosong.');
@@ -58,7 +60,10 @@ export async function checkout(input: { penerima: string; noHp: string; alamat: 
     if (it.p.status !== 'tampil') throw new Error(`"${it.p.nama}" tidak tersedia.`);
     if (it.qty > it.p.stok) throw new Error(`Stok "${it.p.nama}" tinggal ${it.p.stok}.`);
   }
-  const subtotal = list.reduce((a, it) => a + it.p.harga * it.qty, 0);
+  // harga aktual sesuai status langganan (aktif=diskon langganan, selain itu=diskon trial)
+  const status = await getStatusLangganan(s, user.id);
+  const hargaItem = (p: typeof list[number]['p']) => hargaProdukUntuk(p, status);
+  const subtotal = list.reduce((a, it) => a + hargaItem(it.p) * it.qty, 0);
 
   const { data: pesanan, error: e1 } = await s.from('pesanan').insert({
     ortu_id: user.id, status: 'menunggu_ongkir',
@@ -69,7 +74,7 @@ export async function checkout(input: { penerima: string; noHp: string; alamat: 
   if (e1 || !pesanan) throw new Error(e1?.message ?? 'Gagal membuat pesanan.');
 
   const { error: e2 } = await s.from('item_pesanan').insert(
-    list.map((it) => ({ pesanan_id: pesanan.id, produk_id: it.p.id, nama: it.p.nama, harga: it.p.harga, qty: it.qty })),
+    list.map((it) => ({ pesanan_id: pesanan.id, produk_id: it.p.id, nama: it.p.nama, harga: hargaItem(it.p), qty: it.qty })),
   );
   if (e2) throw new Error(e2.message);
 

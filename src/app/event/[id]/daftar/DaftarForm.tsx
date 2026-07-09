@@ -8,8 +8,9 @@ import { createClient } from '@/lib/supabase/client';
 import { daftarEvent } from '@/lib/data/event-actions';
 import type { EventKelas } from '@/lib/game/tipe';
 import { formatTanggal, formatRupiah } from '@/lib/format';
+import { hargaEventUntuk } from '@/lib/domain/harga';
 
-export default function DaftarForm({ ev, anak }: { ev: EventKelas; anak: { id: string; nama: string }[] }) {
+export default function DaftarForm({ ev, anak, status = 'kadaluarsa' }: { ev: EventKelas; anak: { id: string; nama: string }[]; status?: string }) {
   const [pilih, setPilih] = useState<Set<string>>(new Set());
   const [buktiUrl, setBuktiUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -17,7 +18,9 @@ export default function DaftarForm({ ev, anak }: { ev: EventKelas; anak: { id: s
   const [err, setErr] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
-  const total = ev.harga_per_anak * pilih.size;
+  const hargaAnak = hargaEventUntuk(ev, status);
+  const adaDiskon = hargaAnak < ev.harga_per_anak;
+  const total = hargaAnak * pilih.size;
 
   function toggle(id: string) {
     setPilih((prev) => {
@@ -69,7 +72,11 @@ export default function DaftarForm({ ev, anak }: { ev: EventKelas; anak: { id: s
         {(ev.jam_mulai || ev.jam_selesai) && <div>🕐 {ev.jam_mulai}{ev.jam_selesai ? ` - ${ev.jam_selesai}` : ''} WIB</div>}
         {ev.lokasi && <div>📍 {ev.lokasi}</div>}
         {ev.deskripsi && <p style={{ marginTop: 8, whiteSpace: 'pre-wrap' }}>{ev.deskripsi}</p>}
-        <div style={{ marginTop: 8, fontWeight: 700 }}>{formatRupiah(ev.harga_per_anak)} / anak</div>
+        <div style={{ marginTop: 8, fontWeight: 700 }}>
+          {adaDiskon && <span style={{ textDecoration: 'line-through', color: 'var(--abu)', fontWeight: 500, marginRight: 6 }}>{formatRupiah(ev.harga_per_anak)}</span>}
+          {formatRupiah(hargaAnak)} / anak
+          {adaDiskon && <span style={{ color: 'var(--mint-d)', fontSize: 12, marginLeft: 6 }}>diskon berlangganan 🎉</span>}
+        </div>
       </div>
 
       <div style={{ fontWeight: 700, marginBottom: 6 }}>Pilih anak yang ikut:</div>
@@ -83,7 +90,7 @@ export default function DaftarForm({ ev, anak }: { ev: EventKelas; anak: { id: s
 
       <div className="kp-card" style={{ marginBottom: 12, background: '#fff3d6' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Total pembayaran</span><b>{formatRupiah(total)}</b></div>
-        <small style={{ color: 'var(--abu)' }}>{pilih.size} anak × {formatRupiah(ev.harga_per_anak)}</small>
+        <small style={{ color: 'var(--abu)' }}>{pilih.size} anak × {formatRupiah(hargaAnak)}</small>
       </div>
 
       {ev.harga_per_anak > 0 && (

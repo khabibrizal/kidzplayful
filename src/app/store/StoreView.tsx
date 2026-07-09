@@ -5,7 +5,7 @@ import Link from 'next/link';
 import type { Produk } from '@/lib/game/tipe';
 import ProdukCard from '@/components/ProdukCard';
 
-export default function StoreView({ produk }: { produk: Produk[] }) {
+export default function StoreView({ produk, status = 'kadaluarsa' }: { produk: Produk[]; status?: string }) {
   const kategoriList = ['Semua', ...Array.from(new Set(produk.map((p) => p.kategori).filter(Boolean) as string[]))];
   const [aktif, setAktif] = useState('Semua');
   const tampil = aktif === 'Semua' ? produk : produk.filter((p) => p.kategori === aktif);
@@ -32,7 +32,7 @@ export default function StoreView({ produk }: { produk: Produk[] }) {
         <p style={{ color: 'var(--abu)' }}>Belum ada produk{aktif !== 'Semua' ? ' di kategori ini' : ''}.</p>
       ) : (
         <div className="kp-grid-produk">
-          {tampil.map((p) => <ProdukCard key={p.id} p={p} />)}
+          {tampil.map((p) => <ProdukCard key={p.id} p={p} status={status} />)}
         </div>
       )}
     </div>

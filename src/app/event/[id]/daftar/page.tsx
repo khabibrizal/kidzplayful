@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getEvent } from '@/lib/data/event';
+import { getStatusLangganan } from '@/lib/data/langganan-status';
 import DaftarForm from './DaftarForm';
 
 export default async function DaftarEventPage({ params }: { params: Promise<{ id: string }> }) {
@@ -32,5 +33,6 @@ export default async function DaftarEventPage({ params }: { params: Promise<{ id
     );
   }
 
-  return <DaftarForm ev={ev} anak={tersisa} />;
+  const status = await getStatusLangganan(supabase, user.id);
+  return <DaftarForm ev={ev} anak={tersisa} status={status} />;
 }

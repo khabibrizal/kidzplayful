@@ -9,7 +9,7 @@ import type { EventKelas } from '@/lib/game/tipe';
 import { formatRupiah } from '@/lib/format';
 import s from '../admin.module.css';
 
-const KOSONG: EventInput = { judul: '', lokasi: '', tanggal: '', jamMulai: '', jamSelesai: '', deskripsi: '', gambarUrl: null, hargaPerAnak: 0 };
+const KOSONG: EventInput = { judul: '', lokasi: '', tanggal: '', jamMulai: '', jamSelesai: '', deskripsi: '', gambarUrl: null, hargaPerAnak: 0, hargaLangganan: 0 };
 
 export default function EventAdmin({ awal, counts }: { awal: EventKelas[]; counts: Record<string, number> }) {
   const [list, setList] = useState<EventKelas[]>(awal);
@@ -27,7 +27,7 @@ export default function EventAdmin({ awal, counts }: { awal: EventKelas[]; count
     setForm({
       judul: e.judul, lokasi: e.lokasi ?? '', tanggal: e.tanggal ?? '',
       jamMulai: e.jam_mulai ?? '', jamSelesai: e.jam_selesai ?? '',
-      deskripsi: e.deskripsi ?? '', gambarUrl: e.gambar_url, hargaPerAnak: e.harga_per_anak,
+      deskripsi: e.deskripsi ?? '', gambarUrl: e.gambar_url, hargaPerAnak: e.harga_per_anak, hargaLangganan: e.harga_langganan ?? 0,
     });
   }
 
@@ -99,6 +99,8 @@ export default function EventAdmin({ awal, counts }: { awal: EventKelas[]; count
             <input className={s.inp} placeholder="Jam selesai (11.00)" value={form.jamSelesai} onChange={(e) => setForm({ ...form, jamSelesai: e.target.value })} style={{ flex: 1, marginBottom: 0 }} />
           </div>
           <input className={s.inp} type="number" min={0} placeholder="Harga per anak (Rp)" value={form.hargaPerAnak || ''} onChange={(e) => setForm({ ...form, hargaPerAnak: Number(e.target.value) })} style={{ width: '100%', marginTop: 6 }} />
+          <input className={s.inp} type="number" min={0} placeholder="Harga diskon Berlangganan (Rp) — opsional" value={form.hargaLangganan || ''} onChange={(e) => setForm({ ...form, hargaLangganan: Number(e.target.value) })} style={{ width: '100%', marginTop: 6 }} />
+          <div className={s.muted} style={{ fontSize: 11, marginTop: 2 }}>Diskon event hanya untuk pelanggan aktif. Kosongkan/0 = tanpa diskon.</div>
           <textarea className={s.inp} placeholder="Deskripsi event" rows={3} value={form.deskripsi} onChange={(e) => setForm({ ...form, deskripsi: e.target.value })} style={{ width: '100%', resize: 'vertical' }} />
           <div className={s.row} style={{ marginTop: 6 }}>
             <button type="button" className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)' }} onClick={() => fileRef.current?.click()} disabled={loading}>{loading ? '...' : '⬆ Gambar Event'}</button>

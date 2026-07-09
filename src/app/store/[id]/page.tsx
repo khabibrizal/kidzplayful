@@ -2,6 +2,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getProduk } from '@/lib/data/store';
+import { getStatusLangganan } from '@/lib/data/langganan-status';
 import ProdukDetail from './ProdukDetail';
 
 export default async function ProdukDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -9,7 +10,7 @@ export default async function ProdukDetailPage({ params }: { params: Promise<{ i
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
-  const produk = await getProduk(id);
+  const [produk, status] = await Promise.all([getProduk(id), getStatusLangganan(supabase, user.id)]);
   if (!produk || produk.status !== 'tampil') redirect('/store');
-  return <ProdukDetail p={produk} />;
+  return <ProdukDetail p={produk} status={status} />;
 }

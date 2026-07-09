@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import type { EventKelas, CatatanPerkembangan } from '@/lib/game/tipe';
 
-const ECOLS = 'id,judul,lokasi,tanggal,jam_mulai,jam_selesai,deskripsi,gambar_url,harga_per_anak,status';
+const ECOLS = 'id,judul,lokasi,tanggal,jam_mulai,jam_selesai,deskripsi,gambar_url,harga_per_anak,harga_langganan,status';
 
 /** Guard: pastikan user adalah guru. Mengembalikan profil guru. */
 export async function getGuruTerjamin() {

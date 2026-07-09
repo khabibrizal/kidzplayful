@@ -13,8 +13,9 @@ export interface EventInput {
   deskripsi: string;
   gambarUrl: string | null;
   hargaPerAnak: number;
+  hargaLangganan: number; // harga diskon untuk pelanggan aktif (0 = tanpa diskon)
 }
-const COLS = 'id,judul,lokasi,tanggal,jam_mulai,jam_selesai,deskripsi,gambar_url,harga_per_anak,status,sertifikat_bg_url,dokumentasi_url,stiker_bg_url';
+const COLS = 'id,judul,lokasi,tanggal,jam_mulai,jam_selesai,deskripsi,gambar_url,harga_per_anak,harga_langganan,status,sertifikat_bg_url,dokumentasi_url,stiker_bg_url';
 
 async function adminDb() {
   const s = await createClient();
@@ -34,6 +35,7 @@ function row(i: EventInput) {
     deskripsi: i.deskripsi.trim() || null,
     gambar_url: i.gambarUrl?.trim() || null,
     harga_per_anak: Math.max(0, Math.floor(Number(i.hargaPerAnak) || 0)),
+    harga_langganan: Number(i.hargaLangganan) > 0 ? Math.floor(Number(i.hargaLangganan)) : null,
   };
 }
 

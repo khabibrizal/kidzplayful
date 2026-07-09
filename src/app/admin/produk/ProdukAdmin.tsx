@@ -7,7 +7,7 @@ import type { Produk } from '@/lib/game/tipe';
 import { formatRupiah } from '@/lib/format';
 import s from '../admin.module.css';
 
-const KOSONG: ProdukInput = { nama: '', deskripsi: '', kategori: '', harga: 0, stok: 0, gambarUrl: null, status: 'tampil' };
+const KOSONG: ProdukInput = { nama: '', deskripsi: '', kategori: '', harga: 0, hargaDiskonTrial: 0, hargaDiskonLangganan: 0, beratGram: 0, stok: 0, gambarUrl: null, status: 'tampil' };
 const KATEGORI = ['Mainan', 'Bahan Sensorik', 'Worksheet', 'Buku', 'Alat Tulis'];
 
 export default function ProdukAdmin({ awal }: { awal: Produk[] }) {
@@ -27,7 +27,7 @@ export default function ProdukAdmin({ awal }: { awal: Produk[] }) {
   function bukaTambah() { setEditId(null); setForm({ ...KOSONG }); setKatLain(false); }
   function bukaEdit(p: Produk) {
     setEditId(p.id);
-    setForm({ nama: p.nama, deskripsi: p.deskripsi ?? '', kategori: p.kategori ?? '', harga: p.harga, stok: p.stok, gambarUrl: p.gambar_url, status: p.status });
+    setForm({ nama: p.nama, deskripsi: p.deskripsi ?? '', kategori: p.kategori ?? '', harga: p.harga, hargaDiskonTrial: p.harga_diskon_trial ?? 0, hargaDiskonLangganan: p.harga_diskon_langganan ?? 0, beratGram: p.berat_gram ?? 0, stok: p.stok, gambarUrl: p.gambar_url, status: p.status });
     setKatLain(!!p.kategori && !KATEGORI.includes(p.kategori));
   }
 
@@ -61,7 +61,7 @@ export default function ProdukAdmin({ awal }: { awal: Produk[] }) {
   async function toggleStatus(p: Produk) {
     setBusyId(p.id);
     const baru = p.status === 'tampil' ? 'arsip' : 'tampil';
-    try { const r = await updateProduk(p.id, { nama: p.nama, deskripsi: p.deskripsi ?? '', kategori: p.kategori ?? '', harga: p.harga, stok: p.stok, gambarUrl: p.gambar_url, status: baru }); setList(list.map((x) => (x.id === p.id ? r : x))); flash(baru === 'tampil' ? 'Ditampilkan ✓' : 'Diarsipkan ✓'); }
+    try { const r = await updateProduk(p.id, { nama: p.nama, deskripsi: p.deskripsi ?? '', kategori: p.kategori ?? '', harga: p.harga, hargaDiskonTrial: p.harga_diskon_trial ?? 0, hargaDiskonLangganan: p.harga_diskon_langganan ?? 0, beratGram: p.berat_gram ?? 0, stok: p.stok, gambarUrl: p.gambar_url, status: baru }); setList(list.map((x) => (x.id === p.id ? r : x))); flash(baru === 'tampil' ? 'Ditampilkan ✓' : 'Diarsipkan ✓'); }
     catch (e) { flash(e instanceof Error ? e.message : 'Gagal'); }
     finally { setBusyId(null); }
   }
@@ -102,9 +102,15 @@ export default function ProdukAdmin({ awal }: { awal: Produk[] }) {
             <input className={s.inp} placeholder="Tulis kategori baru" value={form.kategori} onChange={(e) => setForm({ ...form, kategori: e.target.value })} style={{ width: '100%' }} />
           )}
           <div className={s.row} style={{ gap: 6 }}>
-            <input className={s.inp} type="number" min={0} placeholder="Harga (Rp)" value={form.harga || ''} onChange={(e) => setForm({ ...form, harga: Number(e.target.value) })} style={{ flex: 1, marginBottom: 0 }} />
-            <input className={s.inp} type="number" min={0} placeholder="Stok" value={form.stok || ''} onChange={(e) => setForm({ ...form, stok: Number(e.target.value) })} style={{ width: 90, marginBottom: 0 }} />
+            <input className={s.inp} type="number" min={0} placeholder="Harga normal (Rp)" value={form.harga || ''} onChange={(e) => setForm({ ...form, harga: Number(e.target.value) })} style={{ flex: 1, marginBottom: 0 }} />
+            <input className={s.inp} type="number" min={0} placeholder="Stok" value={form.stok || ''} onChange={(e) => setForm({ ...form, stok: Number(e.target.value) })} style={{ width: 80, marginBottom: 0 }} />
           </div>
+          <div className={s.row} style={{ gap: 6, marginTop: 6 }}>
+            <input className={s.inp} type="number" min={0} placeholder="Harga diskon Trial (Rp)" value={form.hargaDiskonTrial || ''} onChange={(e) => setForm({ ...form, hargaDiskonTrial: Number(e.target.value) })} style={{ flex: 1, marginBottom: 0 }} />
+            <input className={s.inp} type="number" min={0} placeholder="Harga diskon Langganan (Rp)" value={form.hargaDiskonLangganan || ''} onChange={(e) => setForm({ ...form, hargaDiskonLangganan: Number(e.target.value) })} style={{ flex: 1, marginBottom: 0 }} />
+          </div>
+          <div className={s.muted} style={{ fontSize: 11, marginTop: 4 }}>Kosongkan/0 = tanpa diskon. Diskon berlaku bila lebih kecil dari harga normal.</div>
+          <input className={s.inp} type="number" min={0} placeholder="Berat (gram)" value={form.beratGram || ''} onChange={(e) => setForm({ ...form, beratGram: Number(e.target.value) })} style={{ width: '100%', marginTop: 6 }} />
           <textarea className={s.inp} placeholder="Keterangan produk" rows={3} value={form.deskripsi} onChange={(e) => setForm({ ...form, deskripsi: e.target.value })} style={{ width: '100%', resize: 'vertical', marginTop: 6 }} />
           <div className={s.row} style={{ marginTop: 6 }}>
             <button type="button" className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)' }} onClick={() => fileRef.current?.click()} disabled={loading}>{loading ? '...' : '⬆ Gambar Produk'}</button>
