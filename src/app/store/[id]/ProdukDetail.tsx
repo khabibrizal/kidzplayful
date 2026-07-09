@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { tambahKeranjang } from '@/lib/data/keranjang-actions';
 import type { Produk } from '@/lib/game/tipe';
 import { formatRupiah } from '@/lib/format';
-import { hargaProdukUntuk, diskonTrial, diskonLangganan } from '@/lib/domain/harga';
+import { hargaProdukUntuk, persenProdukUntuk, persenTrial, persenLangganan } from '@/lib/domain/harga';
 
 export default function ProdukDetail({ p, status = 'kadaluarsa' }: { p: Produk; status?: string }) {
   const router = useRouter();
@@ -15,9 +15,10 @@ export default function ProdukDetail({ p, status = 'kadaluarsa' }: { p: Produk; 
   const [pending, start] = useTransition();
   const [toast, setToast] = useState('');
   const habis = p.stok <= 0;
-  const dt = diskonTrial(p), dl = diskonLangganan(p);
-  const adaDiskon = dt !== null || dl !== null;
+  const pt = persenTrial(p), pl = persenLangganan(p);
+  const adaDiskon = pt > 0 || pl > 0;
   const bayar = hargaProdukUntuk(p, status);
+  const pct = persenProdukUntuk(p, status);
 
   function tambah(laluKeKeranjang: boolean) {
     start(async () => {
@@ -43,11 +44,12 @@ export default function ProdukDetail({ p, status = 'kadaluarsa' }: { p: Produk; 
       {adaDiskon ? (
         <div style={{ margin: '4px 0 8px' }}>
           <span style={{ textDecoration: 'line-through', color: 'var(--abu)', fontSize: 15 }}>{formatRupiah(p.harga)}</span>
+          {pct > 0 && <span style={{ background: '#e8804f', color: '#fff', borderRadius: 99, padding: '2px 9px', fontSize: 12, fontWeight: 800, marginLeft: 8 }}>-{pct}%</span>}
           <div style={{ fontWeight: 800, color: 'var(--lavender-d)', fontSize: 24 }}>{formatRupiah(bayar)}</div>
           <div style={{ fontSize: 12, color: 'var(--abu)', marginTop: 2 }}>
-            {dt !== null && <span style={{ fontWeight: status !== 'aktif' ? 800 : 500, color: status !== 'aktif' ? 'var(--mint-d)' : 'var(--abu)' }}>Trial {formatRupiah(dt)}</span>}
-            {dt !== null && dl !== null && ' · '}
-            {dl !== null && <span style={{ fontWeight: status === 'aktif' ? 800 : 500, color: status === 'aktif' ? 'var(--mint-d)' : 'var(--abu)' }}>Langganan {formatRupiah(dl)}</span>}
+            {pt > 0 && <span style={{ fontWeight: status !== 'aktif' ? 800 : 500, color: status !== 'aktif' ? 'var(--mint-d)' : 'var(--abu)' }}>Trial -{pt}%</span>}
+            {pt > 0 && pl > 0 && ' · '}
+            {pl > 0 && <span style={{ fontWeight: status === 'aktif' ? 800 : 500, color: status === 'aktif' ? 'var(--mint-d)' : 'var(--abu)' }}>Langganan -{pl}%</span>}
           </div>
         </div>
       ) : (

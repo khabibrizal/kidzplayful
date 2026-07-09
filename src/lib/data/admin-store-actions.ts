@@ -6,10 +6,11 @@ import type { Produk, StatusPesanan } from '@/lib/game/tipe';
 
 export interface ProdukInput {
   nama: string; deskripsi: string; kategori: string;
-  harga: number; hargaDiskonTrial: number; hargaDiskonLangganan: number; beratGram: number;
+  harga: number; diskonTrialPersen: number; diskonLanggananPersen: number; beratGram: number;
   stok: number; gambarUrl: string | null; status: 'tampil' | 'arsip';
 }
-const PCOLS = 'id,nama,deskripsi,kategori,harga,harga_diskon_trial,harga_diskon_langganan,berat_gram,stok,gambar_url,status';
+const persen = (v: number) => { const n = Math.min(100, Math.max(0, Math.floor(Number(v) || 0))); return n > 0 ? n : null; };
+const PCOLS = 'id,nama,deskripsi,kategori,harga,diskon_trial_persen,diskon_langganan_persen,berat_gram,stok,gambar_url,status';
 
 async function adminDb() {
   const s = await createClient();
@@ -25,8 +26,8 @@ function row(i: ProdukInput) {
     deskripsi: i.deskripsi.trim() || null,
     kategori: i.kategori.trim() || null,
     harga: Math.max(0, Math.floor(Number(i.harga) || 0)),
-    harga_diskon_trial: Number(i.hargaDiskonTrial) > 0 ? Math.floor(Number(i.hargaDiskonTrial)) : null,
-    harga_diskon_langganan: Number(i.hargaDiskonLangganan) > 0 ? Math.floor(Number(i.hargaDiskonLangganan)) : null,
+    diskon_trial_persen: persen(i.diskonTrialPersen),
+    diskon_langganan_persen: persen(i.diskonLanggananPersen),
     berat_gram: Number(i.beratGram) > 0 ? Math.floor(Number(i.beratGram)) : null,
     stok: Math.max(0, Math.floor(Number(i.stok) || 0)),
     gambar_url: i.gambarUrl?.trim() || null,

@@ -3,14 +3,15 @@ import Link from 'next/link';
 import Image from 'next/image';
 import type { Produk } from '@/lib/game/tipe';
 import { formatRupiah } from '@/lib/format';
-import { hargaProdukUntuk, diskonTrial, diskonLangganan } from '@/lib/domain/harga';
+import { hargaProdukUntuk, persenProdukUntuk, persenTrial, persenLangganan } from '@/lib/domain/harga';
 import TambahKeranjangBtn from './TambahKeranjangBtn';
 
 export default function ProdukCard({ p, status = 'kadaluarsa' }: { p: Produk; status?: string }) {
   const habis = p.stok <= 0;
-  const dt = diskonTrial(p), dl = diskonLangganan(p);
-  const adaDiskon = dt !== null || dl !== null;
+  const pt = persenTrial(p), pl = persenLangganan(p);
+  const adaDiskon = pt > 0 || pl > 0;
   const bayar = hargaProdukUntuk(p, status);
+  const pct = persenProdukUntuk(p, status);
   return (
     <div className="kp-card" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <Link href={`/store/${p.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
@@ -19,6 +20,7 @@ export default function ProdukCard({ p, status = 'kadaluarsa' }: { p: Produk; st
             <Image src={p.gambar_url} alt={p.nama} fill sizes="(max-width: 480px) 50vw, 240px" style={{ objectFit: 'cover' }} />
           ) : <span>🧸</span>}
           {p.kategori && <span style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(255,255,255,.88)', borderRadius: 99, padding: '3px 9px', fontSize: 10, fontWeight: 700, color: 'var(--tinta)' }}>{p.kategori}</span>}
+          {pct > 0 && <span style={{ position: 'absolute', top: 8, right: 8, background: '#e8804f', color: '#fff', borderRadius: 99, padding: '3px 9px', fontSize: 11, fontWeight: 800 }}>-{pct}%</span>}
           {habis && <span style={{ position: 'absolute', inset: 0, background: 'rgba(91,81,112,.45)', color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800 }}>Stok habis</span>}
         </div>
       </Link>
@@ -30,9 +32,9 @@ export default function ProdukCard({ p, status = 'kadaluarsa' }: { p: Produk; st
             <span style={{ textDecoration: 'line-through', color: 'var(--abu)', fontSize: 12 }}>{formatRupiah(p.harga)}</span>
             <div style={{ fontWeight: 800, color: 'var(--lavender-d)', fontSize: 16 }}>{formatRupiah(bayar)}</div>
             <div style={{ fontSize: 10.5, color: 'var(--abu)', marginTop: 1 }}>
-              {dt !== null && <span style={{ fontWeight: status !== 'aktif' ? 800 : 500, color: status !== 'aktif' ? 'var(--mint-d)' : 'var(--abu)' }}>Trial {formatRupiah(dt)}</span>}
-              {dt !== null && dl !== null && ' · '}
-              {dl !== null && <span style={{ fontWeight: status === 'aktif' ? 800 : 500, color: status === 'aktif' ? 'var(--mint-d)' : 'var(--abu)' }}>Langganan {formatRupiah(dl)}</span>}
+              {pt > 0 && <span style={{ fontWeight: status !== 'aktif' ? 800 : 500, color: status !== 'aktif' ? 'var(--mint-d)' : 'var(--abu)' }}>Trial -{pt}%</span>}
+              {pt > 0 && pl > 0 && ' · '}
+              {pl > 0 && <span style={{ fontWeight: status === 'aktif' ? 800 : 500, color: status === 'aktif' ? 'var(--mint-d)' : 'var(--abu)' }}>Langganan -{pl}%</span>}
             </div>
           </div>
         ) : (

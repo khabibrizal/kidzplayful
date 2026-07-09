@@ -1,25 +1,31 @@
-// src/lib/domain/harga.ts — pemilihan harga berdasar status langganan (murni)
-// Aturan: aktif → harga diskon langganan; selain aktif (trial/tenggang/kadaluarsa) → harga diskon trial.
+// src/lib/domain/harga.ts — diskon PERSENTASE berdasar status langganan (murni)
+// Produk: aktif → diskon langganan; selain aktif (trial/tenggang/kadaluarsa) → diskon trial.
 // Event: diskon HANYA untuk pelanggan aktif.
 
-type ProdukHarga = { harga: number; harga_diskon_trial?: number | null; harga_diskon_langganan?: number | null };
-type EventHarga = { harga_per_anak: number; harga_langganan?: number | null };
+type ProdukHarga = { harga: number; diskon_trial_persen?: number | null; diskon_langganan_persen?: number | null };
+type EventHarga = { harga_per_anak: number; diskon_langganan_persen?: number | null };
 
-const valid = (dp: number | null | undefined, normal: number) => (dp && dp > 0 && dp < normal ? dp : null);
+const clampPersen = (p: number | null | undefined) => Math.min(100, Math.max(0, Math.floor(Number(p) || 0)));
 
-/** Harga produk yang berlaku untuk status user (harga aktual yang dibayar). */
+/** Persen diskon produk yang berlaku untuk status user. */
+export function persenProdukUntuk(p: ProdukHarga, status: string): number {
+  return clampPersen(status === 'aktif' ? p.diskon_langganan_persen : p.diskon_trial_persen);
+}
+/** Harga produk aktual (setelah diskon) untuk status user. */
 export function hargaProdukUntuk(p: ProdukHarga, status: string): number {
-  const dp = status === 'aktif' ? valid(p.harga_diskon_langganan, p.harga) : valid(p.harga_diskon_trial, p.harga);
-  return dp ?? p.harga;
+  const persen = persenProdukUntuk(p, status);
+  return persen > 0 ? Math.round((p.harga * (100 - persen)) / 100) : p.harga;
 }
 
-/** Harga event yang berlaku untuk status user (diskon hanya untuk aktif). */
+/** Persen diskon event (hanya untuk aktif). */
+export function persenEventUntuk(ev: EventHarga, status: string): number {
+  return status === 'aktif' ? clampPersen(ev.diskon_langganan_persen) : 0;
+}
 export function hargaEventUntuk(ev: EventHarga, status: string): number {
-  const dp = status === 'aktif' ? valid(ev.harga_langganan, ev.harga_per_anak) : null;
-  return dp ?? ev.harga_per_anak;
+  const persen = persenEventUntuk(ev, status);
+  return persen > 0 ? Math.round((ev.harga_per_anak * (100 - persen)) / 100) : ev.harga_per_anak;
 }
 
-/** Diskon trial produk (untuk ditampilkan), null bila tak ada. */
-export function diskonTrial(p: ProdukHarga): number | null { return valid(p.harga_diskon_trial, p.harga); }
-/** Diskon langganan produk (untuk ditampilkan), null bila tak ada. */
-export function diskonLangganan(p: ProdukHarga): number | null { return valid(p.harga_diskon_langganan, p.harga); }
+// untuk tampilan
+export const persenTrial = (p: ProdukHarga) => clampPersen(p.diskon_trial_persen);
+export const persenLangganan = (p: ProdukHarga) => clampPersen(p.diskon_langganan_persen);

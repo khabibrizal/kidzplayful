@@ -2,7 +2,7 @@
 import { createClient } from '@/lib/supabase/server';
 import type { EventKelas } from '@/lib/game/tipe';
 
-const COLS = 'id,judul,lokasi,tanggal,jam_mulai,jam_selesai,deskripsi,gambar_url,harga_per_anak,harga_langganan,status';
+const COLS = 'id,judul,lokasi,tanggal,jam_mulai,jam_selesai,deskripsi,gambar_url,harga_per_anak,diskon_langganan_persen,status';
 
 export async function getEventTampil(): Promise<EventKelas[]> {
   const s = await createClient();

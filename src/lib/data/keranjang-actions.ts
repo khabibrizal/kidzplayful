@@ -52,7 +52,7 @@ export async function checkout(input: { penerima: string; noHp: string; alamat: 
 
   const { data: items } = await s
     .from('keranjang_item')
-    .select('qty, produk:produk_id(id,nama,harga,harga_diskon_trial,harga_diskon_langganan,stok,status)')
+    .select('qty, produk:produk_id(id,nama,harga,diskon_trial_persen,diskon_langganan_persen,stok,status)')
     .eq('ortu_id', user.id);
   const list = (items ?? []).map((r) => ({ qty: r.qty, p: Array.isArray(r.produk) ? r.produk[0] : r.produk })).filter((x) => x.p);
   if (!list.length) throw new Error('Keranjang kosong.');

@@ -144,7 +144,7 @@ export interface EventKelas {
   deskripsi: string | null;
   gambar_url: string | null;
   harga_per_anak: number;
-  harga_langganan: number | null;   // harga diskon untuk pelanggan aktif (opsional)
+  diskon_langganan_persen: number | null;   // % diskon untuk pelanggan aktif (opsional)
   status: 'tampil' | 'arsip';
   sertifikat_bg_url: string | null; // template sertifikat (JPEG)
   dokumentasi_url: string | null;   // link dokumentasi kegiatan
@@ -189,8 +189,8 @@ export interface Produk {
   deskripsi: string | null;
   kategori: string | null;
   harga: number;
-  harga_diskon_trial: number | null;      // harga untuk user trial/kadaluarsa (opsional)
-  harga_diskon_langganan: number | null;  // harga untuk pelanggan aktif (opsional)
+  diskon_trial_persen: number | null;      // % diskon untuk user trial/kadaluarsa (opsional)
+  diskon_langganan_persen: number | null;  // % diskon untuk pelanggan aktif (opsional)
   berat_gram: number | null;              // berat (gram) untuk acuan ongkir
   stok: number;
   gambar_url: string | null;

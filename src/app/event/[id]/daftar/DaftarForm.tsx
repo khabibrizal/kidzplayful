@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 import { daftarEvent } from '@/lib/data/event-actions';
 import type { EventKelas } from '@/lib/game/tipe';
 import { formatTanggal, formatRupiah } from '@/lib/format';
-import { hargaEventUntuk } from '@/lib/domain/harga';
+import { hargaEventUntuk, persenEventUntuk } from '@/lib/domain/harga';
 
 export default function DaftarForm({ ev, anak, status = 'kadaluarsa' }: { ev: EventKelas; anak: { id: string; nama: string }[]; status?: string }) {
   const [pilih, setPilih] = useState<Set<string>>(new Set());
@@ -19,6 +19,7 @@ export default function DaftarForm({ ev, anak, status = 'kadaluarsa' }: { ev: Ev
   const fileRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const hargaAnak = hargaEventUntuk(ev, status);
+  const pctEv = persenEventUntuk(ev, status);
   const adaDiskon = hargaAnak < ev.harga_per_anak;
   const total = hargaAnak * pilih.size;
 
@@ -75,7 +76,7 @@ export default function DaftarForm({ ev, anak, status = 'kadaluarsa' }: { ev: Ev
         <div style={{ marginTop: 8, fontWeight: 700 }}>
           {adaDiskon && <span style={{ textDecoration: 'line-through', color: 'var(--abu)', fontWeight: 500, marginRight: 6 }}>{formatRupiah(ev.harga_per_anak)}</span>}
           {formatRupiah(hargaAnak)} / anak
-          {adaDiskon && <span style={{ color: 'var(--mint-d)', fontSize: 12, marginLeft: 6 }}>diskon berlangganan 🎉</span>}
+          {adaDiskon && <span style={{ color: 'var(--mint-d)', fontSize: 12, marginLeft: 6 }}>diskon berlangganan -{pctEv}% 🎉</span>}
         </div>
       </div>
 

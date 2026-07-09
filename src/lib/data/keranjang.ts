@@ -2,7 +2,7 @@
 import { createClient } from '@/lib/supabase/server';
 import type { KeranjangItem } from '@/lib/game/tipe';
 
-const PCOLS = 'id,nama,deskripsi,kategori,harga,harga_diskon_trial,harga_diskon_langganan,berat_gram,stok,gambar_url,status';
+const PCOLS = 'id,nama,deskripsi,kategori,harga,diskon_trial_persen,diskon_langganan_persen,berat_gram,stok,gambar_url,status';
 
 export async function getKeranjang(): Promise<KeranjangItem[]> {
   const s = await createClient();

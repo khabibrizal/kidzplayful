@@ -450,13 +450,13 @@ Merekam menu/fitur yang dibuka user untuk analitik "sedang buka apa" & "fitur te
 - **Customer**: seksi **"MASUKAN UNTUK APLIKASI"** di `/pengaturan` → `FeedbackForm` = **survei 8 pertanyaan** (Q1 positioning, Q2 fitur favorit + Lainnya, Q3 UI/UX, Q4 kekurangan, Q5 kesediaan Ya/Mungkin/Tidak, Q6 harga wajar, Q7 rekomendasi NPS 1–10, Q8 saran utama). Bentuk jawaban di `lib/feedback-tipe.ts` (`JawabanFeedback`, `FITUR_OPSI`, dll.), action `kirimFeedback(jawaban)`.
 - **Admin**: `/admin/feedback` (menu **⭐ Masukan**) — kartu per responden (email, waktu WIB, tag NPS/kesediaan/harga + jawaban teks) + ringkasan **rata-rata NPS**. Reader `lib/data/feedback.ts`.
 
-### Diskon Store & Event + berat produk — migrasi 0049
-Harga diskon **per-produk** untuk 2 tier (Trial & Berlangganan), diskon **Event** khusus pelanggan aktif, + berat produk.
-- **Migrasi 0049**: `produk.harga_diskon_trial`, `produk.harga_diskon_langganan`, `produk.berat_gram`; `event.harga_langganan`. (⚠️ Kolom ini ditambahkan ke SELECT produk/event → **wajib dijalankan sebelum deploy** agar Store/Event tak error.)
-- **Aturan harga** (`lib/domain/harga.ts`, murni): produk → status `aktif`=diskon langganan, selain aktif (trial/tenggang/kadaluarsa)=diskon trial; event → diskon **hanya** untuk `aktif`. Diskon berlaku bila nilainya >0 & < harga normal. Status user via `lib/data/langganan-status.ts` `getStatusLangganan`.
-- **Harga aktual** (bukan hanya tampilan): `checkout` (keranjang-actions) & `daftarEvent` (event-actions) menghitung harga sesuai status → disnapshot ke `item_pesanan.harga` / `pendaftaran_event.total`.
-- **Tampilan**: harga normal **dicoret** + harga yang dibayar + 2 baris "Trial …/Langganan …" (yang berlaku ditebalkan) di `ProdukCard`, `ProdukDetail`, `KeranjangView`; event menampilkan harga coret + "diskon berlangganan" bila aktif.
-- **Admin**: form Produk (`ProdukAdmin` + `ProdukInput`) tambah input harga diskon Trial, harga diskon Langganan, **berat (gram)**; form Event (`EventAdmin` + `EventInput`) tambah harga diskon Berlangganan.
+### Diskon Store & Event (persentase) + berat produk — migrasi 0049 & 0050
+Diskon **persentase per-produk** untuk 2 tier (Trial & Berlangganan), diskon **Event** khusus pelanggan aktif, + berat produk. (0049 sempat pakai harga nominal; **0050 mengganti ke persen** — kolom nominal 0049 tak dipakai lagi.)
+- **Migrasi**: 0049 `produk.berat_gram`; **0050** `produk.diskon_trial_persen`, `produk.diskon_langganan_persen`, `event.diskon_langganan_persen`. (⚠️ dipakai di SELECT produk/event → **wajib dijalankan sebelum deploy**.)
+- **Aturan** (`lib/domain/harga.ts`, murni): persen produk → status `aktif`=diskon langganan, selain aktif (trial/tenggang/kadaluarsa)=diskon trial; event → diskon **hanya** untuk `aktif`. Harga = `harga*(100−persen)/100`. Status user via `lib/data/langganan-status.ts`.
+- **Harga aktual**: `checkout` & `daftarEvent` menghitung harga sesuai status → snapshot ke `item_pesanan.harga` / `pendaftaran_event.total`.
+- **Tampilan**: harga normal **dicoret** + harga dibayar + badge **"−X%"** + baris "Trial −a% / Langganan −b%" (yang berlaku ditebalkan) di `ProdukCard`, `ProdukDetail`; event tampil harga coret + "diskon berlangganan −X%".
+- **Admin**: form Produk input **Diskon Trial (%)**, **Diskon Langganan (%)**, **Berat (gram)**; form Event input **Diskon Berlangganan (%)**.
 
 ### Perbaikan & penyesuaian lain (terkini)
 - **Validasi tanggal lahir anak**: `tambahAnak`, `updateAnak`, & `POST /api/anak` menolak tanggal ≥ hari ini (WIB); input `type=date` diberi `max` = kemarin. (Anak <2 th tetap Mode Ortu = desain: bayi → aktivitas kelas bermain, bukan game solo.)

@@ -11,7 +11,7 @@ export async function daftarEvent(eventId: string, anakIds: string[], buktiUrl: 
   if (!user) throw new Error('Tidak terautentikasi');
   if (!anakIds.length) throw new Error('Pilih minimal 1 anak.');
 
-  const { data: ev } = await s.from('event').select('harga_per_anak,harga_langganan,status').eq('id', eventId).maybeSingle();
+  const { data: ev } = await s.from('event').select('harga_per_anak,diskon_langganan_persen,status').eq('id', eventId).maybeSingle();
   if (!ev || ev.status !== 'tampil') throw new Error('Event tidak tersedia.');
 
   // hanya anak milik ortu yang valid
@@ -27,7 +27,7 @@ export async function daftarEvent(eventId: string, anakIds: string[], buktiUrl: 
   if (!baru.length) throw new Error('Semua anak yang dipilih sudah terdaftar di event ini.');
 
   const status = await getStatusLangganan(s, user.id);
-  const total = hargaEventUntuk({ harga_per_anak: ev.harga_per_anak ?? 0, harga_langganan: ev.harga_langganan ?? null }, status) * baru.length;
+  const total = hargaEventUntuk({ harga_per_anak: ev.harga_per_anak ?? 0, diskon_langganan_persen: ev.diskon_langganan_persen ?? null }, status) * baru.length;
   const { error } = await s.from('pendaftaran_event').insert({
     event_id: eventId,
     ortu_id: user.id,
