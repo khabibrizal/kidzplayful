@@ -445,3 +445,135 @@ Semua Route Handler (`app/api/**/route.ts`) mengembalikan amplop JSON seragam vi
 - **Checkout store**: keranjang → `POST /api/pesanan` atau server action `checkout` → `pesanan` (menunggu_ongkir) + `item_pesanan`, keranjang dikosongkan. Admin isi ongkir → user upload bukti → admin verifikasi (kurangi stok + catat ledger).
 - **Gamifikasi**: `catatHasil` menyimpan `hasil_main`, memutakhirkan koin/streak `anak`, mengevaluasi `lencana_anak` & tantangan (`tantangan_anak`, `tantangan_kustom_anak`).
 - **Keamanan role**: perubahan role hanya lewat `/admin/users` (guard super user/admin) + trigger `cegah_self_admin` yang membekukan kolom role untuk yang tak berwenang.
+
+---
+
+## 11. Diagram alur
+
+### 11.1 Arsitektur tinggi
+```
+┌─────────────┐   ┌──────────────────────────────────────┐   ┌──────────────┐
+│  Pengguna   │   │            Next.js 16 (Vercel)        │   │   Supabase   │
+│  browser /  │   │                                       │   │              │
+│  app mobile ├──▶│  Server Components ──▶ lib/data/*.ts   ├──▶│  Postgres    │
+│             │   │  Server Actions   ──▶ *-actions.ts     │   │  + RLS       │
+│             │   │  Route Handlers   ──▶ /api/** (Bearer) │   │  + Auth      │
+│             │◀──┤  Client Components ─▶ upload storage    │◀──┤  + Storage   │
+└─────────────┘   └──────────────────────────────────────┘   └──────────────┘
+        │                                                            ▲
+        └──── klien: signInWithPassword / signUp / upload aset ──────┘
+   Semua query pakai ANON KEY + RLS. Guard aplikasi (is_admin/is_superuser/…)
+   + fungsi SQL is_admin() dipakai di kebijakan RLS. Tanpa service-role key.
+```
+
+### 11.2 Auth & routing masuk
+```
+Login (/login) ─signInWithPassword─▶ cek profiles.is_guru
+      │                                      │
+      │                             is_guru? ├── ya ──▶ /guru  (area guru)
+      │                                      └── tidak ─▶ /pilih-anak (ortu)
+Daftar (/daftar) ─signUp─▶ (trigger DB buat profiles+langganan trial)
+                          └─▶ update nama_tampilan, no_wa
+Guard halaman:
+  /admin/*      → getAdminTerjamin()        (is_admin, else redirect)
+  /admin/users  → getPengelolaUserTerjamin() (is_admin ATAU is_superuser)
+  /investor     → getInvestorTerjamin()     (is_investor / is_admin)
+  /main,/ortu,/pilih-game → getAnakTerjamin() (login+langganan+milik anak)
+```
+
+### 11.3 Checkout store → pendapatan (basis kas)
+```
+User: tambah ke keranjang ──▶ keranjang_item
+      │
+      ▼  checkout (server action / POST /api/pesanan)
+   pesanan (status: menunggu_ongkir) + item_pesanan   ← subtotal dihitung server
+   keranjang dikosongkan
+      │
+      ▼  Admin /admin/pesanan
+   setOngkir ─▶ status: menunggu_bayar
+      │
+      ▼  User /pesanan/[id]: upload bukti (storage 'aset') → uploadBuktiPesanan
+      ▼  Admin: verifikasiPesanan
+   status: diproses  +  produk.stok dikurangi
+        └─▶ catatLedger(masuk, kategori 'store', jumlah = SUBTOTAL, ref pesanan)
+              (ongkir BUKAN pendapatan)                    │
+   (jika dibatalkan → ubahStatusPesanan 'batal' → hapusLedgerRef)
+                                                           ▼
+                                                  transaksi_keuangan
+```
+
+### 11.4 Pendaftaran event → pendapatan + sertifikat
+```
+User /event/[id]/daftar: pilih anak + upload bukti ─▶ daftarEvent
+   pendaftaran_event (status: menunggu, total = harga × jumlah anak)
+      │
+      ▼  Admin /admin/event/[id]/pendaftar
+   setStatusPendaftaran('diterima')
+      ├─▶ pendaftaran_event.diverifikasi_pada = now
+      └─▶ catatLedger(masuk, kategori 'event', jumlah = TOTAL, ref pendaftaran)
+   setKehadiran(hadir_anak_ids)   (untuk sertifikat)
+      │
+      ▼  generateSertifikatEvent ─▶ sertifikat (upsert per anak)
+            └─▶ user lihat di /sertifikat/[id] + /anak/[anakId]/laporan
+   (ditolak → hapusLedgerRef)
+```
+
+### 11.5 Langganan → pembayaran, ledger, & pengingat WA
+```
+User transfer/QRIS ──▶ Admin /admin/langganan : Aktifkan (AktifkanForm)
+   aktifkanLangganan(ortuId, nominal, via)
+      ├─▶ langganan.aktif_sampai += 1 bulan
+      ├─▶ pembayaran_langganan (insert riwayat)
+      └─▶ catatLedger(masuk, kategori 'membership', jumlah = nominal, ref langganan)
+                                                      │
+   Jatuh tempo ≤ 7 hari / lewat:                      ▼
+   /admin/langganan seksi "Perlu diingatkan"   transaksi_keuangan
+      └─▶ tombol WA (linkWa ke no_wa member, pesan otomatis)
+```
+
+### 11.6 Ledger keuangan = single source of truth
+```
+        SUMBER PEMASUKAN                         PENGELUARAN/ASET (manual)
+  verifikasi pesanan (store) ─┐        ┌── catatPengeluaran (expense)
+  terima pendaftaran (event) ─┼─▶      │   simpanAset (opsi kas keluar)
+  aktivasi langganan (member)─┘        └──────────────┐
+                    │                                  │
+                    ▼                                  ▼
+              ┌──────────────────────────────────────────┐
+              │            transaksi_keuangan             │  (append-only ledger)
+              └──────────────────────────────────────────┘
+                    │            │            │            │
+        ┌───────────┘     ┌──────┘      ┌─────┘       ┌────┘
+        ▼                 ▼             ▼             ▼
+   Dashboard CEO     KPI (kpi.ts)  Insight/BI    Laporan/Pajak
+   getDashboard      MRR/churn/    tren/mix/      P&L, omzet,
+   Keuangan()        LTV/CAC/...   cohort/top     PPh 0,5%
+        │                                              ▲
+        └──────────────▶ Investor /investor ──────────┘
+   Anggaran (anggaran.ts): getBudgetMap → info sisa budget di form
+   Expense & Aset; getForecast → proyeksi kas 6 bulan.
+```
+
+### 11.7 Gamifikasi (mode anak main game)
+```
+/main/[anakId] ─▶ GameRunner ─selesai─▶ catatHasil (skor.ts)
+   ├─▶ hasil_main (insert sesi: skor, durasi, mesin, tema)
+   ├─▶ anak: koin += , streak (harian) diperbarui
+   ├─▶ lencana_anak (evaluasi & beri lencana)
+   └─▶ tantangan_anak / tantangan_kustom_anak (progres tantangan usia)
+          │
+          ▼  ditampilkan di /anak/[anakId]/laporan (getGamifikasiAnak)
+```
+
+### 11.8 Peran role & proteksi eskalasi
+```
+Super User ──atur──▶ [Super User] [Admin] [Guru] [Investor]
+Admin      ──atur──▶                       [Guru] [Investor]
+                     ▲ role tinggi hanya oleh Super User
+Trigger cegah_self_admin (DB):
+  bukan superuser  → is_admin & is_superuser DIBEKUKAN
+  bukan admin/super→ is_guru & is_investor DIBEKUKAN
+  ⇒ user biasa tak bisa menaikkan role dirinya (mis. is_investor)
+```
+
+> Diagram sengaja memakai ASCII agar selalu ter-render di PDF (`tools/md2pdf.py`) maupun GitHub tanpa dependency. Bila kelak ingin diagram Mermaid interaktif, template `md2pdf.py` perlu menyuntik `mermaid.js` + Chrome `--virtual-time-budget`.
