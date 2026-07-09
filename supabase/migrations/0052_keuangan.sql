@@ -1,5 +1,12 @@
 -- 0052_keuangan.sql — Modul Keuangan v1: ledger, riwayat membership, aset, role investor, kolom verifikasi
 
+-- ===== Role investor (didefinisikan DULU karena dipakai di policy di bawah) =====
+alter table public.profiles add column if not exists is_investor boolean not null default false;
+create or replace function public.is_investor()
+returns boolean language sql stable security definer set search_path = public as $$
+  select coalesce((select p.is_investor from public.profiles p where p.id = auth.uid()), false);
+$$;
+
 -- ===== Ledger keuangan (sumber tunggal) =====
 create table if not exists public.transaksi_keuangan (
   id uuid primary key default gen_random_uuid(),
@@ -66,13 +73,6 @@ create policy "admin kelola aset" on public.aset for all to authenticated using 
 -- ===== Kolom tanggal verifikasi (akurasi tanggal kas) =====
 alter table public.pesanan add column if not exists diverifikasi_pada timestamptz;
 alter table public.pendaftaran_event add column if not exists diverifikasi_pada timestamptz;
-
--- ===== Role investor =====
-alter table public.profiles add column if not exists is_investor boolean not null default false;
-create or replace function public.is_investor()
-returns boolean language sql stable security definer set search_path = public as $$
-  select coalesce((select p.is_investor from public.profiles p where p.id = auth.uid()), false);
-$$;
 
 -- ===== Backfill data lama (Store & Event) =====
 insert into public.transaksi_keuangan (arah, kategori, jumlah, tanggal, ref_tipe, ref_id, keterangan)
