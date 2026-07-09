@@ -1,8 +1,9 @@
 // src/app/admin/keuangan/expense/page.tsx — input & daftar pengeluaran
-import { getLedger, KATEGORI_KELUAR, LABEL_KATEGORI } from '@/lib/data/keuangan';
+import { getLedger, KATEGORI_KELUAR, LABEL_KATEGORI, METODE_BAYAR } from '@/lib/data/keuangan';
 import { catatPengeluaran, hapusTransaksi } from '@/lib/data/keuangan-actions';
 import { formatRupiah } from '@/lib/format';
 import UploadNota from '@/components/UploadNota';
+import InputRupiah from '@/components/InputRupiah';
 import KeuanganNav from '../KeuanganNav';
 import s from '../../admin.module.css';
 
@@ -26,11 +27,13 @@ export default async function ExpensePage() {
           <select className={s.inp} name="kategori" style={{ flex: 1, minWidth: 140 }}>
             {KATEGORI_KELUAR.map((k) => <option key={k} value={k}>{LABEL_KATEGORI[k] ?? k}</option>)}
           </select>
-          <input className={s.inp} type="number" min={0} name="jumlah" placeholder="Nominal (Rp)" style={{ flex: 1, minWidth: 120 }} required />
+          <InputRupiah className={s.inp} name="jumlah" placeholder="Nominal (Rp)" style={{ flex: 1, minWidth: 120, marginBottom: 0 }} />
         </div>
         <div className={s.row} style={{ gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
           <input className={s.inp} name="keterangan" placeholder="Keterangan / vendor" style={{ flex: 2, minWidth: 160 }} />
-          <input className={s.inp} name="metode" placeholder="Metode (transfer/cash)" style={{ flex: 1, minWidth: 120 }} />
+          <select className={s.inp} name="metode" style={{ flex: 1, minWidth: 130 }} defaultValue="transfer">
+            {METODE_BAYAR.map((m) => <option key={m.v} value={m.v}>{m.l}</option>)}
+          </select>
           <input className={s.inp} name="pic" placeholder="PIC" style={{ width: 110 }} />
         </div>
         <div style={{ marginTop: 8 }}><UploadNota name="lampiran_url" label="⬆ Upload foto nota" /></div>

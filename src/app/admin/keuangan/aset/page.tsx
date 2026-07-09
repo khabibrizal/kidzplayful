@@ -3,6 +3,7 @@ import { getAset, getKategoriAset } from '@/lib/data/keuangan';
 import { simpanAset, hapusAset, tambahKategoriAset, hapusKategoriAset } from '@/lib/data/keuangan-actions';
 import { formatRupiah } from '@/lib/format';
 import UploadNota from '@/components/UploadNota';
+import InputRupiah from '@/components/InputRupiah';
 import KeuanganNav from '../KeuanganNav';
 import s from '../../admin.module.css';
 
@@ -29,7 +30,7 @@ export default async function AsetPage() {
           </select>
         </div>
         <div className={s.row} style={{ gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
-          <input className={s.inp} type="number" min={0} name="harga_beli" placeholder="Harga beli (Rp)" style={{ flex: 1, minWidth: 120 }} />
+          <InputRupiah className={s.inp} name="harga_beli" placeholder="Harga beli (Rp)" style={{ flex: 1, minWidth: 120, marginBottom: 0 }} />
           <input className={s.inp} type="date" name="tanggal_beli" style={{ flex: 1, minWidth: 140 }} />
           <input className={s.inp} type="number" min={0} name="umur_manfaat_bulan" placeholder="Umur manfaat (bln)" style={{ width: 150 }} />
         </div>

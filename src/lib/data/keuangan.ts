@@ -5,6 +5,8 @@ import { statusLangganan } from '@/lib/domain/trial';
 
 export interface Trx { id?: string; arah: 'masuk' | 'keluar'; kategori: string; jumlah: number; tanggal: string; metode?: string | null; keterangan?: string | null; lampiran_url?: string | null; }
 
+export { METODE_BAYAR } from '@/lib/metode';
+
 export const KATEGORI_MASUK = ['event', 'membership', 'store'];
 export const KATEGORI_KELUAR = ['marketing', 'event', 'server', 'domain', 'software', 'office', 'transport', 'gaji', 'aset', 'pajak', 'lainnya'];
 export const LABEL_KATEGORI: Record<string, string> = {
