@@ -48,6 +48,17 @@ export async function getAnggaranBulan(ym: string): Promise<AnggaranBulan> {
   } catch { return kosong; }
 }
 
+// Peta sisa budget per kategori (kode) untuk bulan ym — hanya kategori yang punya anggaran.
+export interface SisaBudget { anggaran: number; terpakai: number; sisa: number; }
+export async function getBudgetMap(ym: string): Promise<Record<string, SisaBudget>> {
+  const ab = await getAnggaranBulan(ym);
+  const map: Record<string, SisaBudget> = {};
+  for (const r of ab.rows) {
+    if (r.anggaran > 0) map[r.kategori] = { anggaran: r.anggaran, terpakai: r.realisasi, sisa: r.anggaran - r.realisasi };
+  }
+  return map;
+}
+
 // ============ FORECAST ============
 export interface ForecastRow { ym: string; label: string; revenue: number; expense: number; net: number; saldoProyeksi: number; anggaranAda: boolean; }
 export interface Forecast {

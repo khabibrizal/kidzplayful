@@ -1,15 +1,19 @@
 // src/app/admin/keuangan/expense/page.tsx — input & daftar pengeluaran
 import Link from 'next/link';
 import { getLedger, getKategoriPengeluaran, LABEL_KATEGORI, METODE_BAYAR } from '@/lib/data/keuangan';
+import { getBudgetMap } from '@/lib/data/anggaran';
 import { catatPengeluaran, hapusTransaksi } from '@/lib/data/keuangan-actions';
+import { tanggalWIB } from '@/lib/domain/gamifikasi';
 import { formatRupiah } from '@/lib/format';
 import UploadNota from '@/components/UploadNota';
 import InputRupiah from '@/components/InputRupiah';
+import BudgetKategoriSelect from '@/components/BudgetKategoriSelect';
 import KeuanganNav from '../KeuanganNav';
 import s from '../../admin.module.css';
 
 export default async function ExpensePage() {
-  const [list, kategori] = await Promise.all([getLedger({ arah: 'keluar', limit: 300 }), getKategoriPengeluaran()]);
+  const ym = tanggalWIB().slice(0, 7);
+  const [list, kategori, budget] = await Promise.all([getLedger({ arah: 'keluar', limit: 300 }), getKategoriPengeluaran(), getBudgetMap(ym)]);
 
   async function aksiHapus(formData: FormData) {
     'use server';
@@ -25,9 +29,7 @@ export default async function ExpensePage() {
       <form action={catatPengeluaran} className={s.card}>
         <div className={s.row} style={{ gap: 6, flexWrap: 'wrap' }}>
           <input className={s.inp} type="date" name="tanggal" style={{ flex: 1, minWidth: 140 }} required />
-          <select className={s.inp} name="kategori" style={{ flex: 1, minWidth: 140 }}>
-            {kategori.map((k) => <option key={k.id} value={k.kode}>{k.nama}</option>)}
-          </select>
+          <BudgetKategoriSelect name="kategori" kategori={kategori} budget={budget} className={s.inp} style={{ minWidth: 140 }} />
           <InputRupiah className={s.inp} name="jumlah" placeholder="Nominal (Rp)" style={{ flex: 1, minWidth: 120, marginBottom: 0 }} />
         </div>
         <div className={s.row} style={{ gap: 6, flexWrap: 'wrap', marginTop: 6 }}>

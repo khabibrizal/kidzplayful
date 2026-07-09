@@ -1,7 +1,9 @@
 // src/app/admin/keuangan/aset/page.tsx — pencatatan aset (kategori master + upload nota WebP)
 import Link from 'next/link';
 import { getAset, getKategoriAset } from '@/lib/data/keuangan';
+import { getBudgetMap } from '@/lib/data/anggaran';
 import { simpanAset, hapusAset } from '@/lib/data/keuangan-actions';
+import { tanggalWIB } from '@/lib/domain/gamifikasi';
 import { formatRupiah } from '@/lib/format';
 import UploadNota from '@/components/UploadNota';
 import InputRupiah from '@/components/InputRupiah';
@@ -9,8 +11,10 @@ import KeuanganNav from '../KeuanganNav';
 import s from '../../admin.module.css';
 
 export default async function AsetPage() {
-  const [list, kategori] = await Promise.all([getAset(), getKategoriAset()]);
+  const ym = tanggalWIB().slice(0, 7);
+  const [list, kategori, budget] = await Promise.all([getAset(), getKategoriAset(), getBudgetMap(ym)]);
   const total = list.reduce((a, x) => a + (x.harga_beli || 0), 0);
+  const budgetAset = budget['aset']; // anggaran untuk kategori pengeluaran "Aset" bulan ini
 
   async function aksiHapus(formData: FormData) { 'use server'; await hapusAset(String(formData.get('id'))); }
 
@@ -40,6 +44,13 @@ export default async function AsetPage() {
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, marginTop: 8 }}>
           <input type="checkbox" name="catat_pengeluaran" value="1" /> Catat pembelian ini sebagai pengeluaran (kas keluar)
         </label>
+        {budgetAset ? (
+          <div style={{ fontSize: 12, marginTop: 4, color: budgetAset.sisa <= 0 ? '#c0392b' : budgetAset.sisa <= budgetAset.anggaran * 0.15 ? '#d35400' : '#1c7a43' }}>
+            Budget kategori <b>Aset</b> bulan ini: anggaran {formatRupiah(budgetAset.anggaran)} · terpakai {formatRupiah(budgetAset.terpakai)} · <b>sisa {formatRupiah(budgetAset.sisa)}</b>{budgetAset.sisa <= 0 ? ' (habis)' : ''}
+          </div>
+        ) : (
+          <div style={{ fontSize: 12, marginTop: 4, color: '#999' }}>Belum ada anggaran kategori Aset bulan ini. <Link href="/admin/keuangan/anggaran" style={{ color: 'var(--lavender-d)' }}>Atur anggaran</Link></div>
+        )}
         <div style={{ marginTop: 10 }}><button className={s.btn} type="submit">+ Simpan Aset</button></div>
       </form>
 
