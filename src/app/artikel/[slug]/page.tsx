@@ -6,13 +6,13 @@ import { notFound } from 'next/navigation';
 import Logo from '@/components/Logo';
 import ArtikelBody from '@/components/ArtikelBody';
 import { createClient } from '@/lib/supabase/server';
-import { getArtikelBySlug } from '@/lib/data/artikel';
+import { getArtikelBySlugCached } from '@/lib/data/artikel';
 
 const BASE = 'https://www.kidzplayful.com';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const a = await getArtikelBySlug(slug);
+  const a = await getArtikelBySlugCached(slug);
   if (!a) return { title: 'Artikel tidak ditemukan' };
   const url = `${BASE}/artikel/${a.slug}`;
   return {
@@ -39,7 +39,7 @@ function tanggal(iso: string | null) {
 
 export default async function ArtikelDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const a = await getArtikelBySlug(slug);
+  const a = await getArtikelBySlugCached(slug);
   if (!a) notFound();
 
   const supabase = await createClient();

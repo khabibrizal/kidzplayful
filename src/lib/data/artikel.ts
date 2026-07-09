@@ -1,5 +1,13 @@
 // src/lib/data/artikel.ts — baca artikel publik (blog)
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createAnon } from '@supabase/supabase-js';
+import { unstable_cache } from 'next/cache';
+
+// Client anon (tanpa cookie) agar hasilnya bisa di-cache lintas-user (unstable_cache).
+// Invalidasi via revalidateTag('artikel') saat artikel dibuat/diedit/dihapus.
+const anon = createAnon(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+  auth: { persistSession: false },
+});
 
 export interface Artikel {
   id: string;
@@ -47,6 +55,30 @@ export async function getArtikelBySlug(slug: string): Promise<Artikel | null> {
     .eq('status', 'terbit')
     .maybeSingle();
   return (data as Artikel | null) ?? null;
+}
+
+/** Daftar artikel terbit (TANPA pencarian) — versi ter-cache untuk halaman publik & sitemap. */
+export const getArtikelTerbitCached = unstable_cache(
+  async (): Promise<ArtikelRingkas[]> => {
+    const { data } = await anon
+      .from('artikel')
+      .select('slug,judul,ringkasan,sampul_url,terbit_pada')
+      .eq('status', 'terbit')
+      .order('terbit_pada', { ascending: false });
+    return (data ?? []) as ArtikelRingkas[];
+  },
+  ['artikel-terbit'], { tags: ['artikel'], revalidate: 300 },
+);
+
+/** Satu artikel terbit by slug — versi ter-cache (per slug). */
+export function getArtikelBySlugCached(slug: string): Promise<Artikel | null> {
+  return unstable_cache(
+    async (): Promise<Artikel | null> => {
+      const { data } = await anon.from('artikel').select('*').eq('slug', slug).eq('status', 'terbit').maybeSingle();
+      return (data as Artikel | null) ?? null;
+    },
+    ['artikel-slug', slug], { tags: ['artikel'], revalidate: 300 },
+  )();
 }
 
 /** Semua artikel (admin) — termasuk draf. */

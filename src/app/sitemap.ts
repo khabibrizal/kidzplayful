@@ -1,6 +1,6 @@
 // src/app/sitemap.ts — daftar URL publik untuk mesin pencari (statis + artikel dinamis)
 import type { MetadataRoute } from 'next';
-import { getArtikelTerbit } from '@/lib/data/artikel';
+import { getArtikelTerbitCached } from '@/lib/data/artikel';
 
 const BASE = 'https://www.kidzplayful.com';
 
@@ -18,7 +18,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   let artikel: MetadataRoute.Sitemap = [];
   try {
-    const list = await getArtikelTerbit();
+    const list = await getArtikelTerbitCached();
     artikel = list.map((a) => ({
       url: `${BASE}/artikel/${a.slug}`,
       lastModified: a.terbit_pada ? new Date(a.terbit_pada) : new Date(),

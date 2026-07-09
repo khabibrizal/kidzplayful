@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import Logo from '@/components/Logo';
 import { createClient } from '@/lib/supabase/server';
-import { getArtikelTerbit } from '@/lib/data/artikel';
+import { getArtikelTerbit, getArtikelTerbitCached } from '@/lib/data/artikel';
 
 export const metadata: Metadata = {
   title: 'Artikel & Tips Bermain untuk Anak',
@@ -23,7 +23,8 @@ export default async function ArtikelListPage({ searchParams }: { searchParams: 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const masuk = !!user;
-  const artikel = await getArtikelTerbit({ q: cari });
+  // tanpa pencarian → pakai daftar ter-cache; dengan pencarian → query langsung.
+  const artikel = cari ? await getArtikelTerbit({ q: cari }) : await getArtikelTerbitCached();
   return (
     <main style={{ maxWidth: 900, margin: '0 auto', padding: '18px 20px 50px' }}>
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>

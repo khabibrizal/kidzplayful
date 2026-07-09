@@ -1,6 +1,6 @@
 // src/lib/data/artikel-admin.ts — CRUD artikel (admin)
 'use server';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, updateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { slugify } from '@/lib/slug';
 
@@ -63,6 +63,7 @@ export async function simpanArtikel(input: {
   }
   const { error } = await supabase.from('artikel').update(patch).eq('id', input.id);
   if (error) throw new Error(error.message);
+  updateTag('artikel'); // invalidasi cache publik (unstable_cache)
   revalidatePath('/admin/artikel');
   revalidatePath('/artikel');
   revalidatePath(`/artikel/${slug}`);
@@ -72,6 +73,7 @@ export async function hapusArtikel(id: string) {
   const supabase = await adminDb();
   const { error } = await supabase.from('artikel').delete().eq('id', id);
   if (error) throw new Error(error.message);
+  updateTag('artikel'); // invalidasi cache publik
   revalidatePath('/admin/artikel');
   revalidatePath('/artikel');
 }

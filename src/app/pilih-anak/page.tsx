@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { statusLangganan, bolehAkses } from '@/lib/domain/trial';
 import { getStatusPendaftaranSaya, getPesertaPerEvent } from '@/lib/data/event';
 import { getEventTampilCached } from '@/lib/data/publik';
-import { getArtikelTerbit } from '@/lib/data/artikel';
+import { getArtikelTerbitCached } from '@/lib/data/artikel';
 import EventCarousel from '@/components/EventCarousel';
 import OnboardingChecklist from '@/components/OnboardingChecklist';
 import RekamAktivitas from '@/components/RekamAktivitas';
@@ -26,7 +26,7 @@ export default async function PilihAnakPage() {
     getEventTampilCached(),
     getStatusPendaftaranSaya(),
     getPesertaPerEvent(),
-    getArtikelTerbit({ limit: 3 }),
+    getArtikelTerbitCached().then((a) => a.slice(0, 3)),
     supabase.from('hasil_main').select('id, anak!inner(ortu_id)', { count: 'exact', head: true }).eq('anak.ortu_id', user.id),
   ]);
   const jumlahAnak = (anakList ?? []).length;
