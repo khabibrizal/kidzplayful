@@ -459,7 +459,7 @@ Diskon **persentase per-produk** untuk 2 tier (Trial & Berlangganan), diskon **E
 - **Admin**: form Produk input **Diskon Trial (%)**, **Diskon Langganan (%)**, **Berat (gram)**; form Event input **Diskon Berlangganan (%)**.
 
 ### Invoice & konfirmasi WA ke admin (semua transaksi)
-Master WA admin = **`pengaturan_pembayaran.wa_nomor`** (dinamis, diedit di `/admin/pengaturan-bayar` — label "Nomor WhatsApp Admin"). Helper `linkWa()` (`lib/format.ts`) membangun tautan wa.me + pesan.
+Master WA admin di `pengaturan_pembayaran` — **per jenis transaksi** (migrasi **0051**): `wa_nomor` (umum/langganan + fallback), `wa_event`, `wa_store` (kosong → pakai `wa_nomor`). Helper `waUntuk(cfg,'event'|'store'|'langganan')` + `linkWa()` (`lib/format.ts`). Semua diedit di `/admin/pengaturan-bayar`.
 - **Store**: `/pesanan/[id]` = **🧾 Invoice** (item, subtotal, ongkir, total, alamat). Tombol **"💬 Konfirmasi ongkir via WhatsApp"** saat status `menunggu_ongkir`; **"💬 Konfirmasi pembayaran via WhatsApp"** saat `dibayar` (setelah upload bukti). Pesan berisi no invoice + nominal.
 - **Event**: setelah daftar (+ upload bukti) `DaftarForm` menampilkan layar sukses berisi **ringkasan/invoice** (event, jumlah anak, total) + tombol **"💬 Konfirmasi ke Admin via WhatsApp"**. `waNomor` dikirim dari page via `getPengaturanBayar`.
 - **Langganan**: `/pengaturan` menampilkan harga + instruksi transfer + tombol **"Konfirmasi via WhatsApp"** (sudah pakai master WA).

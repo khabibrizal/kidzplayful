@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getEvent } from '@/lib/data/event';
 import { getStatusLangganan } from '@/lib/data/langganan-status';
-import { getPengaturanBayar } from '@/lib/data/pengaturan-bayar';
+import { getPengaturanBayar, waUntuk } from '@/lib/data/pengaturan-bayar';
 import DaftarForm from './DaftarForm';
 
 export default async function DaftarEventPage({ params }: { params: Promise<{ id: string }> }) {
@@ -35,5 +35,5 @@ export default async function DaftarEventPage({ params }: { params: Promise<{ id
   }
 
   const [status, cfg] = await Promise.all([getStatusLangganan(supabase, user.id), getPengaturanBayar()]);
-  return <DaftarForm ev={ev} anak={tersisa} status={status} waNomor={cfg.wa_nomor} />;
+  return <DaftarForm ev={ev} anak={tersisa} status={status} waNomor={waUntuk(cfg, 'event')} />;
 }

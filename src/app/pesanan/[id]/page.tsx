@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getPesanan } from '@/lib/data/pesanan';
 import { formatRupiah, STATUS_PESANAN, linkWa } from '@/lib/format';
-import { getPengaturanBayar } from '@/lib/data/pengaturan-bayar';
+import { getPengaturanBayar, waUntuk } from '@/lib/data/pengaturan-bayar';
 import BuktiUpload from './BuktiUpload';
 
 export default async function PesananDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -18,8 +18,9 @@ export default async function PesananDetailPage({ params }: { params: Promise<{ 
   if (!o || o.ortu_id !== user.id) redirect('/pesanan');
   const st = STATUS_PESANAN[o.status] ?? { teks: o.status, warna: 'var(--abu)', bg: '#eee' };
   const no8 = o.id.slice(0, 8);
-  const waOngkir = linkWa(cfg.wa_nomor, `Halo Admin KidzPlayful 🙏 Saya sudah checkout pesanan #${no8} (barang ${formatRupiah(o.subtotal)}). Mohon dihitung ongkirnya ya. Terima kasih.`);
-  const waBayar = linkWa(cfg.wa_nomor, `Halo Admin KidzPlayful 🙏 Saya sudah bayar & unggah bukti untuk pesanan #${no8} (total ${formatRupiah(o.total)}). Mohon diverifikasi ya. Terima kasih.`);
+  const waStore = waUntuk(cfg, 'store');
+  const waOngkir = linkWa(waStore, `Halo Admin KidzPlayful 🙏 Saya sudah checkout pesanan #${no8} (barang ${formatRupiah(o.subtotal)}). Mohon dihitung ongkirnya ya. Terima kasih.`);
+  const waBayar = linkWa(waStore, `Halo Admin KidzPlayful 🙏 Saya sudah bayar & unggah bukti untuk pesanan #${no8} (total ${formatRupiah(o.total)}). Mohon diverifikasi ya. Terima kasih.`);
 
   return (
     <main className="kp-page-narrow" style={{ padding: 16, paddingBottom: 40, marginTop: 24 }}>

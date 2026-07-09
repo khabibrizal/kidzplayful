@@ -34,6 +34,8 @@ export async function simpanPengaturanBayar(formData: FormData) {
     bank_teks: String(formData.get('bank_teks') ?? '').trim(),
     qris_url: String(formData.get('qris_url') ?? '').trim(),
     wa_nomor: String(formData.get('wa_nomor') ?? '').replace(/[^0-9]/g, ''),
+    wa_event: String(formData.get('wa_event') ?? '').replace(/[^0-9]/g, ''),
+    wa_store: String(formData.get('wa_store') ?? '').replace(/[^0-9]/g, ''),
     updated_at: new Date().toISOString(),
   };
   const { error } = await supabase.from('pengaturan_pembayaran').update(patch).eq('id', 1);

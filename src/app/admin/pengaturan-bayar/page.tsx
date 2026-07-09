@@ -33,8 +33,14 @@ export default async function PengaturanBayarPage({ searchParams }: { searchPara
         <label className={s.section}>URL gambar QRIS (opsional)</label>
         <input className={s.inp} name="qris_url" defaultValue={cfg.qris_url} style={{ width: '100%' }} placeholder="https://… (kosongkan bila tidak ada)" />
 
-        <label className={s.section}>Nomor WhatsApp Admin — untuk konfirmasi semua transaksi (mis. 6281234567890)</label>
+        <label className={s.section}>WA Admin Umum (langganan &amp; fallback) — mis. 6281234567890</label>
         <input className={s.inp} name="wa_nomor" defaultValue={cfg.wa_nomor} inputMode="numeric" style={{ width: '100%' }} placeholder="6281234567890" />
+
+        <label className={s.section}>WA Admin Event (opsional)</label>
+        <input className={s.inp} name="wa_event" defaultValue={cfg.wa_event} inputMode="numeric" style={{ width: '100%' }} placeholder="kosongkan = pakai WA umum" />
+
+        <label className={s.section}>WA Admin Store (opsional)</label>
+        <input className={s.inp} name="wa_store" defaultValue={cfg.wa_store} inputMode="numeric" style={{ width: '100%' }} placeholder="kosongkan = pakai WA umum" />
 
         <div style={{ marginTop: 14 }}><button className={s.btn} type="submit">💾 Simpan</button></div>
       </form>

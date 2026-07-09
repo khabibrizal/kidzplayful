@@ -47,7 +47,7 @@ Ringkasan navigasi seluruh codebase, dihasilkan dari **knowledge graph** (`/grap
 - **Keamanan utama = RLS** per tabel + guard `getAnakTerjamin`/`getAdminTerjamin`/`getGuruTerjamin`/`adminDb`. Query "milik sendiri" selalu `.eq(..user.id)`.
 - **Peran:** `profiles.is_admin` / `is_guru` (fungsi `is_admin()`/`is_guru()`); trigger `cegah_self_admin` cegah promosi diri.
 - **Total uang dihitung ulang di server**; harga di-snapshot (item_pesanan).
-- **Migrasi** SQL berurutan `supabase/migrations/0001..0050` (dijalankan di Supabase SQL Editor). Seed konten di `supabase/seed/`.
+- **Migrasi** SQL berurutan `supabase/migrations/0001..0051` (dijalankan di Supabase SQL Editor). Seed konten di `supabase/seed/`.
 
 ## Update terbaru (setelah snapshot graf)
 - **Game Mewarnai** (`mesin:'mewarnai'`): `components/game/MewarnaiGame.tsx`, `lib/game/templates-mewarnai.ts` (template bawaan), `lib/game/svg-sanitize.ts` (upload SVG aman), admin `TargetEditor.tsx` (mode sesuai). Mode Bebas/Sesuai, skor area `kreativitas`. Migrasi 0025 (izin mesin).
@@ -104,7 +104,7 @@ Tabel `feedback` + kolom `jawaban jsonb` (survei terstruktur, RLS kirim-sendiri 
 
 ### Diskon Store/Event + Invoice & WA admin (migrasi 0049/0050)
 Diskon **persentase per-produk** (`produk.diskon_trial_persen`/`diskon_langganan_persen`, `berat_gram`) & event (`event.diskon_langganan_persen`, khusus aktif). Logika `lib/domain/harga.ts` (aktif→langganan, selain→trial; event hanya aktif), status via `lib/data/langganan-status.ts`. Harga aktual di `checkout`+`daftarEvent`; tampilan badge "−X%" coret di ProdukCard/Detail. Admin input % di ProdukAdmin/EventAdmin.
-**Invoice & konfirmasi WA**: master WA admin = `pengaturan_pembayaran.wa_nomor` (`/admin/pengaturan-bayar`), `linkWa()` di `format.ts`. Store `/pesanan/[id]`=invoice + WA konfirmasi ongkir(`menunggu_ongkir`)/pembayaran(`dibayar`); Event `DaftarForm` layar sukses=invoice+WA; Langganan `/pengaturan` WA. Satu nomor WA utk semua notifikasi transaksi.
+**Invoice & konfirmasi WA**: WA admin **per jenis** di `pengaturan_pembayaran` (migrasi 0051: `wa_nomor` umum/fallback, `wa_event`, `wa_store`), helper `waUntuk(cfg,jenis)` + `linkWa()`. Store `/pesanan/[id]`=invoice + WA konfirmasi ongkir/pembayaran; Event `DaftarForm` sukses=invoice+WA; Langganan `/pengaturan` WA. Diedit di `/admin/pengaturan-bayar`.
 
 ### Perbaikan lain (terkini)
 Validasi tgl lahir anak < hari ini (tambah/update/API, input `max`). Kelola Langganan tampil tgl+jam daftar (`profiles.created_at`). Unduh PDF dihapus dari materi kelas bermain (`/kelas/[id]`, Mode Anak/Ortu) — e-sertifikat/stiker tetap. DAU/WAU/MAU kini termasuk log `aktivitas`. Konten: `/tentang` ditulis ulang, FAQ+footer "Play-Based Learning Ecosystem".
