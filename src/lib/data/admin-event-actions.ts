@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import type { EventKelas } from '@/lib/game/tipe';
+import { catatLedger, hapusLedgerRef } from './ledger';
 
 export interface EventInput {
   judul: string;
@@ -69,8 +70,16 @@ export async function hapusEvent(id: string): Promise<void> {
 
 export async function setStatusPendaftaran(id: string, statusBaru: 'menunggu' | 'diterima' | 'ditolak'): Promise<void> {
   const s = await adminDb();
-  const { error } = await s.from('pendaftaran_event').update({ status: statusBaru }).eq('id', id);
-  if (error) throw new Error(error.message);
+  if (statusBaru === 'diterima') {
+    const { data: p } = await s.from('pendaftaran_event').select('total').eq('id', id).single();
+    const { error } = await s.from('pendaftaran_event').update({ status: 'diterima', diverifikasi_pada: new Date().toISOString() }).eq('id', id);
+    if (error) throw new Error(error.message);
+    await catatLedger(s, { arah: 'masuk', kategori: 'event', jumlah: p?.total ?? 0, ref_tipe: 'pendaftaran', ref_id: id, keterangan: 'Pendaftaran event', metode: 'transfer' });
+  } else {
+    const { error } = await s.from('pendaftaran_event').update({ status: statusBaru }).eq('id', id);
+    if (error) throw new Error(error.message);
+    if (statusBaru === 'ditolak') await hapusLedgerRef(s, 'pendaftaran', id); // batalkan pemasukan bila sudah tercatat
+  }
 }
 
 /** Absensi: tandai satu anak HADIR / tidak pada sebuah pendaftaran. Kembalikan daftar anak hadir terbaru. */

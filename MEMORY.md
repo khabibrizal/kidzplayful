@@ -47,7 +47,7 @@ Ringkasan navigasi seluruh codebase, dihasilkan dari **knowledge graph** (`/grap
 - **Keamanan utama = RLS** per tabel + guard `getAnakTerjamin`/`getAdminTerjamin`/`getGuruTerjamin`/`adminDb`. Query "milik sendiri" selalu `.eq(..user.id)`.
 - **Peran:** `profiles.is_admin` / `is_guru` (fungsi `is_admin()`/`is_guru()`); trigger `cegah_self_admin` cegah promosi diri.
 - **Total uang dihitung ulang di server**; harga di-snapshot (item_pesanan).
-- **Migrasi** SQL berurutan `supabase/migrations/0001..0051` (dijalankan di Supabase SQL Editor). Seed konten di `supabase/seed/`.
+- **Migrasi** SQL berurutan `supabase/migrations/0001..0052` (dijalankan di Supabase SQL Editor). Seed konten di `supabase/seed/`.
 
 ## Update terbaru (setelah snapshot graf)
 - **Game Mewarnai** (`mesin:'mewarnai'`): `components/game/MewarnaiGame.tsx`, `lib/game/templates-mewarnai.ts` (template bawaan), `lib/game/svg-sanitize.ts` (upload SVG aman), admin `TargetEditor.tsx` (mode sesuai). Mode Bebas/Sesuai, skor area `kreativitas`. Migrasi 0025 (izin mesin).
@@ -108,6 +108,9 @@ Diskon **persentase per-produk** (`produk.diskon_trial_persen`/`diskon_langganan
 
 ### Perbaikan lain (terkini)
 Validasi tgl lahir anak < hari ini (tambah/update/API, input `max`). Kelola Langganan tampil tgl+jam daftar (`profiles.created_at`). Unduh PDF dihapus dari materi kelas bermain (`/kelas/[id]`, Mode Anak/Ortu) — e-sertifikat/stiker tetap. DAU/WAU/MAU kini termasuk log `aktivitas`. Konten: `/tentang` ditulis ulang, FAQ+footer "Play-Based Learning Ecosystem".
+
+### Modul Keuangan v1 (migrasi 0052) — basis kas
+Ledger tunggal `transaksi_keuangan` (+`pembayaran_langganan` riwayat membership, `aset`; kolom `diverifikasi_pada` di pesanan/pendaftaran; `profiles.is_investor`+`is_investor()`; backfill store/event). Pencatatan otomatis via `lib/data/ledger.ts` (`catatLedger`/`hapusLedgerRef`, try/catch) di `verifikasiPesanan` (store=subtotal), `setStatusPendaftaran diterima` (event=total), `aktifkanLangganan` (membership=nominal + pembayaran_langganan); batal/ditolak→hapus. Admin menu **💼 Keuangan** `/admin/keuangan` (Dashboard/Transaksi/Expense/Aset/Laporan+CSV/Pajak-omzet), reader `lib/data/keuangan.ts` + `keuangan-actions.ts`. Investor read-only `/investor` (guard `lib/data/investor.ts`, role via SQL). Blueprint: `docs/BLUEPRINT-KEUANGAN-KIDZPLAYFUL.*`.
 
 ## Catatan
 - `mockups/` (demo.js/index.html) = prototipe statis, terpisah dari app Next.js.

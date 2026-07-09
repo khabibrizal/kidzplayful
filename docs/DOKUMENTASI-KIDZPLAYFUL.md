@@ -472,6 +472,13 @@ Semua tombol WA memakai master WA yang sama → admin tahu ada transaksi masuk &
 - **Analitik DAU/WAU/MAU** kini menyertakan **log aktivitas (buka menu)** agar konsisten dengan daftar "Sedang aktif hari ini".
 - **Konten**: halaman `/tentang` ditulis ulang (visi/misi/fitur/nilai/filosofi); FAQ landing "Apa itu KidzPlayful" → "Play-Based Learning Ecosystem"; footer landing → "Play-Based Learning Ecosystem"; teks "Gratis 14 hari…" di hero dihapus.
 
+### Modul Keuangan / Business Management v1 — migrasi 0052
+Blueprint: `docs/BLUEPRINT-KEUANGAN-KIDZPLAYFUL.pdf`. Basis **kas**.
+- **Migrasi 0052**: tabel `transaksi_keuangan` (ledger tunggal, unique `(ref_tipe,ref_id)` utk pesanan/pendaftaran), `pembayaran_langganan` (riwayat membership), `aset`; kolom `pesanan.diverifikasi_pada`, `pendaftaran_event.diverifikasi_pada`, `profiles.is_investor` + fungsi `is_investor()`; **backfill** revenue Store (subtotal, status diproses/dikirim/selesai) & Event (total, diterima). RLS: admin kelola, admin+investor baca.
+- **Pencatatan otomatis** (`lib/data/ledger.ts` `catatLedger`/`hapusLedgerRef`, try/catch): `verifikasiPesanan`→masuk store=subtotal (ongkir bukan revenue) + `diverifikasi_pada`; `setStatusPendaftaran diterima`→masuk event=total; `aktifkanLangganan`→masuk membership=nominal + baris `pembayaran_langganan`. Pembatalan (`batal`/`ditolak`) → hapus baris ledger ref.
+- **Admin** menu **💼 Keuangan** (`/admin/keuangan`): Dashboard CEO (revenue/expense/net/saldo/MRR/member/growth), Transaksi (ledger + cashflow per bulan), Pengeluaran (input+hapus), Aset (CRUD + opsi catat pengeluaran), Laporan (P&L + per-bulan + per-kategori + **ekspor CSV**), Pajak/Omzet (12 bln + estimasi PPh final 0,5%). Reader `lib/data/keuangan.ts`, aksi `keuangan-actions.ts`.
+- **Investor** (role `profiles.is_investor`): halaman read-only `/investor` (guard `lib/data/investor.ts`) — Revenue, MRR, Growth, Net, Saldo, Member, Event, Store, Runway + tren 6 bulan. Set investor via SQL: `update profiles set is_investor=true where email='…'`.
+
 ### Catatan operasional — reset password akun
 Reset password user (mis. akun admin) via **Supabase SQL Editor** bila Dashboard tak punya tombolnya:
 ```sql

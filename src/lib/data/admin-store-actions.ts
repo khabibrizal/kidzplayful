@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import type { Produk, StatusPesanan } from '@/lib/game/tipe';
+import { catatLedger, hapusLedgerRef } from './ledger';
 
 export interface ProdukInput {
   nama: string; deskripsi: string; kategori: string;
@@ -87,8 +88,11 @@ export async function verifikasiPesanan(pesananId: string): Promise<void> {
       s.from('produk').update({ stok: Math.max(0, (pr.stok ?? 0) - (qtyPerProduk.get(pr.id) ?? 0)) }).eq('id', pr.id),
     ));
   }
-  const { error } = await s.from('pesanan').update({ status: 'diproses', updated_at: new Date().toISOString() }).eq('id', pesananId);
+  const { data: pes } = await s.from('pesanan').select('subtotal').eq('id', pesananId).single();
+  const { error } = await s.from('pesanan').update({ status: 'diproses', diverifikasi_pada: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', pesananId);
   if (error) throw new Error(error.message);
+  // catat pemasukan (basis kas): revenue store = subtotal (ongkir bukan pendapatan)
+  await catatLedger(s, { arah: 'masuk', kategori: 'store', jumlah: pes?.subtotal ?? 0, ref_tipe: 'pesanan', ref_id: pesananId, keterangan: `Pesanan #${pesananId.slice(0, 8)}`, metode: 'transfer' });
 }
 
 export async function setResi(pesananId: string, noResi: string): Promise<void> {
@@ -103,4 +107,5 @@ export async function ubahStatusPesanan(pesananId: string, status: StatusPesanan
   const s = await adminDb();
   const { error } = await s.from('pesanan').update({ status, updated_at: new Date().toISOString() }).eq('id', pesananId);
   if (error) throw new Error(error.message);
+  if (status === 'batal') await hapusLedgerRef(s, 'pesanan', pesananId); // batalkan pemasukan bila sudah tercatat
 }

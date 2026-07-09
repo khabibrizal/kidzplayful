@@ -14,7 +14,7 @@ export default function robots(): MetadataRoute.Robots {
           '/admin', '/main', '/anak', '/ortu', '/pengaturan', '/pesanan',
           '/keranjang', '/pilih-anak', '/pilih-game', '/kelas-saya', '/kelas',
           '/favorit', '/guru', '/catatan', '/sertifikat', '/stiker-event',
-          '/store', '/event', '/komunitas', '/reset-sandi', '/api',
+          '/store', '/event', '/komunitas', '/reset-sandi', '/api', '/investor',
         ],
       },
     ],

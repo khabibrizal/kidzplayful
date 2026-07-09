@@ -2,6 +2,8 @@
 'use server';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { catatLedger } from './ledger';
+import { tanggalWIB } from '@/lib/domain/gamifikasi';
 
 async function adminDb() {
   const supabase = await createClient();
@@ -22,6 +24,11 @@ export async function aktifkanLangganan(ortuId: string, nominal: number, dibayar
     aktif_sampai: aktifSampai, diaktifkan_oleh: adminId, updated_at: new Date().toISOString(),
   }).eq('ortu_id', ortuId);
   if (error) throw new Error(error.message);
+  // riwayat pembayaran membership + catat pemasukan (basis kas)
+  try {
+    await supabase.from('pembayaran_langganan').insert({ ortu_id: ortuId, nominal: nominal || 0, periode_mulai: tanggalWIB(), periode_sampai: aktifSampai, metode: dibayarVia || 'manual' });
+  } catch { /* abaikan bila migrasi 0052 belum jalan */ }
+  await catatLedger(supabase, { arah: 'masuk', kategori: 'membership', jumlah: nominal || 0, ref_tipe: 'langganan', ref_id: ortuId, keterangan: 'Aktivasi/perpanjang langganan', metode: dibayarVia || 'manual', dibuat_oleh: adminId });
   revalidatePath('/admin/langganan');
 }
 
