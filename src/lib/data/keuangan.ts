@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { tanggalWIB } from '@/lib/domain/gamifikasi';
 import { statusLangganan } from '@/lib/domain/trial';
 
-export interface Trx { id?: string; arah: 'masuk' | 'keluar'; kategori: string; jumlah: number; tanggal: string; metode?: string | null; keterangan?: string | null; lampiran_url?: string | null; }
+export interface Trx { id?: string; arah: 'masuk' | 'keluar'; kategori: string; jumlah: number; tanggal: string; metode?: string | null; keterangan?: string | null; lampiran_url?: string | null; ref_tipe?: string | null; ref_id?: string | null; }
 
 export { METODE_BAYAR } from '@/lib/metode';
 
@@ -82,7 +82,7 @@ export async function getDashboardKeuangan(): Promise<DashboardKeuangan> {
 export async function getLedger(opts?: { from?: string; to?: string; arah?: string; kategori?: string; limit?: number }): Promise<Trx[]> {
   try {
     const s = await createClient();
-    let q = s.from('transaksi_keuangan').select('id,arah,kategori,jumlah,tanggal,metode,keterangan,lampiran_url').order('tanggal', { ascending: false }).order('created_at', { ascending: false });
+    let q = s.from('transaksi_keuangan').select('id,arah,kategori,jumlah,tanggal,metode,keterangan,lampiran_url,ref_tipe,ref_id').order('tanggal', { ascending: false }).order('created_at', { ascending: false });
     if (opts?.from) q = q.gte('tanggal', opts.from);
     if (opts?.to) q = q.lte('tanggal', opts.to);
     if (opts?.arah) q = q.eq('arah', opts.arah);
@@ -124,6 +124,65 @@ export async function getKategoriAset(): Promise<{ id: string; nama: string }[]>
     const { data } = await s.from('kategori_aset').select('id,nama').order('nama');
     return (data ?? []) as { id: string; nama: string }[];
   } catch { return []; }
+}
+
+export interface TransaksiDetail {
+  trx: Trx & { created_at?: string };
+  jenis: 'pesanan' | 'pendaftaran' | 'langganan' | 'lainnya';
+  pembeli?: { email?: string | null; nama?: string | null; no_wa?: string | null } | null;
+  pesanan?: { status: string; subtotal: number; ongkir: number; total: number; penerima: string | null; no_hp: string | null; alamat: string | null; no_resi: string | null; catatan: string | null; bukti_url: string | null; created_at: string; items: { nama: string; harga: number; qty: number }[] } | null;
+  event?: { judul: string; tanggal: string | null; lokasi: string | null; anak: string[]; jumlah_anak: number; total: number; status: string; bukti_url: string | null; created_at: string } | null;
+  langganan?: { nominal: number; metode: string | null; periode_mulai: string | null; periode_sampai: string | null; dibayar_pada: string }[] | null;
+}
+
+/** Detail satu transaksi ledger + sumber aslinya (pesanan/pendaftaran/langganan). */
+export async function getTransaksiDetail(id: string): Promise<TransaksiDetail | null> {
+  try {
+    const s = await createClient();
+    const { data: trx } = await s.from('transaksi_keuangan')
+      .select('id,arah,kategori,jumlah,tanggal,metode,keterangan,lampiran_url,ref_tipe,ref_id,created_at')
+      .eq('id', id).maybeSingle();
+    if (!trx) return null;
+    const t = trx as TransaksiDetail['trx'];
+    const out: TransaksiDetail = { trx: t, jenis: 'lainnya' };
+
+    if (t.ref_tipe === 'pesanan' && t.ref_id) {
+      out.jenis = 'pesanan';
+      const { data: p } = await s.from('pesanan')
+        .select('ortu_id,status,subtotal,ongkir,total,penerima,no_hp,alamat,no_resi,catatan,bukti_url,created_at,item:item_pesanan(nama,harga,qty)')
+        .eq('id', t.ref_id).maybeSingle();
+      if (p) {
+        const pp = p as unknown as { ortu_id: string; status: string; subtotal: number; ongkir: number; total: number; penerima: string | null; no_hp: string | null; alamat: string | null; no_resi: string | null; catatan: string | null; bukti_url: string | null; created_at: string; item: { nama: string; harga: number; qty: number }[] };
+        out.pesanan = { status: pp.status, subtotal: pp.subtotal, ongkir: pp.ongkir, total: pp.total, penerima: pp.penerima, no_hp: pp.no_hp, alamat: pp.alamat, no_resi: pp.no_resi, catatan: pp.catatan, bukti_url: pp.bukti_url, created_at: pp.created_at, items: pp.item ?? [] };
+        out.pembeli = await ambilPembeli(s, pp.ortu_id);
+      }
+    } else if (t.ref_tipe === 'pendaftaran' && t.ref_id) {
+      out.jenis = 'pendaftaran';
+      const { data: p } = await s.from('pendaftaran_event')
+        .select('ortu_id,anak_nama,jumlah_anak,total,status,bukti_url,created_at,event:event_id(judul,tanggal,lokasi)')
+        .eq('id', t.ref_id).maybeSingle();
+      if (p) {
+        const pp = p as unknown as { ortu_id: string; anak_nama: string[]; jumlah_anak: number; total: number; status: string; bukti_url: string | null; created_at: string; event: { judul: string; tanggal: string | null; lokasi: string | null } | { judul: string; tanggal: string | null; lokasi: string | null }[] | null };
+        const ev = Array.isArray(pp.event) ? pp.event[0] : pp.event;
+        out.event = { judul: ev?.judul ?? '(event terhapus)', tanggal: ev?.tanggal ?? null, lokasi: ev?.lokasi ?? null, anak: pp.anak_nama ?? [], jumlah_anak: pp.jumlah_anak, total: pp.total, status: pp.status, bukti_url: pp.bukti_url, created_at: pp.created_at };
+        out.pembeli = await ambilPembeli(s, pp.ortu_id);
+      }
+    } else if (t.ref_tipe === 'langganan' && t.ref_id) {
+      out.jenis = 'langganan';
+      out.pembeli = await ambilPembeli(s, t.ref_id);
+      const { data: bayar } = await s.from('pembayaran_langganan')
+        .select('nominal,metode,periode_mulai,periode_sampai,dibayar_pada')
+        .eq('ortu_id', t.ref_id).order('dibayar_pada', { ascending: false }).limit(24);
+      out.langganan = (bayar ?? []) as TransaksiDetail['langganan'];
+    }
+    return out;
+  } catch { return null; }
+}
+
+async function ambilPembeli(s: Awaited<ReturnType<typeof createClient>>, ortuId: string) {
+  const { data } = await s.from('profiles').select('email,nama_tampilan,no_wa').eq('id', ortuId).maybeSingle();
+  const d = data as { email: string | null; nama_tampilan: string | null; no_wa: string | null } | null;
+  return d ? { email: d.email, nama: d.nama_tampilan, no_wa: d.no_wa } : null;
 }
 
 export interface AsetRow { id: string; nama: string; kategori: string | null; harga_beli: number; tanggal_beli: string | null; umur_manfaat_bulan: number | null; lokasi: string | null; invoice_url: string | null; catatan: string | null; }

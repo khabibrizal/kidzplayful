@@ -1,8 +1,11 @@
 // src/app/admin/keuangan/page.tsx — Dashboard CEO
+import Link from 'next/link';
 import { getDashboardKeuangan, getLedger, LABEL_KATEGORI } from '@/lib/data/keuangan';
 import { formatRupiah } from '@/lib/format';
 import KeuanganNav from './KeuanganNav';
 import s from '../admin.module.css';
+
+const BISA_DETAIL = new Set(['pesanan', 'pendaftaran', 'langganan']);
 
 function K({ b, l, warna }: { b: string; l: string; warna?: string }) {
   return (
@@ -44,15 +47,23 @@ export default async function KeuanganDashboard() {
 
       <div className={s.section} style={{ marginTop: 14 }}>Transaksi terbaru</div>
       {recent.length === 0 && <p className={s.muted}>Belum ada transaksi. Pemasukan tercatat otomatis saat verifikasi pesanan / terima pendaftaran / aktivasi langganan.</p>}
-      {recent.map((t) => (
-        <div key={t.id} className={s.card} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px' }}>
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <b style={{ color: t.arah === 'masuk' ? '#1c7a43' : '#c0392b' }}>{t.arah === 'masuk' ? '↓ ' : '↑ '}{LABEL_KATEGORI[t.kategori] ?? t.kategori}</b>
-            <br /><small className={s.muted}>{t.tanggal}{t.keterangan ? ` · ${t.keterangan}` : ''}</small>
-          </span>
-          <span style={{ fontWeight: 800, color: t.arah === 'masuk' ? '#1c7a43' : '#c0392b' }}>{t.arah === 'masuk' ? '+' : '−'}{formatRupiah(t.jumlah)}</span>
-        </div>
-      ))}
+      {recent.map((t) => {
+        const bisa = BISA_DETAIL.has(t.ref_tipe ?? '') && !!t.ref_id;
+        const isi = (
+          <>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <b style={{ color: t.arah === 'masuk' ? '#1c7a43' : '#c0392b' }}>{t.arah === 'masuk' ? '↓ ' : '↑ '}{LABEL_KATEGORI[t.kategori] ?? t.kategori}</b>
+              {bisa && <span className={s.muted} style={{ fontSize: 12 }}> · lihat detail ›</span>}
+              <br /><small className={s.muted}>{t.tanggal}{t.keterangan ? ` · ${t.keterangan}` : ''}</small>
+            </span>
+            <span style={{ fontWeight: 800, color: t.arah === 'masuk' ? '#1c7a43' : '#c0392b' }}>{t.arah === 'masuk' ? '+' : '−'}{formatRupiah(t.jumlah)}</span>
+          </>
+        );
+        const style = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px' } as const;
+        return bisa
+          ? <Link key={t.id} href={`/admin/keuangan/transaksi/${t.id}`} className={s.card} style={{ ...style, textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}>{isi}</Link>
+          : <div key={t.id} className={s.card} style={style}>{isi}</div>;
+      })}
     </div>
   );
 }

@@ -1,9 +1,12 @@
 // src/app/admin/keuangan/transaksi/page.tsx — Ledger + Cash Flow + filter rentang tanggal & kategori
+import Link from 'next/link';
 import { getLedger, LABEL_KATEGORI, KATEGORI_MASUK, KATEGORI_KELUAR } from '@/lib/data/keuangan';
 import { tanggalWIB } from '@/lib/domain/gamifikasi';
 import { formatRupiah } from '@/lib/format';
 import KeuanganNav from '../KeuanganNav';
 import s from '../../admin.module.css';
+
+const BISA_DETAIL = new Set(['pesanan', 'pendaftaran', 'langganan']);
 
 export default async function TransaksiPage({ searchParams }: { searchParams: Promise<{ from?: string; to?: string; arah?: string; kategori?: string }> }) {
   const sp = await searchParams;
@@ -54,16 +57,23 @@ export default async function TransaksiPage({ searchParams }: { searchParams: Pr
 
       <div className={s.section} style={{ marginTop: 14 }}>Rincian ({rows.length})</div>
       {rows.length === 0 && <p className={s.muted}>Tidak ada transaksi pada rentang & filter ini.</p>}
-      {rows.map((t) => (
-        <div key={t.id} className={s.card} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px' }}>
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <b style={{ color: t.arah === 'masuk' ? '#1c7a43' : '#c0392b' }}>{LABEL_KATEGORI[t.kategori] ?? t.kategori}</b>
-            {t.lampiran_url && <> · <a href={t.lampiran_url} target="_blank" style={{ color: 'var(--biru-d)' }}>🧾</a></>}
-            <br /><small className={s.muted}>{t.tanggal}{t.keterangan ? ` · ${t.keterangan}` : ''}{t.metode ? ` · ${t.metode}` : ''}</small>
-          </span>
-          <span style={{ fontWeight: 800, color: t.arah === 'masuk' ? '#1c7a43' : '#c0392b' }}>{t.arah === 'masuk' ? '+' : '−'}{formatRupiah(t.jumlah)}</span>
-        </div>
-      ))}
+      {rows.map((t) => {
+        const bisa = BISA_DETAIL.has(t.ref_tipe ?? '') && !!t.ref_id;
+        const isi = (
+          <>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <b style={{ color: t.arah === 'masuk' ? '#1c7a43' : '#c0392b' }}>{LABEL_KATEGORI[t.kategori] ?? t.kategori}</b>
+              {bisa && <span className={s.muted} style={{ fontSize: 12 }}> · lihat detail ›</span>}
+              <br /><small className={s.muted}>{t.tanggal}{t.keterangan ? ` · ${t.keterangan}` : ''}{t.metode ? ` · ${t.metode}` : ''}</small>
+            </span>
+            <span style={{ fontWeight: 800, color: t.arah === 'masuk' ? '#1c7a43' : '#c0392b' }}>{t.arah === 'masuk' ? '+' : '−'}{formatRupiah(t.jumlah)}</span>
+          </>
+        );
+        const style = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px' } as const;
+        return bisa
+          ? <Link key={t.id} href={`/admin/keuangan/transaksi/${t.id}`} className={s.card} style={{ ...style, textDecoration: 'none', color: 'inherit', cursor: 'pointer' }}>{isi}</Link>
+          : <div key={t.id} className={s.card} style={style}>{isi}</div>;
+      })}
     </div>
   );
 }
