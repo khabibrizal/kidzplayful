@@ -1,0 +1,145 @@
+<!DOCTYPE html><html lang="id"><head><meta charset="utf-8">
+<title>Dokumentasi KidzPlayful</title><style>
+@page { size: A4; margin: 15mm 14mm; }
+* { box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; color:#222; line-height:1.55; font-size:11pt; }
+h1 { font-size:20pt; color:#5a2ca0; border-bottom:3px solid #efe7fb; padding-bottom:6px; }
+h2 { font-size:14pt; color:#3a78d6; margin-top:20px; border-bottom:1px solid #eee; padding-bottom:3px; page-break-after:avoid; }
+h3 { font-size:12pt; color:#2ba8a3; margin-top:14px; page-break-after:avoid; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:9.5pt; page-break-inside:avoid; }
+th,td { border:1px solid #ddd; padding:5px 8px; text-align:left; vertical-align:top; }
+th { background:#f4f0fb; color:#444; }
+code { background:#f3f3f7; padding:1px 5px; border-radius:4px; font-size:9pt; color:#a13; }
+pre { background:#f7f7fb; border:1px solid #e6e6ee; border-radius:8px; padding:10px 12px; overflow:auto; font-size:8.5pt; line-height:1.4; page-break-inside:avoid; white-space:pre-wrap; }
+pre code { background:none; color:#333; padding:0; }
+blockquote { border-left:4px solid #ffc93c; background:#fffdf3; margin:10px 0; padding:6px 14px; color:#665; }
+hr { border:none; border-top:1px solid #e2e2ea; margin:16px 0; }
+a { color:#3a78d6; text-decoration:none; }
+ul,ol { margin:8px 0 8px 6px; padding-left:20px; }
+li { margin:3px 0; }
+</style></head>
+<body><h1 id="blueprint-modul-keuangan-business-management-kidzplayful">Blueprint Modul Keuangan / Business Management — KidzPlayful</h1>
+<p><strong>Dokumen rancangan (belum dieksekusi)</strong> · Disusun: Juli 2026 · Referensi: PRD Business Management KidzPlayful v1.0</p>
+<hr />
+<h2 id="1-latar-belakang-tujuan">1. Latar Belakang &amp; Tujuan</h2>
+<p>KidzPlayful memiliki 3 sumber pendapatan yang semuanya melalui sistem: <strong>Event Kelas Bermain</strong>, <strong>Membership</strong> (langganan bulanan), dan <strong>Store</strong> (education toys). Modul ini mencatat seluruh uang <strong>masuk &amp; keluar</strong> secara otomatis, lalu menghasilkan laporan keuangan (laba-rugi, arus kas) untuk kebutuhan <strong>operasional, investor, dan pajak</strong>.</p>
+<p><strong>Keputusan yang disepakati:</strong>
+- Basis pencatatan: <strong>kas</strong> — pendapatan dihitung saat pembayaran <strong>diverifikasi admin</strong>.
+- Pajak: <strong>catat omzet saja</strong> dulu (estimasi PPh final 0,5% disiapkan, belum wajib).
+- Cakupan v1: <strong>Fondasi keuangan + Investor Dashboard + Pajak/Omzet</strong>.
+- Akses investor: <strong>role login khusus</strong> (read-only).
+- Ongkir Store: <strong>bukan pendapatan</strong> (pass-through ke kurir).
+- Data lama Store &amp; Event: <strong>di-backfill</strong> ke ledger.</p>
+<hr />
+<h2 id="2-kondisi-data-saat-ini-temuan">2. Kondisi Data Saat Ini (temuan)</h2>
+<table>
+<thead>
+<tr>
+<th>Sumber</th>
+<th>Baris transaksi</th>
+<th>Titik "lunas"</th>
+<th>Bisa dihitung historis?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Store</strong> (<code>pesanan</code>)</td>
+<td>1 baris/pesanan (subtotal, ongkir, total)</td>
+<td>status <code>diproses</code> (verifikasi admin)</td>
+<td>✅ Ya</td>
+</tr>
+<tr>
+<td><strong>Event</strong> (<code>pendaftaran_event</code>)</td>
+<td>1 baris/pendaftaran (total)</td>
+<td>status <code>diterima</code></td>
+<td>✅ Ya</td>
+</tr>
+<tr>
+<td><strong>Membership</strong> (<code>langganan</code>)</td>
+<td>1 baris/user, <strong>di-overwrite</strong> tiap perpanjang</td>
+<td>saat <code>aktifkanLangganan</code></td>
+<td>❌ <strong>Tidak ada riwayat</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Celah utama:</strong> membership tidak menyimpan riwayat pembayaran. Belum ada tabel keuangan apa pun (expense, arus kas, aset, ledger, pajak).</p>
+<hr />
+<h2 id="3-arsitektur-inti-ledger-keuangan-tunggal">3. Arsitektur Inti — Ledger Keuangan Tunggal</h2>
+<p>Sebuah tabel <strong><code>transaksi_keuangan</code></strong> (append-only) mencatat <strong>setiap</strong> pergerakan uang. Semua laporan diturunkan dari sini — satu sumber kebenaran. Ini sekaligus menutup celah histori membership (tiap aktivasi = 1 baris ledger baru).</p>
+<p><strong>Kolom:</strong> arah (masuk/keluar), kategori, jumlah, tanggal, metode, keterangan, ref_tipe/ref_id (tautan ke pesanan/pendaftaran/langganan), lampiran, PIC.</p>
+<p><strong>Pencatatan otomatis (basis kas):</strong>
+- Verifikasi pesanan Store → catat <strong>masuk</strong> = <em>subtotal</em> (ongkir tidak dihitung).
+- Terima pendaftaran Event → catat <strong>masuk</strong> = <em>total</em>.
+- Aktivasi Membership → catat <strong>masuk</strong> = <em>nominal</em>.
+- Pembatalan/penolakan → baris ledger terkait dihapus.
+- <strong>Backfill sekali jalan</strong> dari data Store &amp; Event yang sudah lunas.
+- <strong>Pengeluaran &amp; aset</strong> diinput manual oleh admin.</p>
+<p>Tambahan kolom <code>diverifikasi_pada</code> di pesanan &amp; pendaftaran agar tanggal uang masuk akurat.</p>
+<hr />
+<h2 id="4-modul-versi-1-menu-keuangan-di-admin">4. Modul Versi 1 (menu 💼 Keuangan di Admin)</h2>
+<table>
+<thead>
+<tr>
+<th>Modul</th>
+<th>Isi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Dashboard CEO</strong></td>
+<td>Revenue hari ini/bulan ini, Total Expense, Net Profit, Saldo Kas, MRR, Active Member, Event bulan ini, Store order, Growth %</td>
+</tr>
+<tr>
+<td><strong>Transaksi (Ledger)</strong></td>
+<td>Daftar semua uang masuk/keluar + filter periode &amp; kategori</td>
+</tr>
+<tr>
+<td><strong>Expense</strong></td>
+<td>Input pengeluaran (tanggal, kategori, vendor, nominal, metode, lampiran, PIC)</td>
+</tr>
+<tr>
+<td><strong>Cash Flow</strong></td>
+<td>Kas masuk vs keluar + saldo berjalan, filter harian/bulanan/tahunan</td>
+</tr>
+<tr>
+<td><strong>Aset</strong></td>
+<td>Pencatatan aset (kamera, laptop, dll.): harga beli, umur manfaat, lokasi, invoice</td>
+</tr>
+<tr>
+<td><strong>Laporan Keuangan</strong></td>
+<td>Revenue, Expense, Laba-Rugi, Cash Flow, per Produk/Bulan/Kategori — <strong>ekspor PDF &amp; Excel</strong></td>
+</tr>
+<tr>
+<td><strong>Pajak / Omzet</strong></td>
+<td>Omzet per bulan + estimasi PPh final 0,5% (info)</td>
+</tr>
+<tr>
+<td><strong>Investor Dashboard</strong></td>
+<td>Halaman read-only (role <code>is_investor</code>): Revenue, MRR, Growth, Profit, Cash, Member, Event, Store, Runway</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Ditunda ke v2:</strong> KPI detail, Business Intelligence/insight, Budget &amp; Forecasting, Payroll, Inventory, Purchase Order, Vendor Management, Approval Flow, Jurnal/General Ledger, Bank Reconciliation.</p>
+<hr />
+<h2 id="5-perubahan-data">5. Perubahan Data</h2>
+<ul>
+<li><strong>Tabel baru:</strong> <code>transaksi_keuangan</code> (ledger), <code>aset</code>.</li>
+<li><strong>Kolom baru:</strong> <code>profiles.is_investor</code> (role); <code>pesanan.diverifikasi_pada</code>, <code>pendaftaran_event.diverifikasi_pada</code>.</li>
+<li>Semua hook pencatatan dibungkus pengaman agar transaksi inti tak terganggu bila modul belum aktif.</li>
+</ul>
+<hr />
+<h2 id="6-rencana-implementasi-bertahap">6. Rencana Implementasi Bertahap</h2>
+<ol>
+<li><strong>(a)</strong> Ledger <code>transaksi_keuangan</code> + hook otomatis + backfill data lama.</li>
+<li><strong>(b)</strong> Expense + Cash Flow + Dashboard CEO.</li>
+<li><strong>(c)</strong> Aset + Laporan Keuangan + ekspor PDF/Excel.</li>
+<li><strong>(d)</strong> Pajak / Omzet.</li>
+<li><strong>(e)</strong> Role Investor + halaman <code>/investor</code> read-only.</li>
+</ol>
+<p>Tiap tahap: <code>tsc</code>+<code>build</code> hijau, migrasi dijalankan manual di Supabase, verifikasi end-to-end, update dokumentasi.</p>
+<hr />
+<h2 id="7-catatan">7. Catatan</h2>
+<ul>
+<li>Dokumen ini <strong>rancangan</strong> — implementasi menyusul setelah disetujui, dikerjakan bertahap (a–e).</li>
+<li>Histori pendapatan membership <strong>tidak bisa</strong> dipulihkan (data lama ter-overwrite); pencatatan akurat dimulai sejak modul aktif. Store &amp; Event bisa di-backfill.</li>
+</ul></body></html>
