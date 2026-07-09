@@ -21,6 +21,7 @@ const MENU: { href: string; label: string }[] = [
   { href: '/admin/komunitas', label: '💬 Komunitas' },
   { href: '/admin/feedback', label: '⭐ Masukan' },
   { href: '/admin/guru', label: '🍎 Guru' },
+  { href: '/admin/users', label: '👤 Pengguna' },
   { href: '/admin/reminder', label: '📣 Reminder' },
 ];
 
