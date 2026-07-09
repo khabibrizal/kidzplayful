@@ -5,6 +5,8 @@ import { usePathname } from 'next/navigation';
 
 const LINK = [
   { href: '/admin/keuangan', label: '📊 Dashboard' },
+  { href: '/admin/keuangan/kpi', label: '🎯 KPI' },
+  { href: '/admin/keuangan/insight', label: '💡 Insight' },
   { href: '/admin/keuangan/transaksi', label: '📒 Transaksi' },
   { href: '/admin/keuangan/expense', label: '💸 Pengeluaran' },
   { href: '/admin/keuangan/aset', label: '🖥️ Aset' },
