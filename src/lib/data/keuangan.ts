@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { tanggalWIB } from '@/lib/domain/gamifikasi';
 import { statusLangganan } from '@/lib/domain/trial';
 
-export interface Trx { id?: string; arah: 'masuk' | 'keluar'; kategori: string; jumlah: number; tanggal: string; metode?: string | null; keterangan?: string | null; }
+export interface Trx { id?: string; arah: 'masuk' | 'keluar'; kategori: string; jumlah: number; tanggal: string; metode?: string | null; keterangan?: string | null; lampiran_url?: string | null; }
 
 export const KATEGORI_MASUK = ['event', 'membership', 'store'];
 export const KATEGORI_KELUAR = ['marketing', 'event', 'server', 'domain', 'software', 'office', 'transport', 'gaji', 'aset', 'pajak', 'lainnya'];
@@ -80,7 +80,7 @@ export async function getDashboardKeuangan(): Promise<DashboardKeuangan> {
 export async function getLedger(opts?: { from?: string; to?: string; arah?: string; kategori?: string; limit?: number }): Promise<Trx[]> {
   try {
     const s = await createClient();
-    let q = s.from('transaksi_keuangan').select('id,arah,kategori,jumlah,tanggal,metode,keterangan').order('tanggal', { ascending: false }).order('created_at', { ascending: false });
+    let q = s.from('transaksi_keuangan').select('id,arah,kategori,jumlah,tanggal,metode,keterangan,lampiran_url').order('tanggal', { ascending: false }).order('created_at', { ascending: false });
     if (opts?.from) q = q.gte('tanggal', opts.from);
     if (opts?.to) q = q.lte('tanggal', opts.to);
     if (opts?.arah) q = q.eq('arah', opts.arah);
@@ -114,6 +114,14 @@ export async function getPerKategori(arah: 'masuk' | 'keluar', from?: string, to
   const m = new Map<string, number>();
   for (const t of trx) m.set(t.kategori, (m.get(t.kategori) ?? 0) + (t.jumlah || 0));
   return [...m.entries()].map(([kategori, total]) => ({ kategori, total })).sort((a, b) => b.total - a.total);
+}
+
+export async function getKategoriAset(): Promise<{ id: string; nama: string }[]> {
+  try {
+    const s = await createClient();
+    const { data } = await s.from('kategori_aset').select('id,nama').order('nama');
+    return (data ?? []) as { id: string; nama: string }[];
+  } catch { return []; }
 }
 
 export interface AsetRow { id: string; nama: string; kategori: string | null; harga_beli: number; tanggal_beli: string | null; umur_manfaat_bulan: number | null; lokasi: string | null; invoice_url: string | null; catatan: string | null; }

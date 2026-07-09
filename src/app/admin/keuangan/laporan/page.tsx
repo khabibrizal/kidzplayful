@@ -1,4 +1,5 @@
 // src/app/admin/keuangan/laporan/page.tsx — Laporan keuangan (P&L, per bulan, per kategori) + ekspor
+import Link from 'next/link';
 import { getPerBulan, getPerKategori, LABEL_KATEGORI } from '@/lib/data/keuangan';
 import { formatRupiah } from '@/lib/format';
 import KeuanganNav from '../KeuanganNav';
@@ -47,14 +48,14 @@ export default async function LaporanKeuanganPage() {
         </div>
       ))}
 
-      <div className={s.section} style={{ marginTop: 14 }}>Pendapatan per Kategori</div>
+      <div className={s.section} style={{ marginTop: 14 }}>Pendapatan per Kategori <span className={s.muted} style={{ fontWeight: 400 }}>(klik untuk detail per tanggal)</span></div>
       {masukKat.length === 0 ? <p className={s.muted}>—</p> : masukKat.map((k) => (
-        <div key={k.kategori} className={s.card} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px' }}><b>{LABEL_KATEGORI[k.kategori] ?? k.kategori}</b><span style={{ color: '#1c7a43', fontWeight: 700 }}>{formatRupiah(k.total)}</span></div>
+        <Link key={k.kategori} href={`/admin/keuangan/transaksi?arah=masuk&kategori=${k.kategori}&from=2020-01-01`} className={s.card} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', textDecoration: 'none', color: 'inherit' }}><b>{LABEL_KATEGORI[k.kategori] ?? k.kategori} ›</b><span style={{ color: '#1c7a43', fontWeight: 700 }}>{formatRupiah(k.total)}</span></Link>
       ))}
 
-      <div className={s.section} style={{ marginTop: 14 }}>Pengeluaran per Kategori</div>
+      <div className={s.section} style={{ marginTop: 14 }}>Pengeluaran per Kategori <span className={s.muted} style={{ fontWeight: 400 }}>(klik untuk detail per tanggal)</span></div>
       {keluarKat.length === 0 ? <p className={s.muted}>—</p> : keluarKat.map((k) => (
-        <div key={k.kategori} className={s.card} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px' }}><b>{LABEL_KATEGORI[k.kategori] ?? k.kategori}</b><span style={{ color: '#c0392b', fontWeight: 700 }}>{formatRupiah(k.total)}</span></div>
+        <Link key={k.kategori} href={`/admin/keuangan/transaksi?arah=keluar&kategori=${k.kategori}&from=2020-01-01`} className={s.card} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', textDecoration: 'none', color: 'inherit' }}><b>{LABEL_KATEGORI[k.kategori] ?? k.kategori} ›</b><span style={{ color: '#c0392b', fontWeight: 700 }}>{formatRupiah(k.total)}</span></Link>
       ))}
 
       <p className={s.muted} style={{ fontSize: 11, marginTop: 12 }}>Tip: untuk PDF, gunakan Cetak browser (Ctrl/Cmd+P → Simpan sebagai PDF). Ekspor CSV bisa dibuka di Excel/Sheets.</p>

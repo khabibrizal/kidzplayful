@@ -79,3 +79,19 @@ export async function hapusAset(id: string) {
   if (error) throw new Error(error.message);
   revalidatePath('/admin/keuangan/aset');
 }
+
+export async function tambahKategoriAset(formData: FormData) {
+  const { s } = await adminDb();
+  const nama = String(formData.get('nama') ?? '').trim();
+  if (!nama) throw new Error('Nama kategori wajib diisi.');
+  const { error } = await s.from('kategori_aset').insert({ nama });
+  if (error) throw new Error(error.message);
+  revalidatePath('/admin/keuangan/aset');
+}
+
+export async function hapusKategoriAset(id: string) {
+  const { s } = await adminDb();
+  const { error } = await s.from('kategori_aset').delete().eq('id', id);
+  if (error) throw new Error(error.message);
+  revalidatePath('/admin/keuangan/aset');
+}
