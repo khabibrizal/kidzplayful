@@ -123,14 +123,14 @@ li { margin:3px 0; }
 <hr />
 <h2 id="5-perubahan-data">5. Perubahan Data</h2>
 <ul>
-<li><strong>Tabel baru:</strong> <code>transaksi_keuangan</code> (ledger), <code>aset</code>.</li>
+<li><strong>Tabel baru:</strong> <code>transaksi_keuangan</code> (ledger), <code>aset</code>, <strong><code>pembayaran_langganan</code></strong> (riwayat pembayaran membership: <code>ortu_id</code>, <code>nominal</code>, <code>periode_mulai</code>, <code>periode_sampai</code>, <code>metode</code>, <code>dibayar_pada</code>) — diisi tiap aktivasi/perpanjang; sumber riwayat langganan per member + MRR/retensi. (Histori sebelum modul aktif tak bisa dipulihkan.)</li>
 <li><strong>Kolom baru:</strong> <code>profiles.is_investor</code> (role); <code>pesanan.diverifikasi_pada</code>, <code>pendaftaran_event.diverifikasi_pada</code>.</li>
 <li>Semua hook pencatatan dibungkus pengaman agar transaksi inti tak terganggu bila modul belum aktif.</li>
 </ul>
 <hr />
 <h2 id="6-rencana-implementasi-bertahap">6. Rencana Implementasi Bertahap</h2>
 <ol>
-<li><strong>(a)</strong> Ledger <code>transaksi_keuangan</code> + hook otomatis + backfill data lama.</li>
+<li><strong>(a)</strong> Ledger <code>transaksi_keuangan</code> + tabel <code>pembayaran_langganan</code> (riwayat membership) + hook otomatis + backfill data lama.</li>
 <li><strong>(b)</strong> Expense + Cash Flow + Dashboard CEO.</li>
 <li><strong>(c)</strong> Aset + Laporan Keuangan + ekspor PDF/Excel.</li>
 <li><strong>(d)</strong> Pajak / Omzet.</li>

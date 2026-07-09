@@ -62,14 +62,14 @@ Tambahan kolom `diverifikasi_pada` di pesanan & pendaftaran agar tanggal uang ma
 ---
 
 ## 5. Perubahan Data
-- **Tabel baru:** `transaksi_keuangan` (ledger), `aset`.
+- **Tabel baru:** `transaksi_keuangan` (ledger), `aset`, **`pembayaran_langganan`** (riwayat pembayaran membership: `ortu_id`, `nominal`, `periode_mulai`, `periode_sampai`, `metode`, `dibayar_pada`) — diisi tiap aktivasi/perpanjang; sumber riwayat langganan per member + MRR/retensi. (Histori sebelum modul aktif tak bisa dipulihkan.)
 - **Kolom baru:** `profiles.is_investor` (role); `pesanan.diverifikasi_pada`, `pendaftaran_event.diverifikasi_pada`.
 - Semua hook pencatatan dibungkus pengaman agar transaksi inti tak terganggu bila modul belum aktif.
 
 ---
 
 ## 6. Rencana Implementasi Bertahap
-1. **(a)** Ledger `transaksi_keuangan` + hook otomatis + backfill data lama.
+1. **(a)** Ledger `transaksi_keuangan` + tabel `pembayaran_langganan` (riwayat membership) + hook otomatis + backfill data lama.
 2. **(b)** Expense + Cash Flow + Dashboard CEO.
 3. **(c)** Aset + Laporan Keuangan + ekspor PDF/Excel.
 4. **(d)** Pajak / Omzet.
