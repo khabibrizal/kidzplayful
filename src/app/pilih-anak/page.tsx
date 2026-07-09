@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { statusLangganan, bolehAkses } from '@/lib/domain/trial';
-import { getStatusPendaftaranSaya, getPesertaPerEvent } from '@/lib/data/event';
+import { getPendaftaranSaya } from '@/lib/data/event';
 import { getEventTampilCached } from '@/lib/data/publik';
 import { getArtikelTerbitCached } from '@/lib/data/artikel';
 import EventCarousel from '@/components/EventCarousel';
@@ -19,16 +19,17 @@ export default async function PilihAnakPage() {
   if (!user) redirect('/login');
 
   // Jalankan paralel (hindari round-trip berurutan ke Supabase)
-  const [{ data: anakList }, { data: lang }, { data: prof }, events, statusEvent, peserta, artikel, { count: jumlahAktivitas }] = await Promise.all([
+  const [{ data: anakList }, { data: lang }, { data: prof }, events, pendaftaran, artikel, { count: jumlahAktivitas }] = await Promise.all([
     supabase.from('anak').select('id,nama,tanggal_lahir,mode_default,jenis_kelamin').order('created_at'),
     supabase.from('langganan').select('trial_mulai,aktif_sampai').eq('ortu_id', user.id).single(),
     supabase.from('profiles').select('nama_tampilan').eq('id', user.id).single(),
     getEventTampilCached(),
-    getStatusPendaftaranSaya(),
-    getPesertaPerEvent(),
+    getPendaftaranSaya(user.id),
     getArtikelTerbitCached().then((a) => a.slice(0, 3)),
     supabase.from('hasil_main').select('id, anak!inner(ortu_id)', { count: 'exact', head: true }).eq('anak.ortu_id', user.id),
   ]);
+  const statusEvent = pendaftaran.statusMap;
+  const peserta = pendaftaran.pesertaMap;
   const jumlahAnak = (anakList ?? []).length;
   const anak0 = (anakList ?? [])[0];
   const gameHref = anak0 ? (anak0.mode_default === 'ortu' ? `/pilih-game/${anak0.id}` : `/main/${anak0.id}`) : null;

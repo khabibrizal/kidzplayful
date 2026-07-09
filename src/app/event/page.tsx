@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { getStatusPendaftaranSaya, getPesertaPerEvent } from '@/lib/data/event';
+import { getPendaftaranSaya } from '@/lib/data/event';
 import { getEventTampilCached } from '@/lib/data/publik';
 import { getEventBerCatatan } from '@/lib/data/catatan';
 import EventCard from '@/components/EventCard';
@@ -13,13 +13,14 @@ export default async function EventListPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
-  const [events, statusEvent, adaCatatan, peserta, { count: totalAnak }] = await Promise.all([
+  const [events, pendaftaran, adaCatatan, { count: totalAnak }] = await Promise.all([
     getEventTampilCached(),
-    getStatusPendaftaranSaya(),
+    getPendaftaranSaya(user.id),
     getEventBerCatatan(),
-    getPesertaPerEvent(),
     supabase.from('anak').select('id', { count: 'exact', head: true }).eq('ortu_id', user.id),
   ]);
+  const statusEvent = pendaftaran.statusMap;
+  const peserta = pendaftaran.pesertaMap;
   const jumlahAnak = totalAnak ?? 0;
 
   return (

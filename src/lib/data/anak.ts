@@ -8,12 +8,13 @@ export async function getAnakTerjamin(anakId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: anak } = await supabase
-    .from('anak').select('id,nama,mode_default,batas_menit,koin,tanggal_lahir').eq('id', anakId).single();
+  // anak (by anakId) & langganan (by user) independen → jalankan paralel
+  const [{ data: anak }, { data: lang }] = await Promise.all([
+    supabase.from('anak').select('id,nama,mode_default,batas_menit,koin,tanggal_lahir').eq('id', anakId).single(),
+    supabase.from('langganan').select('trial_mulai,aktif_sampai').eq('ortu_id', user.id).single(),
+  ]);
   if (!anak) redirect('/pilih-anak'); // RLS memastikan hanya anak milik ortu yang terbaca
 
-  const { data: lang } = await supabase
-    .from('langganan').select('trial_mulai,aktif_sampai').eq('ortu_id', user.id).single();
   const status = lang
     ? statusLangganan(
         {
