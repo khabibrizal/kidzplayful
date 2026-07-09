@@ -86,6 +86,7 @@ export async function tambahKategoriAset(formData: FormData) {
   if (!nama) throw new Error('Nama kategori wajib diisi.');
   const { error } = await s.from('kategori_aset').insert({ nama });
   if (error) throw new Error(error.message);
+  revalidatePath('/admin/keuangan/master');
   revalidatePath('/admin/keuangan/aset');
 }
 
@@ -93,5 +94,30 @@ export async function hapusKategoriAset(id: string) {
   const { s } = await adminDb();
   const { error } = await s.from('kategori_aset').delete().eq('id', id);
   if (error) throw new Error(error.message);
+  revalidatePath('/admin/keuangan/master');
   revalidatePath('/admin/keuangan/aset');
+}
+
+// ===== Master kategori pengeluaran (kode custom = nama, agar label tampil rapi) =====
+export async function tambahKategoriPengeluaran(formData: FormData) {
+  const { s } = await adminDb();
+  const nama = String(formData.get('nama') ?? '').trim();
+  if (!nama) throw new Error('Nama kategori wajib diisi.');
+  const { error } = await s.from('kategori_pengeluaran').insert({ kode: nama, nama, bawaan: false });
+  if (error) throw new Error(error.message);
+  revalidatePath('/admin/keuangan/master');
+  revalidatePath('/admin/keuangan/expense');
+  revalidatePath('/admin/keuangan/anggaran');
+}
+
+export async function hapusKategoriPengeluaran(id: string) {
+  const { s } = await adminDb();
+  // lindungi kategori bawaan sistem
+  const { data: k } = await s.from('kategori_pengeluaran').select('bawaan').eq('id', id).single();
+  if (k?.bawaan) throw new Error('Kategori bawaan tidak dapat dihapus.');
+  const { error } = await s.from('kategori_pengeluaran').delete().eq('id', id);
+  if (error) throw new Error(error.message);
+  revalidatePath('/admin/keuangan/master');
+  revalidatePath('/admin/keuangan/expense');
+  revalidatePath('/admin/keuangan/anggaran');
 }

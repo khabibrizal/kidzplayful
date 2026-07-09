@@ -1,5 +1,6 @@
 // src/app/admin/keuangan/expense/page.tsx — input & daftar pengeluaran
-import { getLedger, KATEGORI_KELUAR, LABEL_KATEGORI, METODE_BAYAR } from '@/lib/data/keuangan';
+import Link from 'next/link';
+import { getLedger, getKategoriPengeluaran, LABEL_KATEGORI, METODE_BAYAR } from '@/lib/data/keuangan';
 import { catatPengeluaran, hapusTransaksi } from '@/lib/data/keuangan-actions';
 import { formatRupiah } from '@/lib/format';
 import UploadNota from '@/components/UploadNota';
@@ -8,7 +9,7 @@ import KeuanganNav from '../KeuanganNav';
 import s from '../../admin.module.css';
 
 export default async function ExpensePage() {
-  const list = await getLedger({ arah: 'keluar', limit: 300 });
+  const [list, kategori] = await Promise.all([getLedger({ arah: 'keluar', limit: 300 }), getKategoriPengeluaran()]);
 
   async function aksiHapus(formData: FormData) {
     'use server';
@@ -20,12 +21,12 @@ export default async function ExpensePage() {
       <div className={s.head} style={{ marginTop: 8 }}><h1>💸 Pengeluaran</h1></div>
       <KeuanganNav />
 
-      <div className={s.section}>Catat Pengeluaran</div>
+      <div className={s.section} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>Catat Pengeluaran <Link href="/admin/keuangan/master" className={s.muted} style={{ fontSize: 12, fontWeight: 600 }}>⚙️ Kelola kategori</Link></div>
       <form action={catatPengeluaran} className={s.card}>
         <div className={s.row} style={{ gap: 6, flexWrap: 'wrap' }}>
           <input className={s.inp} type="date" name="tanggal" style={{ flex: 1, minWidth: 140 }} required />
           <select className={s.inp} name="kategori" style={{ flex: 1, minWidth: 140 }}>
-            {KATEGORI_KELUAR.map((k) => <option key={k} value={k}>{LABEL_KATEGORI[k] ?? k}</option>)}
+            {kategori.map((k) => <option key={k.id} value={k.kode}>{k.nama}</option>)}
           </select>
           <InputRupiah className={s.inp} name="jumlah" placeholder="Nominal (Rp)" style={{ flex: 1, minWidth: 120, marginBottom: 0 }} />
         </div>

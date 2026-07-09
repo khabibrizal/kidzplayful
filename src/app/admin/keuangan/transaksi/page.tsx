@@ -1,6 +1,6 @@
 // src/app/admin/keuangan/transaksi/page.tsx — Ledger + Cash Flow + filter rentang tanggal & kategori
 import Link from 'next/link';
-import { getLedger, LABEL_KATEGORI, KATEGORI_MASUK, KATEGORI_KELUAR } from '@/lib/data/keuangan';
+import { getLedger, getKategoriPengeluaran, LABEL_KATEGORI, KATEGORI_MASUK } from '@/lib/data/keuangan';
 import { tanggalWIB } from '@/lib/domain/gamifikasi';
 import { formatRupiah } from '@/lib/format';
 import KeuanganNav from '../KeuanganNav';
@@ -16,7 +16,10 @@ export default async function TransaksiPage({ searchParams }: { searchParams: Pr
   const arah = sp.arah === 'masuk' || sp.arah === 'keluar' ? sp.arah : '';
   const kategori = sp.kategori ?? '';
 
-  const rows = await getLedger({ from, to, arah: arah || undefined, kategori: kategori || undefined, limit: 2000 });
+  const [rows, katKeluar] = await Promise.all([
+    getLedger({ from, to, arah: arah || undefined, kategori: kategori || undefined, limit: 2000 }),
+    getKategoriPengeluaran(),
+  ]);
   const masuk = rows.filter((r) => r.arah === 'masuk').reduce((a, r) => a + r.jumlah, 0);
   const keluar = rows.filter((r) => r.arah === 'keluar').reduce((a, r) => a + r.jumlah, 0);
 
@@ -43,7 +46,7 @@ export default async function TransaksiPage({ searchParams }: { searchParams: Pr
           <select className={s.inp} name="kategori" defaultValue={kategori} style={{ flex: 1, minWidth: 140 }}>
             <option value="">Semua kategori</option>
             <optgroup label="Masuk">{KATEGORI_MASUK.map((k) => <option key={k} value={k}>{LABEL_KATEGORI[k] ?? k}</option>)}</optgroup>
-            <optgroup label="Keluar">{KATEGORI_KELUAR.map((k) => <option key={k} value={k}>{LABEL_KATEGORI[k] ?? k}</option>)}</optgroup>
+            <optgroup label="Keluar">{katKeluar.map((k) => <option key={k.id} value={k.kode}>{k.nama}</option>)}</optgroup>
           </select>
           <button className={s.btn} type="submit">Cari</button>
         </div>

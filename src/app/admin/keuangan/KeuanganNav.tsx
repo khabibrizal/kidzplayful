@@ -13,6 +13,7 @@ const LINK = [
   { href: '/admin/keuangan/anggaran', label: '🎯 Anggaran' },
   { href: '/admin/keuangan/laporan', label: '📈 Laporan' },
   { href: '/admin/keuangan/pajak', label: '🧾 Pajak' },
+  { href: '/admin/keuangan/master', label: '⚙️ Master' },
 ];
 
 export default function KeuanganNav() {

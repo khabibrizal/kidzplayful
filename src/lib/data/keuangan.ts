@@ -126,6 +126,19 @@ export async function getKategoriAset(): Promise<{ id: string; nama: string }[]>
   } catch { return []; }
 }
 
+export interface KatPengeluaran { id: string; kode: string; nama: string; bawaan: boolean; }
+// fallback ke konstanta bila tabel master belum ada (deploy-safe sebelum migrasi 0055)
+const builtinPengeluaran = (): KatPengeluaran[] => KATEGORI_KELUAR.map((k) => ({ id: k, kode: k, nama: LABEL_KATEGORI[k] ?? k, bawaan: true }));
+
+export async function getKategoriPengeluaran(): Promise<KatPengeluaran[]> {
+  try {
+    const s = await createClient();
+    const { data, error } = await s.from('kategori_pengeluaran').select('id,kode,nama,bawaan').order('bawaan', { ascending: false }).order('nama');
+    if (error || !data || data.length === 0) return builtinPengeluaran();
+    return data as KatPengeluaran[];
+  } catch { return builtinPengeluaran(); }
+}
+
 export interface TransaksiDetail {
   trx: Trx & { created_at?: string };
   jenis: 'pesanan' | 'pendaftaran' | 'langganan' | 'lainnya';

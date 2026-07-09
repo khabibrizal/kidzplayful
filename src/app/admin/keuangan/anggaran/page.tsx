@@ -1,7 +1,7 @@
 // src/app/admin/keuangan/anggaran/page.tsx — Budget vs Realisasi + Forecast (Fase 2C)
 import { getAnggaranBulan, getForecast } from '@/lib/data/anggaran';
 import { simpanAnggaran } from '@/lib/data/anggaran-actions';
-import { KATEGORI_KELUAR, LABEL_KATEGORI } from '@/lib/data/keuangan';
+import { getKategoriPengeluaran, LABEL_KATEGORI } from '@/lib/data/keuangan';
 import { tanggalWIB } from '@/lib/domain/gamifikasi';
 import { formatRupiah } from '@/lib/format';
 import InputRupiah from '@/components/InputRupiah';
@@ -16,7 +16,7 @@ function labelBulan(ym: string): string {
 export default async function AnggaranPage({ searchParams }: { searchParams: Promise<{ ym?: string }> }) {
   const sp = await searchParams;
   const ym = /^\d{4}-\d{2}$/.test(sp.ym ?? '') ? sp.ym! : tanggalWIB().slice(0, 7);
-  const [ab, fc] = await Promise.all([getAnggaranBulan(ym), getForecast(6)]);
+  const [ab, fc, kategori] = await Promise.all([getAnggaranBulan(ym), getForecast(6), getKategoriPengeluaran()]);
 
   return (
     <div>
@@ -38,7 +38,7 @@ export default async function AnggaranPage({ searchParams }: { searchParams: Pro
         <div className={s.row} style={{ gap: 6, flexWrap: 'wrap' }}>
           <select className={s.inp} name="kategori" style={{ flex: 1, minWidth: 150 }} required>
             <option value="">— Kategori pengeluaran —</option>
-            {KATEGORI_KELUAR.map((k) => <option key={k} value={k}>{LABEL_KATEGORI[k] ?? k}</option>)}
+            {kategori.map((k) => <option key={k.id} value={k.kode}>{k.nama}</option>)}
           </select>
           <InputRupiah className={s.inp} name="jumlah" placeholder="Anggaran (Rp)" style={{ flex: 1, minWidth: 130, marginBottom: 0 }} />
           <button className={s.btn} type="submit">Simpan</button>

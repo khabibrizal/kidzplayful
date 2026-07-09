@@ -1,6 +1,7 @@
 // src/app/admin/keuangan/aset/page.tsx — pencatatan aset (kategori master + upload nota WebP)
+import Link from 'next/link';
 import { getAset, getKategoriAset } from '@/lib/data/keuangan';
-import { simpanAset, hapusAset, tambahKategoriAset, hapusKategoriAset } from '@/lib/data/keuangan-actions';
+import { simpanAset, hapusAset } from '@/lib/data/keuangan-actions';
 import { formatRupiah } from '@/lib/format';
 import UploadNota from '@/components/UploadNota';
 import InputRupiah from '@/components/InputRupiah';
@@ -12,8 +13,6 @@ export default async function AsetPage() {
   const total = list.reduce((a, x) => a + (x.harga_beli || 0), 0);
 
   async function aksiHapus(formData: FormData) { 'use server'; await hapusAset(String(formData.get('id'))); }
-  async function aksiTambahKat(formData: FormData) { 'use server'; await tambahKategoriAset(formData); }
-  async function aksiHapusKat(formData: FormData) { 'use server'; await hapusKategoriAset(String(formData.get('id'))); }
 
   return (
     <div>
@@ -28,6 +27,7 @@ export default async function AsetPage() {
             <option value="">— Kategori —</option>
             {kategori.map((k) => <option key={k.id} value={k.nama}>{k.nama}</option>)}
           </select>
+          <Link href="/admin/keuangan/master" className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', whiteSpace: 'nowrap' }}>⚙️ Kategori</Link>
         </div>
         <div className={s.row} style={{ gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
           <InputRupiah className={s.inp} name="harga_beli" placeholder="Harga beli (Rp)" style={{ flex: 1, minWidth: 120, marginBottom: 0 }} />
@@ -42,22 +42,6 @@ export default async function AsetPage() {
         </label>
         <div style={{ marginTop: 10 }}><button className={s.btn} type="submit">+ Simpan Aset</button></div>
       </form>
-
-      <details className={s.card}>
-        <summary style={{ cursor: 'pointer', fontWeight: 700, color: 'var(--lavender-d)', fontSize: 13 }}>⚙️ Kelola Kategori Aset ({kategori.length})</summary>
-        <form action={aksiTambahKat} className={s.row} style={{ gap: 6, marginTop: 10 }}>
-          <input className={s.inp} name="nama" placeholder="Kategori baru" style={{ flex: 1, marginBottom: 0 }} required />
-          <button className={s.btnSm} style={{ background: 'var(--mint-d)', color: '#fff' }}>+ Tambah</button>
-        </form>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
-          {kategori.map((k) => (
-            <span key={k.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f3f3f8', borderRadius: 999, padding: '4px 6px 4px 12px', fontSize: 12 }}>
-              {k.nama}
-              <form action={aksiHapusKat}><input type="hidden" name="id" value={k.id} /><button style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#c0392b', fontWeight: 800 }} title="hapus">✕</button></form>
-            </span>
-          ))}
-        </div>
-      </details>
 
       <div className={s.section}>Daftar Aset ({list.length}) · Total {formatRupiah(total)}</div>
       {list.length === 0 && <p className={s.muted}>Belum ada aset.</p>}
