@@ -1,0 +1,758 @@
+<!DOCTYPE html><html lang="id"><head><meta charset="utf-8">
+<title>Dokumentasi KidzPlayful</title><style>
+@page { size: A4; margin: 15mm 14mm; }
+* { box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; color:#222; line-height:1.55; font-size:11pt; }
+h1 { font-size:20pt; color:#5a2ca0; border-bottom:3px solid #efe7fb; padding-bottom:6px; }
+h2 { font-size:14pt; color:#3a78d6; margin-top:20px; border-bottom:1px solid #eee; padding-bottom:3px; page-break-after:avoid; }
+h3 { font-size:12pt; color:#2ba8a3; margin-top:14px; page-break-after:avoid; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:9.5pt; page-break-inside:avoid; }
+th,td { border:1px solid #ddd; padding:5px 8px; text-align:left; vertical-align:top; }
+th { background:#f4f0fb; color:#444; }
+code { background:#f3f3f7; padding:1px 5px; border-radius:4px; font-size:9pt; color:#a13; }
+pre { background:#f7f7fb; border:1px solid #e6e6ee; border-radius:8px; padding:10px 12px; overflow:auto; font-size:8.5pt; line-height:1.4; page-break-inside:avoid; white-space:pre-wrap; }
+pre code { background:none; color:#333; padding:0; }
+blockquote { border-left:4px solid #ffc93c; background:#fffdf3; margin:10px 0; padding:6px 14px; color:#665; }
+hr { border:none; border-top:1px solid #e2e2ea; margin:16px 0; }
+a { color:#3a78d6; text-decoration:none; }
+ul,ol { margin:8px 0 8px 6px; padding-left:20px; }
+li { margin:3px 0; }
+</style></head>
+<body><h1 id="dokumentasi-developer-kidzplayful">Dokumentasi Developer — KidzPlayful</h1>
+<blockquote>
+<p>Panduan teknis untuk developer baru. Menjelaskan <strong>per halaman/menu</strong>: file apa yang menanganinya, function/reader/server-action apa yang dipakai, dan <strong>endpoint backend</strong> (tabel Supabase / RPC / storage / auth) yang disentuh. Termasuk <strong>REST API internal</strong> (untuk aplikasi mobile) dan infrastruktur.</p>
+</blockquote>
+<p>Terakhir diperbarui: 2026-07-09.</p>
+<hr />
+<h2 id="1-ringkasan-stack">1. Ringkasan &amp; Stack</h2>
+<ul>
+<li><strong>Framework</strong>: Next.js 16 (App Router, Server Components + Server Actions).</li>
+<li><strong>Bahasa</strong>: TypeScript. Semua kode/komentar/UI berbahasa Indonesia.</li>
+<li><strong>Backend</strong>: Supabase (Postgres + Row Level Security + Auth + Storage).</li>
+<li><strong>Hosting</strong>: Vercel (<code>www.kidzplayful.com</code>).</li>
+<li><strong>Tanpa build/lint khusus</strong>: gerbang mutu = <code>npx tsc --noEmit</code> + <code>npm run build</code>.</li>
+<li><strong>Tanpa service-role key</strong>: SEMUA akses backend memakai <strong>anon key + RLS</strong>. Operasi admin diamankan lewat guard aplikasi + RLS + fungsi SQL <code>is_admin()</code>/<code>is_guru()</code>/<code>is_investor()</code>/<code>is_superuser()</code>. Satu-satunya bypass RLS: RPC <code>laporan_engagement()</code> (SECURITY DEFINER, ber-guard <code>is_admin()</code>).</li>
+</ul>
+<h3 id="cara-membaca-dokumen-ini">Cara membaca dokumen ini</h3>
+<p>Tiap halaman ditulis dalam blok:
+- <strong>File</strong> — page + komponen client + komponen bersama.
+- <strong>Fungsi data (reader)</strong> — fungsi baca dari <code>src/lib/data/*.ts</code>.
+- <strong>Server action</strong> — fungsi <code>'use server'</code> (tulis data).
+- <strong>Endpoint backend</strong> — tabel/RPC/storage/auth yang benar-benar disentuh.
+- <strong>Guard/Role</strong> — proteksi akses.</p>
+<hr />
+<h2 id="2-struktur-folder">2. Struktur folder</h2>
+<pre><code>src/
+  app/                 # rute (App Router)
+    (legal)/           # halaman legal (route group)
+    admin/             # panel admin (+ keuangan/)
+    api/               # REST API internal (Route Handlers, untuk mobile)
+    &lt;publik &amp; ortu&gt;/   # landing, store, event, komunitas, main, dst.
+  components/          # komponen UI bersama (client)
+  lib/
+    data/              # reader (baca) + *-actions.ts (server actions)
+    domain/            # logika murni (trial, gamifikasi, harga, laporan, usia…)
+    supabase/          # server.ts (SSR), client.ts (browser)
+    api/               # helpers.ts (amplop JSON + auth Bearer untuk REST API)
+    game/              # tipe &amp; util mesin game
+supabase/migrations/   # skema DB (0001..0056), dijalankan manual di SQL Editor
+docs/                  # dokumentasi (termasuk file ini)
+tools/md2pdf.py        # generator PDF dokumentasi
+</code></pre>
+<hr />
+<h2 id="3-konvensi-penting">3. Konvensi penting</h2>
+<h3 id="autentikasi-role">Autentikasi &amp; role</h3>
+<ul>
+<li>Role = kolom boolean di tabel <code>profiles</code>: <code>is_superuser</code>, <code>is_admin</code>, <code>is_guru</code>, <code>is_investor</code>.</li>
+<li>Fungsi SQL (<code>security definer</code>) untuk RLS: <code>is_admin()</code>, <code>is_guru()</code>, <code>is_investor()</code>, <code>is_superuser()</code>.</li>
+<li><strong>Trigger <code>cegah_self_admin</code></strong> (migrasi 0056): mencegah eskalasi mandiri — <code>is_admin</code>/<code>is_superuser</code> hanya bisa diubah super user; <code>is_guru</code>/<code>is_investor</code> hanya oleh admin/super user; user biasa tak bisa mengubah role apa pun pada dirinya.</li>
+</ul>
+<h3 id="pola-guard-lapis-ganda">Pola guard (lapis ganda)</h3>
+<ul>
+<li><strong>Halaman</strong>: <code>getAdminTerjamin()</code> (<code>lib/data/admin.ts</code>) dipakai di <code>admin/layout.tsx</code> → redirect <code>/login</code> atau <code>/pilih-anak</code> bila bukan admin. Halaman <code>/admin/users</code> memakai guard khusus <code>getPengelolaUserTerjamin()</code> (admin <strong>atau</strong> super user). Halaman anak memakai <code>getAnakTerjamin()</code> (login + langganan + kepemilikan). Investor: <code>getInvestorTerjamin()</code>.</li>
+<li><strong>Server action</strong>: setiap file <code>*-actions.ts</code> mengulang cek admin sendiri lewat helper lokal (<code>adminDb()</code> / <code>db()</code> / <code>pengelola()</code>) → <code>auth.getUser()</code> + baca <code>profiles.is_admin</code>.</li>
+</ul>
+<h3 id="data-layer">Data layer</h3>
+<ul>
+<li><strong>Reader</strong> (baca) ada di <code>lib/data/&lt;fitur&gt;.ts</code>, memakai <code>createClient()</code> dari <code>@/lib/supabase/server</code>.</li>
+<li><strong>Server action</strong> (tulis) ada di <code>lib/data/&lt;fitur&gt;-actions.ts</code> dengan <code>'use server'</code> + guard.</li>
+<li>Halaman tidak menaruh selector mentah bila bisa lewat reader; beberapa halaman melakukan query inline sederhana.</li>
+</ul>
+<h3 id="deploy-migrasi">Deploy &amp; migrasi</h3>
+<ul>
+<li>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor (urut <code>0001..0056</code>), lalu diverifikasi via REST (<code>?select=col&amp;limit=1</code> → 200).</li>
+<li>Commit: <code>git -c commit.gpgsign=false commit</code> + baris <code>Co-Authored-By</code>. Push ke <code>master</code> → Vercel auto-deploy.</li>
+<li>Banyak reader dibungkus <code>try/catch</code> agar fitur aman dideploy sebelum migrasinya dijalankan (mengembalikan nilai default).</li>
+</ul>
+<h3 id="storage">Storage</h3>
+<ul>
+<li><strong>Satu bucket: <code>aset</code></strong>. Upload dilakukan <strong>client-side</strong> (komponen client), lalu URL publik disimpan lewat server action. Folder: <code>event/</code>, <code>produk/</code>, <code>worksheet/</code>, <code>artikel/</code>, <code>nota/</code>, <code>bukti/</code>, dan aset game.</li>
+</ul>
+<h3 id="environment">Environment</h3>
+<ul>
+<li><code>NEXT_PUBLIC_SUPABASE_URL</code>, <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> — hanya dua env var ini yang direferensikan seluruh <code>src</code>. Tidak ada service-role key / kunci pihak ketiga.</li>
+</ul>
+<hr />
+<h2 id="4-panel-admin-per-menu-non-keuangan">4. Panel Admin — per menu (non-keuangan)</h2>
+<p>Pembungkus: <code>admin/layout.tsx</code> (guard <code>getAdminTerjamin</code>) + <code>AdminNav.tsx</code> (navigasi) + <code>LogoutBtn.tsx</code>.</p>
+<h3 id="dashboard-tema-admin">🏠 Dashboard (Tema) — <code>/admin</code></h3>
+<ul>
+<li><strong>File</strong>: <code>admin/page.tsx</code> (server, form inline).</li>
+<li><strong>Server action</strong>: <code>buatTema</code>, <code>setMingguIni</code>, <code>hapusTema</code> (<code>admin-konten.ts</code>).</li>
+<li><strong>Endpoint</strong>: <code>tema</code> (select/insert/update/delete).</li>
+</ul>
+<h3 id="analitik-adminanalitik">📈 Analitik — <code>/admin/analitik</code></h3>
+<ul>
+<li><strong>File</strong>: <code>admin/analitik/page.tsx</code> (query inline).</li>
+<li><strong>Fungsi data</strong>: <code>getAktivitasRingkas()</code> (<code>aktivitas.ts</code>) — fitur populer + user aktif hari ini.</li>
+<li><strong>Endpoint</strong>: <code>anak</code>, <code>hasil_main</code>, <code>pendaftaran_event</code>, <code>pesanan</code>, <code>postingan</code>, <code>komentar</code>, <code>profiles</code>, <code>aktivitas</code>.</li>
+</ul>
+<h3 id="event-adminevent">🗓️ Event — <code>/admin/event</code></h3>
+<ul>
+<li><strong>File</strong>: <code>admin/event/page.tsx</code> → <code>EventAdmin.tsx</code> (+ <code>PanelSertifikat</code>).</li>
+<li><strong>Fungsi data</strong>: <code>getEventSemua()</code>, <code>getJumlahPendaftar()</code> (<code>admin-event.ts</code>).</li>
+<li><strong>Server action</strong>: <code>buatEvent</code>, <code>updateEvent</code>, <code>toggleStatusEvent</code>, <code>hapusEvent</code>, <code>simpanBerkasSertifikat</code> (<code>admin-event-actions.ts</code>); <code>generateSertifikatEvent</code> (<code>admin-sertifikat-actions.ts</code>).</li>
+<li><strong>Endpoint</strong>: <code>event</code>, <code>pendaftaran_event</code>, <code>sertifikat</code> (upsert), <code>storage.from('aset')</code> (folder <code>event/</code>, <code>event/sertifikat-*</code>, <code>event/stiker-*</code>).</li>
+</ul>
+<h3 id="pendaftar-event-admineventidpendaftar">🗓️ Pendaftar Event — <code>/admin/event/[id]/pendaftar</code></h3>
+<ul>
+<li><strong>File</strong>: <code>admin/event/[id]/pendaftar/page.tsx</code> → <code>PendaftarAdmin.tsx</code>.</li>
+<li><strong>Fungsi data</strong>: <code>getEventAdmin(id)</code>, <code>getPendaftaranByEvent(id)</code>, <code>getSertifikatMapByEvent(id)</code>, <code>getEventSemua()</code> (<code>admin-event.ts</code>).</li>
+<li><strong>Server action</strong>: <code>setStatusPendaftaran</code>, <code>setKehadiran</code>, <code>reschedulePendaftaran</code> (<code>admin-event-actions.ts</code>).</li>
+<li><strong>Endpoint</strong>: <code>event</code>, <code>pendaftaran_event</code>, <code>sertifikat</code>; <code>setStatusPendaftaran</code> → <code>catatLedger</code>/<code>hapusLedgerRef</code> ke <code>transaksi_keuangan</code> (pendapatan event saat status "diterima").</li>
+</ul>
+<h3 id="produk-adminproduk">🛍️ Produk — <code>/admin/produk</code></h3>
+<ul>
+<li><strong>File</strong>: <code>admin/produk/page.tsx</code> → <code>ProdukAdmin.tsx</code>.</li>
+<li><strong>Fungsi data</strong>: <code>getProdukSemua()</code> (<code>admin-store.ts</code>).</li>
+<li><strong>Server action</strong>: <code>buatProduk</code>, <code>updateProduk</code>, <code>hapusProduk</code> (<code>admin-store-actions.ts</code>).</li>
+<li><strong>Endpoint</strong>: <code>produk</code>; <code>storage.from('aset')</code> (folder <code>produk/</code>).</li>
+</ul>
+<h3 id="pesanan-adminpesanan">📦 Pesanan — <code>/admin/pesanan</code></h3>
+<ul>
+<li><strong>File</strong>: <code>admin/pesanan/page.tsx</code> (+ <code>Pager.tsx</code>) → <code>PesananAdmin.tsx</code>.</li>
+<li><strong>Fungsi data</strong>: <code>getPesananSemua(hal)</code> (<code>admin-store.ts</code>, 20/hal + item).</li>
+<li><strong>Server action</strong>: <code>setOngkir</code>, <code>verifikasiPesanan</code>, <code>setResi</code>, <code>ubahStatusPesanan</code> (<code>admin-store-actions.ts</code>).</li>
+<li><strong>Endpoint</strong>: <code>pesanan</code>, <code>item_pesanan</code>, <code>produk</code> (kurangi stok saat verifikasi); <code>verifikasiPesanan</code> → <code>catatLedger</code> (kategori <code>store</code>, jumlah=subtotal); <code>batal</code> → <code>hapusLedgerRef</code>.</li>
+</ul>
+<h3 id="kelas-bermain-adminkelas-bermain">🎈 Kelas Bermain — <code>/admin/kelas-bermain</code></h3>
+<ul>
+<li><strong>File</strong>: <code>admin/kelas-bermain/page.tsx</code> → <code>KelasAdmin.tsx</code>.</li>
+<li><strong>Fungsi data</strong>: <code>getKelasSemua()</code> (<code>kelas-bermain.ts</code>), <code>getProdukSemua()</code> (<code>admin-store.ts</code>).</li>
+<li><strong>Server action</strong>: <code>buatKelas</code>, <code>updateKelas</code>, <code>toggleStatusKelas</code>, <code>hapusKelas</code> (<code>kelas-bermain-actions.ts</code>).</li>
+<li><strong>Endpoint</strong>: <code>kelas_bermain</code>, <code>produk</code>; <code>storage.from('aset')</code> (folder <code>worksheet/</code>).</li>
+</ul>
+<h3 id="artikel-adminartikel-adminartikelid">📝 Artikel — <code>/admin/artikel</code> &amp; <code>/admin/artikel/[id]</code></h3>
+<ul>
+<li><strong>File</strong>: <code>admin/artikel/page.tsx</code> (daftar) + <code>admin/artikel/[id]/page.tsx</code> → <code>ArtikelForm.tsx</code>.</li>
+<li><strong>Fungsi data</strong>: <code>getArtikelSemua()</code>, <code>getArtikelById(id)</code> (<code>artikel.ts</code>).</li>
+<li><strong>Server action</strong>: <code>buatArtikel</code>, <code>simpanArtikel</code>, <code>hapusArtikel</code> (<code>artikel-admin.ts</code>).</li>
+<li><strong>Endpoint</strong>: <code>artikel</code>; <code>storage.from('aset')</code> (folder <code>artikel/</code>). Util <code>@/lib/slug</code>.</li>
+</ul>
+<h3 id="video-adminvideo">📺 Video — <code>/admin/video</code></h3>
+<ul>
+<li><strong>File</strong>: <code>admin/video/page.tsx</code> (query + hapus inline) → <code>VideoForm.tsx</code>.</li>
+<li><strong>Server action</strong>: <code>buatVideo</code>, <code>hapusVideo</code> (<code>admin-konten.ts</code>); parse YouTube ID via <code>ekstrakYoutubeId</code>.</li>
+<li><strong>Endpoint</strong>: <code>video</code>.</li>
+</ul>
+<h3 id="langganan-adminlangganan">💳 Langganan — <code>/admin/langganan</code></h3>
+<ul>
+<li><strong>File</strong>: <code>admin/langganan/page.tsx</code> (query inline + <code>Pager.tsx</code>) → <code>AktifkanForm.tsx</code>. Util <code>@/lib/domain/trial</code> (<code>statusLangganan</code>), <code>@/lib/format</code> (<code>linkWa</code>), <code>@/lib/metode</code> (<code>METODE_BAYAR</code>).</li>
+<li><strong>Fungsi data</strong>: query inline <code>profiles</code> (member + embed anak &amp; langganan) &amp; <code>langganan</code> (jatuh tempo ≤ 7 hari untuk tombol WA pengingat); <code>getPengaturanBayar()</code> (nominal default).</li>
+<li><strong>Server action</strong>: <code>aktifkanLangganan</code> (<code>admin-bisnis.ts</code>).</li>
+<li><strong>Endpoint</strong>: <code>profiles</code>, <code>langganan</code>, <code>pengaturan_pembayaran</code>; <code>aktifkanLangganan</code> → <code>langganan</code> (update +1 bln), <code>pembayaran_langganan</code> (insert), <code>catatLedger</code> (kategori <code>membership</code>).</li>
+</ul>
+<h3 id="anak-gamifikasi-adminanak">🧒 Anak &amp; Gamifikasi — <code>/admin/anak</code></h3>
+<ul>
+<li><strong>File</strong>: <code>admin/anak/page.tsx</code> → <code>AnakGamiForm.tsx</code>. Konstanta <code>LENCANA</code> (<code>domain/gamifikasi</code>).</li>
+<li><strong>Fungsi data</strong>: <code>getAnakUntukAdmin()</code> (<code>admin-anak.ts</code>) — anak + koin/streak/lencana + email ortu.</li>
+<li><strong>Server action</strong>: <code>setStreakKoin</code>, <code>toggleLencana</code> (<code>admin-anak-actions.ts</code>).</li>
+<li><strong>Endpoint</strong>: <code>anak</code>, <code>lencana_anak</code>.</li>
+</ul>
+<h3 id="tantangan-stok-gamifikasi-admintantangan">🏆 Tantangan (stok gamifikasi) — <code>/admin/tantangan</code></h3>
+<ul>
+<li><strong>File</strong>: <code>admin/tantangan/page.tsx</code> → <code>TantanganForm.tsx</code> + <code>TantanganList.tsx</code>.</li>
+<li><strong>Fungsi data</strong>: <code>getTantanganAdmin()</code>, <code>getOpsiTantangan()</code> (<code>tantangan-kustom.ts</code>).</li>
+<li><strong>Server action</strong>: <code>simpanTantangan</code>, <code>setAktifTantangan</code>, <code>hapusTantangan</code> (<code>tantangan-kustom-actions.ts</code>).</li>
+<li><strong>Endpoint</strong>: <code>tantangan_kustom</code>, <code>paket_aset</code>, <code>tema</code>.</li>
+</ul>
+<h3 id="pembayaran-adminpengaturan-bayar">💰 Pembayaran — <code>/admin/pengaturan-bayar</code></h3>
+<ul>
+<li><strong>File</strong>: <code>admin/pengaturan-bayar/page.tsx</code> (form inline).</li>
+<li><strong>Fungsi data</strong>: <code>getPengaturanBayar()</code> (<code>pengaturan-bayar.ts</code>, fallback <code>DEFAULT_BAYAR</code>).</li>
+<li><strong>Server action</strong>: <code>simpanPengaturanBayar</code> (<code>admin-bisnis.ts</code>).</li>
+<li><strong>Endpoint</strong>: <code>pengaturan_pembayaran</code> (baris <code>id=1</code>).</li>
+</ul>
+<h3 id="laporan-member-adminlaporan">📊 Laporan Member — <code>/admin/laporan</code></h3>
+<ul>
+<li><strong>File</strong>: <code>admin/laporan/page.tsx</code> (query inline). Domain <code>ringkasanLangganan</code> (<code>domain/laporan</code>).</li>
+<li><strong>Endpoint</strong>: <code>langganan</code>; <strong>RPC <code>laporan_engagement()</code></strong> (agregat dari <code>hasil_main</code>).</li>
+</ul>
+<h3 id="komunitas-moderasi-adminkomunitas">💬 Komunitas (moderasi) — <code>/admin/komunitas</code></h3>
+<ul>
+<li><strong>File</strong>: <code>admin/komunitas/page.tsx</code> (query + aksi inline).</li>
+<li><strong>Server action</strong>: <code>moderasiPostingan</code>, <code>hapusPostinganAdmin</code>, <code>moderasiKomentar</code>, <code>hapusKomentarAdmin</code>, <code>tuntaskanLaporan</code> (<code>admin-komunitas.ts</code>).</li>
+<li><strong>Endpoint</strong>: <code>laporan</code>, <code>postingan</code>, <code>komentar</code>.</li>
+</ul>
+<h3 id="masukan-feedback-adminfeedback">⭐ Masukan (Feedback) — <code>/admin/feedback</code></h3>
+<ul>
+<li><strong>File</strong>: <code>admin/feedback/page.tsx</code> (read-only). Label <code>@/lib/feedback-tipe</code>.</li>
+<li><strong>Fungsi data</strong>: <code>getFeedbackAdmin()</code> (<code>feedback.ts</code>) — 200 masukan + email ortu; NPS dihitung di page.</li>
+<li><strong>Endpoint</strong>: <code>feedback</code> (join <code>profiles</code>).</li>
+</ul>
+<h3 id="kelola-guru-adminguru">🍎 Kelola Guru — <code>/admin/guru</code></h3>
+<ul>
+<li><strong>File</strong>: <code>admin/guru/page.tsx</code> → <code>GuruAdmin.tsx</code>.</li>
+<li><strong>Fungsi data</strong>: <code>getDaftarGuru()</code> (<code>admin-guru.ts</code>).</li>
+<li><strong>Server action</strong>: <code>jadikanGuru(email)</code>, <code>cabutGuru(id)</code> (<code>admin-guru-actions.ts</code>).</li>
+<li><strong>Endpoint</strong>: <code>profiles</code> (set <code>is_guru</code>).</li>
+</ul>
+<h3 id="pengguna-role-adminusers">👤 Pengguna &amp; Role — <code>/admin/users</code></h3>
+<ul>
+<li><strong>File</strong>: <code>admin/users/page.tsx</code> (form inline; toggle role <code>&lt;form action={setRole}&gt;</code>).</li>
+<li><strong>Fungsi data</strong>: <code>getPengelolaUserTerjamin()</code> (guard + status superuser), <code>getDaftarUser(q)</code> (<code>admin-users.ts</code>).</li>
+<li><strong>Server action</strong>: <code>setRole(formData)</code>, <code>tambahUserRole(formData)</code> (<code>admin-users-actions.ts</code>).</li>
+<li><strong>Endpoint</strong>: <code>profiles</code> (baca role + update kolom role; super user otomatis set <code>is_admin</code>).</li>
+<li><strong>Guard/Role</strong>: <code>getPengelolaUserTerjamin()</code> (admin <strong>atau</strong> super user). Role tinggi (admin/superuser) hanya bisa diatur super user; tak bisa cabut super user dari diri sendiri.</li>
+</ul>
+<h3 id="reminder-event-adminreminder">📣 Reminder Event — <code>/admin/reminder</code></h3>
+<ul>
+<li><strong>File</strong>: <code>admin/reminder/page.tsx</code> → <code>ReminderAdmin.tsx</code>. Util <code>formatTanggal</code>, <code>linkWa</code>.</li>
+<li><strong>Fungsi data</strong>: <code>getReminderPendaftaran()</code> (<code>admin-reminder.ts</code>) — pendaftaran "diterima" + event + ortu (no_wa).</li>
+<li><strong>Server action</strong>: <code>tandaiReminder(pendaftaranId, terkirim)</code> (<code>admin-reminder-actions.ts</code>).</li>
+<li><strong>Endpoint</strong>: <code>pendaftaran_event</code> (+ embed <code>event</code>, <code>ortu</code>).</li>
+</ul>
+<h3 id="kelola-tema-admintemaid">🎨 Kelola Tema — <code>/admin/tema/[id]</code></h3>
+<ul>
+<li><strong>File</strong>: <code>admin/tema/[id]/page.tsx</code> (query + aksi inline) → <code>PaketForm.tsx</code> (+ <code>TargetEditor</code>, <code>@/components/admin/AsetInput</code>, <code>@/components/game/Aset</code>).</li>
+<li><strong>Server action</strong>: <code>hapusPaket</code>, <code>setStatusTema</code>, <code>setMingguIni</code>, <code>buatPaket</code>, <code>updatePaket</code> (<code>admin-konten.ts</code>, validasi <code>validasiButir</code>).</li>
+<li><strong>Endpoint</strong>: <code>tema</code>, <code>paket_aset</code>; <code>storage.from('aset')</code> (aset game via AsetInput).</li>
+</ul>
+<hr />
+<h2 id="5-modul-keuangan-per-menu">5. Modul Keuangan — per menu</h2>
+<p>Sub-navigasi: <code>KeuanganNav.tsx</code> (client). Semua reader read-only lewat <code>createClient()</code> server; server action manual dijaga <code>adminDb()</code>.</p>
+<h3 id="dashboard-ceo-adminkeuangan">📊 Dashboard CEO — <code>/admin/keuangan</code></h3>
+<ul>
+<li><strong>File</strong>: <code>keuangan/page.tsx</code> (baris transaksi jadi <code>&lt;Link&gt;</code> ke detail bila punya <code>ref_tipe</code>).</li>
+<li><strong>Fungsi data</strong>: <code>getDashboardKeuangan()</code> (revenue/expense/net/saldo/MRR/member/growth), <code>getLedger({limit:10})</code>.</li>
+<li><strong>Endpoint</strong>: <code>transaksi_keuangan</code>, <code>langganan</code>.</li>
+</ul>
+<h3 id="kpi-adminkeuangankpi">🎯 KPI — <code>/admin/keuangan/kpi</code></h3>
+<ul>
+<li><strong>File</strong>: <code>keuangan/kpi/page.tsx</code>.</li>
+<li><strong>Fungsi data</strong>: <code>getKpi()</code> (<code>kpi.ts</code>) — MRR/ARR/growth, ARPU, churn/retention, LTV, CAC, LTV:CAC, net margin, burn/runway, AOV, DAU/MAU/stickiness.</li>
+<li><strong>Endpoint</strong>: <code>langganan</code>, <code>pembayaran_langganan</code>, <code>transaksi_keuangan</code>, <code>aktivitas</code>.</li>
+</ul>
+<h3 id="insight-bi-adminkeuanganinsight">💡 Insight (BI) — <code>/admin/keuangan/insight</code></h3>
+<ul>
+<li><strong>File</strong>: <code>keuangan/insight/page.tsx</code> (chart SVG/CSS inline, tanpa dependency).</li>
+<li><strong>Fungsi data</strong>: <code>getInsight()</code> (<code>kpi.ts</code>) — tren 12 bln, revenue mix, cohort retention, top produk/event, auto-insight.</li>
+<li><strong>Endpoint</strong>: <code>transaksi_keuangan</code>, <code>profiles</code>, <code>langganan</code>, <code>item_pesanan</code> (+<code>pesanan</code>), <code>pendaftaran_event</code> (+<code>event</code>).</li>
+</ul>
+<h3 id="transaksi-ledger-adminkeuangantransaksi-id">📒 Transaksi (Ledger) — <code>/admin/keuangan/transaksi</code> &amp; <code>/[id]</code></h3>
+<ul>
+<li><strong>File</strong>: <code>keuangan/transaksi/page.tsx</code> (filter GET tanggal/arah/kategori) + <code>transaksi/[id]/page.tsx</code> (detail).</li>
+<li><strong>Fungsi data</strong>: <code>getLedger({...})</code>, <code>getKategoriPengeluaran()</code>; detail: <code>getTransaksiDetail(id)</code> + <code>labelMetode</code> (<code>@/lib/metode</code>).</li>
+<li><strong>Endpoint</strong>: <code>transaksi_keuangan</code>, <code>kategori_pengeluaran</code>; detail bercabang ke <code>pesanan</code>(+<code>item_pesanan</code>), <code>pendaftaran_event</code>(+<code>event</code>), <code>pembayaran_langganan</code>, <code>profiles</code>.</li>
+</ul>
+<h3 id="pengeluaran-adminkeuanganexpense">💸 Pengeluaran — <code>/admin/keuangan/expense</code></h3>
+<ul>
+<li><strong>File</strong>: <code>keuangan/expense/page.tsx</code> + client <code>InputRupiah</code>, <code>UploadNota</code>, <code>BudgetKategoriSelect</code>.</li>
+<li><strong>Fungsi data</strong>: <code>getLedger({arah:'keluar'})</code>, <code>getKategoriPengeluaran()</code>, <code>getBudgetMap(ym)</code> (sisa anggaran per kategori).</li>
+<li><strong>Server action</strong>: <code>catatPengeluaran</code>, <code>hapusTransaksi</code> (<code>keuangan-actions.ts</code>).</li>
+<li><strong>Endpoint</strong>: <code>transaksi_keuangan</code>, <code>kategori_pengeluaran</code>, <code>anggaran</code>; <code>UploadNota</code> → <code>storage.from('aset')</code> (folder <code>nota/</code>, WebP).</li>
+</ul>
+<h3 id="aset-adminkeuanganaset">🖥️ Aset — <code>/admin/keuangan/aset</code></h3>
+<ul>
+<li><strong>File</strong>: <code>keuangan/aset/page.tsx</code> + <code>InputRupiah</code>, <code>UploadNota</code>.</li>
+<li><strong>Fungsi data</strong>: <code>getAset()</code>, <code>getKategoriAset()</code>, <code>getBudgetMap(ym)</code> (info budget kategori "Aset").</li>
+<li><strong>Server action</strong>: <code>simpanAset</code>, <code>hapusAset</code> (<code>keuangan-actions.ts</code>); opsi catat kas keluar.</li>
+<li><strong>Endpoint</strong>: <code>aset</code>, <code>kategori_aset</code>, <code>anggaran</code>; opsional insert <code>transaksi_keuangan</code> (kategori <code>aset</code>); <code>storage.from('aset')</code> (<code>invoice_url</code>).</li>
+</ul>
+<h3 id="anggaran-proyeksi-adminkeuangananggaran">🎯 Anggaran &amp; Proyeksi — <code>/admin/keuangan/anggaran</code></h3>
+<ul>
+<li><strong>File</strong>: <code>keuangan/anggaran/page.tsx</code> + <code>InputRupiah</code>.</li>
+<li><strong>Fungsi data</strong>: <code>getAnggaranBulan(ym)</code> (realisasi vs anggaran), <code>getForecast(6)</code> (proyeksi kas), <code>getKategoriPengeluaran()</code>.</li>
+<li><strong>Server action</strong>: <code>simpanAnggaran</code> (upsert onConflict <code>ym,kategori</code>) (<code>anggaran-actions.ts</code>).</li>
+<li><strong>Endpoint</strong>: <code>anggaran</code>, <code>transaksi_keuangan</code>.</li>
+</ul>
+<h3 id="laporan-adminkeuanganlaporan">📈 Laporan — <code>/admin/keuangan/laporan</code></h3>
+<ul>
+<li><strong>File</strong>: <code>keuangan/laporan/page.tsx</code> + <code>EksporCsvBtn.tsx</code> (CSV di browser). Kategori bisa diklik → deep-link ke Transaksi terfilter.</li>
+<li><strong>Fungsi data</strong>: <code>getPerBulan(6)</code>, <code>getPerKategori('masuk')</code>, <code>getPerKategori('keluar')</code>.</li>
+<li><strong>Endpoint</strong>: <code>transaksi_keuangan</code>.</li>
+</ul>
+<h3 id="pajak-omzet-adminkeuanganpajak">🧾 Pajak / Omzet — <code>/admin/keuangan/pajak</code></h3>
+<ul>
+<li><strong>File</strong>: <code>keuangan/pajak/page.tsx</code>. Omzet 12 bln + estimasi PPh Final UMKM 0,5% (info).</li>
+<li><strong>Fungsi data</strong>: <code>getPerBulan(12)</code>.</li>
+<li><strong>Endpoint</strong>: <code>transaksi_keuangan</code>.</li>
+</ul>
+<h3 id="master-kategori-adminkeuanganmaster">⚙️ Master Kategori — <code>/admin/keuangan/master</code></h3>
+<ul>
+<li><strong>File</strong>: <code>keuangan/master/page.tsx</code> (kelola kategori Pengeluaran &amp; Aset; bawaan tak bisa dihapus).</li>
+<li><strong>Fungsi data</strong>: <code>getKategoriAset()</code>, <code>getKategoriPengeluaran()</code>.</li>
+<li><strong>Server action</strong>: <code>tambahKategoriPengeluaran</code>, <code>hapusKategoriPengeluaran</code>, <code>tambahKategoriAset</code>, <code>hapusKategoriAset</code> (<code>keuangan-actions.ts</code>).</li>
+<li><strong>Endpoint</strong>: <code>kategori_pengeluaran</code>, <code>kategori_aset</code>.</li>
+</ul>
+<h3 id="data-layer-keuangan-ringkas">Data layer keuangan (ringkas)</h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Fungsi ekspor</th>
+<th>Tabel disentuh</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>keuangan.ts</code></td>
+<td><code>getDashboardKeuangan</code>, <code>getLedger</code>, <code>getPerBulan</code>, <code>getPerKategori</code>, <code>getKategoriAset</code>, <code>getKategoriPengeluaran</code>, <code>getTransaksiDetail</code>, <code>getAset</code> + konstanta <code>KATEGORI_MASUK/KELUAR/LABEL_KATEGORI</code></td>
+<td><code>transaksi_keuangan</code>, <code>langganan</code>, <code>kategori_aset</code>, <code>kategori_pengeluaran</code>, <code>pesanan</code>+<code>item_pesanan</code>, <code>pendaftaran_event</code>+<code>event</code>, <code>pembayaran_langganan</code>, <code>profiles</code>, <code>aset</code></td>
+</tr>
+<tr>
+<td><code>keuangan-actions.ts</code></td>
+<td><code>catatPengeluaran</code>, <code>hapusTransaksi</code>, <code>simpanAset</code>, <code>hapusAset</code>, <code>tambah/hapusKategoriAset</code>, <code>tambah/hapusKategoriPengeluaran</code> (guard <code>adminDb</code>)</td>
+<td><code>transaksi_keuangan</code>, <code>aset</code>, <code>kategori_aset</code>, <code>kategori_pengeluaran</code></td>
+</tr>
+<tr>
+<td><code>kpi.ts</code></td>
+<td><code>getKpi</code>, <code>getInsight</code></td>
+<td><code>langganan</code>, <code>pembayaran_langganan</code>, <code>transaksi_keuangan</code>, <code>aktivitas</code>, <code>profiles</code>, <code>item_pesanan</code>+<code>pesanan</code>, <code>pendaftaran_event</code>+<code>event</code></td>
+</tr>
+<tr>
+<td><code>anggaran.ts</code></td>
+<td><code>getAnggaranBulan</code>, <code>getBudgetMap</code>, <code>getForecast</code></td>
+<td><code>anggaran</code>, <code>transaksi_keuangan</code></td>
+</tr>
+<tr>
+<td><code>anggaran-actions.ts</code></td>
+<td><code>simpanAnggaran</code>, <code>hapusAnggaran</code> (guard admin)</td>
+<td><code>anggaran</code></td>
+</tr>
+<tr>
+<td><code>ledger.ts</code></td>
+<td><code>catatLedger(s,row)</code>, <code>hapusLedgerRef(s,tipe,id)</code> (try/catch)</td>
+<td><code>transaksi_keuangan</code></td>
+</tr>
+<tr>
+<td><code>langganan-status.ts</code></td>
+<td><code>getStatusLangganan(s,userId)</code></td>
+<td><code>langganan</code></td>
+</tr>
+<tr>
+<td><code>investor.ts</code></td>
+<td><code>getInvestorTerjamin()</code> (guard)</td>
+<td><code>profiles</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="hook-pencatat-ledger-basis-kas">Hook pencatat ledger (basis kas)</h3>
+<ul>
+<li><code>admin-store-actions.ts</code> — verifikasi pesanan → <code>catatLedger</code> (masuk/<code>store</code>/subtotal, ref <code>pesanan</code>); <code>batal</code> → <code>hapusLedgerRef</code>. (Ongkir <strong>bukan</strong> pendapatan.)</li>
+<li><code>admin-event-actions.ts</code> — status "diterima" → <code>catatLedger</code> (masuk/<code>event</code>/total, ref <code>pendaftaran</code>); "ditolak" → <code>hapusLedgerRef</code>.</li>
+<li><code>admin-bisnis.ts</code> — aktivasi/perpanjang langganan → insert <code>pembayaran_langganan</code> + <code>catatLedger</code> (masuk/<code>membership</code>/nominal, ref <code>langganan</code>).</li>
+</ul>
+<hr />
+<h2 id="6-halaman-publik-ortu-per-halaman">6. Halaman Publik &amp; Ortu — per halaman</h2>
+<h3 id="landing"><code>/</code> Landing</h3>
+<ul>
+<li><strong>File</strong>: <code>app/page.tsx</code> (statis) + <code>Logo.tsx</code>. Konten hardcoded + JSON-LD SEO. <strong>Tanpa backend.</strong></li>
+</ul>
+<h3 id="legal-kebijakan-privasi-kontak-syarat-ketentuan-tentang"><code>(legal)</code> — <code>/kebijakan-privasi</code>, <code>/kontak</code>, <code>/syarat-ketentuan</code>, <code>/tentang</code></h3>
+<ul>
+<li><strong>File</strong>: <code>app/(legal)/*/page.tsx</code> + <code>(legal)/gaya.ts</code> + <code>@/lib/profil</code> (PROFIL/WA_LINK). Statis, <strong>tanpa backend</strong>.</li>
+</ul>
+<h3 id="artikel-artikel-artikelslug">📰 Artikel — <code>/artikel</code> &amp; <code>/artikel/[slug]</code></h3>
+<ul>
+<li><strong>Fungsi data</strong>: <code>getArtikelTerbit({q})</code>, <code>getArtikelBySlug(slug)</code> (<code>artikel.ts</code>). Detail punya <code>generateMetadata</code> + JSON-LD BlogPosting; isi via <code>ArtikelBody.tsx</code>.</li>
+<li><strong>Endpoint</strong>: <code>auth.getUser()</code> (status login header), <code>artikel</code>.</li>
+</ul>
+<h3 id="store-store-storeid">🛒 Store — <code>/store</code> &amp; <code>/store/[id]</code></h3>
+<ul>
+<li><strong>File</strong>: <code>StoreView.tsx</code>/<code>ProdukDetail.tsx</code> + <code>RekamAktivitas</code>, <code>BottomNav</code>, <code>TambahKeranjangBtn</code>/<code>ProdukCard</code>.</li>
+<li><strong>Fungsi data</strong>: <code>getProdukTampilCached()</code> (<code>publik.ts</code>) / <code>getProduk(id)</code> (<code>store.ts</code>); <code>getStatusLangganan()</code> (harga diskon trial/langganan).</li>
+<li><strong>Server action</strong>: <code>tambahKeranjang</code> (<code>keranjang-actions.ts</code>), <code>catatAktivitas</code>.</li>
+<li><strong>Endpoint</strong>: <code>produk</code>, <code>langganan</code>, <code>keranjang_item</code>, <code>aktivitas</code>.</li>
+</ul>
+<h3 id="event-event-eventiddaftar">🗓️ Event — <code>/event</code> &amp; <code>/event/[id]/daftar</code></h3>
+<ul>
+<li><strong>Fungsi data</strong>: <code>getEventTampilCached()</code> (<code>publik.ts</code>), <code>getStatusPendaftaranSaya()</code>/<code>getPesertaPerEvent()</code>/<code>getEvent(id)</code> (<code>event.ts</code>), <code>getEventBerCatatan()</code> (<code>catatan.ts</code>); daftar: <code>getStatusLangganan()</code>, <code>getPengaturanBayar()</code> + <code>waUntuk(cfg,'event')</code>.</li>
+<li><strong>Server action</strong>: <code>daftarEvent(eventId, anakIds, buktiUrl)</code> (<code>event-actions.ts</code>); upload bukti via <code>DaftarForm.tsx</code>.</li>
+<li><strong>Endpoint</strong>: <code>event</code>, <code>pendaftaran_event</code>, <code>anak</code>, <code>catatan_perkembangan</code>, <code>langganan</code>, <code>pengaturan_pembayaran</code>, <code>storage.from('aset')</code>.</li>
+</ul>
+<h3 id="komunitas-komunitas-komunitaspostid">💬 Komunitas — <code>/komunitas</code> &amp; <code>/komunitas/[postId]</code></h3>
+<ul>
+<li><strong>Fungsi data</strong>: <code>getFeed()</code>, <code>getTopikOptions()</code>, <code>getPostingan(id)</code> (<code>komunitas.ts</code>).</li>
+<li><strong>Server action</strong>: <code>buatPostingan</code>, <code>toggleSuka</code>, <code>lapor</code>, <code>buatKomentar</code> (<code>komunitas-actions.ts</code>).</li>
+<li><strong>Endpoint</strong>: <code>postingan</code>, <code>komentar</code>, <code>suka</code>, <code>laporan</code>, <code>profiles</code>, <code>kelas_bermain</code>/<code>event</code>/<code>paket_aset</code> (opsi topik), <code>aktivitas</code>.</li>
+</ul>
+<h3 id="kelas-kelasid-kelas-saya-favorit">🎈 Kelas — <code>/kelas/[id]</code>, <code>/kelas-saya</code>, <code>/favorit</code></h3>
+<ul>
+<li><strong>Fungsi data</strong>: query inline <code>kelas_bermain</code> + <code>rekamRiwayat</code> (<code>riwayat-kelas.ts</code>); <code>getEventDiikuti()</code> (<code>event.ts</code>), <code>getRiwayatKelas()</code> (<code>riwayat-kelas.ts</code>); <code>getFavoritKelas()</code> (<code>favorit.ts</code>).</li>
+<li><strong>Server action</strong>: <code>toggleFavorit</code> (<code>favorit-actions.ts</code>), <code>catatAktivitas</code>.</li>
+<li><strong>Endpoint</strong>: <code>kelas_bermain</code>, <code>riwayat_kelas</code>, <code>pendaftaran_event</code>, <code>catatan_perkembangan</code>, <code>favorit</code>, <code>aktivitas</code>.</li>
+</ul>
+<h3 id="keranjang-pesanan-keranjang-pesanan-pesananid">🛒 Keranjang &amp; Pesanan — <code>/keranjang</code>, <code>/pesanan</code>, <code>/pesanan/[id]</code></h3>
+<ul>
+<li><strong>Fungsi data</strong>: <code>getKeranjang()</code> (<code>keranjang.ts</code>), <code>getPesananSaya()</code>/<code>getPesanan(id)</code> (<code>pesanan.ts</code>), <code>getStatusLangganan()</code>, <code>getPengaturanBayar()</code> + <code>waUntuk(cfg,'store')</code>.</li>
+<li><strong>Server action</strong>: <code>setQtyKeranjang</code>, <code>hapusKeranjang</code>, <code>checkout</code> (<code>keranjang-actions.ts</code>); <code>uploadBuktiPesanan</code> (<code>pesanan-actions.ts</code>, via <code>BuktiUpload.tsx</code>).</li>
+<li><strong>Endpoint</strong>: <code>keranjang_item</code>, <code>produk</code>, <code>pesanan</code>, <code>item_pesanan</code>, <code>profiles</code>, <code>langganan</code>, <code>pengaturan_pembayaran</code>, <code>storage.from('aset')</code>.</li>
+</ul>
+<h3 id="auth-login-daftar-lupa-sandi-reset-sandi">🔐 Auth — <code>/login</code>, <code>/daftar</code>, <code>/lupa-sandi</code>, <code>/reset-sandi</code></h3>
+<ul>
+<li><strong>File</strong>: client component penuh + <code>Logo.tsx</code>. Memakai Supabase client-side.</li>
+<li><strong>Endpoint</strong>: <code>auth.signInWithPassword</code> / <code>signUp</code> / <code>resetPasswordForEmail</code> / <code>updateUser</code> / <code>signOut</code>; <code>profiles</code> (cek <code>is_guru</code> untuk arahkan; update nama/no_wa saat daftar).</li>
+</ul>
+<h3 id="ortu-anak-pilih-anak-anakanakid-anakanakidlaporan-ortuanakid-pengaturan">👶 Ortu &amp; Anak — <code>/pilih-anak</code>, <code>/anak/[anakId]</code>, <code>/anak/[anakId]/laporan</code>, <code>/ortu/[anakId]</code>, <code>/pengaturan</code></h3>
+<ul>
+<li><strong>Fungsi data</strong>: <code>getEventTampilCached()</code>, <code>getStatusPendaftaranSaya()</code>, <code>getArtikelTerbit({limit:3})</code>, <code>getCatatanAnak()</code>, <code>getSertifikatAnak()</code>, <code>getGamifikasiAnak()</code> (<code>gamifikasi.ts</code>), <code>getPengaturanBayar()</code>; sisanya inline.</li>
+<li><strong>Server action</strong>: <code>tambahAnak</code> (<code>pilih-anak/actions.ts</code>), <code>updateAnak</code>/<code>setBatas</code>/<code>hapusAnak</code>/<code>simpanProfilPengiriman</code>/<code>setPin</code> (<code>ortu-actions.ts</code>), <code>setNamaTampilan</code> (<code>komunitas-actions.ts</code>), <code>kirimFeedback</code> (<code>feedback-actions.ts</code>).</li>
+<li><strong>Endpoint</strong>: <code>anak</code>, <code>langganan</code>, <code>profiles</code>, <code>hasil_main</code>, <code>event</code>, <code>pendaftaran_event</code>, <code>artikel</code>, <code>catatan_perkembangan</code>, <code>sertifikat</code>, <code>feedback</code>, <code>aktivitas</code>.</li>
+</ul>
+<h3 id="game-pilih-gameanakid-mainanakid">🎮 Game — <code>/pilih-game/[anakId]</code>, <code>/main/[anakId]</code></h3>
+<ul>
+<li><strong>Guard</strong>: <code>getAnakTerjamin(anakId)</code> (<code>anak.ts</code>) — login + langganan + kepemilikan.</li>
+<li><strong>Fungsi data</strong>: <code>getPustaka()</code> (<code>pustaka.ts</code>), <code>getVideoByKategori()</code> (<code>video.ts</code>), <code>getKelasAktifCached()</code> (<code>publik.ts</code>), <code>getFavoritIds()</code> (<code>favorit.ts</code>), <code>getGamifikasiAnak()</code> (<code>gamifikasi.ts</code>).</li>
+<li><strong>Server action</strong>: <code>catatHasil</code> (<code>skor.ts</code>) via <code>GameRunner</code>, <code>catatRiwayatKelas</code> (<code>riwayat-actions.ts</code>), <code>catatAktivitas</code>.</li>
+<li><strong>Endpoint</strong>: <code>anak</code>, <code>langganan</code>, <code>tema</code>, <code>paket_aset</code>, <code>video</code>, <code>kelas_bermain</code>, <code>favorit</code>, <code>hasil_main</code>, <code>lencana_anak</code>, <code>tantangan_kustom</code>(+<code>_anak</code>), <code>tantangan_anak</code>, <code>profiles</code> (pin), <code>riwayat_kelas</code>, <code>aktivitas</code>.</li>
+</ul>
+<h3 id="guru-guru-gurueventid-catataneventid">🍎 Guru — <code>/guru</code>, <code>/guru/[eventId]</code>, <code>/catatan/[eventId]</code></h3>
+<ul>
+<li><strong>Guard</strong>: <code>getGuruTerjamin()</code> (<code>guru.ts</code>).</li>
+<li><strong>Fungsi data</strong>: <code>getEventUntukGuru()</code>, <code>getPesertaEvent(eventId)</code> (<code>guru.ts</code>), <code>getEvent()</code>/<code>getCatatanEventSaya()</code> (<code>event.ts</code>/<code>catatan.ts</code>).</li>
+<li><strong>Server action</strong>: <code>simpanCatatan</code> (<code>guru-actions.ts</code>, upsert).</li>
+<li><strong>Endpoint</strong>: <code>profiles</code>, <code>event</code>, <code>pendaftaran_event</code>, <code>catatan_perkembangan</code>.</li>
+</ul>
+<h3 id="investor-investor">📈 Investor — <code>/investor</code></h3>
+<ul>
+<li><strong>Guard</strong>: <code>getInvestorTerjamin()</code> (<code>investor.ts</code>). <code>robots: noindex</code>.</li>
+<li><strong>Fungsi data</strong>: <code>getDashboardKeuangan()</code>, <code>getPerBulan(6)</code> (<code>keuangan.ts</code>).</li>
+<li><strong>Endpoint</strong>: <code>profiles</code>, <code>transaksi_keuangan</code>, <code>langganan</code> (+ sumber lain via dashboard keuangan).</li>
+</ul>
+<h3 id="sertifikat-stiker-sertifikatid-stiker-eventid">🏅 Sertifikat &amp; Stiker — <code>/sertifikat/[id]</code>, <code>/stiker-event/[id]</code></h3>
+<ul>
+<li><strong>Fungsi data</strong>: <code>getSertifikat(id)</code> (<code>sertifikat.ts</code>); stiker (<strong>guard admin</strong> <code>getAdminTerjamin</code>): <code>getEventAdmin(id)</code>, <code>getPendaftaranByEvent(id)</code>.</li>
+<li><strong>Komponen</strong>: <code>SertifikatView</code>, <code>StikerSheet</code>, <code>UnduhPdfBtn</code>.</li>
+<li><strong>Endpoint</strong>: <code>sertifikat</code>, <code>event</code>, <code>pendaftaran_event</code>.</li>
+</ul>
+<blockquote>
+<p><strong>Lintas-halaman</strong>: <code>RekamAktivitas</code> (store/event/komunitas/pesanan/kelas-saya/pilih-anak/main/laporan) memanggil <code>catatAktivitas</code> → insert <code>aktivitas</code>. Fungsi <code>...Cached</code> di <code>publik.ts</code> memakai anon client + cache untuk <code>event</code>/<code>produk</code>/<code>kelas_bermain</code>.</p>
+</blockquote>
+<hr />
+<h2 id="7-rest-api-internal-untuk-aplikasi-mobile">7. REST API internal (untuk aplikasi mobile)</h2>
+<p>Semua Route Handler (<code>app/api/**/route.ts</code>) mengembalikan amplop JSON seragam via helper <code>ok(data,status)</code> → <code>{ok:true,data}</code> dan <code>fail(msg,status)</code> → <code>{ok:false,error}</code>. Endpoint bisnis (selain <code>/api/auth/*</code>) memakai <strong>Bearer token</strong> via <code>getAuth(req)</code>: token dari header <code>Authorization: Bearer &lt;access_token&gt;</code>, divalidasi <code>auth.getUser()</code>, semua query ter-scope token → <strong>RLS berlaku</strong> (bukan service role). Path dinamis: <code>params: Promise&lt;{id}&gt;</code> (di-<code>await</code>).</p>
+<h3 id="auth-anonclient-tanpa-bearer">Auth (<code>anonClient()</code>, tanpa Bearer)</h3>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>File</th>
+<th>Fungsi</th>
+<th>Backend</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>POST /api/auth/login</code></td>
+<td><code>auth/login/route.ts</code></td>
+<td>validasi email+password → <code>signInWithPassword</code>; balikkan access/refresh token + user</td>
+<td><code>auth.signInWithPassword</code></td>
+</tr>
+<tr>
+<td><code>POST /api/auth/register</code></td>
+<td><code>auth/register/route.ts</code></td>
+<td><code>signUp</code>; bila sesi langsung terbit, update <code>nama_tampilan</code>/<code>no_wa</code>; else <code>perlu_konfirmasi_email</code></td>
+<td><code>auth.signUp</code>, <code>auth.setSession</code>, <code>profiles</code> (update)</td>
+</tr>
+<tr>
+<td><code>POST /api/auth/refresh</code></td>
+<td><code>auth/refresh/route.ts</code></td>
+<td>tukar <code>refresh_token</code> → sesi baru</td>
+<td><code>auth.refreshSession</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="endpoint-bisnis-bearer">Endpoint bisnis (Bearer)</h3>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>File</th>
+<th>Ringkas</th>
+<th>Backend</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /api/me</code></td>
+<td><code>me/route.ts</code></td>
+<td>profil + status langganan (<code>statusLangganan()</code>)</td>
+<td><code>profiles</code>, <code>langganan</code></td>
+</tr>
+<tr>
+<td><code>GET /api/anak</code></td>
+<td><code>anak/route.ts</code></td>
+<td>daftar anak milik user</td>
+<td><code>anak</code></td>
+</tr>
+<tr>
+<td><code>POST /api/anak</code></td>
+<td><code>anak/route.ts</code></td>
+<td>tambah anak (validasi tgl lahir &lt; hari ini, <code>mode_default</code> dari umur)</td>
+<td><code>anak</code> (insert)</td>
+</tr>
+<tr>
+<td><code>GET /api/anak/[id]/catatan</code></td>
+<td><code>anak/[id]/catatan/route.ts</code></td>
+<td>catatan perkembangan per anak (join judul event)</td>
+<td><code>catatan_perkembangan</code> (+<code>event</code>)</td>
+</tr>
+<tr>
+<td><code>GET /api/events</code></td>
+<td><code>events/route.ts</code></td>
+<td>event <code>tampil</code>, urut tanggal</td>
+<td><code>event</code></td>
+</tr>
+<tr>
+<td><code>GET /api/events/[id]</code></td>
+<td><code>events/[id]/route.ts</code></td>
+<td>detail event (404 bila kosong)</td>
+<td><code>event</code></td>
+</tr>
+<tr>
+<td><code>POST /api/events/[id]/daftar</code></td>
+<td><code>events/[id]/daftar/route.ts</code></td>
+<td>daftar utk <code>anak_ids</code>; <strong>total dihitung server</strong> (harga×jumlah)</td>
+<td><code>event</code>, <code>anak</code>, <code>pendaftaran_event</code> (insert)</td>
+</tr>
+<tr>
+<td><code>GET /api/kelas-bermain</code></td>
+<td><code>kelas-bermain/route.ts</code></td>
+<td>kelas <code>aktif</code></td>
+<td><code>kelas_bermain</code></td>
+</tr>
+<tr>
+<td><code>GET /api/kelas-bermain/[id]</code></td>
+<td><code>kelas-bermain/[id]/route.ts</code></td>
+<td>detail kelas</td>
+<td><code>kelas_bermain</code></td>
+</tr>
+<tr>
+<td><code>GET /api/produk</code></td>
+<td><code>produk/route.ts</code></td>
+<td>produk <code>tampil</code></td>
+<td><code>produk</code></td>
+</tr>
+<tr>
+<td><code>GET /api/produk/[id]</code></td>
+<td><code>produk/[id]/route.ts</code></td>
+<td>detail produk</td>
+<td><code>produk</code></td>
+</tr>
+<tr>
+<td><code>GET /api/keranjang</code></td>
+<td><code>keranjang/route.ts</code></td>
+<td>isi keranjang (join produk) + subtotal</td>
+<td><code>keranjang_item</code> (+<code>produk</code>)</td>
+</tr>
+<tr>
+<td><code>POST /api/keranjang</code></td>
+<td><code>keranjang/route.ts</code></td>
+<td>tambah/ubah item (qty di-clamp stok, upsert manual)</td>
+<td><code>produk</code>, <code>keranjang_item</code></td>
+</tr>
+<tr>
+<td><code>GET /api/pesanan</code></td>
+<td><code>pesanan/route.ts</code></td>
+<td>daftar pesanan user</td>
+<td><code>pesanan</code></td>
+</tr>
+<tr>
+<td><code>POST /api/pesanan</code></td>
+<td><code>pesanan/route.ts</code></td>
+<td>checkout dari keranjang (subtotal server, status <code>menunggu_ongkir</code>, kosongkan keranjang)</td>
+<td><code>keranjang_item</code>, <code>pesanan</code>, <code>item_pesanan</code></td>
+</tr>
+<tr>
+<td><code>GET /api/pesanan/[id]</code></td>
+<td><code>pesanan/[id]/route.ts</code></td>
+<td>detail pesanan + item</td>
+<td><code>pesanan</code> (+<code>item_pesanan</code>)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="8-infrastruktur-integrasi">8. Infrastruktur &amp; integrasi</h2>
+<h3 id="supabase-client-tiga-cara-semua-anon-key">Supabase client (tiga cara, semua anon key)</h3>
+<ul>
+<li><code>lib/supabase/server.ts</code> — <code>createClient()</code> async, <code>@supabase/ssr</code> <code>createServerClient</code> + cookie SSR (<code>cookies()</code>; <code>setAll</code> di-try/catch). Untuk Server Component/halaman &amp; reader/action.</li>
+<li><code>lib/supabase/client.ts</code> — <code>createClient()</code> browser (<code>createBrowserClient</code>). Untuk komponen client (upload dsb).</li>
+<li><code>lib/api/helpers.ts</code> — untuk REST API mobile: client <code>@supabase/supabase-js</code> tanpa cookie, di-scope Bearer.</li>
+</ul>
+<h3 id="libapihelpersts"><code>lib/api/helpers.ts</code></h3>
+<ul>
+<li><code>ok(data,status=200)</code> / <code>fail(msg,status=400)</code> — amplop <code>Response.json</code>.</li>
+<li><code>anonClient()</code> — client anon <code>persistSession:false</code> (login/register/refresh).</li>
+<li><code>getAuth(req)</code> — ekstrak Bearer, client ber-header Authorization (RLS aktif), validasi <code>auth.getUser()</code>; balikkan <code>{supabase,user}</code> atau <code>{error,status}</code>.</li>
+<li><code>isAuthErr(a)</code> — type guard hasil error <code>getAuth</code>.</li>
+</ul>
+<h3 id="storage_1">Storage</h3>
+<ul>
+<li><strong>Satu bucket <code>aset</code></strong> untuk semua upload (client-side, pola <code>upload(path,file)</code> + <code>getPublicUrl</code>). Folder: <code>event/</code>, <code>produk/</code>, <code>worksheet/</code>, <code>artikel/</code>, <code>nota/</code> (WebP), <code>bukti/</code>, aset game.</li>
+</ul>
+<h3 id="rpc">RPC</h3>
+<ul>
+<li><strong><code>laporan_engagement()</code></strong> (migrasi <code>0040_laporan_rpc.sql</code>) — <code>plpgsql</code> <code>SECURITY DEFINER</code> + guard <code>is_admin()</code>. Agregat dari <code>hasil_main</code>: <code>total_sesi</code>, <code>total_detik</code>, <code>mesin_populer</code>, <code>tema_populer</code>. Dipanggil di <code>/admin/laporan</code>. Alasan: agregasi di DB tanpa menarik semua baris.</li>
+</ul>
+<h3 id="integrasi-eksternal">Integrasi eksternal</h3>
+<ul>
+<li><strong>YouTube</strong>: <code>lib/youtube.ts</code> (<code>youtubeId()</code> regex, util murni) + <code>components/YoutubeEmbed.tsx</code> (iframe <code>youtube-nocookie.com</code>). Satu-satunya URL eksternal dari klien.</li>
+<li><strong>TTS</strong>: <code>lib/tts.ts</code> (<code>speak()</code> via Web Speech API browser, voice <code>id</code>). Tidak ada layanan jaringan.</li>
+<li>Tidak ada payment gateway / fetch host eksternal lain.</li>
+</ul>
+<h3 id="environment_1">Environment</h3>
+<ul>
+<li><code>NEXT_PUBLIC_SUPABASE_URL</code>, <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> — hanya keduanya. Tidak ada service-role key.</li>
+</ul>
+<hr />
+<h2 id="9-kamus-tabel-data-dictionary">9. Kamus tabel (data dictionary)</h2>
+<table>
+<thead>
+<tr>
+<th>Tabel</th>
+<th>Kegunaan</th>
+<th>Migrasi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>profiles</code></td>
+<td>akun + role (is_superuser/admin/guru/investor) + nama_tampilan/no_wa/alamat/pin_ortu</td>
+<td>0001, 0004, 0020, 0023, 0056</td>
+</tr>
+<tr>
+<td><code>anak</code></td>
+<td>data anak (nama, tgl lahir, jenis kelamin, mode, koin/streak)</td>
+<td>0001, 0024, 0042</td>
+</tr>
+<tr>
+<td><code>langganan</code></td>
+<td>status langganan/trial per user (trial_mulai, aktif_sampai, nominal)</td>
+<td>0001</td>
+</tr>
+<tr>
+<td><code>pembayaran_langganan</code></td>
+<td>riwayat pembayaran membership</td>
+<td>0052</td>
+</tr>
+<tr>
+<td><code>tema</code>, <code>paket_aset</code></td>
+<td>katalog game (tema + paket/butir aset)</td>
+<td>0001–0003, 0025–0037</td>
+</tr>
+<tr>
+<td><code>video</code></td>
+<td>video edukasi (kategori baby/toddler)</td>
+<td>0003, 0005</td>
+</tr>
+<tr>
+<td><code>kelas_bermain</code></td>
+<td>materi kelas bermain (+ worksheet, bahan)</td>
+<td>0009, 0013–0016</td>
+</tr>
+<tr>
+<td><code>favorit</code></td>
+<td>kelas favorit user</td>
+<td>0015</td>
+</tr>
+<tr>
+<td><code>postingan</code>, <code>komentar</code>, <code>suka</code>, <code>laporan</code></td>
+<td>komunitas + moderasi</td>
+<td>0010, 0011, 0028</td>
+</tr>
+<tr>
+<td><code>event</code>, <code>pendaftaran_event</code></td>
+<td>event + pendaftaran (status, bukti, kehadiran, reschedule)</td>
+<td>0017, 0027</td>
+</tr>
+<tr>
+<td><code>catatan_perkembangan</code></td>
+<td>catatan guru per anak per event</td>
+<td>0020</td>
+</tr>
+<tr>
+<td><code>sertifikat</code></td>
+<td>e-sertifikat per anak/event</td>
+<td>0026, 0034</td>
+</tr>
+<tr>
+<td><code>produk</code>, <code>keranjang_item</code>, <code>pesanan</code>, <code>item_pesanan</code></td>
+<td>store (diskon persen, berat)</td>
+<td>0019, 0049, 0050</td>
+</tr>
+<tr>
+<td><code>pengaturan_pembayaran</code></td>
+<td>konfig harga/rekening/QRIS/WA (per jenis transaksi)</td>
+<td>0038, 0051</td>
+</tr>
+<tr>
+<td><code>artikel</code></td>
+<td>blog SEO</td>
+<td>0041</td>
+</tr>
+<tr>
+<td><code>hasil_main</code></td>
+<td>hasil sesi game (skor, durasi, mesin, tema)</td>
+<td>0001, 0033, 0039</td>
+</tr>
+<tr>
+<td><code>lencana_anak</code>, <code>tantangan_anak</code>, <code>tantangan_kustom</code>(+<code>_anak</code>)</td>
+<td>gamifikasi (streak/badge/tantangan usia)</td>
+<td>0042–0045</td>
+</tr>
+<tr>
+<td><code>aktivitas</code></td>
+<td>log buka menu/fitur (analitik, DAU/MAU)</td>
+<td>0046</td>
+</tr>
+<tr>
+<td><code>feedback</code></td>
+<td>masukan/survey NPS</td>
+<td>0047, 0048</td>
+</tr>
+<tr>
+<td><code>transaksi_keuangan</code></td>
+<td>ledger keuangan (single source of truth)</td>
+<td>0052</td>
+</tr>
+<tr>
+<td><code>aset</code></td>
+<td>aset perusahaan (keuangan)</td>
+<td>0052</td>
+</tr>
+<tr>
+<td><code>kategori_aset</code>, <code>kategori_pengeluaran</code></td>
+<td>master kategori</td>
+<td>0053, 0055</td>
+</tr>
+<tr>
+<td><code>anggaran</code></td>
+<td>budget per bulan &amp; kategori</td>
+<td>0054</td>
+</tr>
+<tr>
+<td><code>riwayat_kelas</code></td>
+<td>riwayat materi kelas yang dibuka</td>
+<td>0018</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="10-alur-penting">10. Alur penting</h2>
+<ul>
+<li><strong>Pencatatan pendapatan (basis kas)</strong>: pemasukan tercatat ke <code>transaksi_keuangan</code> saat admin <strong>memverifikasi</strong> — pesanan store (subtotal), pendaftaran event "diterima" (total), aktivasi langganan (nominal). Pembatalan meng-offset via <code>hapusLedgerRef</code>. Semua via <code>ledger.ts</code> (try/catch aman).</li>
+<li><strong>Checkout store</strong>: keranjang → <code>POST /api/pesanan</code> atau server action <code>checkout</code> → <code>pesanan</code> (menunggu_ongkir) + <code>item_pesanan</code>, keranjang dikosongkan. Admin isi ongkir → user upload bukti → admin verifikasi (kurangi stok + catat ledger).</li>
+<li><strong>Gamifikasi</strong>: <code>catatHasil</code> menyimpan <code>hasil_main</code>, memutakhirkan koin/streak <code>anak</code>, mengevaluasi <code>lencana_anak</code> &amp; tantangan (<code>tantangan_anak</code>, <code>tantangan_kustom_anak</code>).</li>
+<li><strong>Keamanan role</strong>: perubahan role hanya lewat <code>/admin/users</code> (guard super user/admin) + trigger <code>cegah_self_admin</code> yang membekukan kolom role untuk yang tak berwenang.</li>
+</ul></body></html>
