@@ -67,11 +67,15 @@ export default async function DetailDealPage({ params }: { params: Promise<{ id:
                 <span style={{ flex: 1 }}><b>{deal.no_invoice}</b><br /><small className={s.muted}>Tgl {tgl(deal.invoice_tanggal)} · Jatuh tempo {tgl(deal.jatuh_tempo)}</small></span>
                 <Link href={`/admin/sponsor/${deal.id}/invoice`} className={s.btnSm} style={{ background: 'var(--mint-d)', color: '#fff' }}>🧾 Lihat / Cetak</Link>
               </div>
-            ) : (
+            ) : deal.status === 'kesepakatan' ? (
               <form action={generateInvoice}>
                 <input type="hidden" name="id" value={deal.id} />
                 <button className={s.btn}>Generate Invoice (INV-SP-…)</button>
               </form>
+            ) : (
+              <p className={s.muted} style={{ fontSize: 13, margin: 0 }}>
+                Tombol <b>Generate Invoice</b> muncul saat status deal = <b>Kesepakatan</b>. Status sekarang: <b>{st.teks}</b> — ubah status ke &quot;Kesepakatan&quot; di bagian Status di atas dulu.
+              </p>
             )}
           </div>
         </>

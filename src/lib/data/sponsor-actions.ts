@@ -98,6 +98,12 @@ export async function setStatusDeal(formData: FormData) {
 export async function generateInvoice(formData: FormData) {
   const { s } = await adminDb();
   const id = String(formData.get('id'));
+  // hanya boleh generate saat status Kesepakatan (dan belum punya invoice)
+  const { data: d } = await s.from('sponsorship').select('status,no_invoice,jenis').eq('id', id).single();
+  if (!d) throw new Error('Deal tidak ditemukan.');
+  if (d.no_invoice) throw new Error('Invoice sudah dibuat.');
+  if (d.jenis !== 'uang') throw new Error('Invoice hanya untuk sponsor jenis uang.');
+  if (d.status !== 'kesepakatan') throw new Error('Invoice hanya bisa dibuat saat status Kesepakatan.');
   const hari = tanggalWIB();
   const ym = hari.slice(0, 7).replace('-', ''); // YYYYMM
   const prefix = `INV-SP-${ym}-`;
