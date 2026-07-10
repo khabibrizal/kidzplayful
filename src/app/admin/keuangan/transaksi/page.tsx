@@ -6,8 +6,6 @@ import { formatRupiah } from '@/lib/format';
 import KeuanganNav from '../KeuanganNav';
 import s from '../../admin.module.css';
 
-const BISA_DETAIL = new Set(['pesanan', 'pendaftaran', 'langganan']);
-
 export default async function TransaksiPage({ searchParams }: { searchParams: Promise<{ from?: string; to?: string; arah?: string; kategori?: string }> }) {
   const sp = await searchParams;
   const today = tanggalWIB();
@@ -61,7 +59,7 @@ export default async function TransaksiPage({ searchParams }: { searchParams: Pr
       <div className={s.section} style={{ marginTop: 14 }}>Rincian ({rows.length})</div>
       {rows.length === 0 && <p className={s.muted}>Tidak ada transaksi pada rentang & filter ini.</p>}
       {rows.map((t) => {
-        const bisa = BISA_DETAIL.has(t.ref_tipe ?? '') && !!t.ref_id;
+        const bisa = !!t.id; // semua transaksi punya halaman detail
         const isi = (
           <>
             <span style={{ flex: 1, minWidth: 0 }}>

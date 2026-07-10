@@ -129,8 +129,45 @@ export default async function DetailTransaksi({ params }: { params: Promise<{ id
         </>
       )}
 
+      {/* Detail ASET */}
+      {d.jenis === 'aset' && d.aset && (
+        <>
+          <div className={s.section}>Aset</div>
+          <div className={s.card}>
+            <Baris k="Nama" v={<b>{d.aset.nama}</b>} />
+            {d.aset.kategori && <Baris k="Kategori" v={d.aset.kategori} />}
+            <Baris k="Harga beli" v={formatRupiah(d.aset.harga_beli)} />
+            {d.aset.tanggal_beli && <Baris k="Tgl beli" v={tglHari(d.aset.tanggal_beli)} />}
+            {d.aset.lokasi && <Baris k="Lokasi" v={d.aset.lokasi} />}
+            {d.aset.catatan && <Baris k="Catatan" v={d.aset.catatan} />}
+            {d.aset.invoice_url && <Baris k="Nota" v={<a href={d.aset.invoice_url} target="_blank" style={{ color: 'var(--biru-d)' }}>🧾 Lihat nota</a>} />}
+            <Link href="/admin/keuangan/aset" className={s.btnSm} style={{ marginTop: 10, display: 'inline-block', background: '#efe7fb', color: 'var(--lavender-d)' }}>Buka di Aset →</Link>
+          </div>
+        </>
+      )}
+
+      {/* Detail SPONSORSHIP */}
+      {d.jenis === 'sponsorship' && d.sponsorship && (
+        <>
+          <div className={s.section}>Sponsor</div>
+          <div className={s.card}>
+            <Baris k="Sponsor" v={<b>{d.sponsorship.sponsor ?? '(sponsor terhapus)'}</b>} />
+            {d.sponsorship.pic && <Baris k="PIC" v={d.sponsorship.pic} />}
+            {d.sponsorship.nama_event && <Baris k="Event" v={d.sponsorship.nama_event} />}
+            <Baris k="Jenis" v={d.sponsorship.jenis === 'barang' ? 'Barang (in-kind)' : 'Uang'} />
+            <Baris k="Nilai" v={<b>{formatRupiah(d.sponsorship.nilai)}</b>} />
+            {d.sponsorship.no_invoice && <Baris k="No. Invoice" v={d.sponsorship.no_invoice} />}
+            <Baris k="Status" v={d.sponsorship.status} />
+            <Link href={`/admin/sponsor/${d.sponsorship.id}`} className={s.btnSm} style={{ marginTop: 10, display: 'inline-block', background: '#efe7fb', color: 'var(--lavender-d)' }}>Buka di Sponsor →</Link>
+          </div>
+        </>
+      )}
+
       {d.jenis === 'lainnya' && (
-        <p className={s.muted} style={{ marginTop: 12 }}>Transaksi manual (mis. pengeluaran/aset) — tidak terhubung ke pesanan/pendaftaran/langganan.</p>
+        <p className={s.muted} style={{ marginTop: 12 }}>
+          {d.trx.arah === 'keluar' ? 'Pengeluaran manual — rincian ada di ringkasan di atas (kategori, keterangan, metode, lampiran).' : 'Transaksi manual — tidak terhubung ke sumber lain.'}
+          {d.trx.arah === 'keluar' && <> <Link href="/admin/keuangan/expense" style={{ color: 'var(--biru-d)' }}>Buka di Pengeluaran →</Link></>}
+        </p>
       )}
     </div>
   );

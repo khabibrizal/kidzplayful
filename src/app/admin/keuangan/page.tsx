@@ -5,8 +5,6 @@ import { formatRupiah } from '@/lib/format';
 import KeuanganNav from './KeuanganNav';
 import s from '../admin.module.css';
 
-const BISA_DETAIL = new Set(['pesanan', 'pendaftaran', 'langganan']);
-
 function K({ b, l, warna }: { b: string; l: string; warna?: string }) {
   return (
     <div className={s.card} style={{ flex: 1, minWidth: 150, textAlign: 'center', padding: 14 }}>
@@ -48,7 +46,7 @@ export default async function KeuanganDashboard() {
       <div className={s.section} style={{ marginTop: 14 }}>Transaksi terbaru</div>
       {recent.length === 0 && <p className={s.muted}>Belum ada transaksi. Pemasukan tercatat otomatis saat verifikasi pesanan / terima pendaftaran / aktivasi langganan.</p>}
       {recent.map((t) => {
-        const bisa = BISA_DETAIL.has(t.ref_tipe ?? '') && !!t.ref_id;
+        const bisa = !!t.id; // semua transaksi punya halaman detail
         const isi = (
           <>
             <span style={{ flex: 1, minWidth: 0 }}>

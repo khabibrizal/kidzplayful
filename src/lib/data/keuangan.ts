@@ -141,11 +141,13 @@ export async function getKategoriPengeluaran(): Promise<KatPengeluaran[]> {
 
 export interface TransaksiDetail {
   trx: Trx & { created_at?: string };
-  jenis: 'pesanan' | 'pendaftaran' | 'langganan' | 'lainnya';
+  jenis: 'pesanan' | 'pendaftaran' | 'langganan' | 'aset' | 'sponsorship' | 'lainnya';
   pembeli?: { email?: string | null; nama?: string | null; no_wa?: string | null } | null;
   pesanan?: { status: string; subtotal: number; ongkir: number; total: number; penerima: string | null; no_hp: string | null; alamat: string | null; no_resi: string | null; catatan: string | null; bukti_url: string | null; created_at: string; items: { nama: string; harga: number; qty: number }[] } | null;
   event?: { judul: string; tanggal: string | null; lokasi: string | null; anak: string[]; jumlah_anak: number; total: number; status: string; bukti_url: string | null; created_at: string } | null;
   langganan?: { nominal: number; metode: string | null; periode_mulai: string | null; periode_sampai: string | null; dibayar_pada: string }[] | null;
+  aset?: { id: string; nama: string; kategori: string | null; harga_beli: number; tanggal_beli: string | null; lokasi: string | null; invoice_url: string | null; catatan: string | null } | null;
+  sponsorship?: { id: string; nama_event: string | null; jenis: string; nilai: number; status: string; no_invoice: string | null; sponsor: string | null; pic: string | null } | null;
 }
 
 /** Detail satu transaksi ledger + sumber aslinya (pesanan/pendaftaran/langganan). */
@@ -187,6 +189,20 @@ export async function getTransaksiDetail(id: string): Promise<TransaksiDetail | 
         .select('nominal,metode,periode_mulai,periode_sampai,dibayar_pada')
         .eq('ortu_id', t.ref_id).order('dibayar_pada', { ascending: false }).limit(24);
       out.langganan = (bayar ?? []) as TransaksiDetail['langganan'];
+    } else if (t.ref_tipe === 'aset' && t.ref_id) {
+      out.jenis = 'aset';
+      const { data: a } = await s.from('aset').select('id,nama,kategori,harga_beli,tanggal_beli,lokasi,invoice_url,catatan').eq('id', t.ref_id).maybeSingle();
+      out.aset = (a as TransaksiDetail['aset']) ?? null;
+    } else if (t.ref_tipe === 'sponsorship' && t.ref_id) {
+      out.jenis = 'sponsorship';
+      const { data: sp } = await s.from('sponsorship')
+        .select('id,nama_event,jenis,nilai,status,no_invoice,sponsor:sponsor_id(nama_perusahaan,pic)')
+        .eq('id', t.ref_id).maybeSingle();
+      if (sp) {
+        const d = sp as unknown as { id: string; nama_event: string | null; jenis: string; nilai: number; status: string; no_invoice: string | null; sponsor: { nama_perusahaan: string; pic: string | null } | { nama_perusahaan: string; pic: string | null }[] | null };
+        const s2 = Array.isArray(d.sponsor) ? d.sponsor[0] : d.sponsor;
+        out.sponsorship = { id: d.id, nama_event: d.nama_event, jenis: d.jenis, nilai: d.nilai, status: d.status, no_invoice: d.no_invoice, sponsor: s2?.nama_perusahaan ?? null, pic: s2?.pic ?? null };
+      }
     }
     return out;
   } catch { return null; }
