@@ -1,4 +1,5 @@
 'use server';
+import { updateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import type { KelasBermain } from '@/lib/game/tipe';
 
@@ -60,4 +61,10 @@ export async function hapusKelas(id: string): Promise<void> {
   const s = await adminDb();
   const { error } = await s.from('kelas_bermain').delete().eq('id', id);
   if (error) throw new Error(error.message);
+}
+export async function setBolehTrialKelas(id: string, boleh: boolean): Promise<void> {
+  const s = await adminDb();
+  const { error } = await s.from('kelas_bermain').update({ boleh_trial: boleh }).eq('id', id);
+  if (error) throw new Error(error.message);
+  updateTag('katalog'); // segarkan katalog kelas ter-cache
 }

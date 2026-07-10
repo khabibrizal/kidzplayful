@@ -2,7 +2,7 @@
 'use client';
 import { useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { buatKelas, updateKelas, toggleStatusKelas, hapusKelas, type KelasInput } from '@/lib/data/kelas-bermain-actions';
+import { buatKelas, updateKelas, toggleStatusKelas, hapusKelas, setBolehTrialKelas, type KelasInput } from '@/lib/data/kelas-bermain-actions';
 import type { KelasBermain } from '@/lib/game/tipe';
 import s from '../admin.module.css';
 
@@ -108,6 +108,13 @@ export default function KelasAdmin({ awal, produkOpsi = [] }: { awal: KelasBerma
     catch (e) { flash(e instanceof Error ? e.message : 'Gagal'); }
     finally { setBusyId(null); }
   }
+  async function toggleTrial(k: KelasBermain) {
+    setBusyId(k.id);
+    const baru = k.boleh_trial === false; // toggle
+    try { await setBolehTrialKelas(k.id, baru); setList(list.map((x) => (x.id === k.id ? { ...x, boleh_trial: baru } : x))); flash(baru ? 'Boleh diakses trial ✓' : 'Terkunci untuk trial 🔒'); }
+    catch (e) { flash(e instanceof Error ? e.message : 'Gagal'); }
+    finally { setBusyId(null); }
+  }
   async function hapus(k: KelasBermain) {
     if (!confirm(`Hapus "${k.judul}"?`)) return;
     setBusyId(k.id);
@@ -189,12 +196,14 @@ export default function KelasAdmin({ awal, produkOpsi = [] }: { awal: KelasBerma
         <div key={k.id} className={s.card} style={{ opacity: k.status === 'nonaktif' ? 0.55 : 1 }}>
           <div className={s.row}>
             <span style={{ flex: 1 }}><b>{k.judul}</b> {k.status === 'nonaktif' && <span className={`${s.tag} ${s.tagDraf}`}>nonaktif</span>}
+              {k.boleh_trial === false && <span className={`${s.tag} ${s.tagDraf}`} style={{ marginLeft: 4 }}>🔒 non-trial</span>}
               <br /><small className={s.muted}>{k.aktivitas?.length ?? 0} aktivitas · {k.bahan?.length ?? 0} bahan</small>
             </span>
           </div>
           <div className={s.row} style={{ marginTop: 8, flexWrap: 'wrap' }}>
             <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)' }} onClick={() => bukaEdit(k)} disabled={busyId === k.id}>Edit</button>
             <button className={s.btnSm} style={{ background: '#fff3d6', color: '#b88600' }} onClick={() => toggle(k)} disabled={busyId === k.id}>{busyId === k.id ? '...' : (k.status === 'aktif' ? 'Nonaktifkan' : 'Aktifkan')}</button>
+            <button className={s.btnSm} style={{ background: k.boleh_trial === false ? '#eee' : '#dff5e6', color: k.boleh_trial === false ? '#888' : '#1c7a43' }} onClick={() => toggleTrial(k)} disabled={busyId === k.id} title="Boleh diakses user trial?">{k.boleh_trial === false ? 'Trial ✗' : 'Trial ✓'}</button>
             <button className={`${s.btnSm} ${s.danger}`} onClick={() => hapus(k)} disabled={busyId === k.id}>Hapus</button>
           </div>
         </div>

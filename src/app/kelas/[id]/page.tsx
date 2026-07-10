@@ -9,10 +9,9 @@ import YoutubeEmbed from '@/components/YoutubeEmbed';
 import { youtubeId } from '@/lib/youtube';
 import { rekamRiwayat } from '@/lib/data/riwayat-kelas';
 import { getStatusLangganan, dibatasiTrial } from '@/lib/data/langganan-status';
-import { getPengaturanTrial } from '@/lib/data/pengaturan-trial';
 import Terkunci from '@/components/Terkunci';
 
-const COLS = 'id,judul,aktivitas,bahan,link_ide,worksheet_url,status';
+const COLS = 'id,judul,aktivitas,bahan,link_ide,worksheet_url,status,boleh_trial';
 
 export default async function KelasDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -20,16 +19,17 @@ export default async function KelasDetailPage({ params }: { params: Promise<{ id
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  // gating trial: materi kelas
-  const [status, izin] = await Promise.all([getStatusLangganan(supabase, user.id), getPengaturanTrial()]);
-  if (dibatasiTrial(status) && !izin.trial_kelas) {
-    return <main style={{ maxWidth: 480, margin: '24px auto', padding: 16 }}><Terkunci fitur="Materi Kelas Bermain" /></main>;
-  }
-
-  const { data } = await supabase
-    .from('kelas_bermain').select(COLS).eq('id', id).eq('status', 'aktif').maybeSingle();
+  const [{ data }, status] = await Promise.all([
+    supabase.from('kelas_bermain').select(COLS).eq('id', id).eq('status', 'aktif').maybeSingle(),
+    getStatusLangganan(supabase, user.id),
+  ]);
   if (!data) redirect('/pilih-anak');
   const kelas = data as unknown as KelasBermain;
+
+  // gating trial: materi ini hanya untuk pelanggan bila tak ditandai "boleh trial"
+  if (dibatasiTrial(status) && kelas.boleh_trial === false) {
+    return <main style={{ maxWidth: 480, margin: '24px auto', padding: 16 }}><Terkunci fitur="Materi Kelas Bermain" /></main>;
+  }
   await rekamRiwayat(kelas.id); // catat ke riwayat "Kelas Bermain Saya"
 
   return (

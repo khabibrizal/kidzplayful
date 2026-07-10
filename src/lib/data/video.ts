@@ -6,7 +6,7 @@ export async function getVideoByKategori(kategori: 'baby' | 'toddler'): Promise<
   const supabase = await createClient();
   const { data } = await supabase
     .from('video')
-    .select('id,judul,youtube_id,durasi_detik,kategori')
+    .select('id,judul,youtube_id,durasi_detik,kategori,boleh_trial')
     .eq('kategori', kategori).eq('status', 'disetujui').eq('link_ok', true)
     .order('urutan');
   return (data ?? []) as unknown as Video[];

@@ -84,6 +84,7 @@ export interface Video {
   youtube_id: string;
   durasi_detik: number;
   kategori: 'baby' | 'toddler';
+  boleh_trial?: boolean;
 }
 
 export interface TemaInfo {
@@ -91,6 +92,7 @@ export interface TemaInfo {
   nama: string;
   sampul: string | null;
   is_minggu_ini: boolean;
+  boleh_trial?: boolean;
 }
 
 export interface TemaLengkap {
@@ -132,6 +134,7 @@ export interface KelasBermain {
   link_ide: string | null;
   worksheet_url: string | null;
   status: 'aktif' | 'nonaktif';
+  boleh_trial?: boolean;
 }
 
 export interface EventKelas {

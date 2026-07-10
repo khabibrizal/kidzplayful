@@ -5,7 +5,7 @@ import type { TemaLengkap, Paket, Video } from '@/lib/game/tipe';
 export async function getPustaka(): Promise<TemaLengkap[]> {
   const supabase = await createClient();
   const { data: tema } = await supabase
-    .from('tema').select('id,nama,sampul,is_minggu_ini')
+    .from('tema').select('id,nama,sampul,is_minggu_ini,boleh_trial')
     .eq('status', 'disetujui')
     .order('is_minggu_ini', { ascending: false })
     .order('created_at');
@@ -22,7 +22,7 @@ export async function getPustaka(): Promise<TemaLengkap[]> {
     .in('tema_id', ids).order('urutan');
 
   return tema.map((t) => ({
-    tema: { id: t.id, nama: t.nama, sampul: t.sampul, is_minggu_ini: t.is_minggu_ini },
+    tema: { id: t.id, nama: t.nama, sampul: t.sampul, is_minggu_ini: t.is_minggu_ini, boleh_trial: t.boleh_trial ?? true },
     paket: ((paket ?? []).filter((p) => p.tema_id === t.id)) as unknown as Paket[],
     video: ((video ?? []).filter((v) => v.tema_id === t.id)) as unknown as Video[],
   }));

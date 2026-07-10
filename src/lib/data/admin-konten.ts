@@ -95,6 +95,20 @@ export async function buatVideo(input: { judul: string; youtubeId: string; kateg
   revalidatePath('/admin/video');
 }
 
+export async function setBolehTrialTema(id: string, boleh: boolean) {
+  const supabase = await db();
+  const { error } = await supabase.from('tema').update({ boleh_trial: boleh }).eq('id', id);
+  if (error) throw new Error(error.message);
+  revalidatePath('/admin');
+}
+
+export async function setBolehTrialVideo(id: string, boleh: boolean) {
+  const supabase = await db();
+  const { error } = await supabase.from('video').update({ boleh_trial: boleh }).eq('id', id);
+  if (error) throw new Error(error.message);
+  revalidatePath('/admin/video');
+}
+
 export async function hapusVideo(id: string) {
   const supabase = await db();
   const { error } = await supabase.from('video').delete().eq('id', id);

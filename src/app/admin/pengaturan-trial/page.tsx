@@ -14,30 +14,27 @@ export default async function PengaturanTrialPage({ searchParams }: { searchPara
     redirect('/admin/pengaturan-trial?ok=1');
   }
 
-  const Toggle = ({ name, label, on }: { name: string; label: string; on: boolean }) => (
-    <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid #f0f0f5', fontSize: 14 }}>
-      <input type="checkbox" name={name} value="1" defaultChecked={on} style={{ width: 18, height: 18 }} />
-      <span>{label}</span>
-    </label>
-  );
-
   return (
     <div>
       <div className={s.head} style={{ marginTop: 8 }}><h1>⏳ Pengaturan Trial</h1></div>
-      <p className={s.muted}>Atur fitur apa saja yang boleh diakses user <b>trial &amp; masa tenggang</b> (belum berlangganan). User berlangganan (aktif) selalu bebas. Perubahan berlaku langsung tanpa deploy.</p>
+      <p className={s.muted}>Pengaturan untuk user <b>trial &amp; masa tenggang</b> (belum berlangganan). User berlangganan (aktif) selalu bebas.</p>
       {ok && <div className={s.card} style={{ background: '#dff5e6', color: '#1c7a43', fontWeight: 700 }}>Tersimpan ✓</div>}
 
-      <form action={simpan} className={s.card}>
-        <div className={s.section} style={{ marginTop: 0 }}>Fitur yang boleh diakses saat trial</div>
-        <Toggle name="trial_kelas" label="🎈 Materi Kelas Bermain" on={cfg.trial_kelas} />
-        <Toggle name="trial_game" label="🎮 Game Edukasi" on={cfg.trial_game} />
-        <Toggle name="trial_video" label="📺 Pojok Video" on={cfg.trial_video} />
-        <p className={s.muted} style={{ fontSize: 12, marginTop: 6 }}>Centang = boleh diakses trial. Kosongkan = terkunci (user diminta upgrade).</p>
+      <div className={s.card} style={{ background: '#f6f2ff' }}>
+        <b style={{ color: 'var(--lavender-d)' }}>🔑 Materi mana yang boleh diakses trial?</b>
+        <p className={s.muted} style={{ fontSize: 13, marginTop: 6, marginBottom: 0 }}>
+          Diatur <b>per item</b> lewat tombol <b>&quot;Trial ✓/✗&quot;</b> di masing-masing halaman:
+          <br />• <b>Materi Kelas Bermain</b> → menu 🎈 Kelas Bermain
+          <br />• <b>Game Edukasi</b> → menu 🎨 Tema (Dashboard) — per tema
+          <br />• <b>Pojok Video</b> → menu 📺 Video
+          <br />Item bertanda <b>Trial ✓</b> bisa dibuka user trial; yang <b>✗</b> terkunci (diminta upgrade). Default: semua boleh.
+        </p>
+      </div>
 
-        <div className={s.section}>Batas jumlah anak untuk user trial</div>
+      <form action={simpan} className={s.card}>
+        <div className={s.section} style={{ marginTop: 0 }}>Batas jumlah anak untuk user trial</div>
         <input className={s.inp} name="trial_maks_anak" type="number" min={0} defaultValue={cfg.trial_maks_anak} style={{ width: 140 }} />
         <p className={s.muted} style={{ fontSize: 12, marginTop: 6 }}>Maksimal profil anak yang boleh ditambah user belum berlangganan (0 = tidak boleh menambah).</p>
-
         <div style={{ marginTop: 14 }}><button className={s.btn} type="submit">💾 Simpan</button></div>
       </form>
     </div>
