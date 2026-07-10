@@ -29,18 +29,21 @@ export default function MenuAnak({
   gamiAwal: GamifikasiAnak; batasi?: boolean;
 }) {
   const router = useRouter();
+  const [kunciFitur, setKunciFitur] = useState<string | null>(null);
+  const terkunci = (boleh?: boolean) => batasi && boleh === false; // item khusus pelanggan
   const [gami, setGami] = useState<GamifikasiAnak>(gamiAwal);
   const [misi, setMisi] = useState<GamifikasiAnak['kustom'][number] | null>(null);
   const mingguIni = pustaka.find((t) => t.tema.is_minggu_ini) ?? pustaka[0] ?? null;
-  // Deep-link: jika datang dari "Pilih Game" dengan ?paket=<id>, langsung mainkan game itu.
-  const findAwal = () =>
-    paketAwal
-      ? pustaka.flatMap((t) => t.paket.map((p) => ({ p, t }))).find((x) => x.p.id === paketAwal) ?? null
-      : null;
-  const [layar, setLayar] = useState<Layar>(() => (findAwal() ? 'main' : 'menu'));
+  // Deep-link: jika datang dari "Pilih Game" dengan ?paket=<id>, langsung mainkan game itu
+  // — KECUALI tema-nya terkunci untuk trial (jangan auto-start; landing di menu).
+  const awalCari = paketAwal
+    ? pustaka.flatMap((t) => t.paket.map((p) => ({ p, t }))).find((x) => x.p.id === paketAwal) ?? null
+    : null;
+  const awal = awalCari && !terkunci(awalCari.t.tema.boleh_trial) ? awalCari : null;
+  const [layar, setLayar] = useState<Layar>(() => (awal ? 'main' : 'menu'));
   const [koin, setKoin] = useState(anak.koin);
-  const [aktif, setAktif] = useState<Paket | null>(() => findAwal()?.p ?? null);
-  const [temaTerpilih, setTemaTerpilih] = useState<TemaLengkap | null>(() => findAwal()?.t ?? mingguIni);
+  const [aktif, setAktif] = useState<Paket | null>(() => awal?.p ?? null);
+  const [temaTerpilih, setTemaTerpilih] = useState<TemaLengkap | null>(() => awal?.t ?? mingguIni);
   const [pinUntuk, setPinUntuk] = useState<null | 'keluar'>(null);
   const [kelasDipilih, setKelasDipilih] = useState<KelasBermain | null>(null);
   const [terpakai, setTerpakai] = useState(0);
@@ -74,6 +77,21 @@ export default function MenuAnak({
       const lencana = g.lencana.map((l) => ({ ...l, dapat: l.dapat || r.lencanaBaru.some((b) => b.kode === l.kode) }));
       return { ...g, streak: r.streak, lencana, jumlahLencana: lencana.filter((l) => l.dapat).length, tantangan: { ...g.tantangan, ...r.tantangan } };
     });
+  }
+
+  if (kunciFitur) {
+    return (
+      <div className={s.wrap}>
+        <div className={s.top}>
+          <button className="kp-lock" aria-label="Kembali" onClick={() => setKunciFitur(null)}>←</button>
+          <div className="kp-chip">🔒 {kunciFitur}</div>
+          <div className="kp-coin">🪙 {koin}</div>
+        </div>
+        <div style={{ flex: 1, display: 'grid', placeItems: 'center', padding: 16 }}>
+          <Terkunci fitur={kunciFitur} />
+        </div>
+      </div>
+    );
   }
 
   if (layar === 'istirahat') {
@@ -116,9 +134,7 @@ export default function MenuAnak({
           <div className="kp-chip">📺 Pojok Video</div>
           <div className="kp-coin">🪙 {koin}</div>
         </div>
-        {video.length === 0 && batasi
-          ? <div style={{ flex: 1, display: 'grid', placeItems: 'center', padding: 16 }}><Terkunci fitur="Pojok Video" ringkas /></div>
-          : <VideoPojok video={video} onKeluar={() => setLayar('menu')} />}
+        <VideoPojok video={video} batasi={batasi} onKeluar={() => setLayar('menu')} onTerkunci={() => setKunciFitur('Pojok Video')} />
       </div>
     );
   }
@@ -133,23 +149,24 @@ export default function MenuAnak({
         </div>
         {kelasList.length === 0 ? (
           <div style={{ flex: 1, overflow: 'auto', padding: '6px 2px' }}>
-            {batasi ? <Terkunci fitur="Materi Kelas Bermain" ringkas /> : <p style={{ color: 'var(--abu)', textAlign: 'center' }}>Belum ada kelas bermain.</p>}
+            <p style={{ color: 'var(--abu)', textAlign: 'center' }}>Belum ada kelas bermain.</p>
           </div>
         ) : (
           <div className={s.menu}>
-            {kelasList.map((k, i) => (
-              <div key={k.id} className={`kp-tile ${['mint', 'lavender', 'biru'][i % 3]}`}
-                role="button" tabIndex={0}
-                onClick={() => { setKelasDipilih(k); setLayar('kelas-detail'); catatRiwayatKelas(k.id).catch(() => {}); }}
-                onKeyDown={(e) => { if (e.key === 'Enter') { setKelasDipilih(k); setLayar('kelas-detail'); catatRiwayatKelas(k.id).catch(() => {}); } }}
-                style={{ position: 'relative', cursor: 'pointer' }}>
-                <span className="emo">🎈</span>
-                <div>{k.judul}</div>
-                <span style={{ position: 'absolute', top: 6, right: 8 }}>
-                  <FavoritBtn kelasId={k.id} awal={favIds.includes(k.id)} />
-                </span>
-              </div>
-            ))}
+            {kelasList.map((k, i) => {
+              const kunci = terkunci(k.boleh_trial);
+              const buka = () => { if (kunci) { setKunciFitur('Materi Kelas Bermain'); return; } setKelasDipilih(k); setLayar('kelas-detail'); catatRiwayatKelas(k.id).catch(() => {}); };
+              return (
+                <div key={k.id} className={`kp-tile ${['mint', 'lavender', 'biru'][i % 3]}`}
+                  role="button" tabIndex={0} onClick={buka}
+                  onKeyDown={(e) => { if (e.key === 'Enter') buka(); }}
+                  style={{ position: 'relative', cursor: 'pointer', opacity: kunci ? 0.7 : 1 }}>
+                  <span className="emo">{kunci ? '🔒' : '🎈'}</span>
+                  <div>{k.judul}</div>
+                  {!kunci && <span style={{ position: 'absolute', top: 6, right: 8 }}><FavoritBtn kelasId={k.id} awal={favIds.includes(k.id)} /></span>}
+                </div>
+              );
+            })}
           </div>
         )}
         <div className={s.foot}>Sisa waktu hari ini: {sisaMnt} menit</div>
@@ -209,16 +226,19 @@ export default function MenuAnak({
         </div>
         {pustaka.length === 0 ? (
           <div style={{ flex: 1, overflow: 'auto', padding: '6px 2px' }}>
-            {batasi ? <Terkunci fitur="Game Edukasi" ringkas /> : <p style={{ color: 'var(--abu)', textAlign: 'center' }}>Belum ada game.</p>}
+            <p style={{ color: 'var(--abu)', textAlign: 'center' }}>Belum ada game.</p>
           </div>
         ) : (
         <div className={s.menu}>
-          {pustaka.map((t, i) => (
-            <button key={t.tema.id} className={`kp-tile ${['mint', 'lavender', 'biru'][i % 3]}`}
-              onClick={() => { setTemaTerpilih(t); setLayar('daftar'); }}>
-              <span className="emo">{t.tema.sampul ?? '🎈'}</span><div>{t.tema.nama}<small>{t.paket.length} permainan</small></div>
-            </button>
-          ))}
+          {pustaka.map((t, i) => {
+            const kunci = terkunci(t.tema.boleh_trial);
+            return (
+              <button key={t.tema.id} className={`kp-tile ${['mint', 'lavender', 'biru'][i % 3]}`} style={{ opacity: kunci ? 0.7 : 1 }}
+                onClick={() => { if (kunci) { setKunciFitur('Game Edukasi'); return; } setTemaTerpilih(t); setLayar('daftar'); }}>
+                <span className="emo">{kunci ? '🔒' : (t.tema.sampul ?? '🎈')}</span><div>{t.tema.nama}<small>{kunci ? 'khusus pelanggan' : `${t.paket.length} permainan`}</small></div>
+              </button>
+            );
+          })}
         </div>
         )}
         <div className={s.foot}>Sisa waktu hari ini: {sisaMnt} menit</div>

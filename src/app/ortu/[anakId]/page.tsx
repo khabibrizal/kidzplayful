@@ -17,10 +17,11 @@ export default async function ModeOrtu({ params }: { params: Promise<{ anakId: s
   const [kelasList0, videoBaby0, status] = await Promise.all([
     getKelasAktifCached(), getVideoByKategori('baby'), getStatusSaya(),
   ]);
-  // trial: hanya item yang ditandai "boleh trial"
+  // trial: item tetap TAMPIL tapi yang tak ditandai "boleh trial" akan terkunci (🔒)
   const batasi = dibatasiTrial(status);
-  const kelasList = batasi ? kelasList0.filter((k) => k.boleh_trial !== false) : kelasList0;
-  const videoBaby = batasi ? videoBaby0.filter((v) => v.boleh_trial !== false) : videoBaby0;
+  const kelasList = kelasList0;
+  const videoBaby = videoBaby0;
+  const terkunci = (b?: boolean) => batasi && b === false;
 
   return (
     <div className={s.wrap}>
@@ -33,9 +34,15 @@ export default async function ModeOrtu({ params }: { params: Promise<{ anakId: s
         </div>
       </div>
 
-      {kelasList.length === 0 && (batasi ? <Terkunci fitur="Materi Kelas Bermain" ringkas /> : <p className={s.muted}>Belum ada kelas bermain aktif. Admin dapat menambah di Kelola Kelas Bermain.</p>)}
+      {kelasList.length === 0 && <p className={s.muted}>Belum ada kelas bermain aktif. Admin dapat menambah di Kelola Kelas Bermain.</p>}
 
       {kelasList.map((k) => (
+        terkunci(k.boleh_trial) ? (
+          <div key={k.id} className="kp-card" style={{ marginBottom: 12, opacity: 0.85 }}>
+            <b>🔒 {k.judul}</b>
+            <div style={{ marginTop: 6 }}><Terkunci fitur="Materi Kelas Bermain" ringkas /></div>
+          </div>
+        ) : (
         <div key={k.id} className="kp-card" style={{ marginBottom: 12 }}>
           <b>🎈 {k.judul}</b>
           {k.bahan?.length > 0 && (
@@ -66,14 +73,17 @@ export default async function ModeOrtu({ params }: { params: Promise<{ anakId: s
             {k.worksheet_url && <a className="kp-btn mint" href={k.worksheet_url} target="_blank" style={{ marginTop: 10, fontSize: 14, padding: '11px 20px' }}>📄 Unduh Worksheet</a>}
           </div>
         </div>
+        )
       ))}
 
       <div className={s.sec}>Video untuk Baby</div>
-      {videoBaby.length === 0 && (batasi ? <Terkunci fitur="Pojok Video" ringkas /> : <p className={s.muted}>Belum ada video baby (tambah di Admin → Kelola Video).</p>)}
+      {videoBaby.length === 0 && <p className={s.muted}>Belum ada video baby (tambah di Admin → Kelola Video).</p>}
       {videoBaby.map((v) => (
-        <div key={v.id} className="kp-card" style={{ marginBottom: 12 }}>
-          <div className={s.vid}><span style={{ fontSize: 24 }}>▶</span><span style={{ flex: 1 }}><b>{v.judul}</b><br /><span className={s.muted}>{Math.round(v.durasi_detik / 60)} menit</span></span>
-            <a className="kp-btn" href={`https://www.youtube-nocookie.com/embed/${v.youtube_id}`} target="_blank" style={{ fontSize: 14, padding: '11px 20px' }}>Putar</a>
+        <div key={v.id} className="kp-card" style={{ marginBottom: 12, opacity: terkunci(v.boleh_trial) ? 0.85 : 1 }}>
+          <div className={s.vid}><span style={{ fontSize: 24 }}>{terkunci(v.boleh_trial) ? '🔒' : '▶'}</span><span style={{ flex: 1 }}><b>{v.judul}</b><br /><span className={s.muted}>{terkunci(v.boleh_trial) ? 'khusus pelanggan' : `${Math.round(v.durasi_detik / 60)} menit`}</span></span>
+            {terkunci(v.boleh_trial)
+              ? <Link className="kp-btn mint" href="/pengaturan" style={{ fontSize: 14, padding: '11px 20px' }}>✨ Upgrade</Link>
+              : <a className="kp-btn" href={`https://www.youtube-nocookie.com/embed/${v.youtube_id}`} target="_blank" style={{ fontSize: 14, padding: '11px 20px' }}>Putar</a>}
           </div>
         </div>
       ))}

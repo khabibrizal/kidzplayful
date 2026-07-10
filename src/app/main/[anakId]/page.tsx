@@ -32,23 +32,21 @@ export default async function MainPage({ params, searchParams }: { params: Promi
     getStatusLangganan(supabase, u!.id),
   ]);
 
-  // gating trial: user non-aktif hanya melihat item yang ditandai "boleh trial" oleh admin
+  // gating trial: item tetap TAMPIL untuk user non-aktif, tapi yang tak ditandai
+  // "boleh trial" akan terkunci (🔒) di UI. Data dikirim penuh + flag `batasi`.
   const batasi = dibatasiTrial(status);
-  const pustaka = batasi ? pustaka0.filter((t) => t.tema.boleh_trial !== false) : pustaka0;
-  const kelasList = batasi ? kelasList0.filter((k) => k.boleh_trial !== false) : kelasList0;
-  const video = batasi ? video0.filter((v) => v.boleh_trial !== false) : video0;
-  if (!batasi && pustaka.length === 0) redirect('/pilih-anak'); // non-trial tapi tak ada konten sama sekali
+  if (pustaka0.length === 0) redirect('/pilih-anak');
 
   return (
     <>
     <RekamAktivitas fitur="game" anakId={anakId} />
     <MenuAnak
       anak={{ id: anak.id, nama: anak.nama, koin: anak.koin, batas_menit: anak.batas_menit }}
-      pustaka={pustaka}
+      pustaka={pustaka0}
       pinTersimpan={prof?.pin_ortu ?? null}
-      video={video}
+      video={video0}
       paketAwal={paketAwal}
-      kelasList={kelasList}
+      kelasList={kelasList0}
       favIds={favIds}
       gamiAwal={gami}
       batasi={batasi}
