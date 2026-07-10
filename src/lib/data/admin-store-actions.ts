@@ -1,9 +1,60 @@
 // src/lib/data/admin-store-actions.ts — CRUD produk + kelola pesanan (admin)
 'use server';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, updateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import type { Produk, StatusPesanan } from '@/lib/game/tipe';
 import { catatLedger, hapusLedgerRef } from './ledger';
+
+type DB = Awaited<ReturnType<typeof createClient>>;
+
+// Agregasi qty per produk dari item pesanan.
+async function qtyPerProduk(s: DB, pesananId: string): Promise<Map<string, number>> {
+  const { data: items } = await s.from('item_pesanan').select('produk_id,qty').eq('pesanan_id', pesananId);
+  const m = new Map<string, number>();
+  for (const it of items ?? []) {
+    if (!it.produk_id) continue;
+    m.set(it.produk_id, (m.get(it.produk_id) ?? 0) + (it.qty ?? 0));
+  }
+  return m;
+}
+
+/** Potong stok + tambah `terjual`, IDEMPOTEN (flag pesanan.stok_terpotong). Aman dipanggil berulang. */
+async function potongStokPesanan(s: DB, pesananId: string): Promise<void> {
+  const { data: pes } = await s.from('pesanan').select('stok_terpotong').eq('id', pesananId).single();
+  if (pes?.stok_terpotong) return; // sudah dipotong → jangan dobel
+  const qty = await qtyPerProduk(s, pesananId);
+  const ids = [...qty.keys()];
+  if (ids.length) {
+    const { data: produk } = await s.from('produk').select('id,stok,terjual').in('id', ids);
+    const hasil = await Promise.all((produk ?? []).map((pr) => {
+      const q = qty.get(pr.id) ?? 0;
+      return s.from('produk').update({ stok: Math.max(0, (pr.stok ?? 0) - q), terjual: (pr.terjual ?? 0) + q }).eq('id', pr.id);
+    }));
+    const gagal = hasil.find((r) => r.error);
+    if (gagal?.error) throw new Error('Gagal memperbarui stok: ' + gagal.error.message);
+  }
+  await s.from('pesanan').update({ stok_terpotong: true }).eq('id', pesananId);
+  updateTag('katalog'); // segarkan katalog store (stok & terjual terbaru)
+  revalidatePath('/store');
+}
+
+/** Kebalikan potong: kembalikan stok & kurangi `terjual` bila pesanan dibatalkan setelah dipotong. */
+async function pulihkanStokPesanan(s: DB, pesananId: string): Promise<void> {
+  const { data: pes } = await s.from('pesanan').select('stok_terpotong').eq('id', pesananId).single();
+  if (!pes?.stok_terpotong) return;
+  const qty = await qtyPerProduk(s, pesananId);
+  const ids = [...qty.keys()];
+  if (ids.length) {
+    const { data: produk } = await s.from('produk').select('id,stok,terjual').in('id', ids);
+    await Promise.all((produk ?? []).map((pr) => {
+      const q = qty.get(pr.id) ?? 0;
+      return s.from('produk').update({ stok: (pr.stok ?? 0) + q, terjual: Math.max(0, (pr.terjual ?? 0) - q) }).eq('id', pr.id);
+    }));
+  }
+  await s.from('pesanan').update({ stok_terpotong: false }).eq('id', pesananId);
+  updateTag('katalog');
+  revalidatePath('/store');
+}
 
 export interface ProdukInput {
   nama: string; deskripsi: string; kategori: string;
@@ -11,7 +62,7 @@ export interface ProdukInput {
   stok: number; gambarUrl: string | null; status: 'tampil' | 'arsip';
 }
 const persen = (v: number) => { const n = Math.min(100, Math.max(0, Math.floor(Number(v) || 0))); return n > 0 ? n : null; };
-const PCOLS = 'id,nama,deskripsi,kategori,harga,diskon_trial_persen,diskon_langganan_persen,berat_gram,stok,gambar_url,status';
+const PCOLS = 'id,nama,deskripsi,kategori,harga,diskon_trial_persen,diskon_langganan_persen,berat_gram,stok,terjual,gambar_url,status';
 
 async function adminDb() {
   const s = await createClient();
@@ -71,23 +122,10 @@ export async function setOngkir(pesananId: string, ongkir: number): Promise<void
   revalidatePath('/pesanan'); // total baru langsung terlihat di halaman pesanan user
 }
 
-/** Verifikasi pembayaran → diproses + kurangi stok tiap produk. */
+/** Verifikasi pembayaran → diproses + kurangi stok & tambah terjual (idempoten). */
 export async function verifikasiPesanan(pesananId: string): Promise<void> {
   const s = await adminDb();
-  const { data: items } = await s.from('item_pesanan').select('produk_id,qty').eq('pesanan_id', pesananId);
-  // kurangi stok tiap produk — ambil semua stok dalam 1 query (hindari N+1), lalu update paralel
-  const qtyPerProduk = new Map<string, number>();
-  for (const it of items ?? []) {
-    if (!it.produk_id) continue;
-    qtyPerProduk.set(it.produk_id, (qtyPerProduk.get(it.produk_id) ?? 0) + (it.qty ?? 0));
-  }
-  const ids = [...qtyPerProduk.keys()];
-  if (ids.length) {
-    const { data: produk } = await s.from('produk').select('id,stok').in('id', ids);
-    await Promise.all((produk ?? []).map((pr) =>
-      s.from('produk').update({ stok: Math.max(0, (pr.stok ?? 0) - (qtyPerProduk.get(pr.id) ?? 0)) }).eq('id', pr.id),
-    ));
-  }
+  await potongStokPesanan(s, pesananId); // idempoten: stok-- & terjual++ (cek error di dalam)
   const { data: pes } = await s.from('pesanan').select('subtotal').eq('id', pesananId).single();
   const { error } = await s.from('pesanan').update({ status: 'diproses', diverifikasi_pada: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', pesananId);
   if (error) throw new Error(error.message);
@@ -107,5 +145,8 @@ export async function ubahStatusPesanan(pesananId: string, status: StatusPesanan
   const s = await adminDb();
   const { error } = await s.from('pesanan').update({ status, updated_at: new Date().toISOString() }).eq('id', pesananId);
   if (error) throw new Error(error.message);
-  if (status === 'batal') await hapusLedgerRef(s, 'pesanan', pesananId); // batalkan pemasukan bila sudah tercatat
+  if (status === 'batal') {
+    await hapusLedgerRef(s, 'pesanan', pesananId); // batalkan pemasukan bila sudah tercatat
+    await pulihkanStokPesanan(s, pesananId);       // kembalikan stok bila sudah terpotong
+  }
 }

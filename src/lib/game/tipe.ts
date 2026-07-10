@@ -192,7 +192,8 @@ export interface Produk {
   diskon_trial_persen: number | null;      // % diskon untuk user trial/kadaluarsa (opsional)
   diskon_langganan_persen: number | null;  // % diskon untuk pelanggan aktif (opsional)
   berat_gram: number | null;              // berat (gram) untuk acuan ongkir
-  stok: number;
+  stok: number;                           // sisa stok (berkurang saat pesanan diverifikasi)
+  terjual: number;                        // jumlah terjual (bertambah saat pesanan diverifikasi)
   gambar_url: string | null;
   status: 'tampil' | 'arsip';
 }

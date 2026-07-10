@@ -57,7 +57,8 @@ export default function ProdukDetail({ p, status = 'kadaluarsa' }: { p: Produk; 
       )}
       {p.deskripsi && <p style={{ fontSize: 14, lineHeight: 1.6, color: '#6f6685', whiteSpace: 'pre-wrap' }}>{p.deskripsi}</p>}
       <div style={{ fontSize: 12, fontWeight: 700, color: habis ? '#b3261e' : 'var(--mint-d)', marginTop: 8 }}>
-        {habis ? 'Stok habis' : `✓ Stok tersedia (${p.stok})`}
+        {habis ? 'Stok habis' : `✓ Stok tersedia (sisa ${p.stok})`}
+        {p.terjual > 0 && <span style={{ color: 'var(--abu)', fontWeight: 500 }}> · {p.terjual} terjual</span>}
       </div>
 
       {!habis && (

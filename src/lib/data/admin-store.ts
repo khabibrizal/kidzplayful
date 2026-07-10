@@ -2,7 +2,7 @@
 import { createClient } from '@/lib/supabase/server';
 import type { Produk, Pesanan } from '@/lib/game/tipe';
 
-const PCOLS = 'id,nama,deskripsi,kategori,harga,diskon_trial_persen,diskon_langganan_persen,berat_gram,stok,gambar_url,status';
+const PCOLS = 'id,nama,deskripsi,kategori,harga,diskon_trial_persen,diskon_langganan_persen,berat_gram,stok,terjual,gambar_url,status';
 const OCOLS = 'id,ortu_id,status,subtotal,ongkir,total,penerima,no_hp,alamat,bukti_url,no_resi,catatan,created_at';
 
 export async function getProdukSemua(): Promise<Produk[]> {

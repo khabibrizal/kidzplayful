@@ -40,6 +40,11 @@ export default function ProdukCard({ p, status = 'kadaluarsa' }: { p: Produk; st
         ) : (
           <div style={{ fontWeight: 800, color: 'var(--lavender-d)', fontSize: 16, marginTop: 2 }}>{formatRupiah(p.harga)}</div>
         )}
+        <div style={{ fontSize: 10.5, color: 'var(--abu)', marginTop: 1 }}>
+          {p.terjual > 0 && <span>{p.terjual} terjual</span>}
+          {p.terjual > 0 && ' · '}
+          {habis ? <span style={{ color: '#c0392b', fontWeight: 700 }}>stok habis</span> : <span>sisa {p.stok}</span>}
+        </div>
         <TambahKeranjangBtn produkId={p.id} habis={habis} />
       </div>
     </div>

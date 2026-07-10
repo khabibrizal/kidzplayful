@@ -2,7 +2,7 @@
 import { createClient } from '@/lib/supabase/server';
 import type { Produk } from '@/lib/game/tipe';
 
-const COLS = 'id,nama,deskripsi,kategori,harga,diskon_trial_persen,diskon_langganan_persen,berat_gram,stok,gambar_url,status';
+const COLS = 'id,nama,deskripsi,kategori,harga,diskon_trial_persen,diskon_langganan_persen,berat_gram,stok,terjual,gambar_url,status';
 
 export async function getProdukTampil(): Promise<Produk[]> {
   const s = await createClient();
