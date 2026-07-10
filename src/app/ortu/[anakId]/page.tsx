@@ -4,16 +4,25 @@ import Pewi from '@/components/ui/Pewi';
 import { getAnakTerjamin } from '@/lib/data/anak';
 import { getKelasAktifCached } from '@/lib/data/publik';
 import { getVideoByKategori } from '@/lib/data/video';
+import { getStatusSaya, dibatasiTrial } from '@/lib/data/langganan-status';
+import { getPengaturanTrial } from '@/lib/data/pengaturan-trial';
 import BeliBtn from '@/components/BeliBtn';
 import YoutubeEmbed from '@/components/YoutubeEmbed';
+import Terkunci from '@/components/Terkunci';
 import { youtubeId } from '@/lib/youtube';
 import s from './ortu.module.css';
 
 export default async function ModeOrtu({ params }: { params: Promise<{ anakId: string }> }) {
   const { anakId } = await params;
   const anak = await getAnakTerjamin(anakId);
-  const kelasList = await getKelasAktifCached();
-  const videoBaby = await getVideoByKategori('baby');
+  const [kelasList0, videoBaby0, status, cfg] = await Promise.all([
+    getKelasAktifCached(), getVideoByKategori('baby'), getStatusSaya(), getPengaturanTrial(),
+  ]);
+  const batasi = dibatasiTrial(status);
+  const bolehKelas = !batasi || cfg.trial_kelas;
+  const bolehVideo = !batasi || cfg.trial_video;
+  const kelasList = bolehKelas ? kelasList0 : [];
+  const videoBaby = bolehVideo ? videoBaby0 : [];
 
   return (
     <div className={s.wrap}>
@@ -26,7 +35,8 @@ export default async function ModeOrtu({ params }: { params: Promise<{ anakId: s
         </div>
       </div>
 
-      {kelasList.length === 0 && <p className={s.muted}>Belum ada kelas bermain aktif. Admin dapat menambah di Kelola Kelas Bermain.</p>}
+      {!bolehKelas && <Terkunci fitur="Materi Kelas Bermain" ringkas />}
+      {bolehKelas && kelasList.length === 0 && <p className={s.muted}>Belum ada kelas bermain aktif. Admin dapat menambah di Kelola Kelas Bermain.</p>}
 
       {kelasList.map((k) => (
         <div key={k.id} className="kp-card" style={{ marginBottom: 12 }}>
@@ -62,7 +72,8 @@ export default async function ModeOrtu({ params }: { params: Promise<{ anakId: s
       ))}
 
       <div className={s.sec}>Video untuk Baby</div>
-      {videoBaby.length === 0 && <p className={s.muted}>Belum ada video baby (tambah di Admin → Kelola Video).</p>}
+      {!bolehVideo && <Terkunci fitur="Pojok Video" ringkas />}
+      {bolehVideo && videoBaby.length === 0 && <p className={s.muted}>Belum ada video baby (tambah di Admin → Kelola Video).</p>}
       {videoBaby.map((v) => (
         <div key={v.id} className="kp-card" style={{ marginBottom: 12 }}>
           <div className={s.vid}><span style={{ fontSize: 24 }}>▶</span><span style={{ flex: 1 }}><b>{v.judul}</b><br /><span className={s.muted}>{Math.round(v.durasi_detik / 60)} menit</span></span>

@@ -5,6 +5,8 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { umurTahun, modeDefault } from '@/lib/domain/anak';
 import { tanggalWIB } from '@/lib/domain/gamifikasi';
+import { getStatusLangganan, dibatasiTrial } from '@/lib/data/langganan-status';
+import { getPengaturanTrial } from '@/lib/data/pengaturan-trial';
 
 export async function tambahAnak(formData: FormData) {
   const nama = String(formData.get('nama') ?? '').trim();
@@ -17,6 +19,15 @@ export async function tambahAnak(formData: FormData) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
+
+  // batas jumlah anak untuk user belum berlangganan (diatur admin)
+  const [status, cfg] = await Promise.all([getStatusLangganan(supabase, user.id), getPengaturanTrial()]);
+  if (dibatasiTrial(status)) {
+    const { count } = await supabase.from('anak').select('id', { count: 'exact', head: true }).eq('ortu_id', user.id);
+    if ((count ?? 0) >= cfg.trial_maks_anak) {
+      throw new Error(`Batas jumlah anak untuk masa trial (${cfg.trial_maks_anak}) tercapai. Silakan berlangganan untuk menambah lebih banyak.`);
+    }
+  }
 
   const umur = umurTahun(new Date(tgl + 'T00:00:00Z'), new Date());
   const mode = modeDefault(umur);

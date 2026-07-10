@@ -15,19 +15,23 @@ import { catatRiwayatKelas } from '@/lib/data/riwayat-actions';
 import { waktuHabis, kunciHari, sisaDetik } from '@/lib/domain/waktu';
 import Pewi from '@/components/ui/Pewi';
 import Logo from '@/components/Logo';
+import Terkunci from '@/components/Terkunci';
 import type { GamifikasiAnak } from '@/lib/data/gamifikasi';
 import s from './main.module.css';
 
 type Layar = 'menu' | 'kelas' | 'kelas-detail' | 'daftar' | 'pustaka' | 'video' | 'main' | 'istirahat';
+type Izin = { kelas: boolean; game: boolean; video: boolean };
 
 export default function MenuAnak({
   anak, pustaka, pinTersimpan, video, paketAwal, kelasList, favIds, gamiAwal,
+  izin = { kelas: true, game: true, video: true },
 }: {
   anak: { id: string; nama: string; koin: number; batas_menit: number };
   pustaka: TemaLengkap[]; pinTersimpan: string | null; video: Video[]; paketAwal?: string; kelasList: KelasBermain[]; favIds: string[];
-  gamiAwal: GamifikasiAnak;
+  gamiAwal: GamifikasiAnak; izin?: Izin;
 }) {
   const router = useRouter();
+  const [kunciFitur, setKunciFitur] = useState<string | null>(null);
   const [gami, setGami] = useState<GamifikasiAnak>(gamiAwal);
   const [misi, setMisi] = useState<GamifikasiAnak['kustom'][number] | null>(null);
   const mingguIni = pustaka.find((t) => t.tema.is_minggu_ini) ?? pustaka[0] ?? null;
@@ -237,6 +241,21 @@ export default function MenuAnak({
     );
   }
 
+  if (kunciFitur) {
+    return (
+      <div className={s.wrap}>
+        <div className={s.top}>
+          <button className="kp-lock" aria-label="Kembali" onClick={() => setKunciFitur(null)}>←</button>
+          <div className="kp-chip">🔒 {kunciFitur}</div>
+          <div className="kp-coin">🪙 {koin}</div>
+        </div>
+        <div style={{ flex: 1, display: 'grid', placeItems: 'center', padding: 16 }}>
+          <Terkunci fitur={kunciFitur} />
+        </div>
+      </div>
+    );
+  }
+
   // menu utama
   return (
     <div className={s.wrap}>
@@ -293,11 +312,11 @@ export default function MenuAnak({
       </div>
 
       <div className={s.menu}>
-        <button className="kp-tile mint" onClick={() => setLayar('kelas')}>
-          <span className="emo">🎈</span><div>Main Hari Ini<small>Yuk main!</small></div>
+        <button className="kp-tile mint" onClick={() => (izin.kelas ? setLayar('kelas') : setKunciFitur('Materi Kelas Bermain'))}>
+          <span className="emo">{izin.kelas ? '🎈' : '🔒'}</span><div>Main Hari Ini<small>{izin.kelas ? 'Yuk main!' : 'khusus pelanggan'}</small></div>
         </button>
-        <button className="kp-tile lavender" onClick={() => setLayar('pustaka')}><span className="emo">📚</span><div>Game Edukasi<small>{pustaka.length} tema</small></div></button>
-        <button className="kp-tile biru" onClick={() => setLayar('video')}><span className="emo">📺</span><div>Pojok Video</div></button>
+        <button className="kp-tile lavender" onClick={() => (izin.game ? setLayar('pustaka') : setKunciFitur('Game Edukasi'))}><span className="emo">{izin.game ? '📚' : '🔒'}</span><div>Game Edukasi<small>{izin.game ? `${pustaka.length} tema` : 'khusus pelanggan'}</small></div></button>
+        <button className="kp-tile biru" onClick={() => (izin.video ? setLayar('video') : setKunciFitur('Pojok Video'))}><span className="emo">{izin.video ? '📺' : '🔒'}</span><div>Pojok Video{!izin.video && <small>khusus pelanggan</small>}</div></button>
       </div>
       <button className="kp-btn putih" onClick={() => setPinUntuk('keluar')}
         style={{ display: 'block', margin: '4px auto 0' }}>👨‍👩‍👧 Mode Orang Tua</button>

@@ -50,3 +50,19 @@ export async function simpanPengaturanBayar(formData: FormData) {
   revalidatePath('/admin/pengaturan-bayar');
   revalidatePath('/pengaturan');
 }
+
+export async function simpanPengaturanTrial(formData: FormData) {
+  const { supabase } = await adminDb();
+  const patch = {
+    trial_kelas: formData.get('trial_kelas') === '1',
+    trial_game: formData.get('trial_game') === '1',
+    trial_video: formData.get('trial_video') === '1',
+    trial_maks_anak: Math.max(0, Number(String(formData.get('trial_maks_anak') ?? '').replace(/[^0-9]/g, '')) || 0),
+    updated_at: new Date().toISOString(),
+  };
+  const { error } = await supabase.from('pengaturan_trial').update(patch).eq('id', 1);
+  if (error) throw new Error(error.message);
+  revalidatePath('/admin/pengaturan-trial');
+  revalidatePath('/pilih-anak');
+  revalidatePath('/kelas-saya');
+}

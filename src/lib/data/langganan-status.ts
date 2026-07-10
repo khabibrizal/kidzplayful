@@ -12,3 +12,16 @@ export async function getStatusLangganan(s: Supa, userId: string): Promise<strin
     new Date(),
   );
 }
+
+/** Status langganan user yang sedang login (null bila belum login). */
+export async function getStatusSaya(): Promise<string | null> {
+  const s = await createClient();
+  const { data: { user } } = await s.auth.getUser();
+  if (!user) return null;
+  return getStatusLangganan(s, user.id);
+}
+
+/** User dikenai pembatasan trial bila belum "aktif" (trial/tenggang/kadaluarsa). */
+export function dibatasiTrial(status: string | null): boolean {
+  return status !== 'aktif';
+}

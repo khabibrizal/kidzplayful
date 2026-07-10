@@ -8,6 +8,9 @@ import BeliBtn from '@/components/BeliBtn';
 import YoutubeEmbed from '@/components/YoutubeEmbed';
 import { youtubeId } from '@/lib/youtube';
 import { rekamRiwayat } from '@/lib/data/riwayat-kelas';
+import { getStatusLangganan, dibatasiTrial } from '@/lib/data/langganan-status';
+import { getPengaturanTrial } from '@/lib/data/pengaturan-trial';
+import Terkunci from '@/components/Terkunci';
 
 const COLS = 'id,judul,aktivitas,bahan,link_ide,worksheet_url,status';
 
@@ -16,6 +19,12 @@ export default async function KelasDetailPage({ params }: { params: Promise<{ id
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
+
+  // gating trial: materi kelas
+  const [status, izin] = await Promise.all([getStatusLangganan(supabase, user.id), getPengaturanTrial()]);
+  if (dibatasiTrial(status) && !izin.trial_kelas) {
+    return <main style={{ maxWidth: 480, margin: '24px auto', padding: 16 }}><Terkunci fitur="Materi Kelas Bermain" /></main>;
+  }
 
   const { data } = await supabase
     .from('kelas_bermain').select(COLS).eq('id', id).eq('status', 'aktif').maybeSingle();

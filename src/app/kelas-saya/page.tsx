@@ -5,7 +5,10 @@ import { createClient } from '@/lib/supabase/server';
 import { getRiwayatKelas } from '@/lib/data/riwayat-kelas';
 import { getEventDiikuti } from '@/lib/data/event';
 import { formatTanggal } from '@/lib/format';
+import { getStatusLangganan, dibatasiTrial } from '@/lib/data/langganan-status';
+import { getPengaturanTrial } from '@/lib/data/pengaturan-trial';
 import RekamAktivitas from '@/components/RekamAktivitas';
+import Terkunci from '@/components/Terkunci';
 import BottomNav from '@/components/BottomNav';
 
 const STATUS: Record<string, { teks: string; warna: string; bg: string }> = {
@@ -18,7 +21,8 @@ export default async function KelasSayaPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
-  const [diikuti, riwayat] = await Promise.all([getEventDiikuti(), getRiwayatKelas()]);
+  const [diikuti, riwayat, status, izin] = await Promise.all([getEventDiikuti(), getRiwayatKelas(), getStatusLangganan(supabase, user.id), getPengaturanTrial()]);
+  const materiTerkunci = dibatasiTrial(status) && !izin.trial_kelas;
 
   return (
     <main className="kp-page" style={{ padding: 16, paddingBottom: 90, marginTop: 24 }}>
@@ -45,7 +49,9 @@ export default async function KelasSayaPage() {
       })}</div>}
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '20px 0 8px' }}>MATERI YANG PERNAH DIBUKA</div>
-      {riwayat.length === 0 ? (
+      {materiTerkunci ? (
+        <Terkunci fitur="Materi Kelas Bermain" ringkas />
+      ) : riwayat.length === 0 ? (
         <p style={{ color: 'var(--abu)', fontSize: 13 }}>Belum ada. Buka materi kelas bermain dari Mode Anak, nanti muncul di sini.</p>
       ) : <div className="kp-grid-kartu">{riwayat.map((k) => (
         <a key={k.id} href={`/kelas/${k.id}`} className="kp-card"
