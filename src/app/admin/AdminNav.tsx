@@ -14,6 +14,7 @@ const MENU: { href: string; label: string }[] = [
   { href: '/admin/video', label: '📺 Video' },
   { href: '/admin/langganan', label: '💳 Langganan' },
   { href: '/admin/keuangan', label: '💼 Keuangan' },
+  { href: '/admin/sponsor', label: '🤝 Sponsor' },
   { href: '/admin/anak', label: '🧒 Anak' },
   { href: '/admin/tantangan', label: '🏆 Tantangan' },
   { href: '/admin/pengaturan-bayar', label: '💰 Pembayaran' },

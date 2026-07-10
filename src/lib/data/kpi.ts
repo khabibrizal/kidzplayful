@@ -240,4 +240,4 @@ export async function getInsight(): Promise<Insight> {
 }
 
 function idr(n: number) { return 'Rp' + (n || 0).toLocaleString('id-ID'); }
-function labelKat(k: string) { return ({ store: 'Store', event: 'Event', membership: 'Membership' } as Record<string, string>)[k] ?? k; }
+function labelKat(k: string) { return ({ store: 'Store', event: 'Event', membership: 'Membership', sponsorship: 'Sponsorship' } as Record<string, string>)[k] ?? k; }

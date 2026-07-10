@@ -7,10 +7,10 @@ export interface Trx { id?: string; arah: 'masuk' | 'keluar'; kategori: string; 
 
 export { METODE_BAYAR } from '@/lib/metode';
 
-export const KATEGORI_MASUK = ['event', 'membership', 'store'];
+export const KATEGORI_MASUK = ['event', 'membership', 'store', 'sponsorship'];
 export const KATEGORI_KELUAR = ['marketing', 'event', 'server', 'domain', 'software', 'office', 'transport', 'gaji', 'aset', 'pajak', 'lainnya'];
 export const LABEL_KATEGORI: Record<string, string> = {
-  event: 'Event', membership: 'Membership', store: 'Store',
+  event: 'Event', membership: 'Membership', store: 'Store', sponsorship: 'Sponsorship',
   marketing: 'Marketing', server: 'Server', domain: 'Domain', software: 'Software',
   office: 'Office', transport: 'Transport', gaji: 'Gaji', aset: 'Aset', pajak: 'Pajak', lainnya: 'Lainnya',
 };

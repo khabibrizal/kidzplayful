@@ -4,8 +4,8 @@ import { formatRupiah } from '@/lib/format';
 import KeuanganNav from '../KeuanganNav';
 import s from '../../admin.module.css';
 
-const LABEL_KAT: Record<string, string> = { store: 'Store', event: 'Event', membership: 'Membership' };
-const WARNA_KAT: Record<string, string> = { store: '#7c5cff', event: '#e67e22', membership: '#1c9c6b' };
+const LABEL_KAT: Record<string, string> = { store: 'Store', event: 'Event', membership: 'Membership', sponsorship: 'Sponsorship' };
+const WARNA_KAT: Record<string, string> = { store: '#7c5cff', event: '#e67e22', membership: '#1c9c6b', sponsorship: '#d1660a' };
 
 export default async function InsightPage() {
   const d = await getInsight();
