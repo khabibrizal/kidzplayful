@@ -2,7 +2,7 @@
 
 > Panduan teknis untuk developer baru. Menjelaskan **per halaman/menu**: file apa yang menanganinya, function/reader/server-action apa yang dipakai, dan **endpoint backend** (tabel Supabase / RPC / storage / auth) yang disentuh. Termasuk **REST API internal** (untuk aplikasi mobile) dan infrastruktur.
 
-Terakhir diperbarui: 2026-07-09.
+Terakhir diperbarui: 2026-07-10.
 
 ---
 
@@ -41,7 +41,7 @@ src/
     supabase/          # server.ts (SSR), client.ts (browser)
     api/               # helpers.ts (amplop JSON + auth Bearer untuk REST API)
     game/              # tipe & util mesin game
-supabase/migrations/   # skema DB (0001..0056), dijalankan manual di SQL Editor
+supabase/migrations/   # skema DB (0001..0060), dijalankan manual di SQL Editor
 docs/                  # dokumentasi (termasuk file ini)
 tools/md2pdf.py        # generator PDF dokumentasi
 ```
@@ -65,7 +65,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 - Halaman tidak menaruh selector mentah bila bisa lewat reader; beberapa halaman melakukan query inline sederhana.
 
 ### Deploy & migrasi
-- Migrasi dijalankan **manual** di Supabase SQL Editor (urut `0001..0056`), lalu diverifikasi via REST (`?select=col&limit=1` → 200).
+- Migrasi dijalankan **manual** di Supabase SQL Editor (urut `0001..0060`), lalu diverifikasi via REST (`?select=col&limit=1` → 200).
 - Commit: `git -c commit.gpgsign=false commit` + baris `Co-Authored-By`. Push ke `master` → Vercel auto-deploy.
 - Banyak reader dibungkus `try/catch` agar fitur aman dideploy sebelum migrasinya dijalankan (mengembalikan nilai default).
 
@@ -83,8 +83,8 @@ Pembungkus: `admin/layout.tsx` (guard `getAdminTerjamin`) + `AdminNav.tsx` (navi
 
 ### 🏠 Dashboard (Tema) — `/admin`
 - **File**: `admin/page.tsx` (server, form inline).
-- **Server action**: `buatTema`, `setMingguIni`, `hapusTema` (`admin-konten.ts`).
-- **Endpoint**: `tema` (select/insert/update/delete).
+- **Server action**: `buatTema`, `setMingguIni`, `hapusTema`, **`setBolehTrialTema`** (toggle Trial ✓/✗ per tema) (`admin-konten.ts`).
+- **Endpoint**: `tema` (select/insert/update/delete; `boleh_trial`).
 
 ### 📈 Analitik — `/admin/analitik`
 - **File**: `admin/analitik/page.tsx` (query inline).
@@ -118,8 +118,8 @@ Pembungkus: `admin/layout.tsx` (guard `getAdminTerjamin`) + `AdminNav.tsx` (navi
 ### 🎈 Kelas Bermain — `/admin/kelas-bermain`
 - **File**: `admin/kelas-bermain/page.tsx` → `KelasAdmin.tsx`.
 - **Fungsi data**: `getKelasSemua()` (`kelas-bermain.ts`), `getProdukSemua()` (`admin-store.ts`).
-- **Server action**: `buatKelas`, `updateKelas`, `toggleStatusKelas`, `hapusKelas` (`kelas-bermain-actions.ts`).
-- **Endpoint**: `kelas_bermain`, `produk`; `storage.from('aset')` (folder `worksheet/`).
+- **Server action**: `buatKelas`, `updateKelas`, `toggleStatusKelas`, `hapusKelas`, **`setBolehTrialKelas`** (toggle Trial ✓/✗) (`kelas-bermain-actions.ts`).
+- **Endpoint**: `kelas_bermain` (+`boleh_trial`), `produk`; `storage.from('aset')` (folder `worksheet/`).
 
 ### 📝 Artikel — `/admin/artikel` & `/admin/artikel/[id]`
 - **File**: `admin/artikel/page.tsx` (daftar) + `admin/artikel/[id]/page.tsx` → `ArtikelForm.tsx`.
@@ -128,9 +128,9 @@ Pembungkus: `admin/layout.tsx` (guard `getAdminTerjamin`) + `AdminNav.tsx` (navi
 - **Endpoint**: `artikel`; `storage.from('aset')` (folder `artikel/`). Util `@/lib/slug`.
 
 ### 📺 Video — `/admin/video`
-- **File**: `admin/video/page.tsx` (query + hapus inline) → `VideoForm.tsx`.
-- **Server action**: `buatVideo`, `hapusVideo` (`admin-konten.ts`); parse YouTube ID via `ekstrakYoutubeId`.
-- **Endpoint**: `video`.
+- **File**: `admin/video/page.tsx` (query + hapus/toggle inline) → `VideoForm.tsx`.
+- **Server action**: `buatVideo`, `hapusVideo`, **`setBolehTrialVideo`** (toggle Trial ✓/✗) (`admin-konten.ts`); parse YouTube ID via `ekstrakYoutubeId`.
+- **Endpoint**: `video` (+`boleh_trial`).
 
 ### 💳 Langganan — `/admin/langganan`
 - **File**: `admin/langganan/page.tsx` (query inline + `Pager.tsx`) → `AktifkanForm.tsx`. Util `@/lib/domain/trial` (`statusLangganan`), `@/lib/format` (`linkWa`), `@/lib/metode` (`METODE_BAYAR`).
@@ -155,6 +155,16 @@ Pembungkus: `admin/layout.tsx` (guard `getAdminTerjamin`) + `AdminNav.tsx` (navi
 - **Fungsi data**: `getPengaturanBayar()` (`pengaturan-bayar.ts`, fallback `DEFAULT_BAYAR`).
 - **Server action**: `simpanPengaturanBayar` (`admin-bisnis.ts`).
 - **Endpoint**: `pengaturan_pembayaran` (baris `id=1`).
+
+### ⏳ Trial — `/admin/pengaturan-trial`
+- **File**: `admin/pengaturan-trial/page.tsx` (batas anak + daftar kelas/tema/video dengan toggle Trial ✓/✗ terpusat).
+- **Fungsi data**: `getPengaturanTrial()` (`pengaturan-trial.ts`, fallback `DEFAULT_TRIAL`), `getKelasSemua()`, query `tema`/`video`.
+- **Server action**: `simpanPengaturanTrial` (`admin-bisnis.ts`, batas anak); `setBolehTrialKelas` (`kelas-bermain-actions.ts`), `setBolehTrialTema`/`setBolehTrialVideo` (`admin-konten.ts`).
+- **Endpoint**: `pengaturan_trial` (id=1), kolom `boleh_trial` di `kelas_bermain`/`tema`/`video`.
+- Rincian gating: lihat **§7 Pembatasan Akses Trial**.
+
+### 🤝 Sponsor — `/admin/sponsor`
+Menu top-level tersendiri (sumber pendapatan). Rincian lengkap: lihat **§6 Modul Sponsor**.
 
 ### 📊 Laporan Member — `/admin/laporan`
 - **File**: `admin/laporan/page.tsx` (query inline). Domain `ringkasanLangganan` (`domain/laporan`).
@@ -218,7 +228,8 @@ Sub-navigasi: `KeuanganNav.tsx` (client). Semua reader read-only lewat `createCl
 ### 📒 Transaksi (Ledger) — `/admin/keuangan/transaksi` & `/[id]`
 - **File**: `keuangan/transaksi/page.tsx` (filter GET tanggal/arah/kategori) + `transaksi/[id]/page.tsx` (detail).
 - **Fungsi data**: `getLedger({...})`, `getKategoriPengeluaran()`; detail: `getTransaksiDetail(id)` + `labelMetode` (`@/lib/metode`).
-- **Endpoint**: `transaksi_keuangan`, `kategori_pengeluaran`; detail bercabang ke `pesanan`(+`item_pesanan`), `pendaftaran_event`(+`event`), `pembayaran_langganan`, `profiles`.
+- **Semua baris bisa diklik** ke halaman detail (gate by `id`). `getTransaksiDetail` bercabang per `ref_tipe`: `pesanan`(+`item_pesanan`), `pendaftaran`(+`event`), `langganan`(→`pembayaran_langganan`), **`aset`**(→`aset`), **`sponsorship`**(→`sponsorship`+`sponsor`); `manual` (pengeluaran) tampil ringkasan + tautan ke Pengeluaran.
+- **Endpoint**: `transaksi_keuangan`, `kategori_pengeluaran`, `profiles`, + tabel sumber sesuai ref.
 
 ### 💸 Pengeluaran — `/admin/keuangan/expense`
 - **File**: `keuangan/expense/page.tsx` + client `InputRupiah`, `UploadNota`, `BudgetKategoriSelect`.
@@ -263,8 +274,11 @@ Sub-navigasi: `KeuanganNav.tsx` (client). Semua reader read-only lewat `createCl
 | `anggaran.ts` | `getAnggaranBulan`, `getBudgetMap`, `getForecast` | `anggaran`, `transaksi_keuangan` |
 | `anggaran-actions.ts` | `simpanAnggaran`, `hapusAnggaran` (guard admin) | `anggaran` |
 | `ledger.ts` | `catatLedger(s,row)`, `hapusLedgerRef(s,tipe,id)` (try/catch) | `transaksi_keuangan` |
-| `langganan-status.ts` | `getStatusLangganan(s,userId)` | `langganan` |
+| `langganan-status.ts` | `getStatusLangganan(s,userId)`, `getStatusSaya()`, `dibatasiTrial(status)` | `langganan` |
 | `investor.ts` | `getInvestorTerjamin()` (guard) | `profiles` |
+| `sponsor.ts` | `getSponsorSemua`, `getDealSemua`, `getDeal`, `getRingkasanSponsor` + konstanta `STATUS_SPONSOR`/`LABEL_STATUS`/`JENIS_SPONSOR` | `sponsor`, `sponsorship` |
+| `sponsor-actions.ts` | `simpanSponsor/hapusSponsor`, `simpanDeal/hapusDeal`, `setStatusDeal`, `generateInvoice`, `catatPembayaran`, `simpanDokumen`, `batalkanDeal` (guard admin) | `sponsor`, `sponsorship`, `transaksi_keuangan` (ledger utk jenis uang) |
+| `pengaturan-trial.ts` | `getPengaturanTrial()` (+ `DEFAULT_TRIAL`) | `pengaturan_trial` |
 
 ### Hook pencatat ledger (basis kas)
 - `admin-store-actions.ts` — verifikasi pesanan → `catatLedger` (masuk/`store`/subtotal, ref `pesanan`); `batal` → `hapusLedgerRef`. (Ongkir **bukan** pendapatan.)
@@ -273,7 +287,50 @@ Sub-navigasi: `KeuanganNav.tsx` (client). Semua reader read-only lewat `createCl
 
 ---
 
-## 6. Halaman Publik & Ortu — per halaman
+## 6. Modul Sponsor — `/admin/sponsor`
+
+Sumber pendapatan baru. Sponsor bisa **UANG** (masuk ledger kas) atau **BARANG/in-kind** (dicatat nilai, TIDAK masuk kas). Guard admin via `admin/layout.tsx`; investor read-only via RLS.
+
+### 🤝 Daftar & CRUD — `/admin/sponsor`
+- **File**: `admin/sponsor/page.tsx` + `InputRupiah`, `EksporCsvBtn`.
+- **Fungsi data**: `getSponsorSemua`, `getDealSemua`, `getRingkasanSponsor` (`sponsor.ts`) — ringkasan tunai masuk / nilai in-kind / outstanding.
+- **Server action**: `simpanSponsor`, `hapusSponsor`, `simpanDeal` (`sponsor-actions.ts`).
+- **Endpoint**: `sponsor`, `sponsorship`.
+
+### 🤝 Detail deal — `/admin/sponsor/[id]`
+- **File**: `admin/sponsor/[id]/page.tsx` + `InputRupiah`, `UploadDok` (upload PDF/gambar generik → `storage.from('aset')` folder `dok-sponsor/`).
+- **Fungsi data**: `getDeal(id)` (join `sponsor`).
+- **Server action**: `setStatusDeal` (pipeline lead→…→selesai), `generateInvoice` (nomor sekuensial `INV-SP-YYYYMM-0001`; **hanya saat status "kesepakatan"** & jenis uang), `catatPembayaran` (→ `catatLedger` kategori `sponsorship` bila jenis uang), `simpanDokumen` (quotation/agreement/bukti), `hapusDeal`.
+- **Endpoint**: `sponsorship`, `sponsor`, `transaksi_keuangan` (ledger jenis uang; batal → `hapusLedgerRef`).
+
+### 🧾 Invoice cetak — `/admin/sponsor/[id]/invoice`
+- **File**: `admin/sponsor/[id]/invoice/page.tsx` + `InvoiceSponsorView.tsx` (kop **logo KidzPlayful** via `Logo` + `PROFIL`) + `UnduhPdfBtn` (`@media print` A4).
+- **Fungsi data**: `getDeal(id)`.
+
+> Integrasi Keuangan: kategori pemasukan **`sponsorship`** ditambahkan di `keuangan.ts` (`KATEGORI_MASUK`/`LABEL_KATEGORI`), `kpi.ts` (`labelKat`), `insight/page.tsx` (`LABEL_KAT`/`WARNA_KAT`) → otomatis muncul di Dashboard/Transaksi/Insight/Pajak. In-kind tidak masuk ledger (hanya ringkasan sponsor).
+
+---
+
+## 7. Pembatasan Akses Trial (diatur admin)
+
+Membatasi user **belum berlangganan** (`status !== 'aktif'` → trial & tenggang; helper `dibatasiTrial()`). Item tetap **tampil tapi terkunci 🔒** (bukan disembunyikan) dengan ajakan upgrade.
+
+- **Setting**: tabel `pengaturan_trial` (id=1) — `trial_maks_anak` (batas anak) + kolom **`boleh_trial`** per item di `kelas_bermain`/`tema`/`video` (default `true` = boleh).
+- **Panel admin terpusat**: `/admin/pengaturan-trial` — form batas anak + daftar semua Materi Kelas / Tema (game) / Video dengan tombol **Trial ✓/✗**. Toggle sama juga ada di halaman kontennya (Kelas Bermain admin, Dashboard/Tema, Video admin).
+- **Actions**: `simpanPengaturanTrial` (`admin-bisnis.ts`); `setBolehTrialKelas` (`kelas-bermain-actions.ts`, + `updateTag('katalog')`), `setBolehTrialTema`/`setBolehTrialVideo` (`admin-konten.ts`).
+- **Komponen kunci**: `components/Terkunci.tsx` (🔒 + tombol Upgrade → `/pengaturan`).
+- **Enforcement** (untuk user non-aktif):
+  - `main/[anakId]` + `MenuAnak.tsx`: kelas/tema/video terkunci tampil 🔒 → klik = layar Terkunci; deep-link `?paket=` ke game terkunci tak auto-start.
+  - `VideoPojok.tsx`: video terkunci 🔒 → `onTerkunci`.
+  - `ortu/[anakId]`: kartu kelas/video terkunci → placeholder 🔒 + tombol Upgrade.
+  - `pilih-game` + `PilihGame.tsx`: game terkunci 🔒 → `/pengaturan`.
+  - `kelas/[id]`: item terkunci → halaman `<Terkunci>`.
+  - **Batas jumlah anak**: ditegakkan di `pilih-anak/actions.ts` (`tambahAnak`) **dan** `POST /api/anak` (mobile) — hitung `count anak` vs `trial_maks_anak`.
+- **User aktif (berlangganan)**: bebas, tanpa gembok.
+
+---
+
+## 8. Halaman Publik & Ortu — per halaman
 
 ### `/` Landing
 - **File**: `app/page.tsx` (statis) + `Logo.tsx`. Konten hardcoded + JSON-LD SEO. **Tanpa backend.**
@@ -286,10 +343,12 @@ Sub-navigasi: `KeuanganNav.tsx` (client). Semua reader read-only lewat `createCl
 - **Endpoint**: `auth.getUser()` (status login header), `artikel`.
 
 ### 🛒 Store — `/store` & `/store/[id]`
-- **File**: `StoreView.tsx`/`ProdukDetail.tsx` + `RekamAktivitas`, `BottomNav`, `TambahKeranjangBtn`/`ProdukCard`.
-- **Fungsi data**: `getProdukTampilCached()` (`publik.ts`) / `getProduk(id)` (`store.ts`); `getStatusLangganan()` (harga diskon trial/langganan).
+- **File**: `StoreView.tsx` (filter **kategori** + **pencarian nama** live) / `ProdukDetail.tsx` + `RekamAktivitas`, `BottomNav`, `TambahKeranjangBtn`/`ProdukCard`.
+- **Fungsi data**: `getProdukTampilCached()` (`publik.ts`, tag `katalog`) / `getProduk(id)` (`store.ts`); `getStatusLangganan()` (harga diskon trial/langganan).
+- **Info produk**: kartu & detail tampil **"N terjual · sisa stok"** (kolom `produk.terjual` & `stok`).
 - **Server action**: `tambahKeranjang` (`keranjang-actions.ts`), `catatAktivitas`.
 - **Endpoint**: `produk`, `langganan`, `keranjang_item`, `aktivitas`.
+- Catatan: stok berkurang & `terjual` bertambah **idempoten** saat admin verifikasi pesanan (`potongStokPesanan`, flag `pesanan.stok_terpotong`) + `updateTag('katalog')`; `checkout` mencegah pesanan dobel (deteksi pesanan identik < 10 mnt).
 
 ### 🗓️ Event — `/event` & `/event/[id]/daftar`
 - **Fungsi data**: `getEventTampilCached()` (`publik.ts`), `getStatusPendaftaranSaya()`/`getPesertaPerEvent()`/`getEvent(id)` (`event.ts`), `getEventBerCatatan()` (`catatan.ts`); daftar: `getStatusLangganan()`, `getPengaturanBayar()` + `waUntuk(cfg,'event')`.
@@ -305,6 +364,7 @@ Sub-navigasi: `KeuanganNav.tsx` (client). Semua reader read-only lewat `createCl
 - **Fungsi data**: query inline `kelas_bermain` + `rekamRiwayat` (`riwayat-kelas.ts`); `getEventDiikuti()` (`event.ts`), `getRiwayatKelas()` (`riwayat-kelas.ts`); `getFavoritKelas()` (`favorit.ts`).
 - **Server action**: `toggleFavorit` (`favorit-actions.ts`), `catatAktivitas`.
 - **Endpoint**: `kelas_bermain`, `riwayat_kelas`, `pendaftaran_event`, `catatan_perkembangan`, `favorit`, `aktivitas`.
+- **Gating trial**: `/kelas/[id]` untuk user non-aktif → `<Terkunci>` bila `kelas.boleh_trial === false` (lihat §7).
 
 ### 🛒 Keranjang & Pesanan — `/keranjang`, `/pesanan`, `/pesanan/[id]`
 - **Fungsi data**: `getKeranjang()` (`keranjang.ts`), `getPesananSaya()`/`getPesanan(id)` (`pesanan.ts`), `getStatusLangganan()`, `getPengaturanBayar()` + `waUntuk(cfg,'store')`.
@@ -322,9 +382,10 @@ Sub-navigasi: `KeuanganNav.tsx` (client). Semua reader read-only lewat `createCl
 
 ### 🎮 Game — `/pilih-game/[anakId]`, `/main/[anakId]`
 - **Guard**: `getAnakTerjamin(anakId)` (`anak.ts`) — login + langganan + kepemilikan.
-- **Fungsi data**: `getPustaka()` (`pustaka.ts`), `getVideoByKategori()` (`video.ts`), `getKelasAktifCached()` (`publik.ts`), `getFavoritIds()` (`favorit.ts`), `getGamifikasiAnak()` (`gamifikasi.ts`).
+- **Fungsi data**: `getPustaka()` (`pustaka.ts`), `getVideoByKategori()` (`video.ts`), `getKelasAktifCached()` (`publik.ts`), `getFavoritIds()` (`favorit.ts`), `getGamifikasiAnak()` (`gamifikasi.ts`), `getStatusSaya()`/`getStatusLangganan()` (`langganan-status.ts`).
 - **Server action**: `catatHasil` (`skor.ts`) via `GameRunner`, `catatRiwayatKelas` (`riwayat-actions.ts`), `catatAktivitas`.
 - **Endpoint**: `anak`, `langganan`, `tema`, `paket_aset`, `video`, `kelas_bermain`, `favorit`, `hasil_main`, `lencana_anak`, `tantangan_kustom`(+`_anak`), `tantangan_anak`, `profiles` (pin), `riwayat_kelas`, `aktivitas`.
+- **Gating trial**: `MenuAnak`/`PilihGame`/`VideoPojok` menerima flag `batasi`; item `boleh_trial === false` tampil **🔒** dan diklik → `<Terkunci>`/`/pengaturan`. `MenuAnak.tsx` juga cegah deep-link (`?paket=`) auto-start game terkunci. `/ortu/[anakId]` sama (kartu 🔒). Lihat §7.
 
 ### 🍎 Guru — `/guru`, `/guru/[eventId]`, `/catatan/[eventId]`
 - **Guard**: `getGuruTerjamin()` (`guru.ts`).
@@ -346,7 +407,7 @@ Sub-navigasi: `KeuanganNav.tsx` (client). Semua reader read-only lewat `createCl
 
 ---
 
-## 7. REST API internal (untuk aplikasi mobile)
+## 9. REST API internal (untuk aplikasi mobile)
 
 Semua Route Handler (`app/api/**/route.ts`) mengembalikan amplop JSON seragam via helper `ok(data,status)` → `{ok:true,data}` dan `fail(msg,status)` → `{ok:false,error}`. Endpoint bisnis (selain `/api/auth/*`) memakai **Bearer token** via `getAuth(req)`: token dari header `Authorization: Bearer <access_token>`, divalidasi `auth.getUser()`, semua query ter-scope token → **RLS berlaku** (bukan service role). Path dinamis: `params: Promise<{id}>` (di-`await`).
 
@@ -362,7 +423,7 @@ Semua Route Handler (`app/api/**/route.ts`) mengembalikan amplop JSON seragam vi
 |---|---|---|---|
 | `GET /api/me` | `me/route.ts` | profil + status langganan (`statusLangganan()`) | `profiles`, `langganan` |
 | `GET /api/anak` | `anak/route.ts` | daftar anak milik user | `anak` |
-| `POST /api/anak` | `anak/route.ts` | tambah anak (validasi tgl lahir < hari ini, `mode_default` dari umur) | `anak` (insert) |
+| `POST /api/anak` | `anak/route.ts` | tambah anak (validasi tgl lahir < hari ini, `mode_default` dari umur; **user non-aktif dibatasi `pengaturan_trial.trial_maks_anak`** → 403 bila lewat) | `anak`, `langganan`, `pengaturan_trial` |
 | `GET /api/anak/[id]/catatan` | `anak/[id]/catatan/route.ts` | catatan perkembangan per anak (join judul event) | `catatan_perkembangan` (+`event`) |
 | `GET /api/events` | `events/route.ts` | event `tampil`, urut tanggal | `event` |
 | `GET /api/events/[id]` | `events/[id]/route.ts` | detail event (404 bila kosong) | `event` |
@@ -379,7 +440,7 @@ Semua Route Handler (`app/api/**/route.ts`) mengembalikan amplop JSON seragam vi
 
 ---
 
-## 8. Infrastruktur & integrasi
+## 10. Infrastruktur & integrasi
 
 ### Supabase client (tiga cara, semua anon key)
 - `lib/supabase/server.ts` — `createClient()` async, `@supabase/ssr` `createServerClient` + cookie SSR (`cookies()`; `setAll` di-try/catch). Untuk Server Component/halaman & reader/action.
@@ -408,7 +469,7 @@ Semua Route Handler (`app/api/**/route.ts`) mengembalikan amplop JSON seragam vi
 
 ---
 
-## 9. Kamus tabel (data dictionary)
+## 11. Kamus tabel (data dictionary)
 
 | Tabel | Kegunaan | Migrasi |
 |---|---|---|
@@ -416,15 +477,15 @@ Semua Route Handler (`app/api/**/route.ts`) mengembalikan amplop JSON seragam vi
 | `anak` | data anak (nama, tgl lahir, jenis kelamin, mode, koin/streak) | 0001, 0024, 0042 |
 | `langganan` | status langganan/trial per user (trial_mulai, aktif_sampai, nominal) | 0001 |
 | `pembayaran_langganan` | riwayat pembayaran membership | 0052 |
-| `tema`, `paket_aset` | katalog game (tema + paket/butir aset) | 0001–0003, 0025–0037 |
-| `video` | video edukasi (kategori baby/toddler) | 0003, 0005 |
-| `kelas_bermain` | materi kelas bermain (+ worksheet, bahan) | 0009, 0013–0016 |
+| `tema`, `paket_aset` | katalog game (tema + paket/butir aset); `tema.boleh_trial` | 0001–0003, 0025–0037, 0060 |
+| `video` | video edukasi (kategori baby/toddler); `boleh_trial` | 0003, 0005, 0060 |
+| `kelas_bermain` | materi kelas bermain (+ worksheet, bahan); `boleh_trial` | 0009, 0013–0016, 0060 |
 | `favorit` | kelas favorit user | 0015 |
 | `postingan`, `komentar`, `suka`, `laporan` | komunitas + moderasi | 0010, 0011, 0028 |
 | `event`, `pendaftaran_event` | event + pendaftaran (status, bukti, kehadiran, reschedule) | 0017, 0027 |
 | `catatan_perkembangan` | catatan guru per anak per event | 0020 |
 | `sertifikat` | e-sertifikat per anak/event | 0026, 0034 |
-| `produk`, `keranjang_item`, `pesanan`, `item_pesanan` | store (diskon persen, berat) | 0019, 0049, 0050 |
+| `produk`, `keranjang_item`, `pesanan`, `item_pesanan` | store (diskon persen, berat, `produk.terjual`, `pesanan.stok_terpotong`) | 0019, 0049, 0050, 0057 |
 | `pengaturan_pembayaran` | konfig harga/rekening/QRIS/WA (per jenis transaksi) | 0038, 0051 |
 | `artikel` | blog SEO | 0041 |
 | `hasil_main` | hasil sesi game (skor, durasi, mesin, tema) | 0001, 0033, 0039 |
@@ -435,11 +496,13 @@ Semua Route Handler (`app/api/**/route.ts`) mengembalikan amplop JSON seragam vi
 | `aset` | aset perusahaan (keuangan) | 0052 |
 | `kategori_aset`, `kategori_pengeluaran` | master kategori | 0053, 0055 |
 | `anggaran` | budget per bulan & kategori | 0054 |
+| `sponsor`, `sponsorship` | modul sponsor (perusahaan + deal/invoice/pembayaran inline) | 0058 |
+| `pengaturan_trial` | izin akses trial (batas anak) — akses fitur per item via `boleh_trial` | 0059 |
 | `riwayat_kelas` | riwayat materi kelas yang dibuka | 0018 |
 
 ---
 
-## 10. Alur penting
+## 12. Alur penting
 
 - **Pencatatan pendapatan (basis kas)**: pemasukan tercatat ke `transaksi_keuangan` saat admin **memverifikasi** — pesanan store (subtotal), pendaftaran event "diterima" (total), aktivasi langganan (nominal). Pembatalan meng-offset via `hapusLedgerRef`. Semua via `ledger.ts` (try/catch aman).
 - **Checkout store**: keranjang → `POST /api/pesanan` atau server action `checkout` → `pesanan` (menunggu_ongkir) + `item_pesanan`, keranjang dikosongkan. Admin isi ongkir → user upload bukti → admin verifikasi (kurangi stok + catat ledger).
@@ -448,9 +511,9 @@ Semua Route Handler (`app/api/**/route.ts`) mengembalikan amplop JSON seragam vi
 
 ---
 
-## 11. Diagram alur
+## 13. Diagram alur
 
-### 11.1 Arsitektur tinggi
+### 13.1 Arsitektur tinggi
 ```
 ┌─────────────┐   ┌──────────────────────────────────────┐   ┌──────────────┐
 │  Pengguna   │   │            Next.js 16 (Vercel)        │   │   Supabase   │
@@ -466,7 +529,7 @@ Semua Route Handler (`app/api/**/route.ts`) mengembalikan amplop JSON seragam vi
    + fungsi SQL is_admin() dipakai di kebijakan RLS. Tanpa service-role key.
 ```
 
-### 11.2 Auth & routing masuk
+### 13.2 Auth & routing masuk
 ```
 Login (/login) ─signInWithPassword─▶ cek profiles.is_guru
       │                                      │
@@ -481,7 +544,7 @@ Guard halaman:
   /main,/ortu,/pilih-game → getAnakTerjamin() (login+langganan+milik anak)
 ```
 
-### 11.3 Checkout store → pendapatan (basis kas)
+### 13.3 Checkout store → pendapatan (basis kas)
 ```
 User: tambah ke keranjang ──▶ keranjang_item
       │
@@ -502,7 +565,7 @@ User: tambah ke keranjang ──▶ keranjang_item
                                                   transaksi_keuangan
 ```
 
-### 11.4 Pendaftaran event → pendapatan + sertifikat
+### 13.4 Pendaftaran event → pendapatan + sertifikat
 ```
 User /event/[id]/daftar: pilih anak + upload bukti ─▶ daftarEvent
    pendaftaran_event (status: menunggu, total = harga × jumlah anak)
@@ -518,7 +581,7 @@ User /event/[id]/daftar: pilih anak + upload bukti ─▶ daftarEvent
    (ditolak → hapusLedgerRef)
 ```
 
-### 11.5 Langganan → pembayaran, ledger, & pengingat WA
+### 13.5 Langganan → pembayaran, ledger, & pengingat WA
 ```
 User transfer/QRIS ──▶ Admin /admin/langganan : Aktifkan (AktifkanForm)
    aktifkanLangganan(ortuId, nominal, via)
@@ -531,7 +594,7 @@ User transfer/QRIS ──▶ Admin /admin/langganan : Aktifkan (AktifkanForm)
       └─▶ tombol WA (linkWa ke no_wa member, pesan otomatis)
 ```
 
-### 11.6 Ledger keuangan = single source of truth
+### 13.6 Ledger keuangan = single source of truth
 ```
         SUMBER PEMASUKAN                         PENGELUARAN/ASET (manual)
   verifikasi pesanan (store) ─┐        ┌── catatPengeluaran (expense)
@@ -554,7 +617,7 @@ User transfer/QRIS ──▶ Admin /admin/langganan : Aktifkan (AktifkanForm)
    Expense & Aset; getForecast → proyeksi kas 6 bulan.
 ```
 
-### 11.7 Gamifikasi (mode anak main game)
+### 13.7 Gamifikasi (mode anak main game)
 ```
 /main/[anakId] ─▶ GameRunner ─selesai─▶ catatHasil (skor.ts)
    ├─▶ hasil_main (insert sesi: skor, durasi, mesin, tema)
@@ -565,7 +628,7 @@ User transfer/QRIS ──▶ Admin /admin/langganan : Aktifkan (AktifkanForm)
           ▼  ditampilkan di /anak/[anakId]/laporan (getGamifikasiAnak)
 ```
 
-### 11.8 Peran role & proteksi eskalasi
+### 13.8 Peran role & proteksi eskalasi
 ```
 Super User ──atur──▶ [Super User] [Admin] [Guru] [Investor]
 Admin      ──atur──▶                       [Guru] [Investor]
