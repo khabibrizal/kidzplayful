@@ -22,7 +22,7 @@ li { margin:3px 0; }
 <blockquote>
 <p>Panduan teknis untuk developer baru. Menjelaskan <strong>per halaman/menu</strong>: file apa yang menanganinya, function/reader/server-action apa yang dipakai, dan <strong>endpoint backend</strong> (tabel Supabase / RPC / storage / auth) yang disentuh. Termasuk <strong>REST API internal</strong> (untuk aplikasi mobile) dan infrastruktur.</p>
 </blockquote>
-<p>Terakhir diperbarui: 2026-07-10.</p>
+<p>Terakhir diperbarui: 2026-07-11.</p>
 <hr />
 <h2 id="1-ringkasan-stack">1. Ringkasan &amp; Stack</h2>
 <ul>
@@ -55,7 +55,7 @@ li { margin:3px 0; }
     supabase/          # server.ts (SSR), client.ts (browser)
     api/               # helpers.ts (amplop JSON + auth Bearer untuk REST API)
     game/              # tipe &amp; util mesin game
-supabase/migrations/   # skema DB (0001..0060), dijalankan manual di SQL Editor
+supabase/migrations/   # skema DB (0001..0062), dijalankan manual di SQL Editor
 docs/                  # dokumentasi (termasuk file ini)
 tools/md2pdf.py        # generator PDF dokumentasi
 </code></pre>
@@ -80,7 +80,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </ul>
 <h3 id="deploy-migrasi">Deploy &amp; migrasi</h3>
 <ul>
-<li>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor (urut <code>0001..0060</code>), lalu diverifikasi via REST (<code>?select=col&amp;limit=1</code> → 200).</li>
+<li>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor (urut <code>0001..0062</code>), lalu diverifikasi via REST (<code>?select=col&amp;limit=1</code> → 200).</li>
 <li>Commit: <code>git -c commit.gpgsign=false commit</code> + baris <code>Co-Authored-By</code>. Push ke <code>master</code> → Vercel auto-deploy.</li>
 <li>Banyak reader dibungkus <code>try/catch</code> agar fitur aman dideploy sebelum migrasinya dijalankan (mengembalikan nilai default).</li>
 </ul>
@@ -116,10 +116,11 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </ul>
 <h3 id="pendaftar-event-admineventidpendaftar">🗓️ Pendaftar Event — <code>/admin/event/[id]/pendaftar</code></h3>
 <ul>
-<li><strong>File</strong>: <code>admin/event/[id]/pendaftar/page.tsx</code> → <code>PendaftarAdmin.tsx</code>.</li>
-<li><strong>Fungsi data</strong>: <code>getEventAdmin(id)</code>, <code>getPendaftaranByEvent(id)</code>, <code>getSertifikatMapByEvent(id)</code>, <code>getEventSemua()</code> (<code>admin-event.ts</code>).</li>
-<li><strong>Server action</strong>: <code>setStatusPendaftaran</code>, <code>setKehadiran</code>, <code>reschedulePendaftaran</code> (<code>admin-event-actions.ts</code>).</li>
-<li><strong>Endpoint</strong>: <code>event</code>, <code>pendaftaran_event</code>, <code>sertifikat</code>; <code>setStatusPendaftaran</code> → <code>catatLedger</code>/<code>hapusLedgerRef</code> ke <code>transaksi_keuangan</code> (pendapatan event saat status "diterima").</li>
+<li><strong>File</strong>: <code>admin/event/[id]/pendaftar/page.tsx</code> → <code>PendaftarAdmin.tsx</code> + <code>ParameterPerkembanganForm.tsx</code> + <code>NilaiPerkembanganForm.tsx</code>.</li>
+<li><strong>Fungsi data</strong>: <code>getEventAdmin(id)</code>, <code>getPendaftaranByEvent(id)</code>, <code>getSertifikatMapByEvent(id)</code>, <code>getEventSemua()</code> (<code>admin-event.ts</code>); <code>getPesertaEvent(id)</code>, <code>getEventBerParameter(id)</code> (<code>guru.ts</code>, untuk catatan per anak &amp; opsi duplikat).</li>
+<li><strong>Server action</strong>: <code>setStatusPendaftaran</code>, <code>setKehadiran</code>, <code>reschedulePendaftaran</code>, <strong><code>simpanParameterPerkembangan</code></strong>, <strong><code>duplikatParameterPerkembangan</code></strong> (<code>admin-event-actions.ts</code>); <strong><code>simpanCatatan</code></strong> (<code>guru-actions.ts</code>, admin boleh isi nilai per anak).</li>
+<li><strong>Endpoint</strong>: <code>event</code> (<code>indikator_perkembangan</code>), <code>pendaftaran_event</code>, <code>sertifikat</code>, <code>catatan_perkembangan</code> (<code>penilaian</code>); <code>setStatusPendaftaran</code> → <code>catatLedger</code>/<code>hapusLedgerRef</code> ke <code>transaksi_keuangan</code>.</li>
+<li><strong>Catatan Tumbuh Kembang</strong> (lihat §7½): admin tetapkan <strong>Parameter (Area+Indikator) per event</strong> (+ tombol Duplikat dari event lain), lalu beri <strong>Nilai</strong> per anak.</li>
 </ul>
 <h3 id="produk-adminproduk">🛍️ Produk — <code>/admin/produk</code></h3>
 <ul>
@@ -408,8 +409,8 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <h2 id="7-pembatasan-akses-trial-diatur-admin">7. Pembatasan Akses Trial (diatur admin)</h2>
 <p>Membatasi user <strong>belum berlangganan</strong> (<code>status !== 'aktif'</code> → trial &amp; tenggang; helper <code>dibatasiTrial()</code>). Item tetap <strong>tampil tapi terkunci 🔒</strong> (bukan disembunyikan) dengan ajakan upgrade.</p>
 <ul>
-<li><strong>Setting</strong>: tabel <code>pengaturan_trial</code> (id=1) — <code>trial_maks_anak</code> (batas anak) + kolom <strong><code>boleh_trial</code></strong> per item di <code>kelas_bermain</code>/<code>tema</code>/<code>video</code> (default <code>true</code> = boleh).</li>
-<li><strong>Panel admin terpusat</strong>: <code>/admin/pengaturan-trial</code> — form batas anak + daftar semua Materi Kelas / Tema (game) / Video dengan tombol <strong>Trial ✓/✗</strong>. Toggle sama juga ada di halaman kontennya (Kelas Bermain admin, Dashboard/Tema, Video admin).</li>
+<li><strong>Setting</strong>: tabel <code>pengaturan_trial</code> (id=1) — <code>trial_maks_anak</code> (batas anak), <strong><code>trial_komunitas</code></strong> (toggle global akses Komunitas), + kolom <strong><code>boleh_trial</code></strong> per item di <code>kelas_bermain</code>/<code>tema</code>/<code>video</code> (default <code>true</code> = boleh).</li>
+<li><strong>Panel admin terpusat</strong>: <code>/admin/pengaturan-trial</code> — batas anak + toggle <strong>Komunitas</strong> + daftar semua Materi Kelas / Tema (game) / Video dengan tombol <strong>Trial ✓/✗</strong>. Toggle sama juga ada di halaman kontennya (Kelas Bermain admin, Dashboard/Tema, Video admin).</li>
 <li><strong>Actions</strong>: <code>simpanPengaturanTrial</code> (<code>admin-bisnis.ts</code>); <code>setBolehTrialKelas</code> (<code>kelas-bermain-actions.ts</code>, + <code>updateTag('katalog')</code>), <code>setBolehTrialTema</code>/<code>setBolehTrialVideo</code> (<code>admin-konten.ts</code>).</li>
 <li><strong>Komponen kunci</strong>: <code>components/Terkunci.tsx</code> (🔒 + tombol Upgrade → <code>/pengaturan</code>).</li>
 <li><strong>Enforcement</strong> (untuk user non-aktif):</li>
@@ -418,8 +419,21 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <li><code>ortu/[anakId]</code>: kartu kelas/video terkunci → placeholder 🔒 + tombol Upgrade.</li>
 <li><code>pilih-game</code> + <code>PilihGame.tsx</code>: game terkunci 🔒 → <code>/pengaturan</code>.</li>
 <li><code>kelas/[id]</code>: item terkunci → halaman <code>&lt;Terkunci&gt;</code>.</li>
+<li><strong>Komunitas</strong>: <code>/komunitas</code> &amp; <code>/komunitas/[postId]</code> → <code>&lt;Terkunci&gt;</code> bila <code>!trial_komunitas</code> (toggle global).</li>
 <li><strong>Batas jumlah anak</strong>: ditegakkan di <code>pilih-anak/actions.ts</code> (<code>tambahAnak</code>) <strong>dan</strong> <code>POST /api/anak</code> (mobile) — hitung <code>count anak</code> vs <code>trial_maks_anak</code>.</li>
 <li><strong>User aktif (berlangganan)</strong>: bebas, tanpa gembok.</li>
+</ul>
+<hr />
+<h2 id="712-catatan-tumbuh-kembang-per-event-areaindikatornilai">7½. Catatan Tumbuh Kembang per Event (Area/Indikator/Nilai)</h2>
+<p>Penilaian perkembangan anak per event offline. <strong>Parameter (Area + Indikator) ditetapkan admin per event</strong> (dibagikan semua anak; antar-event bisa beda). <strong>Educator &amp; admin</strong> memberi <strong>Nilai</strong> (skala BB/MB/BSH/BSB) per anak + catatan. Customer melihat <strong>tabel Area | Indikator | Nilai</strong>.</p>
+<ul>
+<li><strong>Data</strong>: <code>event.indikator_perkembangan jsonb</code> (array <code>{area, indikator}</code> — parameter event) + <code>catatan_perkembangan.penilaian jsonb</code> (snapshot <code>{area, indikator, nilai}</code> per anak). Kolom lama <code>aspek</code> dipertahankan (fallback). RLS <code>catatan_perkembangan</code> insert/update: <code>is_guru() OR is_admin()</code>.</li>
+<li><strong>Tipe</strong>: <code>BarisParam {area,indikator}</code>, <code>BarisNilai extends BarisParam {nilai}</code> (<code>tipe.ts</code>).</li>
+<li><strong>Admin tetapkan parameter</strong>: <code>/admin/event/[id]/pendaftar</code> → <code>ParameterPerkembanganForm.tsx</code> (baris Area + <strong>Indikator (textarea)</strong> + tombol "+ baris") + <strong>Duplikat parameter dari event lain</strong> (<code>getEventBerParameter</code>). Actions <code>simpanParameterPerkembangan</code> / <code>duplikatParameterPerkembangan</code> (mengembalikan params disalin) (<code>admin-event-actions.ts</code>).</li>
+<li><strong>Beri nilai per anak</strong> (<code>NilaiPerkembanganForm.tsx</code>, dipakai educator &amp; admin): render parameter event (read-only) + pill Nilai (<code>SKALA_PAUD</code>) + catatan → <code>simpanCatatan</code> (<code>guru-actions.ts</code>, guard guru|admin; snapshot ke <code>penilaian</code>).</li>
+<li>Educator: <code>/guru/[eventId]</code> (<code>GuruNilai.tsx</code>). Admin: di panel pendaftar (per anak, collapsible).</li>
+<li><strong>Customer</strong>: <code>CatatanCard.tsx</code> render <strong>tabel</strong> dari <code>penilaian</code> (fallback <code>aspek</code> lama) + catatan; tampil di <code>/catatan/[eventId]</code> &amp; <code>/anak/[anakId]/laporan</code>.</li>
+<li><strong>Reader</strong>: <code>getPesertaEvent</code> (<code>guru.ts</code>) + <code>catatan.ts</code>/<code>/api/anak/[id]/catatan</code> select <code>penilaian</code>.</li>
 </ul>
 <hr />
 <h2 id="8-halaman-publik-ortu-per-halaman">8. Halaman Publik &amp; Ortu — per halaman</h2>
@@ -453,9 +467,10 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </ul>
 <h3 id="komunitas-komunitas-komunitaspostid">💬 Komunitas — <code>/komunitas</code> &amp; <code>/komunitas/[postId]</code></h3>
 <ul>
-<li><strong>Fungsi data</strong>: <code>getFeed()</code>, <code>getTopikOptions()</code>, <code>getPostingan(id)</code> (<code>komunitas.ts</code>).</li>
+<li><strong>Fungsi data</strong>: <code>getFeed()</code>, <code>getTopikOptions()</code>, <code>getPostingan(id)</code> (<code>komunitas.ts</code>); <code>getStatusLangganan()</code> + <code>getPengaturanTrial()</code> untuk gating.</li>
 <li><strong>Server action</strong>: <code>buatPostingan</code>, <code>toggleSuka</code>, <code>lapor</code>, <code>buatKomentar</code> (<code>komunitas-actions.ts</code>).</li>
-<li><strong>Endpoint</strong>: <code>postingan</code>, <code>komentar</code>, <code>suka</code>, <code>laporan</code>, <code>profiles</code>, <code>kelas_bermain</code>/<code>event</code>/<code>paket_aset</code> (opsi topik), <code>aktivitas</code>.</li>
+<li><strong>Endpoint</strong>: <code>postingan</code>, <code>komentar</code>, <code>suka</code>, <code>laporan</code>, <code>profiles</code>, <code>kelas_bermain</code>/<code>event</code>/<code>paket_aset</code> (opsi topik), <code>aktivitas</code>, <code>pengaturan_trial</code>.</li>
+<li><strong>Gating trial</strong>: user non-aktif → <code>&lt;Terkunci&gt;</code> bila <code>pengaturan_trial.trial_komunitas = false</code> (lihat §7).</li>
 </ul>
 <h3 id="kelas-kelasid-kelas-saya-favorit">🎈 Kelas — <code>/kelas/[id]</code>, <code>/kelas-saya</code>, <code>/favorit</code></h3>
 <ul>
@@ -489,7 +504,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <li><strong>Endpoint</strong>: <code>anak</code>, <code>langganan</code>, <code>tema</code>, <code>paket_aset</code>, <code>video</code>, <code>kelas_bermain</code>, <code>favorit</code>, <code>hasil_main</code>, <code>lencana_anak</code>, <code>tantangan_kustom</code>(+<code>_anak</code>), <code>tantangan_anak</code>, <code>profiles</code> (pin), <code>riwayat_kelas</code>, <code>aktivitas</code>.</li>
 <li><strong>Gating trial</strong>: <code>MenuAnak</code>/<code>PilihGame</code>/<code>VideoPojok</code> menerima flag <code>batasi</code>; item <code>boleh_trial === false</code> tampil <strong>🔒</strong> dan diklik → <code>&lt;Terkunci&gt;</code>/<code>/pengaturan</code>. <code>MenuAnak.tsx</code> juga cegah deep-link (<code>?paket=</code>) auto-start game terkunci. <code>/ortu/[anakId]</code> sama (kartu 🔒). Lihat §7.</li>
 </ul>
-<h3 id="guru-guru-gurueventid-catataneventid">🍎 Guru — <code>/guru</code>, <code>/guru/[eventId]</code>, <code>/catatan/[eventId]</code></h3>
+<h3 id="guru-guru-gurueventid-isi-nilai-tumbuh-kembang-catataneventid">🍎 Guru — <code>/guru</code>, <code>/guru/[eventId]</code> (isi Nilai tumbuh kembang), <code>/catatan/[eventId]</code></h3>
 <ul>
 <li><strong>Guard</strong>: <code>getGuruTerjamin()</code> (<code>guru.ts</code>).</li>
 <li><strong>Fungsi data</strong>: <code>getEventUntukGuru()</code>, <code>getPesertaEvent(eventId)</code> (<code>guru.ts</code>), <code>getEvent()</code>/<code>getCatatanEventSaya()</code> (<code>event.ts</code>/<code>catatan.ts</code>).</li>
@@ -745,13 +760,13 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </tr>
 <tr>
 <td><code>event</code>, <code>pendaftaran_event</code></td>
-<td>event + pendaftaran (status, bukti, kehadiran, reschedule)</td>
-<td>0017, 0027</td>
+<td>event + pendaftaran (status, bukti, kehadiran, reschedule; <code>event.indikator_perkembangan</code> parameter penilaian)</td>
+<td>0017, 0027, 0062</td>
 </tr>
 <tr>
 <td><code>catatan_perkembangan</code></td>
-<td>catatan guru per anak per event</td>
-<td>0020</td>
+<td>catatan tumbuh kembang per anak per event (<code>penilaian</code> array Area/Indikator/Nilai + <code>aspek</code> legacy)</td>
+<td>0020, 0062</td>
 </tr>
 <tr>
 <td><code>sertifikat</code></td>
@@ -820,8 +835,8 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </tr>
 <tr>
 <td><code>pengaturan_trial</code></td>
-<td>izin akses trial (batas anak) — akses fitur per item via <code>boleh_trial</code></td>
-<td>0059</td>
+<td>izin akses trial (batas anak, toggle Komunitas) — akses fitur per item via <code>boleh_trial</code></td>
+<td>0059, 0061</td>
 </tr>
 <tr>
 <td><code>riwayat_kelas</code></td>
