@@ -39,8 +39,8 @@ export async function simpanParameterPerkembangan(eventId: string, params: Baris
   revalidatePath(`/guru/${eventId}`);
 }
 
-/** Duplikat parameter penilaian dari event lain ke event ini. */
-export async function duplikatParameterPerkembangan(eventId: string, dariEventId: string): Promise<void> {
+/** Duplikat parameter penilaian dari event lain ke event ini. Kembalikan parameter yang disalin. */
+export async function duplikatParameterPerkembangan(eventId: string, dariEventId: string): Promise<BarisParam[]> {
   const s = await adminDb();
   const { data: sumber } = await s.from('event').select('indikator_perkembangan').eq('id', dariEventId).maybeSingle();
   const params = (sumber?.indikator_perkembangan ?? []) as BarisParam[];
@@ -48,6 +48,7 @@ export async function duplikatParameterPerkembangan(eventId: string, dariEventId
   if (error) throw new Error(error.message);
   revalidatePath(`/admin/event/${eventId}/pendaftar`);
   revalidatePath(`/guru/${eventId}`);
+  return params;
 }
 
 function row(i: EventInput) {

@@ -29,8 +29,12 @@ export default function ParameterPerkembanganForm({ eventId, awal, opsiDuplikat 
   async function duplikat() {
     if (!dari) { flash('Pilih event sumber dulu.'); return; }
     setBusy(true);
-    try { await duplikatParameterPerkembangan(eventId, dari); router.refresh(); flash('Parameter disalin ✓'); }
-    catch (e) { flash(e instanceof Error ? e.message : 'Gagal'); }
+    try {
+      const p = await duplikatParameterPerkembangan(eventId, dari);
+      setRows(p.length ? p.map((x) => ({ ...x })) : [{ area: '', indikator: '' }]); // tampilkan hasil salinan
+      router.refresh();
+      flash('Parameter disalin ✓');
+    } catch (e) { flash(e instanceof Error ? e.message : 'Gagal'); }
     finally { setBusy(false); }
   }
 
