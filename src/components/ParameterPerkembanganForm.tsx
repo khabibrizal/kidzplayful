@@ -51,9 +51,9 @@ export default function ParameterPerkembanganForm({ eventId, awal, opsiDuplikat 
       )}
 
       {rows.map((r, i) => (
-        <div key={i} className={s.row} style={{ gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
+        <div key={i} className={s.row} style={{ gap: 6, marginBottom: 6, flexWrap: 'wrap', alignItems: 'flex-start' }}>
           <input className={s.inp} placeholder="Area perkembangan" value={r.area} onChange={(e) => set(i, { area: e.target.value })} style={{ flex: 1, minWidth: 130, marginBottom: 0 }} />
-          <input className={s.inp} placeholder="Indikator" value={r.indikator} onChange={(e) => set(i, { indikator: e.target.value })} style={{ flex: 1, minWidth: 130, marginBottom: 0 }} />
+          <textarea className={s.inp} placeholder="Indikator" rows={2} value={r.indikator} onChange={(e) => set(i, { indikator: e.target.value })} style={{ flex: 2, minWidth: 160, marginBottom: 0, resize: 'vertical' }} />
           <button className={s.btnSm} style={{ background: '#eee' }} onClick={() => hapus(i)} title="Hapus baris">✕</button>
         </div>
       ))}
