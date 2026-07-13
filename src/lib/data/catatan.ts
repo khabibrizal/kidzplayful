@@ -2,7 +2,7 @@
 import { createClient } from '@/lib/supabase/server';
 import type { CatatanPerkembangan } from '@/lib/game/tipe';
 
-const COLS = 'id,event_id,anak_id,ortu_id,aspek,catatan,dinilai_oleh,created_at';
+const COLS = 'id,event_id,anak_id,ortu_id,aspek,penilaian,catatan,dinilai_oleh,created_at';
 
 /** Catatan untuk satu anak (semua event). Mengembalikan catatan + judul event. */
 export async function getCatatanAnak(anakId: string): Promise<{ c: CatatanPerkembangan; judulEvent: string }[]> {

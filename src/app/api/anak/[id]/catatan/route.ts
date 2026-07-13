@@ -5,7 +5,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const a = await getAuth(req); if (isAuthErr(a)) return fail(a.error, a.status);
   const { id } = await params;
   const { data } = await a.supabase.from('catatan_perkembangan')
-    .select('id,event_id,anak_id,aspek,catatan,dinilai_oleh,created_at, event:event_id(judul)')
+    .select('id,event_id,anak_id,aspek,penilaian,catatan,dinilai_oleh,created_at, event:event_id(judul)')
     .eq('anak_id', id).order('created_at', { ascending: false });
   const rows = (data ?? []).map((r) => ({
     ...r,

@@ -13,7 +13,7 @@ export default async function GuruEventPage({ params }: { params: Promise<{ even
       <Link href="/guru" style={{ color: 'var(--abu)', fontSize: 13 }}>← Daftar event</Link>
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 20, margin: '8px 0 4px' }}>🎈 {event?.judul ?? 'Event'}</h1>
       <p style={{ color: 'var(--abu)', fontSize: 13, marginBottom: 14 }}>Catatan Perkembangan Bermain — {peserta.length} anak peserta.</p>
-      <GuruNilai eventId={eventId} peserta={peserta} catatanAwal={catatan} />
+      <GuruNilai eventId={eventId} peserta={peserta} catatanAwal={catatan} params={event?.indikator_perkembangan ?? []} />
     </main>
   );
 }

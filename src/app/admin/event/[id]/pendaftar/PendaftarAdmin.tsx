@@ -2,15 +2,19 @@
 'use client';
 import { useState } from 'react';
 import { setStatusPendaftaran, setKehadiran, reschedulePendaftaran } from '@/lib/data/admin-event-actions';
-import type { PendaftaranEvent } from '@/lib/game/tipe';
+import type { PendaftaranEvent, BarisParam, BarisNilai } from '@/lib/game/tipe';
 import { formatRupiah } from '@/lib/format';
+import NilaiPerkembanganForm from '@/components/NilaiPerkembanganForm';
 import s from '../../../admin.module.css';
 
 const WARNA: Record<string, string> = { menunggu: '#b88600', diterima: '#1c7a43', ditolak: '#b3261e' };
 
 type EventOpsi = { id: string; judul: string; tanggal: string | null };
 
-export default function PendaftarAdmin({ awal, sertMap, eventsAktif }: { awal: PendaftaranEvent[]; sertMap: Record<string, string>; eventsAktif: EventOpsi[] }) {
+export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = [], catatanMap = {} }: {
+  awal: PendaftaranEvent[]; sertMap: Record<string, string>; eventsAktif: EventOpsi[];
+  params?: BarisParam[]; catatanMap?: Record<string, { penilaian: BarisNilai[]; catatan: string | null }>;
+}) {
   const [list, setList] = useState<PendaftaranEvent[]>(awal);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [toast, setToast] = useState('');
@@ -130,6 +134,20 @@ export default function PendaftarAdmin({ awal, sertMap, eventsAktif }: { awal: P
                     : null)}
                 </div>
               )}
+
+              {/* Catatan tumbuh kembang per anak */}
+              <div style={{ marginTop: 10 }}>
+                <div className={s.muted} style={{ fontSize: 12, marginBottom: 6 }}>📝 Catatan Tumbuh Kembang:</div>
+                {p.anak_ids.map((anakId, i) => (
+                  <details key={anakId} className={s.card} style={{ marginBottom: 6 }}>
+                    <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>🧒 {p.anak_nama[i] ?? 'Anak'}{catatanMap[anakId]?.penilaian?.length ? ' ✓' : ''}</summary>
+                    <div style={{ marginTop: 8 }}>
+                      <NilaiPerkembanganForm eventId={p.event_id} anakId={anakId} ortuId={p.ortu_id} nama={p.anak_nama[i] ?? 'Anak'}
+                        params={params} awal={catatanMap[anakId] ?? { penilaian: [], catatan: '' }} />
+                    </div>
+                  </details>
+                ))}
+              </div>
             </div>
           )}
         </div>

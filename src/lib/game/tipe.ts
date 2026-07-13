@@ -152,6 +152,7 @@ export interface EventKelas {
   sertifikat_bg_url: string | null; // template sertifikat (JPEG)
   dokumentasi_url: string | null;   // link dokumentasi kegiatan
   stiker_bg_url: string | null;     // template stiker nama (opsional)
+  indikator_perkembangan?: BarisParam[]; // parameter penilaian tumbuh kembang event ini
 }
 
 export interface PendaftaranEvent {
@@ -215,12 +216,15 @@ export interface ItemPesanan {
   qty: number;
 }
 export type SkalaPaud = 'BB' | 'MB' | 'BSH' | 'BSB';
+export interface BarisParam { area: string; indikator: string }
+export interface BarisNilai extends BarisParam { nilai: string }
 export interface CatatanPerkembangan {
   id: string;
   event_id: string;
   anak_id: string;
   ortu_id: string;
-  aspek: Record<string, string>; // key aspek → kode skala
+  aspek: Record<string, string>; // (legacy) key aspek → kode skala
+  penilaian: BarisNilai[];       // snapshot area+indikator+nilai per event
   catatan: string | null;
   dinilai_oleh: string | null;
   created_at: string;

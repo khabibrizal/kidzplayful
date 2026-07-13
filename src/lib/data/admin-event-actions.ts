@@ -2,7 +2,7 @@
 'use server';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-import type { EventKelas } from '@/lib/game/tipe';
+import type { EventKelas, BarisParam } from '@/lib/game/tipe';
 import { catatLedger, hapusLedgerRef } from './ledger';
 
 export interface EventInput {
@@ -26,6 +26,30 @@ async function adminDb() {
   if (!prof?.is_admin) throw new Error('Bukan admin');
   return s;
 }
+
+/** Tetapkan parameter penilaian tumbuh kembang (area+indikator) untuk sebuah event. */
+export async function simpanParameterPerkembangan(eventId: string, params: BarisParam[]): Promise<void> {
+  const s = await adminDb();
+  const bersih = (params ?? [])
+    .map((p) => ({ area: (p.area ?? '').trim(), indikator: (p.indikator ?? '').trim() }))
+    .filter((p) => p.area || p.indikator);
+  const { error } = await s.from('event').update({ indikator_perkembangan: bersih }).eq('id', eventId);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/admin/event/${eventId}/pendaftar`);
+  revalidatePath(`/guru/${eventId}`);
+}
+
+/** Duplikat parameter penilaian dari event lain ke event ini. */
+export async function duplikatParameterPerkembangan(eventId: string, dariEventId: string): Promise<void> {
+  const s = await adminDb();
+  const { data: sumber } = await s.from('event').select('indikator_perkembangan').eq('id', dariEventId).maybeSingle();
+  const params = (sumber?.indikator_perkembangan ?? []) as BarisParam[];
+  const { error } = await s.from('event').update({ indikator_perkembangan: params }).eq('id', eventId);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/admin/event/${eventId}/pendaftar`);
+  revalidatePath(`/guru/${eventId}`);
+}
+
 function row(i: EventInput) {
   return {
     judul: i.judul.trim() || 'Tanpa judul',

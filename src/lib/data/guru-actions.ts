@@ -1,27 +1,35 @@
-// src/lib/data/guru-actions.ts — guru menyimpan Catatan Perkembangan Bermain
+// src/lib/data/guru-actions.ts — simpan Catatan Perkembangan (educator & admin)
 'use server';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import type { BarisNilai } from '@/lib/game/tipe';
 
-export async function simpanCatatan(input: {
-  eventId: string; anakId: string; ortuId: string;
-  aspek: Record<string, string>; catatan: string;
-}): Promise<void> {
+// Guru ATAU admin boleh mengisi nilai perkembangan.
+async function pengisi() {
   const s = await createClient();
   const { data: { user } } = await s.auth.getUser();
   if (!user) throw new Error('Tidak terautentikasi');
-  const { data: prof } = await s.from('profiles').select('is_guru,nama_tampilan').eq('id', user.id).single();
-  if (!prof?.is_guru) throw new Error('Bukan guru');
+  const { data: prof } = await s.from('profiles').select('is_guru,is_admin,nama_tampilan').eq('id', user.id).single();
+  if (!prof?.is_guru && !prof?.is_admin) throw new Error('Tidak berwenang.');
+  return { s, nama: (prof.nama_tampilan as string) || (prof.is_guru ? 'Guru' : 'Admin') };
+}
 
+export async function simpanCatatan(input: {
+  eventId: string; anakId: string; ortuId: string;
+  penilaian: BarisNilai[]; catatan: string;
+}): Promise<void> {
+  const { s, nama } = await pengisi();
+  const penilaian = (input.penilaian ?? []).map((r) => ({ area: r.area, indikator: r.indikator, nilai: r.nilai }));
   const { error } = await s.from('catatan_perkembangan').upsert({
     event_id: input.eventId,
     anak_id: input.anakId,
     ortu_id: input.ortuId,
-    aspek: input.aspek,
+    penilaian,
     catatan: input.catatan.trim() || null,
-    dinilai_oleh: (prof.nama_tampilan as string) || 'Guru',
+    dinilai_oleh: nama,
     updated_at: new Date().toISOString(),
   }, { onConflict: 'event_id,anak_id' });
   if (error) throw new Error(error.message);
   revalidatePath(`/guru/${input.eventId}`);
+  revalidatePath(`/admin/event/${input.eventId}/pendaftar`);
 }

@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import type { EventKelas, CatatanPerkembangan } from '@/lib/game/tipe';
 
-const ECOLS = 'id,judul,lokasi,tanggal,jam_mulai,jam_selesai,deskripsi,gambar_url,harga_per_anak,diskon_langganan_persen,status';
+const ECOLS = 'id,judul,lokasi,tanggal,jam_mulai,jam_selesai,deskripsi,gambar_url,harga_per_anak,diskon_langganan_persen,status,indikator_perkembangan';
 
 /** Guard: pastikan user adalah guru. Mengembalikan profil guru. */
 export async function getGuruTerjamin() {
@@ -35,8 +35,17 @@ export async function getPesertaEvent(eventId: string): Promise<{ event: EventKe
     ids.forEach((id, i) => peserta.push({ anak_id: id, nama: nama[i] ?? 'Anak', ortu_id: r.ortu_id as string }));
   }
   const { data: cat } = await s.from('catatan_perkembangan')
-    .select('id,event_id,anak_id,ortu_id,aspek,catatan,dinilai_oleh,created_at').eq('event_id', eventId);
+    .select('id,event_id,anak_id,ortu_id,aspek,penilaian,catatan,dinilai_oleh,created_at').eq('event_id', eventId);
   const catatan: Record<string, CatatanPerkembangan> = {};
   for (const c of cat ?? []) catatan[c.anak_id as string] = c as unknown as CatatanPerkembangan;
   return { event: (ev as unknown as EventKelas) ?? null, peserta, catatan };
+}
+
+/** Daftar event LAIN (selain eventId) yang punya parameter penilaian — untuk tombol "Duplikat parameter". */
+export async function getEventBerParameter(eventId: string): Promise<{ id: string; judul: string }[]> {
+  const s = await createClient();
+  const { data } = await s.from('event').select('id,judul,indikator_perkembangan').neq('id', eventId).order('tanggal', { ascending: false });
+  return (data ?? [])
+    .filter((e) => Array.isArray(e.indikator_perkembangan) && (e.indikator_perkembangan as unknown[]).length > 0)
+    .map((e) => ({ id: e.id as string, judul: e.judul as string }));
 }
