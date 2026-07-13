@@ -3,10 +3,13 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getFeed, getTopikOptions } from '@/lib/data/komunitas';
+import { getStatusLangganan, dibatasiTrial } from '@/lib/data/langganan-status';
+import { getPengaturanTrial } from '@/lib/data/pengaturan-trial';
 import Compose from './Compose';
 import RekamAktivitas from '@/components/RekamAktivitas';
 import SukaBtn from './SukaBtn';
 import LaporBtn from './LaporBtn';
+import Terkunci from '@/components/Terkunci';
 import BottomNav from '@/components/BottomNav';
 
 export default async function Komunitas({ searchParams }: { searchParams: Promise<{ topik?: string }> }) {
@@ -14,6 +17,13 @@ export default async function Komunitas({ searchParams }: { searchParams: Promis
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
+
+  // gating trial: fitur Komunitas bisa dimatikan admin untuk user belum berlangganan
+  const [status, cfg] = await Promise.all([getStatusLangganan(supabase, user.id), getPengaturanTrial()]);
+  if (dibatasiTrial(status) && !cfg.trial_komunitas) {
+    return <main className="kp-page-narrow" style={{ padding: 16, marginTop: 20 }}><Terkunci fitur="Komunitas" /><BottomNav /></main>;
+  }
+
   const [opsiTopik, feed] = await Promise.all([getTopikOptions(), getFeed()]);
 
   return (

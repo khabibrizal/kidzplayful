@@ -39,12 +39,19 @@ export default async function PengaturanTrialPage({ searchParams }: { searchPara
       <p className={s.muted}>Atur akses untuk user <b>trial &amp; masa tenggang</b> (belum berlangganan). User berlangganan (aktif) selalu bebas. <b>Trial ✓</b> = boleh diakses trial; <b>Trial ✗</b> = terkunci (diminta upgrade). Perubahan berlaku langsung.</p>
       {ok && <div className={s.card} style={{ background: '#dff5e6', color: '#1c7a43', fontWeight: 700 }}>Tersimpan ✓</div>}
 
-      {/* Batas anak */}
+      {/* Setting global (batas anak + fitur komunitas) */}
       <form action={simpan} className={s.card}>
-        <div className={s.section} style={{ marginTop: 0 }}>Batas jumlah anak untuk user trial</div>
+        <div className={s.section} style={{ marginTop: 0 }}>Fitur global untuk user trial</div>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', fontSize: 14 }}>
+          <input type="checkbox" name="trial_komunitas" value="1" defaultChecked={cfg.trial_komunitas} style={{ width: 18, height: 18 }} />
+          <span>💬 Boleh akses <b>Komunitas</b> saat trial</span>
+        </label>
+        <p className={s.muted} style={{ fontSize: 12, marginTop: 2 }}>Kosongkan = Komunitas terkunci untuk user trial (diminta upgrade).</p>
+
+        <div className={s.section}>Batas jumlah anak untuk user trial</div>
         <input className={s.inp} name="trial_maks_anak" type="number" min={0} defaultValue={cfg.trial_maks_anak} style={{ width: 140 }} />
         <p className={s.muted} style={{ fontSize: 12, marginTop: 6 }}>Maks profil anak yang boleh ditambah user belum berlangganan (0 = tidak boleh menambah).</p>
-        <div style={{ marginTop: 12 }}><button className={s.btn} type="submit">💾 Simpan batas anak</button></div>
+        <div style={{ marginTop: 12 }}><button className={s.btn} type="submit">💾 Simpan</button></div>
       </form>
 
       {/* Materi Kelas Bermain */}

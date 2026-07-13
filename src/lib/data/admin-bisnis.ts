@@ -54,6 +54,7 @@ export async function simpanPengaturanBayar(formData: FormData) {
 export async function simpanPengaturanTrial(formData: FormData) {
   const { supabase } = await adminDb();
   const patch = {
+    trial_komunitas: formData.get('trial_komunitas') === '1',
     trial_maks_anak: Math.max(0, Number(String(formData.get('trial_maks_anak') ?? '').replace(/[^0-9]/g, '')) || 0),
     updated_at: new Date().toISOString(),
   };
