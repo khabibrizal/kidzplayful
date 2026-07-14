@@ -2,6 +2,7 @@
 'use server';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 const KOLOM: Record<string, 'is_superuser' | 'is_admin' | 'is_guru' | 'is_investor'> = {
   superuser: 'is_superuser', admin: 'is_admin', guru: 'is_guru', investor: 'is_investor',
@@ -40,6 +41,38 @@ export async function setRole(formData: FormData) {
   const value = String(formData.get('value') ?? '') === '1';
   if (!userId) throw new Error('User tidak valid.');
   await terapkanRole(userId, role, value);
+}
+
+/** Buat user baru (akun auth) + tetapkan role. Butuh SUPABASE_SERVICE_ROLE_KEY. */
+export async function buatUser(formData: FormData) {
+  const { isSuperuser } = await pengelola();
+  const email = String(formData.get('email') ?? '').trim().toLowerCase();
+  const password = String(formData.get('password') ?? '');
+  const nama = String(formData.get('nama') ?? '').trim();
+  const role = String(formData.get('role') ?? '');
+  if (!email || !/.+@.+\..+/.test(email)) throw new Error('Email tidak valid.');
+  if (password.length < 6) throw new Error('Kata sandi minimal 6 karakter.');
+  if (role && !KOLOM[role]) throw new Error('Role tidak dikenal.');
+  if (ROLE_TINGGI.has(role) && !isSuperuser) throw new Error('Hanya Super User yang dapat membuat Admin / Super User.');
+
+  const admin = createAdminClient();
+  const { data: created, error } = await admin.auth.admin.createUser({
+    email, password, email_confirm: true,
+    user_metadata: nama ? { nama_tampilan: nama } : undefined,
+  });
+  if (error) throw new Error(error.message);
+  const uid = created.user?.id;
+  if (!uid) throw new Error('Gagal membuat user.');
+
+  // Profil dibuat otomatis oleh trigger DB. Set nama + role via service role (bypass RLS/trigger).
+  const patch: Record<string, unknown> = {};
+  if (nama) patch.nama_tampilan = nama;
+  if (role) { patch[KOLOM[role]] = true; if (role === 'superuser') patch.is_admin = true; }
+  if (Object.keys(patch).length) {
+    const { error: e2 } = await admin.from('profiles').update(patch).eq('id', uid);
+    if (e2) throw new Error(e2.message);
+  }
+  revalidatePath('/admin/users');
 }
 
 /** Tambah role berdasarkan email (akun harus sudah terdaftar). */

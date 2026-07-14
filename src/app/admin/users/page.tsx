@@ -1,6 +1,6 @@
 // src/app/admin/users/page.tsx — kelola user & role (admin/super user)
 import { getPengelolaUserTerjamin, getDaftarUser } from '@/lib/data/admin-users';
-import { setRole, tambahUserRole } from '@/lib/data/admin-users-actions';
+import { setRole, tambahUserRole, buatUser } from '@/lib/data/admin-users-actions';
 import s from '../admin.module.css';
 
 const ROLES = [
@@ -22,8 +22,26 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
         Tetapkan role untuk akun yang <b>sudah terdaftar</b>. {isSuperuser ? 'Anda Super User — dapat mengatur semua role.' : 'Anda Admin — dapat mengatur Guru & Investor.'}
       </p>
 
+      {/* Buat user baru langsung + role */}
+      <div className={s.section}>Buat user baru</div>
+      <form action={buatUser} className={s.card}>
+        <div className={s.row} style={{ gap: 6, flexWrap: 'wrap' }}>
+          <input className={s.inp} name="nama" placeholder="Nama tampilan" style={{ flex: 1, minWidth: 140 }} />
+          <input className={s.inp} name="email" type="email" placeholder="Email" style={{ flex: 1, minWidth: 160 }} required />
+        </div>
+        <div className={s.row} style={{ gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+          <input className={s.inp} name="password" type="text" placeholder="Kata sandi (min 6)" style={{ flex: 1, minWidth: 140 }} required />
+          <select className={s.inp} name="role" style={{ flex: 1, minWidth: 130 }} defaultValue="">
+            <option value="">— Tanpa role (user biasa) —</option>
+            {ROLES.filter((r) => isSuperuser || !r.hanyaSuper).map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
+          </select>
+          <button className={s.btn} type="submit">+ Buat User</button>
+        </div>
+        <p className={s.muted} style={{ fontSize: 12, marginTop: 6 }}>Akun langsung aktif (tanpa konfirmasi email). Butuh <code>SUPABASE_SERVICE_ROLE_KEY</code> terpasang di server.</p>
+      </form>
+
       {/* Tambah role by email */}
-      <div className={s.section}>Tambah / tetapkan role</div>
+      <div className={s.section}>Tetapkan role (akun sudah ada)</div>
       <form action={tambahUserRole} className={s.card}>
         <div className={s.row} style={{ gap: 6, flexWrap: 'wrap' }}>
           <input className={s.inp} name="email" type="email" placeholder="Email user terdaftar" style={{ flex: 2, minWidth: 180 }} required />
