@@ -6,6 +6,10 @@ import type { AnakAdmin } from '@/lib/data/admin-anak';
 import type { LencanaDef } from '@/lib/domain/gamifikasi';
 import s from '../admin.module.css';
 
+function tglLahir(iso: string): string {
+  return new Date(iso + 'T00:00:00Z').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+}
+
 export default function AnakGamiForm({ anak, lencanaSemua }: { anak: AnakAdmin; lencanaSemua: LencanaDef[] }) {
   const [streak, setStreak] = useState(String(anak.streak));
   const [koin, setKoin] = useState(String(anak.koin));
@@ -32,7 +36,14 @@ export default function AnakGamiForm({ anak, lencanaSemua }: { anak: AnakAdmin; 
   return (
     <div className={s.card}>
       <div className={s.row}>
-        <span style={{ flex: 1 }}><b>{anak.nama}</b><br /><span className={s.muted}>{anak.email ?? '—'}</span></span>
+        <span style={{ flex: 1 }}>
+          <b>{anak.nama}</b>
+          {anak.jenis_kelamin && <span className={s.muted}> · {anak.jenis_kelamin === 'laki-laki' ? '👦 Laki-laki' : anak.jenis_kelamin === 'perempuan' ? '👧 Perempuan' : anak.jenis_kelamin}</span>}
+          <br /><span className={s.muted}>
+            {anak.tanggal_lahir ? `🎂 ${tglLahir(anak.tanggal_lahir)}` : 'Tgl lahir —'}
+            {' · '}👪 {anak.namaOrtu?.trim() || anak.email || '—'}
+          </span>
+        </span>
       </div>
       <div className={s.row} style={{ marginTop: 8, gap: 8, flexWrap: 'wrap' }}>
         <label style={{ fontSize: 12, color: 'var(--abu)' }}>🔥 Streak
