@@ -1,14 +1,18 @@
-// src/lib/data/pengaturan-menu.ts — daftar key menu admin yang khusus super user
+// src/lib/data/pengaturan-menu.ts — akses menu admin per role (diatur super user)
 import { createClient } from '@/lib/supabase/server';
-import { MENU_SUPER_DEFAULT } from '@/lib/menu-admin';
+import { DEFAULT_AKSES, type AksesMenu } from '@/lib/menu-admin';
 
-export async function getMenuSuperOnly(): Promise<string[]> {
+export async function getMenuAkses(): Promise<AksesMenu> {
   try {
     const s = await createClient();
-    const { data } = await s.from('pengaturan_menu').select('super_only').eq('id', 1).single();
-    if (!data?.super_only) return MENU_SUPER_DEFAULT;
-    return data.super_only as string[];
+    const { data } = await s.from('pengaturan_menu').select('akses').eq('id', 1).single();
+    const a = (data?.akses ?? {}) as Partial<AksesMenu>;
+    return {
+      admin: a.admin ?? DEFAULT_AKSES.admin,
+      investor: a.investor ?? DEFAULT_AKSES.investor,
+      guru: a.guru ?? DEFAULT_AKSES.guru,
+    };
   } catch {
-    return MENU_SUPER_DEFAULT;
+    return DEFAULT_AKSES;
   }
 }

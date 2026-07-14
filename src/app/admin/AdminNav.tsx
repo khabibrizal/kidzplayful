@@ -2,16 +2,16 @@
 'use client';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { MENU_ADMIN, MENU_SUPER_TETAP } from '@/lib/menu-admin';
+import { MENU_ADMIN } from '@/lib/menu-admin';
 
-export default function AdminNav({ superOnly = [], isSuperuser = false }: { superOnly?: string[]; isSuperuser?: boolean }) {
+export default function AdminNav({ allowed = [], isSuperuser = false }: { allowed?: string[]; isSuperuser?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
   const aktif = (href: string) => (href === '/admin' ? pathname === '/admin' : pathname.startsWith(href));
   const diDashboard = pathname === '/admin';
 
-  const kunci = new Set([...superOnly, ...MENU_SUPER_TETAP]); // menu khusus super user
-  const menu = MENU_ADMIN.filter((m) => isSuperuser || !kunci.has(m.key));
+  const boleh = new Set(allowed);
+  const menu = MENU_ADMIN.filter((m) => isSuperuser || m.key === 'dashboard' || boleh.has(m.key)); // dashboard selalu tampil
 
   return (
     <div style={{ marginBottom: 16 }}>

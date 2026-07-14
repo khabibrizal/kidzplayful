@@ -1,7 +1,7 @@
 // src/proxy.ts
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-import { keyMenuDariPath, MENU_SUPER_DEFAULT, MENU_SUPER_TETAP } from '@/lib/menu-admin';
+import { keyMenuDariPath, menuUntukRole, DEFAULT_AKSES, type AksesMenu } from '@/lib/menu-admin';
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -25,23 +25,21 @@ export async function proxy(request: NextRequest) {
   );
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Menu admin yang KHUSUS super user: admin biasa yang membuka URL-nya → dialihkan ke /admin
+  // Akses menu admin per role: user tanpa izin untuk suatu menu → dialihkan
   const path = request.nextUrl.pathname;
   if (user && path.startsWith('/admin')) {
-    const key = keyMenuDariPath(path);
-    if (key !== 'dashboard') {
-      const { data: prof } = await supabase.from('profiles').select('is_admin,is_superuser').eq('id', user.id).single();
-      if (prof?.is_admin && !prof.is_superuser) {
-        let terlarang = MENU_SUPER_TETAP.includes(key);
-        if (!terlarang) {
-          const { data: cfg } = await supabase.from('pengaturan_menu').select('super_only').eq('id', 1).maybeSingle();
-          terlarang = (((cfg?.super_only as string[]) ?? MENU_SUPER_DEFAULT)).includes(key);
-        }
-        if (terlarang) {
-          const url = request.nextUrl.clone();
-          url.pathname = '/admin';
-          return NextResponse.redirect(url);
-        }
+    const { data: prof } = await supabase.from('profiles').select('is_admin,is_superuser,is_investor,is_guru').eq('id', user.id).single();
+    if (!prof?.is_superuser) {
+      const { data: cfg } = await supabase.from('pengaturan_menu').select('akses').eq('id', 1).maybeSingle();
+      const a = (cfg?.akses ?? {}) as Partial<AksesMenu>;
+      const akses: AksesMenu = { admin: a.admin ?? DEFAULT_AKSES.admin, investor: a.investor ?? DEFAULT_AKSES.investor, guru: a.guru ?? DEFAULT_AKSES.guru };
+      const allowed = menuUntukRole(akses, { is_admin: prof?.is_admin, is_investor: prof?.is_investor, is_guru: prof?.is_guru });
+      const key = keyMenuDariPath(path);
+      // tak punya akses panel sama sekali → biar layout arahkan (/pilih-anak); menu spesifik tak diizinkan → /admin
+      if (allowed.size > 0 && key !== 'dashboard' && !allowed.has(key)) {
+        const url = request.nextUrl.clone();
+        url.pathname = '/admin';
+        return NextResponse.redirect(url);
       }
     }
   }

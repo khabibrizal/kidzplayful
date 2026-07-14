@@ -1,4 +1,4 @@
-// src/lib/menu-admin.ts — katalog menu admin (dipakai AdminNav, checklist akses, & enforcement)
+// src/lib/menu-admin.ts — katalog menu admin + akses per role (dipakai AdminNav, checklist, enforcement)
 // key = segmen path setelah /admin (dashboard = '' pada href '/admin').
 export interface MenuAdmin { key: string; href: string; label: string }
 
@@ -27,14 +27,39 @@ export const MENU_ADMIN: MenuAdmin[] = [
   { key: 'akses-menu', href: '/admin/akses-menu', label: '🔐 Akses Menu' },
 ];
 
-// default menu yang khusus super user (dipakai bila tabel pengaturan_menu belum ada)
-export const MENU_SUPER_DEFAULT = ['keuangan', 'users', 'pengaturan-bayar', 'pengaturan-trial', 'sponsor'];
+// role yang bisa diatur aksesnya (super user selalu full)
+export type RoleAkses = 'admin' | 'investor' | 'guru';
+export const ROLE_AKSES: { key: RoleAkses; label: string }[] = [
+  { key: 'admin', label: 'Admin' },
+  { key: 'investor', label: 'Investor' },
+  { key: 'guru', label: 'Guru' },
+];
 
-// Menu yang SELALU khusus super user (tak bisa diubah): halaman pengelola akses & role.
+export interface AksesMenu { admin: string[]; investor: string[]; guru: string[] }
+
+// menu yang selalu khusus super user (tak muncul di matriks)
 export const MENU_SUPER_TETAP = ['akses-menu'];
+// menu yang bisa dikonfigurasi di matriks (kecuali dashboard & akses-menu)
+export const KEY_KONFIGURABEL = MENU_ADMIN.map((m) => m.key).filter((k) => k !== 'dashboard' && !MENU_SUPER_TETAP.includes(k));
+// default: menu sensitif hanya super user (admin pun tak dapat kecuali dicentang)
+const SENSITIF = ['keuangan', 'users', 'pengaturan-bayar', 'pengaturan-trial', 'sponsor'];
+export const DEFAULT_AKSES: AksesMenu = {
+  admin: KEY_KONFIGURABEL.filter((k) => !SENSITIF.includes(k)),
+  investor: [],
+  guru: [],
+};
 
 /** segmen key dari path admin (mis. /admin/keuangan/kpi → 'keuangan'). */
 export function keyMenuDariPath(pathname: string): string {
   const seg = pathname.replace(/^\/admin\/?/, '').split('/')[0];
   return seg || 'dashboard';
+}
+
+/** Kumpulan menu yang boleh diakses user berdasarkan role-nya (gabungan). */
+export function menuUntukRole(akses: AksesMenu, role: { is_admin?: boolean; is_investor?: boolean; is_guru?: boolean }): Set<string> {
+  const set = new Set<string>();
+  if (role.is_admin) akses.admin.forEach((k) => set.add(k));
+  if (role.is_investor) akses.investor.forEach((k) => set.add(k));
+  if (role.is_guru) akses.guru.forEach((k) => set.add(k));
+  return set;
 }

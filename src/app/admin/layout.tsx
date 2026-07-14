@@ -1,13 +1,11 @@
 // src/app/admin/layout.tsx
-import { getAdminTerjamin } from '@/lib/data/admin';
-import { getMenuSuperOnly } from '@/lib/data/pengaturan-menu';
+import { getAksesAdmin } from '@/lib/data/admin';
 import LogoutBtn from './LogoutBtn';
 import AdminNav from './AdminNav';
 import s from './admin.module.css';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const admin = await getAdminTerjamin();
-  const superOnly = await getMenuSuperOnly();
+  const admin = await getAksesAdmin();
   return (
     <div className={s.wrap}>
       <div className={s.head}>
@@ -17,7 +15,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <LogoutBtn />
         </span>
       </div>
-      <AdminNav superOnly={superOnly} isSuperuser={admin.isSuperuser} />
+      <AdminNav allowed={admin.allowed} isSuperuser={admin.isSuperuser} />
       {children}
     </div>
   );
