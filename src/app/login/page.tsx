@@ -19,15 +19,16 @@ export default function LoginPage() {
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword({ email, password: sandi });
     if (error) { setLoading(false); return setErr('Email atau kata sandi salah.'); }
-    // arahkan guru ke area guru
+    // arahkan sesuai role: admin/superuser → dashboard admin, guru → area guru, lainnya → pilih anak
     const { data: { user } } = await supabase.auth.getUser();
-    let keGuru = false;
+    let tujuan = '/pilih-anak';
     if (user) {
-      const { data: prof } = await supabase.from('profiles').select('is_guru').eq('id', user.id).single();
-      keGuru = !!prof?.is_guru;
+      const { data: prof } = await supabase.from('profiles').select('is_admin,is_superuser,is_guru').eq('id', user.id).single();
+      if (prof?.is_admin || prof?.is_superuser) tujuan = '/admin';
+      else if (prof?.is_guru) tujuan = '/guru';
     }
     setLoading(false);
-    router.push(keGuru ? '/guru' : '/pilih-anak');
+    router.push(tujuan);
   }
 
   return (
