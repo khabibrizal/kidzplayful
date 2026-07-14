@@ -1,37 +1,17 @@
-// src/app/admin/AdminNav.tsx — navigasi admin persisten (menu utama selalu aktif) + tombol Back
+// src/app/admin/AdminNav.tsx — navigasi admin persisten + tombol Back (filter menu khusus super user)
 'use client';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { MENU_ADMIN, MENU_SUPER_TETAP } from '@/lib/menu-admin';
 
-const MENU: { href: string; label: string }[] = [
-  { href: '/admin', label: '🏠 Dashboard' },
-  { href: '/admin/analitik', label: '📈 Analitik' },
-  { href: '/admin/event', label: '🗓️ Event' },
-  { href: '/admin/produk', label: '🛍️ Produk' },
-  { href: '/admin/pesanan', label: '📦 Pesanan' },
-  { href: '/admin/kelas-bermain', label: '🎈 Kelas Bermain' },
-  { href: '/admin/artikel', label: '📝 Artikel' },
-  { href: '/admin/video', label: '📺 Video' },
-  { href: '/admin/langganan', label: '💳 Langganan' },
-  { href: '/admin/keuangan', label: '💼 Keuangan' },
-  { href: '/admin/sponsor', label: '🤝 Sponsor' },
-  { href: '/admin/anak', label: '🧒 Anak' },
-  { href: '/admin/tantangan', label: '🏆 Tantangan' },
-  { href: '/admin/pengaturan-bayar', label: '💰 Pembayaran' },
-  { href: '/admin/pengaturan-trial', label: '⏳ Trial' },
-  { href: '/admin/laporan', label: '📊 Laporan' },
-  { href: '/admin/komunitas', label: '💬 Komunitas' },
-  { href: '/admin/feedback', label: '⭐ Masukan' },
-  { href: '/admin/guru', label: '🍎 Guru' },
-  { href: '/admin/users', label: '👤 Pengguna' },
-  { href: '/admin/reminder', label: '📣 Reminder' },
-];
-
-export default function AdminNav() {
+export default function AdminNav({ superOnly = [], isSuperuser = false }: { superOnly?: string[]; isSuperuser?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
   const aktif = (href: string) => (href === '/admin' ? pathname === '/admin' : pathname.startsWith(href));
   const diDashboard = pathname === '/admin';
+
+  const kunci = new Set([...superOnly, ...MENU_SUPER_TETAP]); // menu khusus super user
+  const menu = MENU_ADMIN.filter((m) => isSuperuser || !kunci.has(m.key));
 
   return (
     <div style={{ marginBottom: 16 }}>
@@ -45,7 +25,7 @@ export default function AdminNav() {
         </button>
       )}
       <nav style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, WebkitOverflowScrolling: 'touch' }}>
-        {MENU.map((m) => {
+        {menu.map((m) => {
           const on = aktif(m.href);
           return (
             <Link

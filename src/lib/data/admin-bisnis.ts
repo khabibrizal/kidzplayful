@@ -51,6 +51,18 @@ export async function simpanPengaturanBayar(formData: FormData) {
   revalidatePath('/pengaturan');
 }
 
+export async function simpanMenuSuperOnly(keys: string[]): Promise<void> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Tidak terautentikasi');
+  const { data: prof } = await supabase.from('profiles').select('is_superuser').eq('id', user.id).single();
+  if (!prof?.is_superuser) throw new Error('Hanya Super User.');
+  const bersih = Array.from(new Set((keys ?? []).filter((k) => typeof k === 'string' && k)));
+  const { error } = await supabase.from('pengaturan_menu').update({ super_only: bersih, updated_at: new Date().toISOString() }).eq('id', 1);
+  if (error) throw new Error(error.message);
+  revalidatePath('/admin', 'layout');
+}
+
 export async function simpanPengaturanTrial(formData: FormData) {
   const { supabase } = await adminDb();
   const patch = {
