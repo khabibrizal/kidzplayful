@@ -20,10 +20,9 @@ export default function BuatUserForm({ roles }: { roles: RoleOpsi[] }) {
     const fd = new FormData(form);
     start(async () => {
       try {
-        await buatUser(fd);
-        setOk(true); setMsg('User berhasil dibuat ✓');
-        form.reset();
-        router.refresh();
+        const r = await buatUser(fd);
+        if (r.ok) { setOk(true); setMsg('User berhasil dibuat ✓'); form.reset(); router.refresh(); }
+        else { setOk(false); setMsg(r.error ?? 'Gagal membuat user.'); }
       } catch (err) {
         setOk(false);
         setMsg(err instanceof Error ? err.message : 'Gagal membuat user.');
