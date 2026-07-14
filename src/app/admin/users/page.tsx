@@ -1,6 +1,7 @@
 // src/app/admin/users/page.tsx — kelola user & role (admin/super user)
 import { getPengelolaUserTerjamin, getDaftarUser } from '@/lib/data/admin-users';
-import { setRole, tambahUserRole, buatUser } from '@/lib/data/admin-users-actions';
+import { setRole, tambahUserRole } from '@/lib/data/admin-users-actions';
+import BuatUserForm from './BuatUserForm';
 import s from '../admin.module.css';
 
 const ROLES = [
@@ -24,21 +25,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
 
       {/* Buat user baru langsung + role */}
       <div className={s.section}>Buat user baru</div>
-      <form action={buatUser} className={s.card}>
-        <div className={s.row} style={{ gap: 6, flexWrap: 'wrap' }}>
-          <input className={s.inp} name="nama" placeholder="Nama tampilan" style={{ flex: 1, minWidth: 140 }} />
-          <input className={s.inp} name="email" type="email" placeholder="Email" style={{ flex: 1, minWidth: 160 }} required />
-        </div>
-        <div className={s.row} style={{ gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
-          <input className={s.inp} name="password" type="text" placeholder="Kata sandi (min 6)" style={{ flex: 1, minWidth: 140 }} required />
-          <select className={s.inp} name="role" style={{ flex: 1, minWidth: 130 }} defaultValue="">
-            <option value="">— Tanpa role (user biasa) —</option>
-            {ROLES.filter((r) => isSuperuser || !r.hanyaSuper).map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
-          </select>
-          <button className={s.btn} type="submit">+ Buat User</button>
-        </div>
-        <p className={s.muted} style={{ fontSize: 12, marginTop: 6 }}>Akun langsung aktif (tanpa konfirmasi email). Butuh <code>SUPABASE_SERVICE_ROLE_KEY</code> terpasang di server.</p>
-      </form>
+      <BuatUserForm roles={ROLES.filter((r) => isSuperuser || !r.hanyaSuper).map((r) => ({ key: r.key, label: r.label }))} />
 
       {/* Tambah role by email */}
       <div className={s.section}>Tetapkan role (akun sudah ada)</div>
