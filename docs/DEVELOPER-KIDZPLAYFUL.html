@@ -22,7 +22,7 @@ li { margin:3px 0; }
 <blockquote>
 <p>Panduan teknis untuk developer baru. Menjelaskan <strong>per halaman/menu</strong>: file apa yang menanganinya, function/reader/server-action apa yang dipakai, dan <strong>endpoint backend</strong> (tabel Supabase / RPC / storage / auth) yang disentuh. Termasuk <strong>REST API internal</strong> (untuk aplikasi mobile) dan infrastruktur.</p>
 </blockquote>
-<p>Terakhir diperbarui: 2026-07-11.</p>
+<p>Terakhir diperbarui: 2026-07-14.</p>
 <hr />
 <h2 id="1-ringkasan-stack">1. Ringkasan &amp; Stack</h2>
 <ul>
@@ -31,7 +31,7 @@ li { margin:3px 0; }
 <li><strong>Backend</strong>: Supabase (Postgres + Row Level Security + Auth + Storage).</li>
 <li><strong>Hosting</strong>: Vercel (<code>www.kidzplayful.com</code>).</li>
 <li><strong>Tanpa build/lint khusus</strong>: gerbang mutu = <code>npx tsc --noEmit</code> + <code>npm run build</code>.</li>
-<li><strong>Tanpa service-role key</strong>: SEMUA akses backend memakai <strong>anon key + RLS</strong>. Operasi admin diamankan lewat guard aplikasi + RLS + fungsi SQL <code>is_admin()</code>/<code>is_guru()</code>/<code>is_investor()</code>/<code>is_superuser()</code>. Satu-satunya bypass RLS: RPC <code>laporan_engagement()</code> (SECURITY DEFINER, ber-guard <code>is_admin()</code>).</li>
+<li><strong>Akses backend via anon key + RLS</strong>. Operasi admin diamankan guard aplikasi + RLS + fungsi SQL <code>is_admin()</code>/<code>is_guru()</code>/<code>is_investor()</code>/<code>is_superuser()</code>. Bypass RLS: RPC <code>laporan_engagement()</code> (SECURITY DEFINER, ber-guard <code>is_admin()</code>) + <strong>service-role key opsional</strong> (<code>SUPABASE_SERVICE_ROLE_KEY</code>, server-only) hanya untuk <strong>buat user</strong> (<code>lib/supabase/admin.ts</code>).</li>
 </ul>
 <h3 id="cara-membaca-dokumen-ini">Cara membaca dokumen ini</h3>
 <p>Tiap halaman ditulis dalam blok:
@@ -55,7 +55,7 @@ li { margin:3px 0; }
     supabase/          # server.ts (SSR), client.ts (browser)
     api/               # helpers.ts (amplop JSON + auth Bearer untuk REST API)
     game/              # tipe &amp; util mesin game
-supabase/migrations/   # skema DB (0001..0062), dijalankan manual di SQL Editor
+supabase/migrations/   # skema DB (0001..0063), dijalankan manual di SQL Editor
 docs/                  # dokumentasi (termasuk file ini)
 tools/md2pdf.py        # generator PDF dokumentasi
 </code></pre>
@@ -69,7 +69,9 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </ul>
 <h3 id="pola-guard-lapis-ganda">Pola guard (lapis ganda)</h3>
 <ul>
-<li><strong>Halaman</strong>: <code>getAdminTerjamin()</code> (<code>lib/data/admin.ts</code>) dipakai di <code>admin/layout.tsx</code> → redirect <code>/login</code> atau <code>/pilih-anak</code> bila bukan admin. Halaman <code>/admin/users</code> memakai guard khusus <code>getPengelolaUserTerjamin()</code> (admin <strong>atau</strong> super user). Halaman anak memakai <code>getAnakTerjamin()</code> (login + langganan + kepemilikan). Investor: <code>getInvestorTerjamin()</code>.</li>
+<li><strong>Halaman admin</strong>: <code>admin/layout.tsx</code> memakai <strong><code>getAksesAdmin()</code></strong> (<code>lib/data/admin.ts</code>) → hitung menu yang boleh per role (matriks Akses Menu, lihat §4 Akses Menu); redirect <code>/pilih-anak</code> bila tak punya akses menu apa pun. Super user = semua. <code>getAdminTerjamin()</code> (is_admin/superuser) masih dipakai halaman non-menu (mis. stiker). <code>/admin/akses-menu</code> pakai <code>getSuperuserTerjamin()</code>. Halaman anak: <code>getAnakTerjamin()</code>. Investor: <code>getInvestorTerjamin()</code>.</li>
+<li><strong>Routing login</strong>: setelah login → <strong>admin/superuser ke <code>/admin</code></strong>, guru ke <code>/guru</code>, lainnya <code>/pilih-anak</code> (<code>login/page.tsx</code>); admin/superuser yang mendarat di <code>/pilih-anak</code> di-redirect ke <code>/admin</code>.</li>
+<li><strong>Enforcement rute</strong>: <code>src/proxy.ts</code> (middleware) memblokir user membuka <code>/admin/&lt;menu&gt;</code> yang tak diizinkan role-nya → redirect <code>/admin</code>.</li>
 <li><strong>Server action</strong>: setiap file <code>*-actions.ts</code> mengulang cek admin sendiri lewat helper lokal (<code>adminDb()</code> / <code>db()</code> / <code>pengelola()</code>) → <code>auth.getUser()</code> + baca <code>profiles.is_admin</code>.</li>
 </ul>
 <h3 id="data-layer">Data layer</h3>
@@ -80,7 +82,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </ul>
 <h3 id="deploy-migrasi">Deploy &amp; migrasi</h3>
 <ul>
-<li>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor (urut <code>0001..0062</code>), lalu diverifikasi via REST (<code>?select=col&amp;limit=1</code> → 200).</li>
+<li>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor (urut <code>0001..0063</code>), lalu diverifikasi via REST (<code>?select=col&amp;limit=1</code> → 200).</li>
 <li>Commit: <code>git -c commit.gpgsign=false commit</code> + baris <code>Co-Authored-By</code>. Push ke <code>master</code> → Vercel auto-deploy.</li>
 <li>Banyak reader dibungkus <code>try/catch</code> agar fitur aman dideploy sebelum migrasinya dijalankan (mengembalikan nilai default).</li>
 </ul>
@@ -90,11 +92,12 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </ul>
 <h3 id="environment">Environment</h3>
 <ul>
-<li><code>NEXT_PUBLIC_SUPABASE_URL</code>, <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> — hanya dua env var ini yang direferensikan seluruh <code>src</code>. Tidak ada service-role key / kunci pihak ketiga.</li>
+<li><code>NEXT_PUBLIC_SUPABASE_URL</code>, <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> — wajib (URL + anon key).</li>
+<li><strong><code>SUPABASE_SERVICE_ROLE_KEY</code></strong> — opsional, <strong>server-only</strong> (tanpa <code>NEXT_PUBLIC_</code>). Hanya dipakai fitur <strong>buat user</strong> (<code>lib/supabase/admin.ts</code>). Boleh legacy <code>service_role</code> (JWT) atau new secret key (<code>sb_secret_…</code>). Bila kosong, fitur buat user menampilkan error jelas (fitur lain tetap jalan).</li>
 </ul>
 <hr />
 <h2 id="4-panel-admin-per-menu-non-keuangan">4. Panel Admin — per menu (non-keuangan)</h2>
-<p>Pembungkus: <code>admin/layout.tsx</code> (guard <code>getAdminTerjamin</code>) + <code>AdminNav.tsx</code> (navigasi) + <code>LogoutBtn.tsx</code>.</p>
+<p>Pembungkus: <code>admin/layout.tsx</code> (guard <code>getAksesAdmin</code>, kirim <code>allowed</code>+<code>isSuperuser</code> ke nav) + <code>AdminNav.tsx</code> (navigasi, filter menu sesuai akses) + <code>LogoutBtn.tsx</code>. Akses menu per role diatur di <strong>🔐 Akses Menu</strong> (super user).</p>
 <h3 id="dashboard-tema-admin">🏠 Dashboard (Tema) — <code>/admin</code></h3>
 <ul>
 <li><strong>File</strong>: <code>admin/page.tsx</code> (server, form inline).</li>
@@ -166,7 +169,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <h3 id="anak-gamifikasi-adminanak">🧒 Anak &amp; Gamifikasi — <code>/admin/anak</code></h3>
 <ul>
 <li><strong>File</strong>: <code>admin/anak/page.tsx</code> → <code>AnakGamiForm.tsx</code>. Konstanta <code>LENCANA</code> (<code>domain/gamifikasi</code>).</li>
-<li><strong>Fungsi data</strong>: <code>getAnakUntukAdmin()</code> (<code>admin-anak.ts</code>) — anak + koin/streak/lencana + email ortu.</li>
+<li><strong>Fungsi data</strong>: <code>getAnakUntukAdmin()</code> (<code>admin-anak.ts</code>) — anak + koin/streak/lencana + <strong>jenis kelamin, tgl lahir, nama &amp; email ortu</strong>.</li>
 <li><strong>Server action</strong>: <code>setStreakKoin</code>, <code>toggleLencana</code> (<code>admin-anak-actions.ts</code>).</li>
 <li><strong>Endpoint</strong>: <code>anak</code>, <code>lencana_anak</code>.</li>
 </ul>
@@ -220,11 +223,27 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </ul>
 <h3 id="pengguna-role-adminusers">👤 Pengguna &amp; Role — <code>/admin/users</code></h3>
 <ul>
-<li><strong>File</strong>: <code>admin/users/page.tsx</code> (form inline; toggle role <code>&lt;form action={setRole}&gt;</code>).</li>
+<li><strong>File</strong>: <code>admin/users/page.tsx</code> (form inline; <code>BuatUserForm.tsx</code> di atas; toggle role <code>&lt;form action={setRole}&gt;</code>).</li>
 <li><strong>Fungsi data</strong>: <code>getPengelolaUserTerjamin()</code> (guard + status superuser), <code>getDaftarUser(q)</code> (<code>admin-users.ts</code>).</li>
-<li><strong>Server action</strong>: <code>setRole(formData)</code>, <code>tambahUserRole(formData)</code> (<code>admin-users-actions.ts</code>).</li>
-<li><strong>Endpoint</strong>: <code>profiles</code> (baca role + update kolom role; super user otomatis set <code>is_admin</code>).</li>
+<li><strong>Server action</strong> (<code>admin-users-actions.ts</code>): <code>setRole(formData)</code>, <code>tambahUserRole(formData)</code> (assign role ke akun yang sudah ada), <strong><code>buatUser(formData)</code></strong> (buat akun auth baru + role).</li>
+<li><strong>Endpoint</strong>: <code>profiles</code> (baca role + update kolom role; super user otomatis set <code>is_admin</code>). <code>buatUser</code> juga panggil <strong><code>auth.admin.createUser</code></strong> (service-role).</li>
 <li><strong>Guard/Role</strong>: <code>getPengelolaUserTerjamin()</code> (admin <strong>atau</strong> super user). Role tinggi (admin/superuser) hanya bisa diatur super user; tak bisa cabut super user dari diri sendiri.</li>
+</ul>
+<h4 id="buat-user-baru">➕ Buat User baru</h4>
+<ul>
+<li><strong>File</strong>: <code>admin/users/BuatUserForm.tsx</code> (client) → server action <code>buatUser</code>.</li>
+<li><strong>Alur</strong>: <code>createAdminClient()</code> (<code>lib/supabase/admin.ts</code>, service-role, <code>import 'server-only'</code>) → <code>auth.admin.createUser({email,password,email_confirm:true})</code> (akun langsung aktif) → <code>profiles.update({nama_tampilan, [kolom role]})</code>.</li>
+<li><strong>Endpoint</strong>: Supabase <strong>Auth Admin API</strong> + tabel <code>profiles</code>. Butuh env <strong><code>SUPABASE_SERVICE_ROLE_KEY</code></strong>.</li>
+<li><strong>Guard/Role</strong>: <code>pengelola()</code> (admin/superuser). Role tinggi hanya oleh superuser. <code>buatUser</code> <strong>mengembalikan <code>{ok,error}</code></strong> (bukan throw) agar pesan error tidak diredaksi Next.js di produksi; error ditampilkan inline di form.</li>
+</ul>
+<h4 id="akses-menu-adminakses-menu-khusus-super-user">🔐 Akses Menu — <code>/admin/akses-menu</code> (khusus Super User)</h4>
+<ul>
+<li><strong>File</strong>: <code>admin/akses-menu/page.tsx</code> (tabel matriks Role × Menu, checkbox <code>name="${role}_${menu}"</code>).</li>
+<li><strong>Katalog</strong>: <code>lib/menu-admin.ts</code> — <code>MENU_ADMIN</code> (daftar menu), <code>ROLE_AKSES</code> (admin/investor/guru), <code>DEFAULT_AKSES</code>, <code>keyMenuDariPath()</code>, <code>menuUntukRole()</code>.</li>
+<li><strong>Fungsi data</strong>: <code>getMenuAkses()</code> (<code>lib/data/pengaturan-menu.ts</code>) baca <code>pengaturan_menu.akses</code>; <code>getAksesAdmin()</code> (<code>admin.ts</code>) hitung menu yang boleh untuk user aktif.</li>
+<li><strong>Server action</strong>: <code>simpanMenuAkses(akses)</code> (<code>admin-bisnis.ts</code>) → update <code>pengaturan_menu.akses</code> + <code>revalidatePath('/admin','layout')</code>.</li>
+<li><strong>Endpoint</strong>: tabel <code>pengaturan_menu</code> (single-row id=1, kolom <code>akses</code> jsonb <code>{admin,investor,guru}</code>).</li>
+<li><strong>Guard/Role</strong>: <code>getSuperuserTerjamin()</code> (hanya super user). Super user = akses semua menu (matriks tak berlaku untuknya). Enforcement rute di <code>src/proxy.ts</code>.</li>
 </ul>
 <h3 id="reminder-event-adminreminder">📣 Reminder Event — <code>/admin/reminder</code></h3>
 <ul>
@@ -371,6 +390,16 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <td><code>pengaturan-trial.ts</code></td>
 <td><code>getPengaturanTrial()</code> (+ <code>DEFAULT_TRIAL</code>)</td>
 <td><code>pengaturan_trial</code></td>
+</tr>
+<tr>
+<td><code>pengaturan-menu.ts</code></td>
+<td><code>getMenuAkses()</code> (matriks Akses Menu, fallback <code>DEFAULT_AKSES</code>)</td>
+<td><code>pengaturan_menu</code></td>
+</tr>
+<tr>
+<td><code>admin.ts</code></td>
+<td><code>getAdminTerjamin</code>, <code>getSuperuserTerjamin</code>, <code>getAksesAdmin</code> (guard + hitung menu per role)</td>
+<td><code>profiles</code>, <code>pengaturan_menu</code></td>
 </tr>
 </tbody>
 </table>
@@ -671,11 +700,12 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </table>
 <hr />
 <h2 id="10-infrastruktur-integrasi">10. Infrastruktur &amp; integrasi</h2>
-<h3 id="supabase-client-tiga-cara-semua-anon-key">Supabase client (tiga cara, semua anon key)</h3>
+<h3 id="supabase-client-empat-cara">Supabase client (empat cara)</h3>
 <ul>
-<li><code>lib/supabase/server.ts</code> — <code>createClient()</code> async, <code>@supabase/ssr</code> <code>createServerClient</code> + cookie SSR (<code>cookies()</code>; <code>setAll</code> di-try/catch). Untuk Server Component/halaman &amp; reader/action.</li>
-<li><code>lib/supabase/client.ts</code> — <code>createClient()</code> browser (<code>createBrowserClient</code>). Untuk komponen client (upload dsb).</li>
-<li><code>lib/api/helpers.ts</code> — untuk REST API mobile: client <code>@supabase/supabase-js</code> tanpa cookie, di-scope Bearer.</li>
+<li><code>lib/supabase/server.ts</code> — <code>createClient()</code> async (anon), <code>@supabase/ssr</code> <code>createServerClient</code> + cookie SSR (<code>cookies()</code>; <code>setAll</code> di-try/catch). Untuk Server Component/halaman &amp; reader/action.</li>
+<li><code>lib/supabase/client.ts</code> — <code>createClient()</code> browser (anon, <code>createBrowserClient</code>). Untuk komponen client (upload dsb).</li>
+<li><code>lib/api/helpers.ts</code> — untuk REST API mobile: client <code>@supabase/supabase-js</code> tanpa cookie, di-scope Bearer (anon).</li>
+<li><code>lib/supabase/admin.ts</code> — <strong><code>createAdminClient()</code> service-role</strong> (<code>import 'server-only'</code>, <code>persistSession:false</code>). <strong>Bypass RLS</strong>. HANYA untuk buat user (<code>buatUser</code>). Butuh <code>SUPABASE_SERVICE_ROLE_KEY</code>; throw pesan jelas bila kosong.</li>
 </ul>
 <h3 id="libapihelpersts"><code>lib/api/helpers.ts</code></h3>
 <ul>
@@ -700,7 +730,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </ul>
 <h3 id="environment_1">Environment</h3>
 <ul>
-<li><code>NEXT_PUBLIC_SUPABASE_URL</code>, <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> — hanya keduanya. Tidak ada service-role key.</li>
+<li><code>NEXT_PUBLIC_SUPABASE_URL</code>, <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> — wajib. <strong><code>SUPABASE_SERVICE_ROLE_KEY</code></strong> — opsional, server-only, hanya untuk fitur buat user (lihat §4 Buat User).</li>
 </ul>
 <hr />
 <h2 id="11-kamus-tabel-data-dictionary">11. Kamus tabel (data dictionary)</h2>
@@ -839,6 +869,11 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <td>0059, 0061</td>
 </tr>
 <tr>
+<td><code>pengaturan_menu</code></td>
+<td>matriks Akses Menu per role (single-row id=1, <code>akses</code> jsonb <code>{admin,investor,guru}</code>)</td>
+<td>0063</td>
+</tr>
+<tr>
 <td><code>riwayat_kelas</code></td>
 <td>riwayat materi kelas yang dibuka</td>
 <td>0018</td>
@@ -866,20 +901,25 @@ tools/md2pdf.py        # generator PDF dokumentasi
 └─────────────┘   └──────────────────────────────────────┘   └──────────────┘
         │                                                            ▲
         └──── klien: signInWithPassword / signUp / upload aset ──────┘
-   Semua query pakai ANON KEY + RLS. Guard aplikasi (is_admin/is_superuser/…)
-   + fungsi SQL is_admin() dipakai di kebijakan RLS. Tanpa service-role key.
+   Sebagian besar query pakai ANON KEY + RLS. Guard aplikasi (is_admin/is_superuser/…)
+   + fungsi SQL is_admin() dipakai di kebijakan RLS. Service-role key hanya
+   untuk buat user (lib/supabase/admin.ts, server-only).
 </code></pre>
 <h3 id="132-auth-routing-masuk">13.2 Auth &amp; routing masuk</h3>
-<pre><code>Login (/login) ─signInWithPassword─▶ cek profiles.is_guru
+<pre><code>Login (/login) ─signInWithPassword─▶ cek profiles (is_admin/is_superuser/is_guru)
       │                                      │
+      │             is_admin/is_superuser? ──┼── ya ──▶ /admin  (panel admin)
       │                             is_guru? ├── ya ──▶ /guru  (area guru)
       │                                      └── tidak ─▶ /pilih-anak (ortu)
+   (admin/superuser yang mendarat di /pilih-anak → redirect /admin)
 Daftar (/daftar) ─signUp─▶ (trigger DB buat profiles+langganan trial)
                           └─▶ update nama_tampilan, no_wa
 Guard halaman:
-  /admin/*      → getAdminTerjamin()        (is_admin, else redirect)
-  /admin/users  → getPengelolaUserTerjamin() (is_admin ATAU is_superuser)
-  /investor     → getInvestorTerjamin()     (is_investor / is_admin)
+  /admin (layout) → getAksesAdmin()          (hitung menu per role; else /pilih-anak)
+  /admin/&lt;menu&gt;   → src/proxy.ts blokir menu di luar akses role → /admin
+  /admin/akses-menu → getSuperuserTerjamin() (khusus super user)
+  /admin/users    → getPengelolaUserTerjamin() (is_admin ATAU is_superuser)
+  /investor       → getInvestorTerjamin()     (is_investor / is_admin)
   /main,/ortu,/pilih-game → getAnakTerjamin() (login+langganan+milik anak)
 </code></pre>
 <h3 id="133-checkout-store-pendapatan-basis-kas">13.3 Checkout store → pendapatan (basis kas)</h3>

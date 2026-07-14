@@ -2,7 +2,7 @@
 
 > Panduan teknis untuk developer baru. Menjelaskan **per halaman/menu**: file apa yang menanganinya, function/reader/server-action apa yang dipakai, dan **endpoint backend** (tabel Supabase / RPC / storage / auth) yang disentuh. Termasuk **REST API internal** (untuk aplikasi mobile) dan infrastruktur.
 
-Terakhir diperbarui: 2026-07-11.
+Terakhir diperbarui: 2026-07-14.
 
 ---
 
@@ -13,7 +13,7 @@ Terakhir diperbarui: 2026-07-11.
 - **Backend**: Supabase (Postgres + Row Level Security + Auth + Storage).
 - **Hosting**: Vercel (`www.kidzplayful.com`).
 - **Tanpa build/lint khusus**: gerbang mutu = `npx tsc --noEmit` + `npm run build`.
-- **Tanpa service-role key**: SEMUA akses backend memakai **anon key + RLS**. Operasi admin diamankan lewat guard aplikasi + RLS + fungsi SQL `is_admin()`/`is_guru()`/`is_investor()`/`is_superuser()`. Satu-satunya bypass RLS: RPC `laporan_engagement()` (SECURITY DEFINER, ber-guard `is_admin()`).
+- **Akses backend via anon key + RLS**. Operasi admin diamankan guard aplikasi + RLS + fungsi SQL `is_admin()`/`is_guru()`/`is_investor()`/`is_superuser()`. Bypass RLS: RPC `laporan_engagement()` (SECURITY DEFINER, ber-guard `is_admin()`) + **service-role key opsional** (`SUPABASE_SERVICE_ROLE_KEY`, server-only) hanya untuk **buat user** (`lib/supabase/admin.ts`).
 
 ### Cara membaca dokumen ini
 Tiap halaman ditulis dalam blok:
@@ -41,7 +41,7 @@ src/
     supabase/          # server.ts (SSR), client.ts (browser)
     api/               # helpers.ts (amplop JSON + auth Bearer untuk REST API)
     game/              # tipe & util mesin game
-supabase/migrations/   # skema DB (0001..0062), dijalankan manual di SQL Editor
+supabase/migrations/   # skema DB (0001..0063), dijalankan manual di SQL Editor
 docs/                  # dokumentasi (termasuk file ini)
 tools/md2pdf.py        # generator PDF dokumentasi
 ```
@@ -56,7 +56,9 @@ tools/md2pdf.py        # generator PDF dokumentasi
 - **Trigger `cegah_self_admin`** (migrasi 0056): mencegah eskalasi mandiri — `is_admin`/`is_superuser` hanya bisa diubah super user; `is_guru`/`is_investor` hanya oleh admin/super user; user biasa tak bisa mengubah role apa pun pada dirinya.
 
 ### Pola guard (lapis ganda)
-- **Halaman**: `getAdminTerjamin()` (`lib/data/admin.ts`) dipakai di `admin/layout.tsx` → redirect `/login` atau `/pilih-anak` bila bukan admin. Halaman `/admin/users` memakai guard khusus `getPengelolaUserTerjamin()` (admin **atau** super user). Halaman anak memakai `getAnakTerjamin()` (login + langganan + kepemilikan). Investor: `getInvestorTerjamin()`.
+- **Halaman admin**: `admin/layout.tsx` memakai **`getAksesAdmin()`** (`lib/data/admin.ts`) → hitung menu yang boleh per role (matriks Akses Menu, lihat §4 Akses Menu); redirect `/pilih-anak` bila tak punya akses menu apa pun. Super user = semua. `getAdminTerjamin()` (is_admin/superuser) masih dipakai halaman non-menu (mis. stiker). `/admin/akses-menu` pakai `getSuperuserTerjamin()`. Halaman anak: `getAnakTerjamin()`. Investor: `getInvestorTerjamin()`.
+- **Routing login**: setelah login → **admin/superuser ke `/admin`**, guru ke `/guru`, lainnya `/pilih-anak` (`login/page.tsx`); admin/superuser yang mendarat di `/pilih-anak` di-redirect ke `/admin`.
+- **Enforcement rute**: `src/proxy.ts` (middleware) memblokir user membuka `/admin/<menu>` yang tak diizinkan role-nya → redirect `/admin`.
 - **Server action**: setiap file `*-actions.ts` mengulang cek admin sendiri lewat helper lokal (`adminDb()` / `db()` / `pengelola()`) → `auth.getUser()` + baca `profiles.is_admin`.
 
 ### Data layer
@@ -65,7 +67,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 - Halaman tidak menaruh selector mentah bila bisa lewat reader; beberapa halaman melakukan query inline sederhana.
 
 ### Deploy & migrasi
-- Migrasi dijalankan **manual** di Supabase SQL Editor (urut `0001..0062`), lalu diverifikasi via REST (`?select=col&limit=1` → 200).
+- Migrasi dijalankan **manual** di Supabase SQL Editor (urut `0001..0063`), lalu diverifikasi via REST (`?select=col&limit=1` → 200).
 - Commit: `git -c commit.gpgsign=false commit` + baris `Co-Authored-By`. Push ke `master` → Vercel auto-deploy.
 - Banyak reader dibungkus `try/catch` agar fitur aman dideploy sebelum migrasinya dijalankan (mengembalikan nilai default).
 
@@ -73,13 +75,14 @@ tools/md2pdf.py        # generator PDF dokumentasi
 - **Satu bucket: `aset`**. Upload dilakukan **client-side** (komponen client), lalu URL publik disimpan lewat server action. Folder: `event/`, `produk/`, `worksheet/`, `artikel/`, `nota/`, `bukti/`, dan aset game.
 
 ### Environment
-- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` — hanya dua env var ini yang direferensikan seluruh `src`. Tidak ada service-role key / kunci pihak ketiga.
+- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` — wajib (URL + anon key).
+- **`SUPABASE_SERVICE_ROLE_KEY`** — opsional, **server-only** (tanpa `NEXT_PUBLIC_`). Hanya dipakai fitur **buat user** (`lib/supabase/admin.ts`). Boleh legacy `service_role` (JWT) atau new secret key (`sb_secret_…`). Bila kosong, fitur buat user menampilkan error jelas (fitur lain tetap jalan).
 
 ---
 
 ## 4. Panel Admin — per menu (non-keuangan)
 
-Pembungkus: `admin/layout.tsx` (guard `getAdminTerjamin`) + `AdminNav.tsx` (navigasi) + `LogoutBtn.tsx`.
+Pembungkus: `admin/layout.tsx` (guard `getAksesAdmin`, kirim `allowed`+`isSuperuser` ke nav) + `AdminNav.tsx` (navigasi, filter menu sesuai akses) + `LogoutBtn.tsx`. Akses menu per role diatur di **🔐 Akses Menu** (super user).
 
 ### 🏠 Dashboard (Tema) — `/admin`
 - **File**: `admin/page.tsx` (server, form inline).
@@ -141,7 +144,7 @@ Pembungkus: `admin/layout.tsx` (guard `getAdminTerjamin`) + `AdminNav.tsx` (navi
 
 ### 🧒 Anak & Gamifikasi — `/admin/anak`
 - **File**: `admin/anak/page.tsx` → `AnakGamiForm.tsx`. Konstanta `LENCANA` (`domain/gamifikasi`).
-- **Fungsi data**: `getAnakUntukAdmin()` (`admin-anak.ts`) — anak + koin/streak/lencana + email ortu.
+- **Fungsi data**: `getAnakUntukAdmin()` (`admin-anak.ts`) — anak + koin/streak/lencana + **jenis kelamin, tgl lahir, nama & email ortu**.
 - **Server action**: `setStreakKoin`, `toggleLencana` (`admin-anak-actions.ts`).
 - **Endpoint**: `anak`, `lencana_anak`.
 
@@ -188,11 +191,25 @@ Menu top-level tersendiri (sumber pendapatan). Rincian lengkap: lihat **§6 Modu
 - **Endpoint**: `profiles` (set `is_guru`).
 
 ### 👤 Pengguna & Role — `/admin/users`
-- **File**: `admin/users/page.tsx` (form inline; toggle role `<form action={setRole}>`).
+- **File**: `admin/users/page.tsx` (form inline; `BuatUserForm.tsx` di atas; toggle role `<form action={setRole}>`).
 - **Fungsi data**: `getPengelolaUserTerjamin()` (guard + status superuser), `getDaftarUser(q)` (`admin-users.ts`).
-- **Server action**: `setRole(formData)`, `tambahUserRole(formData)` (`admin-users-actions.ts`).
-- **Endpoint**: `profiles` (baca role + update kolom role; super user otomatis set `is_admin`).
+- **Server action** (`admin-users-actions.ts`): `setRole(formData)`, `tambahUserRole(formData)` (assign role ke akun yang sudah ada), **`buatUser(formData)`** (buat akun auth baru + role).
+- **Endpoint**: `profiles` (baca role + update kolom role; super user otomatis set `is_admin`). `buatUser` juga panggil **`auth.admin.createUser`** (service-role).
 - **Guard/Role**: `getPengelolaUserTerjamin()` (admin **atau** super user). Role tinggi (admin/superuser) hanya bisa diatur super user; tak bisa cabut super user dari diri sendiri.
+
+#### ➕ Buat User baru
+- **File**: `admin/users/BuatUserForm.tsx` (client) → server action `buatUser`.
+- **Alur**: `createAdminClient()` (`lib/supabase/admin.ts`, service-role, `import 'server-only'`) → `auth.admin.createUser({email,password,email_confirm:true})` (akun langsung aktif) → `profiles.update({nama_tampilan, [kolom role]})`.
+- **Endpoint**: Supabase **Auth Admin API** + tabel `profiles`. Butuh env **`SUPABASE_SERVICE_ROLE_KEY`**.
+- **Guard/Role**: `pengelola()` (admin/superuser). Role tinggi hanya oleh superuser. `buatUser` **mengembalikan `{ok,error}`** (bukan throw) agar pesan error tidak diredaksi Next.js di produksi; error ditampilkan inline di form.
+
+#### 🔐 Akses Menu — `/admin/akses-menu` (khusus Super User)
+- **File**: `admin/akses-menu/page.tsx` (tabel matriks Role × Menu, checkbox `name="${role}_${menu}"`).
+- **Katalog**: `lib/menu-admin.ts` — `MENU_ADMIN` (daftar menu), `ROLE_AKSES` (admin/investor/guru), `DEFAULT_AKSES`, `keyMenuDariPath()`, `menuUntukRole()`.
+- **Fungsi data**: `getMenuAkses()` (`lib/data/pengaturan-menu.ts`) baca `pengaturan_menu.akses`; `getAksesAdmin()` (`admin.ts`) hitung menu yang boleh untuk user aktif.
+- **Server action**: `simpanMenuAkses(akses)` (`admin-bisnis.ts`) → update `pengaturan_menu.akses` + `revalidatePath('/admin','layout')`.
+- **Endpoint**: tabel `pengaturan_menu` (single-row id=1, kolom `akses` jsonb `{admin,investor,guru}`).
+- **Guard/Role**: `getSuperuserTerjamin()` (hanya super user). Super user = akses semua menu (matriks tak berlaku untuknya). Enforcement rute di `src/proxy.ts`.
 
 ### 📣 Reminder Event — `/admin/reminder`
 - **File**: `admin/reminder/page.tsx` → `ReminderAdmin.tsx`. Util `formatTanggal`, `linkWa`.
@@ -280,6 +297,8 @@ Sub-navigasi: `KeuanganNav.tsx` (client). Semua reader read-only lewat `createCl
 | `sponsor.ts` | `getSponsorSemua`, `getDealSemua`, `getDeal`, `getRingkasanSponsor` + konstanta `STATUS_SPONSOR`/`LABEL_STATUS`/`JENIS_SPONSOR` | `sponsor`, `sponsorship` |
 | `sponsor-actions.ts` | `simpanSponsor/hapusSponsor`, `simpanDeal/hapusDeal`, `setStatusDeal`, `generateInvoice`, `catatPembayaran`, `simpanDokumen`, `batalkanDeal` (guard admin) | `sponsor`, `sponsorship`, `transaksi_keuangan` (ledger utk jenis uang) |
 | `pengaturan-trial.ts` | `getPengaturanTrial()` (+ `DEFAULT_TRIAL`) | `pengaturan_trial` |
+| `pengaturan-menu.ts` | `getMenuAkses()` (matriks Akses Menu, fallback `DEFAULT_AKSES`) | `pengaturan_menu` |
+| `admin.ts` | `getAdminTerjamin`, `getSuperuserTerjamin`, `getAksesAdmin` (guard + hitung menu per role) | `profiles`, `pengaturan_menu` |
 
 ### Hook pencatat ledger (basis kas)
 - `admin-store-actions.ts` — verifikasi pesanan → `catatLedger` (masuk/`store`/subtotal, ref `pesanan`); `batal` → `hapusLedgerRef`. (Ongkir **bukan** pendapatan.)
@@ -459,10 +478,11 @@ Semua Route Handler (`app/api/**/route.ts`) mengembalikan amplop JSON seragam vi
 
 ## 10. Infrastruktur & integrasi
 
-### Supabase client (tiga cara, semua anon key)
-- `lib/supabase/server.ts` — `createClient()` async, `@supabase/ssr` `createServerClient` + cookie SSR (`cookies()`; `setAll` di-try/catch). Untuk Server Component/halaman & reader/action.
-- `lib/supabase/client.ts` — `createClient()` browser (`createBrowserClient`). Untuk komponen client (upload dsb).
-- `lib/api/helpers.ts` — untuk REST API mobile: client `@supabase/supabase-js` tanpa cookie, di-scope Bearer.
+### Supabase client (empat cara)
+- `lib/supabase/server.ts` — `createClient()` async (anon), `@supabase/ssr` `createServerClient` + cookie SSR (`cookies()`; `setAll` di-try/catch). Untuk Server Component/halaman & reader/action.
+- `lib/supabase/client.ts` — `createClient()` browser (anon, `createBrowserClient`). Untuk komponen client (upload dsb).
+- `lib/api/helpers.ts` — untuk REST API mobile: client `@supabase/supabase-js` tanpa cookie, di-scope Bearer (anon).
+- `lib/supabase/admin.ts` — **`createAdminClient()` service-role** (`import 'server-only'`, `persistSession:false`). **Bypass RLS**. HANYA untuk buat user (`buatUser`). Butuh `SUPABASE_SERVICE_ROLE_KEY`; throw pesan jelas bila kosong.
 
 ### `lib/api/helpers.ts`
 - `ok(data,status=200)` / `fail(msg,status=400)` — amplop `Response.json`.
@@ -482,7 +502,7 @@ Semua Route Handler (`app/api/**/route.ts`) mengembalikan amplop JSON seragam vi
 - Tidak ada payment gateway / fetch host eksternal lain.
 
 ### Environment
-- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` — hanya keduanya. Tidak ada service-role key.
+- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` — wajib. **`SUPABASE_SERVICE_ROLE_KEY`** — opsional, server-only, hanya untuk fitur buat user (lihat §4 Buat User).
 
 ---
 
@@ -515,6 +535,7 @@ Semua Route Handler (`app/api/**/route.ts`) mengembalikan amplop JSON seragam vi
 | `anggaran` | budget per bulan & kategori | 0054 |
 | `sponsor`, `sponsorship` | modul sponsor (perusahaan + deal/invoice/pembayaran inline) | 0058 |
 | `pengaturan_trial` | izin akses trial (batas anak, toggle Komunitas) — akses fitur per item via `boleh_trial` | 0059, 0061 |
+| `pengaturan_menu` | matriks Akses Menu per role (single-row id=1, `akses` jsonb `{admin,investor,guru}`) | 0063 |
 | `riwayat_kelas` | riwayat materi kelas yang dibuka | 0018 |
 
 ---
@@ -542,22 +563,27 @@ Semua Route Handler (`app/api/**/route.ts`) mengembalikan amplop JSON seragam vi
 └─────────────┘   └──────────────────────────────────────┘   └──────────────┘
         │                                                            ▲
         └──── klien: signInWithPassword / signUp / upload aset ──────┘
-   Semua query pakai ANON KEY + RLS. Guard aplikasi (is_admin/is_superuser/…)
-   + fungsi SQL is_admin() dipakai di kebijakan RLS. Tanpa service-role key.
+   Sebagian besar query pakai ANON KEY + RLS. Guard aplikasi (is_admin/is_superuser/…)
+   + fungsi SQL is_admin() dipakai di kebijakan RLS. Service-role key hanya
+   untuk buat user (lib/supabase/admin.ts, server-only).
 ```
 
 ### 13.2 Auth & routing masuk
 ```
-Login (/login) ─signInWithPassword─▶ cek profiles.is_guru
+Login (/login) ─signInWithPassword─▶ cek profiles (is_admin/is_superuser/is_guru)
       │                                      │
+      │             is_admin/is_superuser? ──┼── ya ──▶ /admin  (panel admin)
       │                             is_guru? ├── ya ──▶ /guru  (area guru)
       │                                      └── tidak ─▶ /pilih-anak (ortu)
+   (admin/superuser yang mendarat di /pilih-anak → redirect /admin)
 Daftar (/daftar) ─signUp─▶ (trigger DB buat profiles+langganan trial)
                           └─▶ update nama_tampilan, no_wa
 Guard halaman:
-  /admin/*      → getAdminTerjamin()        (is_admin, else redirect)
-  /admin/users  → getPengelolaUserTerjamin() (is_admin ATAU is_superuser)
-  /investor     → getInvestorTerjamin()     (is_investor / is_admin)
+  /admin (layout) → getAksesAdmin()          (hitung menu per role; else /pilih-anak)
+  /admin/<menu>   → src/proxy.ts blokir menu di luar akses role → /admin
+  /admin/akses-menu → getSuperuserTerjamin() (khusus super user)
+  /admin/users    → getPengelolaUserTerjamin() (is_admin ATAU is_superuser)
+  /investor       → getInvestorTerjamin()     (is_investor / is_admin)
   /main,/ortu,/pilih-game → getAnakTerjamin() (login+langganan+milik anak)
 ```
 
