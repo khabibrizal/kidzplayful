@@ -13,6 +13,7 @@ import RekomendasiForm from '@/components/RekomendasiForm';
 import RekomendasiCard from '@/components/RekomendasiCard';
 import RekomendasiItemPicker from '@/components/RekomendasiItemPicker';
 import RekomendasiItemList from '@/components/RekomendasiItemList';
+import SesiActions from '../SesiActions';
 
 export default async function PsikologChatPage({ params }: { params: Promise<{ pendaftaranId: string }> }) {
   const psi = await getPsikologTerjamin();
@@ -31,6 +32,12 @@ export default async function PsikologChatPage({ params }: { params: Promise<{ p
       <Link href="/psikolog" style={{ color: 'var(--abu)', fontSize: 13 }}>← Area Psikolog</Link>
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 20, margin: '8px 0 4px' }}>💬 {p.anak_nama || 'Anak'}</h1>
       <p style={{ color: 'var(--abu)', fontSize: 13, marginBottom: 14 }}>Konsultasi {formatTanggal(p.tanggal)} · status {p.status}{p.keluhan ? ` · “${p.keluhan}”` : ''}</p>
+
+      {p.status === 'diterima' && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+          <SesiActions id={pendaftaranId} mode="aktif" />
+        </div>
+      )}
 
       <ChatKonsultasi pendaftaranId={pendaftaranId} userId={psi.id} awal={pesan} nonaktif={p.status !== 'diterima'} />
 

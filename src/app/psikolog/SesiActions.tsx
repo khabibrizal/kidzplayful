@@ -26,7 +26,7 @@ export default function SesiActions({ id, mode }: { id: string; mode: 'menunggu'
           <button className="kp-btn putih" onClick={() => ubah('ditolak')} disabled={busy} style={{ padding: '6px 14px', fontSize: 13 }}>Tolak</button>
         </>
       ) : (
-        <button className="kp-btn putih" onClick={() => ubah('selesai')} disabled={busy} style={{ padding: '6px 14px', fontSize: 13 }}>Tandai selesai</button>
+        <button className="kp-btn putih" onClick={() => ubah('selesai')} disabled={busy} style={{ padding: '6px 14px', fontSize: 13 }}>✅ Selesaikan konsultasi</button>
       )}
       {msg && <span style={{ fontSize: 12, color: '#c0392b' }}>{msg}</span>}
     </div>
