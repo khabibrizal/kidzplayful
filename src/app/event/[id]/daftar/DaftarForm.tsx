@@ -24,6 +24,15 @@ export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor }:
   const adaDiskon = hargaAnak < ev.harga_per_anak;
   const total = hargaAnak * pilih.size;
 
+  // Opsi kelas (Baby/Toddler) bila event dikonfigurasi terpisah
+  const fmtJadwal = (tgl?: string | null, jm?: string | null, js?: string | null) =>
+    [tgl ? formatTanggal(tgl) : '', (jm || js) ? `${jm ?? ''}${js ? `-${js}` : ''} WIB` : ''].filter(Boolean).join(' · ');
+  const kelasOpsi: { key: string; label: string; jadwal: string }[] = [];
+  if (ev.baby_jam_mulai || ev.baby_tanggal) kelasOpsi.push({ key: 'baby', label: '👶 Baby Class', jadwal: fmtJadwal(ev.baby_tanggal ?? ev.tanggal, ev.baby_jam_mulai, ev.baby_jam_selesai) });
+  if (ev.toddler_jam_mulai || ev.toddler_tanggal) kelasOpsi.push({ key: 'toddler', label: '🧒 Toddler Class', jadwal: fmtJadwal(ev.toddler_tanggal ?? ev.tanggal, ev.toddler_jam_mulai, ev.toddler_jam_selesai) });
+  const [kelas, setKelas] = useState<string>(kelasOpsi[0]?.key ?? '');
+  const kelasTerpilih = kelasOpsi.find((o) => o.key === kelas);
+
   function toggle(id: string) {
     setPilih((prev) => {
       const n = new Set(prev);
@@ -48,10 +57,11 @@ export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor }:
 
   async function kirim() {
     if (pilih.size === 0) { setErr('Pilih minimal 1 anak.'); return; }
+    if (kelasOpsi.length > 0 && !kelas) { setErr('Pilih kelas dulu.'); return; }
     if (ev.harga_per_anak > 0 && !buktiUrl) { setErr('Unggah bukti pembayaran dulu.'); return; }
     setSubmitting(true); setErr('');
     try {
-      await daftarEvent(ev.id, [...pilih], buktiUrl);
+      await daftarEvent(ev.id, [...pilih], buktiUrl, kelasOpsi.length > 0 ? kelas : null);
       setSukses(true); // tampilkan invoice + tombol konfirmasi WA
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Gagal mendaftar');
@@ -69,6 +79,7 @@ export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor }:
         <div className="kp-card" style={{ textAlign: 'left', marginTop: 8 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)' }}>🧾 RINGKASAN</div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}><span>{ev.judul}</span></div>
+          {kelasTerpilih && <div style={{ fontSize: 13, marginTop: 4 }}>{kelasTerpilih.label} · <span style={{ color: 'var(--abu)' }}>{kelasTerpilih.jadwal}</span></div>}
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--abu)', marginTop: 4 }}><span>{pilih.size} anak × {formatRupiah(hargaAnak)}</span></div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: 16, borderTop: '1px dashed #e2dbf0', marginTop: 8, paddingTop: 8 }}><span>Total</span><span>{formatRupiah(total)}</span></div>
         </div>
@@ -98,6 +109,18 @@ export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor }:
           {adaDiskon && <span style={{ color: 'var(--mint-d)', fontSize: 12, marginLeft: 6 }}>diskon berlangganan -{pctEv}% 🎉</span>}
         </div>
       </div>
+
+      {kelasOpsi.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>Pilih kelas:</div>
+          {kelasOpsi.map((o) => (
+            <label key={o.key} className="kp-card" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, cursor: 'pointer' }}>
+              <input type="radio" name="kelas" checked={kelas === o.key} onChange={() => setKelas(o.key)} style={{ width: 18, height: 18 }} />
+              <span><b>{o.label}</b><br /><small style={{ color: 'var(--abu)' }}>🕐 {o.jadwal || 'jadwal menyusul'}</small></span>
+            </label>
+          ))}
+        </div>
+      )}
 
       <div style={{ fontWeight: 700, marginBottom: 6 }}>Pilih anak yang ikut:</div>
       {anak.length === 0 && <p style={{ color: 'var(--abu)' }}>Belum ada profil anak. Tambahkan dulu di dashboard.</p>}

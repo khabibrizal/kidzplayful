@@ -9,7 +9,7 @@ import type { EventKelas } from '@/lib/game/tipe';
 import { formatRupiah } from '@/lib/format';
 import s from '../admin.module.css';
 
-const KOSONG: EventInput = { judul: '', lokasi: '', tanggal: '', jamMulai: '', jamSelesai: '', deskripsi: '', gambarUrl: null, hargaPerAnak: 0, diskonLanggananPersen: 0 };
+const KOSONG: EventInput = { judul: '', lokasi: '', tanggal: '', jamMulai: '', jamSelesai: '', deskripsi: '', gambarUrl: null, hargaPerAnak: 0, diskonLanggananPersen: 0, babyTanggal: '', babyJamMulai: '', babyJamSelesai: '', toddlerTanggal: '', toddlerJamMulai: '', toddlerJamSelesai: '' };
 
 export default function EventAdmin({ awal, counts }: { awal: EventKelas[]; counts: Record<string, number> }) {
   const [list, setList] = useState<EventKelas[]>(awal);
@@ -28,6 +28,8 @@ export default function EventAdmin({ awal, counts }: { awal: EventKelas[]; count
       judul: e.judul, lokasi: e.lokasi ?? '', tanggal: e.tanggal ?? '',
       jamMulai: e.jam_mulai ?? '', jamSelesai: e.jam_selesai ?? '',
       deskripsi: e.deskripsi ?? '', gambarUrl: e.gambar_url, hargaPerAnak: e.harga_per_anak, diskonLanggananPersen: e.diskon_langganan_persen ?? 0,
+      babyTanggal: e.baby_tanggal ?? '', babyJamMulai: e.baby_jam_mulai ?? '', babyJamSelesai: e.baby_jam_selesai ?? '',
+      toddlerTanggal: e.toddler_tanggal ?? '', toddlerJamMulai: e.toddler_jam_mulai ?? '', toddlerJamSelesai: e.toddler_jam_selesai ?? '',
     });
   }
 
@@ -97,6 +99,24 @@ export default function EventAdmin({ awal, counts }: { awal: EventKelas[]; count
           <div className={s.row} style={{ gap: 6, marginTop: 6 }}>
             <input className={s.inp} placeholder="Jam mulai (09.00)" value={form.jamMulai} onChange={(e) => setForm({ ...form, jamMulai: e.target.value })} style={{ flex: 1, marginBottom: 0 }} />
             <input className={s.inp} placeholder="Jam selesai (11.00)" value={form.jamSelesai} onChange={(e) => setForm({ ...form, jamSelesai: e.target.value })} style={{ flex: 1, marginBottom: 0 }} />
+          </div>
+          <div className={s.muted} style={{ fontSize: 12, marginTop: 10, fontWeight: 700, color: 'var(--lavender-d)' }}>Kelas terpisah (opsional)</div>
+          <div className={s.muted} style={{ fontSize: 11, marginBottom: 4 }}>Isi jam per kelas bila event dibagi Baby & Toddler. Kosongkan semua = event gabungan (pakai tgl/jam utama di atas). Tanggal kelas kosong = ikut tanggal utama.</div>
+          <div style={{ border: '1px solid #eee', borderRadius: 10, padding: 8 }}>
+            <div style={{ fontSize: 13, fontWeight: 700 }}>👶 Baby Class</div>
+            <div className={s.row} style={{ gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+              <input className={s.inp} type="date" value={form.babyTanggal} onChange={(e) => setForm({ ...form, babyTanggal: e.target.value })} style={{ flex: 1, minWidth: 130, marginBottom: 0 }} />
+              <input className={s.inp} placeholder="Jam mulai" value={form.babyJamMulai} onChange={(e) => setForm({ ...form, babyJamMulai: e.target.value })} style={{ flex: 1, minWidth: 90, marginBottom: 0 }} />
+              <input className={s.inp} placeholder="Jam selesai" value={form.babyJamSelesai} onChange={(e) => setForm({ ...form, babyJamSelesai: e.target.value })} style={{ flex: 1, minWidth: 90, marginBottom: 0 }} />
+            </div>
+          </div>
+          <div style={{ border: '1px solid #eee', borderRadius: 10, padding: 8, marginTop: 6 }}>
+            <div style={{ fontSize: 13, fontWeight: 700 }}>🧒 Toddler Class</div>
+            <div className={s.row} style={{ gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+              <input className={s.inp} type="date" value={form.toddlerTanggal} onChange={(e) => setForm({ ...form, toddlerTanggal: e.target.value })} style={{ flex: 1, minWidth: 130, marginBottom: 0 }} />
+              <input className={s.inp} placeholder="Jam mulai" value={form.toddlerJamMulai} onChange={(e) => setForm({ ...form, toddlerJamMulai: e.target.value })} style={{ flex: 1, minWidth: 90, marginBottom: 0 }} />
+              <input className={s.inp} placeholder="Jam selesai" value={form.toddlerJamSelesai} onChange={(e) => setForm({ ...form, toddlerJamSelesai: e.target.value })} style={{ flex: 1, minWidth: 90, marginBottom: 0 }} />
+            </div>
           </div>
           <input className={s.inp} type="number" min={0} placeholder="Harga per anak (Rp)" value={form.hargaPerAnak || ''} onChange={(e) => setForm({ ...form, hargaPerAnak: Number(e.target.value) })} style={{ width: '100%', marginTop: 6 }} />
           <input className={s.inp} type="number" min={0} max={100} placeholder="Diskon Berlangganan (%) — opsional" value={form.diskonLanggananPersen || ''} onChange={(e) => setForm({ ...form, diskonLanggananPersen: Number(e.target.value) })} style={{ width: '100%', marginTop: 6 }} />

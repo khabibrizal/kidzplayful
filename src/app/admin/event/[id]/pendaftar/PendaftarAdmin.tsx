@@ -74,6 +74,7 @@ export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = []
             <span style={{ flex: 1 }}>
               <b>{p.anak_nama.join(', ') || `${p.jumlah_anak} anak`}</b>
               <br /><small className={s.muted}>{p.jumlah_anak} anak · {formatRupiah(p.total)}</small>
+              {p.kelas && p.kelas !== 'gabungan' && <><br /><small className={s.muted}>{p.kelas === 'baby' ? '👶 Baby Class' : p.kelas === 'toddler' ? '🧒 Toddler Class' : p.kelas}{p.kelas_jadwal ? ` · ${p.kelas_jadwal}` : ''}</small></>}
               {p.alasan_reschedule && <><br /><small className={s.muted}>🔁 Direschedule: {p.alasan_reschedule}</small></>}
             </span>
             <span className={s.tag} style={{ background: '#f3f0fb', color: WARNA[p.status] }}>{p.status}</span>

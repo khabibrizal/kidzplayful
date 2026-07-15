@@ -153,6 +153,13 @@ export interface EventKelas {
   dokumentasi_url: string | null;   // link dokumentasi kegiatan
   stiker_bg_url: string | null;     // template stiker nama (opsional)
   indikator_perkembangan?: BarisParam[]; // parameter penilaian tumbuh kembang event ini
+  // Kelas terpisah (opsional). Bila jam/tgl kosong → kelas tidak ditawarkan (event gabungan).
+  baby_tanggal?: string | null;
+  baby_jam_mulai?: string | null;
+  baby_jam_selesai?: string | null;
+  toddler_tanggal?: string | null;
+  toddler_jam_mulai?: string | null;
+  toddler_jam_selesai?: string | null;
 }
 
 export interface PendaftaranEvent {
@@ -169,6 +176,8 @@ export interface PendaftaranEvent {
   created_at: string;
   event_asal_id: string | null;      // event asal bila pendaftaran ini di-reschedule
   alasan_reschedule: string | null;  // alasan reschedule (mis. anak sakit)
+  kelas?: string | null;             // 'baby' | 'toddler' | 'gabungan'
+  kelas_jadwal?: string | null;      // snapshot tgl+jam kelas terpilih
 }
 
 export interface Sertifikat {

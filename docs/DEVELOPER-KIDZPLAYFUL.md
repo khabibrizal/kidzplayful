@@ -41,7 +41,7 @@ src/
     supabase/          # server.ts (SSR), client.ts (browser)
     api/               # helpers.ts (amplop JSON + auth Bearer untuk REST API)
     game/              # tipe & util mesin game
-supabase/migrations/   # skema DB (0001..0068), dijalankan manual di SQL Editor
+supabase/migrations/   # skema DB (0001..0069), dijalankan manual di SQL Editor
 docs/                  # dokumentasi (termasuk file ini)
 tools/md2pdf.py        # generator PDF dokumentasi
 ```
@@ -67,7 +67,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 - Halaman tidak menaruh selector mentah bila bisa lewat reader; beberapa halaman melakukan query inline sederhana.
 
 ### Deploy & migrasi
-- Migrasi dijalankan **manual** di Supabase SQL Editor (urut `0001..0068`), lalu diverifikasi via REST (`?select=col&limit=1` → 200).
+- Migrasi dijalankan **manual** di Supabase SQL Editor (urut `0001..0069`), lalu diverifikasi via REST (`?select=col&limit=1` → 200).
 - Commit: `git -c commit.gpgsign=false commit` + baris `Co-Authored-By`. Push ke `master` → Vercel auto-deploy.
 - Banyak reader dibungkus `try/catch` agar fitur aman dideploy sebelum migrasinya dijalankan (mengembalikan nilai default).
 
@@ -98,7 +98,8 @@ Pembungkus: `admin/layout.tsx` (guard `getAksesAdmin`, kirim `allowed`+`isSuperu
 - **File**: `admin/event/page.tsx` → `EventAdmin.tsx` (+ `PanelSertifikat`).
 - **Fungsi data**: `getEventSemua()`, `getJumlahPendaftar()` (`admin-event.ts`).
 - **Server action**: `buatEvent`, `updateEvent`, `toggleStatusEvent`, `hapusEvent`, `simpanBerkasSertifikat` (`admin-event-actions.ts`); `generateSertifikatEvent` (`admin-sertifikat-actions.ts`).
-- **Endpoint**: `event`, `pendaftaran_event`, `sertifikat` (upsert), `storage.from('aset')` (folder `event/`, `event/sertifikat-*`, `event/stiker-*`).
+- **Kelas terpisah**: form Add/Edit punya bagian **Baby Class** & **Toddler Class** (tgl + jam mulai/selesai per kelas; `EventInput.baby*/toddler*` → kolom `event.baby_*`/`toddler_*`). Kosong = event gabungan (pakai tgl/jam utama).
+- **Endpoint**: `event` (+ kolom `baby_*`/`toddler_*`), `pendaftaran_event`, `sertifikat` (upsert), `storage.from('aset')` (folder `event/`, `event/sertifikat-*`, `event/stiker-*`).
 
 ### 🗓️ Pendaftar Event — `/admin/event/[id]/pendaftar`
 - **File**: `admin/event/[id]/pendaftar/page.tsx` → `PendaftarAdmin.tsx` + `ParameterPerkembanganForm.tsx` + `NilaiPerkembanganForm.tsx`.
@@ -394,8 +395,8 @@ Penilaian perkembangan anak per event offline. **Parameter (Area + Indikator) di
 
 ### 🗓️ Event — `/event` & `/event/[id]/daftar`
 - **Fungsi data**: `getEventTampilCached()` (`publik.ts`), `getStatusPendaftaranSaya()`/`getPesertaPerEvent()`/`getEvent(id)` (`event.ts`), `getEventBerCatatan()` (`catatan.ts`); daftar: `getStatusLangganan()`, `getPengaturanBayar()` + `waUntuk(cfg,'event')`.
-- **Server action**: `daftarEvent(eventId, anakIds, buktiUrl)` (`event-actions.ts`); upload bukti via `DaftarForm.tsx`.
-- **Endpoint**: `event`, `pendaftaran_event`, `anak`, `catatan_perkembangan`, `langganan`, `pengaturan_pembayaran`, `storage.from('aset')`.
+- **Server action**: `daftarEvent(eventId, anakIds, buktiUrl, kelas?)` (`event-actions.ts`); upload bukti via `DaftarForm.tsx`. Bila event punya kelas terpisah, `DaftarForm` menampilkan **radio Baby/Toddler Class** (dengan tgl+jam); pilihan disimpan ke `pendaftaran_event.kelas` + snapshot `kelas_jadwal`. Event gabungan → `kelas='gabungan'`.
+- **Endpoint**: `event`, `pendaftaran_event` (+ `kelas`/`kelas_jadwal`), `anak`, `catatan_perkembangan`, `langganan`, `pengaturan_pembayaran`, `storage.from('aset')`.
 
 ### 💬 Komunitas — `/komunitas` & `/komunitas/[postId]`
 - **Fungsi data**: `getFeed()`, `getTopikOptions()`, `getPostingan(id)` (`komunitas.ts`); `getStatusLangganan()` + `getPengaturanTrial()` untuk gating.
@@ -555,7 +556,7 @@ Semua Route Handler (`app/api/**/route.ts`) mengembalikan amplop JSON seragam vi
 | `kelas_bermain` | materi kelas bermain (+ worksheet, bahan); `boleh_trial` | 0009, 0013–0016, 0060 |
 | `favorit` | kelas favorit user | 0015 |
 | `postingan`, `komentar`, `suka`, `laporan` | komunitas + moderasi | 0010, 0011, 0028 |
-| `event`, `pendaftaran_event` | event + pendaftaran (status, bukti, kehadiran, reschedule; `event.indikator_perkembangan` parameter penilaian) | 0017, 0027, 0062 |
+| `event`, `pendaftaran_event` | event + pendaftaran (status, bukti, kehadiran, reschedule; `event.indikator_perkembangan` parameter penilaian; kelas terpisah `event.baby_*`/`toddler_*` + `pendaftaran_event.kelas`/`kelas_jadwal`) | 0017, 0027, 0062, 0069 |
 | `catatan_perkembangan` | catatan tumbuh kembang per anak per event (`penilaian` array Area/Indikator/Nilai + `aspek` legacy) | 0020, 0062 |
 | `sertifikat` | e-sertifikat per anak/event | 0026, 0034 |
 | `produk`, `keranjang_item`, `pesanan`, `item_pesanan` | store (diskon persen, berat, `produk.terjual`, `pesanan.stok_terpotong`) | 0019, 0049, 0050, 0057 |
