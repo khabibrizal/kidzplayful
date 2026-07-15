@@ -19,7 +19,10 @@ export default async function KonsultasiChatPage({ params }: { params: Promise<{
   const p = await getPendaftaranById(pendaftaranId);
   if (!p || p.ortu_id !== user.id) redirect('/konsultasi');
 
-  const [pesan, rekomendasi, itemRek] = await Promise.all([getPesan(pendaftaranId), getRekomendasiAnak(p.anak_id), getRekomendasiItemAnak(p.anak_id)]);
+  const [pesan, rekAll, itemAll] = await Promise.all([getPesan(pendaftaranId), getRekomendasiAnak(p.anak_id), getRekomendasiItemAnak(p.anak_id)]);
+  // hanya rekomendasi dari konsultasi ini
+  const rekomendasi = rekAll.filter((r) => r.pendaftaran_id === pendaftaranId);
+  const itemRek = itemAll.filter((i) => i.pendaftaran_id === pendaftaranId);
 
   return (
     <main className="kp-page-narrow" style={{ padding: 16, paddingBottom: 90, marginTop: 20 }}>

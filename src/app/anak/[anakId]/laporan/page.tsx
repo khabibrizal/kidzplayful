@@ -18,6 +18,10 @@ export default async function LaporanAnakPage({ params }: { params: Promise<{ an
   const { data: anak } = await supabase.from('anak').select('nama').eq('id', anakId).single();
   if (!anak) redirect('/pilih-anak');
   const [rekomendasi, itemRek, konsultasi] = await Promise.all([getRekomendasiAnak(anakId), getRekomendasiItemAnak(anakId), getKonsultasiAnak(anakId)]);
+  // Rekomendasi psikolog & item ditampilkan DI DALAM tiap konsultasi (klik konsultasi → detail).
+  // Yang di luar sesi konsultasi (mis. dari guru saat kelas) ditampilkan terpisah di bawah.
+  const rekLain = rekomendasi.filter((r) => !r.pendaftaran_id);
+  const itemLain = itemRek.filter((i) => !i.pendaftaran_id);
 
   return (
     <main className="kp-page-narrow" style={{ padding: 16, marginTop: 20 }}>
@@ -28,17 +32,14 @@ export default async function LaporanAnakPage({ params }: { params: Promise<{ an
       <LaporanAnakView anakId={anakId} />
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '18px 0 8px' }}>🧠 KONSULTASI PSIKOLOG</div>
+      <p style={{ color: 'var(--abu)', fontSize: 12, marginTop: -4, marginBottom: 8 }}>Klik sebuah konsultasi untuk melihat riwayat chat, rekomendasi psikolog, & rekomendasi produk/event/materi.</p>
       <RiwayatKonsultasi sesi={konsultasi} />
 
-      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '18px 0 8px' }}>🧠 REKOMENDASI PSIKOLOG</div>
-      {rekomendasi.length === 0
-        ? <p style={{ color: 'var(--abu)', fontSize: 13 }}>Belum ada rekomendasi psikolog. Mulai konsultasi lewat menu Konsultasi.</p>
-        : rekomendasi.map((r) => <RekomendasiCard key={r.id} r={r} />)}
-
-      {itemRek.length > 0 && (
+      {(rekLain.length > 0 || itemLain.length > 0) && (
         <>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '18px 0 8px' }}>🎁 REKOMENDASI PRODUK / EVENT / MATERI</div>
-          <RekomendasiItemList items={itemRek} />
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '18px 0 8px' }}>🎁 REKOMENDASI DARI KELAS / GURU</div>
+          {rekLain.map((r) => <RekomendasiCard key={r.id} r={r} />)}
+          {itemLain.length > 0 && <RekomendasiItemList items={itemLain} />}
         </>
       )}
     </main>
