@@ -10,9 +10,9 @@ export async function getPsikologTerjamin() {
   const s = await createClient();
   const { data: { user } } = await s.auth.getUser();
   if (!user) redirect('/login');
-  const { data: prof } = await s.from('profiles').select('nama_tampilan,is_psikolog').eq('id', user.id).single();
+  const { data: prof } = await s.from('profiles').select('nama_tampilan,is_psikolog,is_admin').eq('id', user.id).single();
   if (!prof?.is_psikolog) redirect('/pilih-anak');
-  return { id: user.id, nama: prof.nama_tampilan as string | null };
+  return { id: user.id, nama: prof.nama_tampilan as string | null, isAdmin: !!prof.is_admin };
 }
 
 /** Pendaftaran menunggu persetujuan + sesi aktif (diterima). */

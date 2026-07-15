@@ -65,11 +65,12 @@ export function menuUntukRole(akses: AksesMenu, role: { is_admin?: boolean; is_i
   return set;
 }
 
-// ——— Akses Fitur Guru & Psikolog (diatur super user) ———
-export type RoleFitur = 'guru' | 'psikolog';
+// ——— Akses Fitur Admin, Guru & Psikolog (diatur super user) ———
+export type RoleFitur = 'admin' | 'guru' | 'psikolog';
 export const ROLE_FITUR: { key: RoleFitur; label: string }[] = [
   { key: 'psikolog', label: 'Psikolog' },
   { key: 'guru', label: 'Guru' },
+  { key: 'admin', label: 'Admin' },
 ];
 export type FiturKey = 'chat' | 'nilai' | 'produk' | 'event' | 'materi';
 export const FITUR_AKSES: { key: FiturKey; label: string }[] = [
@@ -81,16 +82,18 @@ export const FITUR_AKSES: { key: FiturKey; label: string }[] = [
 ];
 // penanda bahwa konfigurasi sudah versi berisi chat/nilai (utk migrasi config lama)
 export const FITUR_MARK = '_v2';
-export interface AksesFitur { guru: string[]; psikolog: string[] }
-// default: guru & psikolog boleh semua fitur
+export interface AksesFitur { admin: string[]; guru: string[]; psikolog: string[] }
+// default: admin, guru & psikolog boleh semua fitur
 export const DEFAULT_FITUR: AksesFitur = {
+  admin: FITUR_AKSES.map((f) => f.key),
   guru: FITUR_AKSES.map((f) => f.key),
   psikolog: FITUR_AKSES.map((f) => f.key),
 };
 
-/** Jenis rekomendasi yang boleh dipakai user (gabungan role guru/psikolog). */
-export function fiturUntukRole(fitur: AksesFitur, role: { is_guru?: boolean; is_psikolog?: boolean }): Set<string> {
+/** Fitur yang boleh dipakai user (gabungan role admin/guru/psikolog). */
+export function fiturUntukRole(fitur: AksesFitur, role: { is_admin?: boolean; is_guru?: boolean; is_psikolog?: boolean }): Set<string> {
   const set = new Set<string>();
+  if (role.is_admin) fitur.admin.forEach((k) => set.add(k));
   if (role.is_guru) fitur.guru.forEach((k) => set.add(k));
   if (role.is_psikolog) fitur.psikolog.forEach((k) => set.add(k));
   return set;

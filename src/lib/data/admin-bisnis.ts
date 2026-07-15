@@ -64,7 +64,7 @@ export async function simpanMenuAkses(akses: { admin: string[]; investor: string
   revalidatePath('/admin', 'layout');
 }
 
-export async function simpanFiturAkses(fitur: { guru: string[]; psikolog: string[] }): Promise<void> {
+export async function simpanFiturAkses(fitur: { admin: string[]; guru: string[]; psikolog: string[] }): Promise<void> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Tidak terautentikasi');
@@ -72,7 +72,7 @@ export async function simpanFiturAkses(fitur: { guru: string[]; psikolog: string
   if (!prof?.is_superuser) throw new Error('Hanya Super User.');
   const { FITUR_MARK } = await import('@/lib/menu-admin');
   const uniq = (a: string[]) => Array.from(new Set([...(a ?? []).filter((k) => typeof k === 'string' && k), FITUR_MARK]));
-  const bersih = { guru: uniq(fitur.guru), psikolog: uniq(fitur.psikolog) };
+  const bersih = { admin: uniq(fitur.admin), guru: uniq(fitur.guru), psikolog: uniq(fitur.psikolog) };
   const { error } = await supabase.from('pengaturan_menu').update({ fitur: bersih, updated_at: new Date().toISOString() }).eq('id', 1);
   if (error) throw new Error(error.message);
   revalidatePath('/admin', 'layout');

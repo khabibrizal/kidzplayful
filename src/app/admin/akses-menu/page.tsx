@@ -18,7 +18,7 @@ export default async function AksesMenuPage({ searchParams }: { searchParams: Pr
     const ambil = (role: string) => KEY_KONFIGURABEL.filter((k) => formData.get(`${role}_${k}`) === '1');
     await simpanMenuAkses({ admin: ambil('admin'), investor: ambil('investor'), guru: ambil('guru') });
     const ambilFitur = (role: string) => FITUR_AKSES.map((f) => f.key).filter((k) => formData.get(`fitur_${role}_${k}`) === '1');
-    await simpanFiturAkses({ guru: ambilFitur('guru'), psikolog: ambilFitur('psikolog') });
+    await simpanFiturAkses({ admin: ambilFitur('admin'), guru: ambilFitur('guru'), psikolog: ambilFitur('psikolog') });
     const { redirect } = await import('next/navigation');
     redirect('/admin/akses-menu?ok=1');
   }

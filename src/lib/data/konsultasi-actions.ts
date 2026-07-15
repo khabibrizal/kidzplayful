@@ -44,7 +44,8 @@ export async function kirimPesan(pendaftaranId: string, teks: string): Promise<{
     if (pd?.psikolog_id === userId) {
       const { getFiturAkses } = await import('./pengaturan-menu');
       const { fiturUntukRole } = await import('@/lib/menu-admin');
-      const boleh = fiturUntukRole(await getFiturAkses(), { is_psikolog: true });
+      const { data: prof } = await s.from('profiles').select('is_admin,is_psikolog').eq('id', userId).single();
+      const boleh = fiturUntukRole(await getFiturAkses(), { is_admin: prof?.is_admin, is_psikolog: prof?.is_psikolog });
       if (!boleh.has('chat')) return { ok: false, error: 'Fitur chat tidak diaktifkan untuk Anda.' };
     }
     const { error } = await s.from('pesan_konsultasi').insert({

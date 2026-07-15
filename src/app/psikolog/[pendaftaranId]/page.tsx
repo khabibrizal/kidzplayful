@@ -25,7 +25,7 @@ export default async function PsikologChatPage({ params }: { params: Promise<{ p
     getPesan(pendaftaranId), getRekomendasiAnak(p.anak_id),
     getKatalogRekomendasi(), getRekomendasiItemAnak(p.anak_id), getFiturAkses(),
   ]);
-  const fiturPsi = fiturUntukRole(fitur, { is_psikolog: true });
+  const fiturPsi = fiturUntukRole(fitur, { is_psikolog: true, is_admin: psi.isAdmin });
   const boleh = [...fiturPsi];
   const bolehChat = fiturPsi.has('chat');
 

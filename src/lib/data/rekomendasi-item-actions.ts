@@ -21,12 +21,9 @@ export async function tambahRekomendasiItem(input: {
 }): Promise<{ ok: boolean; error?: string }> {
   try {
     const { s, id, nama, role } = await pemberi();
-    // Cek izin fitur (kecuali admin yang selalu boleh)
-    if (!role.is_admin) {
-      const fitur = await getFiturAkses();
-      const boleh = fiturUntukRole(fitur, { is_guru: role.is_guru, is_psikolog: role.is_psikolog });
-      if (!boleh.has(input.jenis)) return { ok: false, error: 'Fitur rekomendasi ini tidak diaktifkan untuk Anda.' };
-    }
+    // Cek izin fitur (admin dikontrol via kolom Admin di Akses Fitur; default: semua)
+    const boleh = fiturUntukRole(await getFiturAkses(), { is_admin: role.is_admin, is_guru: role.is_guru, is_psikolog: role.is_psikolog });
+    if (!boleh.has(input.jenis)) return { ok: false, error: 'Fitur rekomendasi ini tidak diaktifkan untuk Anda.' };
     if (!['produk', 'event', 'materi'].includes(input.jenis)) return { ok: false, error: 'Jenis tidak valid.' };
     if (!input.refId || !input.anakId || !input.ortuId) return { ok: false, error: 'Data tidak lengkap.' };
     const { error } = await s.from('rekomendasi_item').insert({

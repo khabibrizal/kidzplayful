@@ -7,13 +7,13 @@ import { fiturUntukRole } from '@/lib/menu-admin';
 import GuruNilai from './GuruNilai';
 
 export default async function GuruEventPage({ params }: { params: Promise<{ eventId: string }> }) {
-  await getGuruTerjamin();
+  const guru = await getGuruTerjamin();
   const { eventId } = await params;
   const { event, peserta, catatan } = await getPesertaEvent(eventId);
   const [katalog, fitur, itemMap] = await Promise.all([
     getKatalogRekomendasi(), getFiturAkses(), getRekomendasiItemByAnakIds(peserta.map((p) => p.anak_id)),
   ]);
-  const fiturGuru = fiturUntukRole(fitur, { is_guru: true });
+  const fiturGuru = fiturUntukRole(fitur, { is_guru: true, is_admin: guru.isAdmin });
   const boleh = [...fiturGuru];
   const bolehNilai = fiturGuru.has('nilai');
 
