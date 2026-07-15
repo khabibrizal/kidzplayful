@@ -2,11 +2,12 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { getRekomendasiAnak } from '@/lib/data/konsultasi';
+import { getRekomendasiAnak, getKonsultasiAnak } from '@/lib/data/konsultasi';
 import { getRekomendasiItemAnak } from '@/lib/data/rekomendasi-item';
 import LaporanAnakView from '@/components/LaporanAnakView';
 import RekomendasiCard from '@/components/RekomendasiCard';
 import RekomendasiItemList from '@/components/RekomendasiItemList';
+import RiwayatKonsultasi from '@/components/RiwayatKonsultasi';
 import RekamAktivitas from '@/components/RekamAktivitas';
 
 export default async function LaporanAnakPage({ params }: { params: Promise<{ anakId: string }> }) {
@@ -16,7 +17,7 @@ export default async function LaporanAnakPage({ params }: { params: Promise<{ an
   if (!user) redirect('/login');
   const { data: anak } = await supabase.from('anak').select('nama').eq('id', anakId).single();
   if (!anak) redirect('/pilih-anak');
-  const [rekomendasi, itemRek] = await Promise.all([getRekomendasiAnak(anakId), getRekomendasiItemAnak(anakId)]);
+  const [rekomendasi, itemRek, konsultasi] = await Promise.all([getRekomendasiAnak(anakId), getRekomendasiItemAnak(anakId), getKonsultasiAnak(anakId)]);
 
   return (
     <main className="kp-page-narrow" style={{ padding: 16, marginTop: 20 }}>
@@ -25,6 +26,9 @@ export default async function LaporanAnakPage({ params }: { params: Promise<{ an
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 22, margin: '8px 0 14px' }}>📊 Perkembangan {anak.nama}</h1>
 
       <LaporanAnakView anakId={anakId} />
+
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '18px 0 8px' }}>🧠 KONSULTASI PSIKOLOG</div>
+      <RiwayatKonsultasi sesi={konsultasi} />
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '18px 0 8px' }}>🧠 REKOMENDASI PSIKOLOG</div>
       {rekomendasi.length === 0

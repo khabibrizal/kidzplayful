@@ -30,6 +30,16 @@ export async function getKonsultasiSaya(): Promise<PendaftaranKonsultasi[]> {
   return (data ?? []) as unknown as PendaftaranKonsultasi[];
 }
 
+/** Konsultasi milik ortu untuk satu anak (terbaru dulu) — untuk halaman laporan anak. */
+export async function getKonsultasiAnak(anakId: string): Promise<PendaftaranKonsultasi[]> {
+  const s = await createClient();
+  const { data: { user } } = await s.auth.getUser();
+  if (!user) return [];
+  const { data } = await s.from('pendaftaran_konsultasi').select(PCOLS)
+    .eq('ortu_id', user.id).eq('anak_id', anakId).order('tanggal', { ascending: false });
+  return (data ?? []) as unknown as PendaftaranKonsultasi[];
+}
+
 /** Pesan pada satu sesi (urut lama→baru). RLS membatasi ke peserta. */
 export async function getPesan(pendaftaranId: string): Promise<PesanKonsultasi[]> {
   const s = await createClient();
