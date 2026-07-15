@@ -418,10 +418,17 @@ Penilaian perkembangan anak per event offline. **Parameter (Area + Indikator) di
 - **File**: client component penuh + `Logo.tsx`. Memakai Supabase client-side.
 - **Endpoint**: `auth.signInWithPassword` / `signUp` / `resetPasswordForEmail` / `updateUser` / `signOut`; `profiles` (cek `is_guru` untuk arahkan; update nama/no_wa saat daftar).
 
-### 👶 Ortu & Anak — `/pilih-anak`, `/anak/[anakId]`, `/anak/[anakId]/laporan`, `/ortu/[anakId]`, `/pengaturan`
-- **Fungsi data**: `getEventTampilCached()`, `getStatusPendaftaranSaya()`, `getArtikelTerbit({limit:3})`, `getCatatanAnak()`, `getSertifikatAnak()`, `getGamifikasiAnak()` (`gamifikasi.ts`), `getPengaturanBayar()`; sisanya inline.
+### 👶 Ortu & Anak — `/pilih-anak`, `/anak/[anakId]`, `/ortu/[anakId]`, `/pengaturan`
+- **Fungsi data**: `getEventTampilCached()`, `getStatusPendaftaranSaya()`, `getArtikelTerbit({limit:3})`, `getPengaturanBayar()`; sisanya inline.
 - **Server action**: `tambahAnak` (`pilih-anak/actions.ts`), `updateAnak`/`setBatas`/`hapusAnak`/`simpanProfilPengiriman`/`setPin` (`ortu-actions.ts`), `setNamaTampilan` (`komunitas-actions.ts`), `kirimFeedback` (`feedback-actions.ts`).
-- **Endpoint**: `anak`, `langganan`, `profiles`, `hasil_main`, `event`, `pendaftaran_event`, `artikel`, `catatan_perkembangan`, `sertifikat`, `feedback`, `aktivitas`.
+- **Endpoint**: `anak`, `langganan`, `profiles`, `hasil_main`, `event`, `pendaftaran_event`, `artikel`, `feedback`, `aktivitas`.
+
+#### 📊 Laporan perkembangan anak — `/anak/[anakId]/laporan`
+- **File**: `anak/[anakId]/laporan/page.tsx` (guard login + kepemilikan anak).
+- **Badan laporan**: **`<LaporanAnakView anakId>`** (`components/`) — dipakai bersama sisi psikolog. Berisi statistik main, lencana & streak, latihan per area, waktu per game, dan blok **KEGIATAN (EVENT)** (gabungan `getCatatanAnak` + `getSertifikatAnak` per event, `<CatatanCard>`). Data: `hasil_main` + `laporanAnak()` (`domain/laporan-anak`) + `getGamifikasiAnak()`.
+- **🧠 Konsultasi Psikolog**: `getKonsultasiAnak(anakId)` (`konsultasi.ts`) → **`<RiwayatKonsultasi>`** — daftar konsultasi **di-group per tanggal** (collapsible). Klik konsultasi → `/konsultasi/[id]` (riwayat chat + rekomendasi psikolog + rekomendasi produk/event/materi khusus sesi itu).
+- **🎁 Rekomendasi dari Kelas/Guru**: rekomendasi tanpa sesi konsultasi (`pendaftaran_id` null, mis. diberi guru saat kelas) → `<RekomendasiCard>` + `<RekomendasiItemList>` (hanya tampil bila ada).
+- **Endpoint**: `anak`, `hasil_main`, `catatan_perkembangan`, `sertifikat`, gamifikasi (`lencana_anak`/`tantangan_kustom*`), `pendaftaran_konsultasi`, `rekomendasi_psikolog`, `rekomendasi_item`.
 
 ### 🎮 Game — `/pilih-game/[anakId]`, `/main/[anakId]`
 - **Guard**: `getAnakTerjamin(anakId)` (`anak.ts`) — login + langganan + kepemilikan.
@@ -433,8 +440,8 @@ Penilaian perkembangan anak per event offline. **Parameter (Area + Indikator) di
 ### 🍎 Guru — `/guru`, `/guru/[eventId]` (isi Nilai tumbuh kembang), `/catatan/[eventId]`
 - **Guard**: `getGuruTerjamin()` (`guru.ts`).
 - **Fungsi data**: `getEventUntukGuru()`, `getPesertaEvent(eventId)` (`guru.ts`), `getEvent()`/`getCatatanEventSaya()` (`event.ts`/`catatan.ts`).
-- **Server action**: `simpanCatatan` (`guru-actions.ts`, upsert).
-- **Rekomendasi item**: `GuruNilai.tsx` juga menampilkan `<RekomendasiItemPicker>` per peserta (produk/event/materi, izin via Akses Fitur `fiturUntukRole({is_guru})`).
+- **Server action**: `simpanCatatan` (`guru-actions.ts`, upsert) — di-gate izin fitur **`nilai`** (form disembunyikan bila off; `pengisi()` menolak di server).
+- **Rekomendasi item**: `GuruNilai.tsx` juga menampilkan `<RekomendasiItemPicker>` per peserta (produk/event/materi, izin via Akses Fitur `fiturUntukRole({is_guru,is_admin})`).
 - **Endpoint**: `profiles`, `event`, `pendaftaran_event`, `catatan_perkembangan`, `rekomendasi_item`, katalog `produk`/`kelas_bermain`.
 
 ### 🧠 Psikolog — `/psikolog`, `/psikolog/jadwal`, `/psikolog/[pendaftaranId]`
@@ -442,7 +449,7 @@ Area kerja psikolog (self-guarded, pola seperti `/guru`). Role `is_psikolog` (00
 - **Guard**: `getPsikologTerjamin()` (`psikolog.ts`).
 - **Beranda** `/psikolog`: `getSesiPsikolog()` (pendaftaran `menunggu` + sesi `diterima`) + `getJadwalSaya()`; tombol Terima/Tolak/Selesai (`SesiActions.tsx` → `setStatusKonsultasi`).
 - **Jadwal** `/psikolog/jadwal`: `JadwalForm.tsx` → `simpanJadwal` (hari buka, jam, `maks_per_hari`, aktif). Denormalisasi `nama` psikolog ke `jadwal_psikolog` (customer tak boleh baca `profiles` psikolog).
-- **Chat** `/psikolog/[pendaftaranId]`: `<ChatKonsultasi>` (polling 3 dtk) + `<LaporanAnakView>` (laporan tumbuh kembang anak, akses via RLS `boleh_lihat_laporan_anak`) + `<RekomendasiForm>`/`<RekomendasiCard>` (`getRekomendasiAnak`, `simpanRekomendasi`) + **`<RekomendasiItemPicker>`** (rekomendasi produk/event/materi, gate `fiturUntukRole`).
+- **Chat** `/psikolog/[pendaftaranId]`: tombol **✅ Selesaikan konsultasi** (bila status `diterima`, `SesiActions` → `setStatusKonsultasi('selesai')`); `<ChatKonsultasi>` (polling 3 dtk, **nonaktif bila status ≠ diterima atau izin fitur `chat` off**) + `<LaporanAnakView>` (akses via RLS `boleh_lihat_laporan_anak`) + `<RekomendasiForm>`/`<RekomendasiCard>` + **`<RekomendasiItemPicker>`** (gate `fiturUntukRole({is_psikolog,is_admin})`).
 - **Endpoint**: `profiles`, `jadwal_psikolog`, `pendaftaran_konsultasi`, `pesan_konsultasi`, `rekomendasi_psikolog`, `rekomendasi_item`, + tabel laporan (`anak`/`hasil_main`/`sertifikat`/gamifikasi/`catatan_perkembangan`).
 
 **Rekomendasi item (produk/event/materi)** — dipakai psikolog & guru (izin via Akses Fitur):
@@ -453,10 +460,10 @@ Area kerja psikolog (self-guarded, pola seperti `/guru`). Role `is_psikolog` (00
 
 ### 🧠 Konsultasi (customer) — `/konsultasi`, `/konsultasi/[pendaftaranId]`
 Sisi orang tua; **khusus member `aktif`** (gate `getStatusLangganan` → `<Terkunci fitur="Konsultasi Psikolog">`, pola Komunitas).
-- **Fungsi data** (`konsultasi.ts`): `getPsikologTersedia()` (dari `jadwal_psikolog` aktif), `getAnakSaya()`, `getKonsultasiSaya()`, `getPesan()`, `getRekomendasiAnak()`.
-- **Server action** (`konsultasi-actions.ts`, dipakai ortu & psikolog): `daftarKonsultasi` (via RPC `daftar_konsultasi` — enforce hari buka + kuota harian + cegah booking ganda), `kirimPesan`, `tandaiDibaca`, `batalKonsultasi`.
-- **Halaman**: `/konsultasi` (`BookingForm.tsx` + daftar sesi + `BatalBtn.tsx`); `/konsultasi/[id]` (chat + `RekomendasiCard`).
-- **Endpoint**: `jadwal_psikolog`, `anak`, `pendaftaran_konsultasi`, `pesan_konsultasi`, `rekomendasi_psikolog`; RPC `daftar_konsultasi`/`sisa_kuota_konsultasi`.
+- **Fungsi data** (`konsultasi.ts`): `getPsikologTersedia()` (dari `jadwal_psikolog` aktif), `getAnakSaya()`, `getKonsultasiSaya()`, `getKonsultasiAnak()`, `getPesan()`, `getRekomendasiAnak()`.
+- **Server action** (`konsultasi-actions.ts`, dipakai ortu & psikolog): `daftarKonsultasi` (via RPC `daftar_konsultasi` — enforce hari buka + kuota harian + cegah booking ganda), `kirimPesan` (gate izin `chat` bila pengirim psikolog), `tandaiDibaca`, `batalKonsultasi`.
+- **Halaman**: `/konsultasi` (`BookingForm.tsx` + **daftar sesi di-group per tanggal** collapsible + `BatalBtn.tsx`); `/konsultasi/[id]` (chat + rekomendasi psikolog + rekomendasi item, **difilter per `pendaftaran_id` sesi**; sesi `selesai` → read-only "Riwayat chat").
+- **Endpoint**: `jadwal_psikolog`, `anak`, `pendaftaran_konsultasi`, `pesan_konsultasi`, `rekomendasi_psikolog`, `rekomendasi_item`; RPC `daftar_konsultasi`/`sisa_kuota_konsultasi`.
 
 ### 📈 Investor — `/investor`
 - **Guard**: `getInvestorTerjamin()` (`investor.ts`). `robots: noindex`.
