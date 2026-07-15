@@ -11,6 +11,7 @@ const ITEMS = [
   { href: '/store', label: 'Store', icon: '🛒', badge: true },
   { href: '/pesanan', label: 'Pesanan', icon: '📦' },
   { href: '/komunitas', label: 'Komunitas', icon: '💬' },
+  { href: '/konsultasi', label: 'Konsultasi', icon: '🧠' },
   { href: '/pengaturan', label: 'Akun', icon: '👤' },
 ];
 

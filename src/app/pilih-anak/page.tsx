@@ -18,9 +18,10 @@ export default async function PilihAnakPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  // Admin/super user langsung ke dashboard admin
-  const { data: role } = await supabase.from('profiles').select('is_admin,is_superuser').eq('id', user.id).single();
+  // Admin/super user → dashboard admin; psikolog → area psikolog
+  const { data: role } = await supabase.from('profiles').select('is_admin,is_superuser,is_psikolog').eq('id', user.id).single();
   if (role?.is_admin || role?.is_superuser) redirect('/admin');
+  if (role?.is_psikolog) redirect('/psikolog');
 
   // Jalankan paralel (hindari round-trip berurutan ke Supabase)
   const [{ data: anakList }, { data: lang }, { data: prof }, events, pendaftaran, artikel, { count: jumlahAktivitas }] = await Promise.all([

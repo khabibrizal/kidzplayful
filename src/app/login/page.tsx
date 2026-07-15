@@ -23,9 +23,10 @@ export default function LoginPage() {
     const { data: { user } } = await supabase.auth.getUser();
     let tujuan = '/pilih-anak';
     if (user) {
-      const { data: prof } = await supabase.from('profiles').select('is_admin,is_superuser,is_guru').eq('id', user.id).single();
+      const { data: prof } = await supabase.from('profiles').select('is_admin,is_superuser,is_guru,is_psikolog').eq('id', user.id).single();
       if (prof?.is_admin || prof?.is_superuser) tujuan = '/admin';
       else if (prof?.is_guru) tujuan = '/guru';
+      else if (prof?.is_psikolog) tujuan = '/psikolog';
     }
     setLoading(false);
     router.push(tujuan);

@@ -230,6 +230,53 @@ export interface CatatanPerkembangan {
   created_at: string;
 }
 
+// ——— Fitur Chat dengan Psikolog ———
+export interface JadwalPsikolog {
+  psikolog_id: string;
+  nama: string | null;
+  hari_buka: number[];        // 0=Minggu .. 6=Sabtu
+  jam_mulai: string | null;
+  jam_selesai: string | null;
+  maks_per_hari: number;
+  aktif: boolean;
+  catatan: string | null;
+}
+export type StatusKonsultasi = 'menunggu' | 'diterima' | 'ditolak' | 'selesai' | 'batal';
+export interface PendaftaranKonsultasi {
+  id: string;
+  ortu_id: string;
+  psikolog_id: string;
+  anak_id: string;
+  anak_nama: string | null;
+  tanggal: string;
+  keluhan: string | null;
+  status: StatusKonsultasi;
+  diverifikasi_pada: string | null;
+  created_at: string;
+}
+export interface PesanKonsultasi {
+  id: string;
+  pendaftaran_id: string;
+  pengirim_id: string;
+  nama: string | null;
+  teks: string;
+  dibaca_at: string | null;
+  created_at: string;
+}
+export interface ButirRekomendasi { judul: string; isi: string }
+export interface RekomendasiPsikolog {
+  id: string;
+  anak_id: string;
+  ortu_id: string;
+  psikolog_id: string;
+  pendaftaran_id: string | null;
+  judul: string | null;
+  isi: string | null;
+  butir: ButirRekomendasi[];
+  dinilai_oleh: string | null;
+  created_at: string;
+}
+
 export interface Pesanan {
   id: string;
   ortu_id: string;

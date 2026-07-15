@@ -22,6 +22,7 @@ export const MENU_ADMIN: MenuAdmin[] = [
   { key: 'komunitas', href: '/admin/komunitas', label: '💬 Komunitas' },
   { key: 'feedback', href: '/admin/feedback', label: '⭐ Masukan' },
   { key: 'guru', href: '/admin/guru', label: '🍎 Guru' },
+  { key: 'psikolog', href: '/admin/psikolog', label: '🧠 Psikolog' },
   { key: 'users', href: '/admin/users', label: '👤 Pengguna' },
   { key: 'reminder', href: '/admin/reminder', label: '📣 Reminder' },
   { key: 'akses-menu', href: '/admin/akses-menu', label: '🔐 Akses Menu' },
