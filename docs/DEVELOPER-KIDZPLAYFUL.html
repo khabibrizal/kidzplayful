@@ -55,7 +55,7 @@ li { margin:3px 0; }
     supabase/          # server.ts (SSR), client.ts (browser)
     api/               # helpers.ts (amplop JSON + auth Bearer untuk REST API)
     game/              # tipe &amp; util mesin game
-supabase/migrations/   # skema DB (0001..0066), dijalankan manual di SQL Editor
+supabase/migrations/   # skema DB (0001..0067), dijalankan manual di SQL Editor
 docs/                  # dokumentasi (termasuk file ini)
 tools/md2pdf.py        # generator PDF dokumentasi
 </code></pre>
@@ -82,7 +82,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </ul>
 <h3 id="deploy-migrasi">Deploy &amp; migrasi</h3>
 <ul>
-<li>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor (urut <code>0001..0066</code>), lalu diverifikasi via REST (<code>?select=col&amp;limit=1</code> → 200).</li>
+<li>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor (urut <code>0001..0067</code>), lalu diverifikasi via REST (<code>?select=col&amp;limit=1</code> → 200).</li>
 <li>Commit: <code>git -c commit.gpgsign=false commit</code> + baris <code>Co-Authored-By</code>. Push ke <code>master</code> → Vercel auto-deploy.</li>
 <li>Banyak reader dibungkus <code>try/catch</code> agar fitur aman dideploy sebelum migrasinya dijalankan (mengembalikan nilai default).</li>
 </ul>
@@ -251,6 +251,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <li><strong>Server action</strong>: <code>simpanMenuAkses(akses)</code> (<code>admin-bisnis.ts</code>) → update <code>pengaturan_menu.akses</code> + <code>revalidatePath('/admin','layout')</code>.</li>
 <li><strong>Endpoint</strong>: tabel <code>pengaturan_menu</code> (single-row id=1, kolom <code>akses</code> jsonb <code>{admin,investor,guru}</code>).</li>
 <li><strong>Guard/Role</strong>: <code>getSuperuserTerjamin()</code> (hanya super user). Super user = akses semua menu (matriks tak berlaku untuknya). Enforcement rute di <code>src/proxy.ts</code>.</li>
+<li><strong>Akses Fitur (Guru &amp; Psikolog)</strong>: matriks kedua di halaman yang sama (Role <code>ROLE_FITUR</code> × <code>FITUR_REKOMENDASI</code> = produk/event/materi). Katalog di <code>menu-admin.ts</code> (<code>FITUR_REKOMENDASI</code>, <code>DEFAULT_FITUR</code>, <code>fiturUntukRole()</code>); baca <code>getFiturAkses()</code> (<code>pengaturan-menu.ts</code>), simpan <code>simpanFiturAkses()</code> (<code>admin-bisnis.ts</code>) → <code>pengaturan_menu.fitur</code> jsonb <code>{guru,psikolog}</code>. Menentukan jenis rekomendasi yang boleh dipilih guru/psikolog.</li>
 </ul>
 <h3 id="reminder-event-adminreminder">📣 Reminder Event — <code>/admin/reminder</code></h3>
 <ul>
@@ -545,15 +546,21 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <li><strong>Guard</strong>: <code>getGuruTerjamin()</code> (<code>guru.ts</code>).</li>
 <li><strong>Fungsi data</strong>: <code>getEventUntukGuru()</code>, <code>getPesertaEvent(eventId)</code> (<code>guru.ts</code>), <code>getEvent()</code>/<code>getCatatanEventSaya()</code> (<code>event.ts</code>/<code>catatan.ts</code>).</li>
 <li><strong>Server action</strong>: <code>simpanCatatan</code> (<code>guru-actions.ts</code>, upsert).</li>
-<li><strong>Endpoint</strong>: <code>profiles</code>, <code>event</code>, <code>pendaftaran_event</code>, <code>catatan_perkembangan</code>.</li>
+<li><strong>Rekomendasi item</strong>: <code>GuruNilai.tsx</code> juga menampilkan <code>&lt;RekomendasiItemPicker&gt;</code> per peserta (produk/event/materi, izin via Akses Fitur <code>fiturUntukRole({is_guru})</code>).</li>
+<li><strong>Endpoint</strong>: <code>profiles</code>, <code>event</code>, <code>pendaftaran_event</code>, <code>catatan_perkembangan</code>, <code>rekomendasi_item</code>, katalog <code>produk</code>/<code>kelas_bermain</code>.</li>
 </ul>
 <h3 id="psikolog-psikolog-psikologjadwal-psikologpendaftaranid">🧠 Psikolog — <code>/psikolog</code>, <code>/psikolog/jadwal</code>, <code>/psikolog/[pendaftaranId]</code></h3>
 <p>Area kerja psikolog (self-guarded, pola seperti <code>/guru</code>). Role <code>is_psikolog</code> (0064).
 - <strong>Guard</strong>: <code>getPsikologTerjamin()</code> (<code>psikolog.ts</code>).
 - <strong>Beranda</strong> <code>/psikolog</code>: <code>getSesiPsikolog()</code> (pendaftaran <code>menunggu</code> + sesi <code>diterima</code>) + <code>getJadwalSaya()</code>; tombol Terima/Tolak/Selesai (<code>SesiActions.tsx</code> → <code>setStatusKonsultasi</code>).
 - <strong>Jadwal</strong> <code>/psikolog/jadwal</code>: <code>JadwalForm.tsx</code> → <code>simpanJadwal</code> (hari buka, jam, <code>maks_per_hari</code>, aktif). Denormalisasi <code>nama</code> psikolog ke <code>jadwal_psikolog</code> (customer tak boleh baca <code>profiles</code> psikolog).
-- <strong>Chat</strong> <code>/psikolog/[pendaftaranId]</code>: <code>&lt;ChatKonsultasi&gt;</code> (polling 3 dtk) + <code>&lt;LaporanAnakView&gt;</code> (laporan tumbuh kembang anak, akses via RLS <code>boleh_lihat_laporan_anak</code>) + <code>&lt;RekomendasiForm&gt;</code>/<code>&lt;RekomendasiCard&gt;</code> (<code>getRekomendasiAnak</code>, <code>simpanRekomendasi</code>).
-- <strong>Endpoint</strong>: <code>profiles</code>, <code>jadwal_psikolog</code>, <code>pendaftaran_konsultasi</code>, <code>pesan_konsultasi</code>, <code>rekomendasi_psikolog</code>, + tabel laporan (<code>anak</code>/<code>hasil_main</code>/<code>sertifikat</code>/gamifikasi/<code>catatan_perkembangan</code>).</p>
+- <strong>Chat</strong> <code>/psikolog/[pendaftaranId]</code>: <code>&lt;ChatKonsultasi&gt;</code> (polling 3 dtk) + <code>&lt;LaporanAnakView&gt;</code> (laporan tumbuh kembang anak, akses via RLS <code>boleh_lihat_laporan_anak</code>) + <code>&lt;RekomendasiForm&gt;</code>/<code>&lt;RekomendasiCard&gt;</code> (<code>getRekomendasiAnak</code>, <code>simpanRekomendasi</code>) + <strong><code>&lt;RekomendasiItemPicker&gt;</code></strong> (rekomendasi produk/event/materi, gate <code>fiturUntukRole</code>).
+- <strong>Endpoint</strong>: <code>profiles</code>, <code>jadwal_psikolog</code>, <code>pendaftaran_konsultasi</code>, <code>pesan_konsultasi</code>, <code>rekomendasi_psikolog</code>, <code>rekomendasi_item</code>, + tabel laporan (<code>anak</code>/<code>hasil_main</code>/<code>sertifikat</code>/gamifikasi/<code>catatan_perkembangan</code>).</p>
+<p><strong>Rekomendasi item (produk/event/materi)</strong> — dipakai psikolog &amp; guru (izin via Akses Fitur):
+- <strong>Katalog &amp; data</strong>: <code>getKatalogRekomendasi()</code> (produk tampil/event tampil/<code>kelas_bermain</code> aktif), <code>getRekomendasiItemAnak()</code>, <code>getRekomendasiItemByAnakIds()</code> (<code>rekomendasi-item.ts</code>).
+- <strong>Server action</strong>: <code>tambahRekomendasiItem</code>/<code>hapusRekomendasiItem</code> (<code>rekomendasi-item-actions.ts</code>, guard psikolog/guru + cek <code>getFiturAkses</code>).
+- <strong>Komponen</strong>: <code>&lt;RekomendasiItemPicker&gt;</code> (list + filter search, per jenis), <code>&lt;RekomendasiItemList&gt;</code> (tombol Beli→<code>/store</code>, Ikut→<code>/event/[id]/daftar</code>, Buka→<code>/kelas</code>), <code>&lt;HapusItemBtn&gt;</code>.
+- <strong>Tampil ke ortu</strong>: <code>/anak/[id]/laporan</code> &amp; <code>/konsultasi/[id]</code> (bagian "Rekomendasi Produk/Event/Materi").</p>
 <h3 id="konsultasi-customer-konsultasi-konsultasipendaftaranid">🧠 Konsultasi (customer) — <code>/konsultasi</code>, <code>/konsultasi/[pendaftaranId]</code></h3>
 <p>Sisi orang tua; <strong>khusus member <code>aktif</code></strong> (gate <code>getStatusLangganan</code> → <code>&lt;Terkunci fitur="Konsultasi Psikolog"&gt;</code>, pola Komunitas).
 - <strong>Fungsi data</strong> (<code>konsultasi.ts</code>): <code>getPsikologTersedia()</code> (dari <code>jadwal_psikolog</code> aktif), <code>getAnakSaya()</code>, <code>getKonsultasiSaya()</code>, <code>getPesan()</code>, <code>getRekomendasiAnak()</code>.
@@ -890,8 +897,8 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </tr>
 <tr>
 <td><code>pengaturan_menu</code></td>
-<td>matriks Akses Menu per role (single-row id=1, <code>akses</code> jsonb <code>{admin,investor,guru}</code>)</td>
-<td>0063</td>
+<td>Akses Menu (<code>akses</code> jsonb) + Akses Fitur rekomendasi (<code>fitur</code> jsonb <code>{guru,psikolog}</code>), single-row id=1</td>
+<td>0063, 0067</td>
 </tr>
 <tr>
 <td><code>jadwal_psikolog</code></td>
@@ -912,6 +919,11 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <td><code>rekomendasi_psikolog</code></td>
 <td>rekomendasi ("resep") psikolog per anak (<code>isi</code>, <code>butir jsonb</code>)</td>
 <td>0065</td>
+</tr>
+<tr>
+<td><code>rekomendasi_item</code></td>
+<td>rekomendasi produk/event/materi dari psikolog/guru (<code>jenis</code>, <code>ref_id</code>)</td>
+<td>0067</td>
 </tr>
 <tr>
 <td><code>riwayat_kelas</code></td>

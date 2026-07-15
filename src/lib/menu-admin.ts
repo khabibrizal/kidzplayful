@@ -64,3 +64,30 @@ export function menuUntukRole(akses: AksesMenu, role: { is_admin?: boolean; is_i
   if (role.is_guru) akses.guru.forEach((k) => set.add(k));
   return set;
 }
+
+// ——— Akses Fitur: rekomendasi item untuk Guru & Psikolog (diatur super user) ———
+export type RoleFitur = 'guru' | 'psikolog';
+export const ROLE_FITUR: { key: RoleFitur; label: string }[] = [
+  { key: 'psikolog', label: 'Psikolog' },
+  { key: 'guru', label: 'Guru' },
+];
+export type JenisRekomendasi = 'produk' | 'event' | 'materi';
+export const FITUR_REKOMENDASI: { key: JenisRekomendasi; label: string }[] = [
+  { key: 'produk', label: '🛍️ Rekomendasi Produk' },
+  { key: 'event', label: '🎈 Rekomendasi Event' },
+  { key: 'materi', label: '🏠 Rekomendasi Materi di Rumah' },
+];
+export interface AksesFitur { guru: string[]; psikolog: string[] }
+// default: guru & psikolog boleh merekomendasikan ketiganya
+export const DEFAULT_FITUR: AksesFitur = {
+  guru: FITUR_REKOMENDASI.map((f) => f.key),
+  psikolog: FITUR_REKOMENDASI.map((f) => f.key),
+};
+
+/** Jenis rekomendasi yang boleh dipakai user (gabungan role guru/psikolog). */
+export function fiturUntukRole(fitur: AksesFitur, role: { is_guru?: boolean; is_psikolog?: boolean }): Set<string> {
+  const set = new Set<string>();
+  if (role.is_guru) fitur.guru.forEach((k) => set.add(k));
+  if (role.is_psikolog) fitur.psikolog.forEach((k) => set.add(k));
+  return set;
+}

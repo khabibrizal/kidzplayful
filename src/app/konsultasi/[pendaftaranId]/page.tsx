@@ -4,9 +4,11 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getPendaftaranById } from '@/lib/data/psikolog';
 import { getPesan, getRekomendasiAnak } from '@/lib/data/konsultasi';
+import { getRekomendasiItemAnak } from '@/lib/data/rekomendasi-item';
 import { formatTanggal } from '@/lib/format';
 import ChatKonsultasi from '@/components/ChatKonsultasi';
 import RekomendasiCard from '@/components/RekomendasiCard';
+import RekomendasiItemList from '@/components/RekomendasiItemList';
 import BottomNav from '@/components/BottomNav';
 
 export default async function KonsultasiChatPage({ params }: { params: Promise<{ pendaftaranId: string }> }) {
@@ -17,7 +19,7 @@ export default async function KonsultasiChatPage({ params }: { params: Promise<{
   const p = await getPendaftaranById(pendaftaranId);
   if (!p || p.ortu_id !== user.id) redirect('/konsultasi');
 
-  const [pesan, rekomendasi] = await Promise.all([getPesan(pendaftaranId), getRekomendasiAnak(p.anak_id)]);
+  const [pesan, rekomendasi, itemRek] = await Promise.all([getPesan(pendaftaranId), getRekomendasiAnak(p.anak_id), getRekomendasiItemAnak(p.anak_id)]);
 
   return (
     <main className="kp-page-narrow" style={{ padding: 16, paddingBottom: 90, marginTop: 20 }}>
@@ -31,6 +33,13 @@ export default async function KonsultasiChatPage({ params }: { params: Promise<{
       {rekomendasi.length === 0
         ? <p style={{ color: 'var(--abu)', fontSize: 13 }}>Belum ada rekomendasi. Rekomendasi dari psikolog akan muncul di sini & di laporan anak.</p>
         : rekomendasi.map((r) => <RekomendasiCard key={r.id} r={r} />)}
+
+      {itemRek.length > 0 && (
+        <>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '20px 0 8px' }}>🎁 REKOMENDASI PRODUK / EVENT / MATERI</div>
+          <RekomendasiItemList items={itemRek} />
+        </>
+      )}
       <BottomNav />
     </main>
   );

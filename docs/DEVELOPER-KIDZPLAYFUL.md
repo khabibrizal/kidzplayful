@@ -41,7 +41,7 @@ src/
     supabase/          # server.ts (SSR), client.ts (browser)
     api/               # helpers.ts (amplop JSON + auth Bearer untuk REST API)
     game/              # tipe & util mesin game
-supabase/migrations/   # skema DB (0001..0066), dijalankan manual di SQL Editor
+supabase/migrations/   # skema DB (0001..0067), dijalankan manual di SQL Editor
 docs/                  # dokumentasi (termasuk file ini)
 tools/md2pdf.py        # generator PDF dokumentasi
 ```
@@ -67,7 +67,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 - Halaman tidak menaruh selector mentah bila bisa lewat reader; beberapa halaman melakukan query inline sederhana.
 
 ### Deploy & migrasi
-- Migrasi dijalankan **manual** di Supabase SQL Editor (urut `0001..0066`), lalu diverifikasi via REST (`?select=col&limit=1` → 200).
+- Migrasi dijalankan **manual** di Supabase SQL Editor (urut `0001..0067`), lalu diverifikasi via REST (`?select=col&limit=1` → 200).
 - Commit: `git -c commit.gpgsign=false commit` + baris `Co-Authored-By`. Push ke `master` → Vercel auto-deploy.
 - Banyak reader dibungkus `try/catch` agar fitur aman dideploy sebelum migrasinya dijalankan (mengembalikan nilai default).
 
@@ -216,6 +216,7 @@ Menu top-level tersendiri (sumber pendapatan). Rincian lengkap: lihat **§6 Modu
 - **Server action**: `simpanMenuAkses(akses)` (`admin-bisnis.ts`) → update `pengaturan_menu.akses` + `revalidatePath('/admin','layout')`.
 - **Endpoint**: tabel `pengaturan_menu` (single-row id=1, kolom `akses` jsonb `{admin,investor,guru}`).
 - **Guard/Role**: `getSuperuserTerjamin()` (hanya super user). Super user = akses semua menu (matriks tak berlaku untuknya). Enforcement rute di `src/proxy.ts`.
+- **Akses Fitur (Guru & Psikolog)**: matriks kedua di halaman yang sama (Role `ROLE_FITUR` × `FITUR_REKOMENDASI` = produk/event/materi). Katalog di `menu-admin.ts` (`FITUR_REKOMENDASI`, `DEFAULT_FITUR`, `fiturUntukRole()`); baca `getFiturAkses()` (`pengaturan-menu.ts`), simpan `simpanFiturAkses()` (`admin-bisnis.ts`) → `pengaturan_menu.fitur` jsonb `{guru,psikolog}`. Menentukan jenis rekomendasi yang boleh dipilih guru/psikolog.
 
 ### 📣 Reminder Event — `/admin/reminder`
 - **File**: `admin/reminder/page.tsx` → `ReminderAdmin.tsx`. Util `formatTanggal`, `linkWa`.
@@ -433,15 +434,22 @@ Penilaian perkembangan anak per event offline. **Parameter (Area + Indikator) di
 - **Guard**: `getGuruTerjamin()` (`guru.ts`).
 - **Fungsi data**: `getEventUntukGuru()`, `getPesertaEvent(eventId)` (`guru.ts`), `getEvent()`/`getCatatanEventSaya()` (`event.ts`/`catatan.ts`).
 - **Server action**: `simpanCatatan` (`guru-actions.ts`, upsert).
-- **Endpoint**: `profiles`, `event`, `pendaftaran_event`, `catatan_perkembangan`.
+- **Rekomendasi item**: `GuruNilai.tsx` juga menampilkan `<RekomendasiItemPicker>` per peserta (produk/event/materi, izin via Akses Fitur `fiturUntukRole({is_guru})`).
+- **Endpoint**: `profiles`, `event`, `pendaftaran_event`, `catatan_perkembangan`, `rekomendasi_item`, katalog `produk`/`kelas_bermain`.
 
 ### 🧠 Psikolog — `/psikolog`, `/psikolog/jadwal`, `/psikolog/[pendaftaranId]`
 Area kerja psikolog (self-guarded, pola seperti `/guru`). Role `is_psikolog` (0064).
 - **Guard**: `getPsikologTerjamin()` (`psikolog.ts`).
 - **Beranda** `/psikolog`: `getSesiPsikolog()` (pendaftaran `menunggu` + sesi `diterima`) + `getJadwalSaya()`; tombol Terima/Tolak/Selesai (`SesiActions.tsx` → `setStatusKonsultasi`).
 - **Jadwal** `/psikolog/jadwal`: `JadwalForm.tsx` → `simpanJadwal` (hari buka, jam, `maks_per_hari`, aktif). Denormalisasi `nama` psikolog ke `jadwal_psikolog` (customer tak boleh baca `profiles` psikolog).
-- **Chat** `/psikolog/[pendaftaranId]`: `<ChatKonsultasi>` (polling 3 dtk) + `<LaporanAnakView>` (laporan tumbuh kembang anak, akses via RLS `boleh_lihat_laporan_anak`) + `<RekomendasiForm>`/`<RekomendasiCard>` (`getRekomendasiAnak`, `simpanRekomendasi`).
-- **Endpoint**: `profiles`, `jadwal_psikolog`, `pendaftaran_konsultasi`, `pesan_konsultasi`, `rekomendasi_psikolog`, + tabel laporan (`anak`/`hasil_main`/`sertifikat`/gamifikasi/`catatan_perkembangan`).
+- **Chat** `/psikolog/[pendaftaranId]`: `<ChatKonsultasi>` (polling 3 dtk) + `<LaporanAnakView>` (laporan tumbuh kembang anak, akses via RLS `boleh_lihat_laporan_anak`) + `<RekomendasiForm>`/`<RekomendasiCard>` (`getRekomendasiAnak`, `simpanRekomendasi`) + **`<RekomendasiItemPicker>`** (rekomendasi produk/event/materi, gate `fiturUntukRole`).
+- **Endpoint**: `profiles`, `jadwal_psikolog`, `pendaftaran_konsultasi`, `pesan_konsultasi`, `rekomendasi_psikolog`, `rekomendasi_item`, + tabel laporan (`anak`/`hasil_main`/`sertifikat`/gamifikasi/`catatan_perkembangan`).
+
+**Rekomendasi item (produk/event/materi)** — dipakai psikolog & guru (izin via Akses Fitur):
+- **Katalog & data**: `getKatalogRekomendasi()` (produk tampil/event tampil/`kelas_bermain` aktif), `getRekomendasiItemAnak()`, `getRekomendasiItemByAnakIds()` (`rekomendasi-item.ts`).
+- **Server action**: `tambahRekomendasiItem`/`hapusRekomendasiItem` (`rekomendasi-item-actions.ts`, guard psikolog/guru + cek `getFiturAkses`).
+- **Komponen**: `<RekomendasiItemPicker>` (list + filter search, per jenis), `<RekomendasiItemList>` (tombol Beli→`/store`, Ikut→`/event/[id]/daftar`, Buka→`/kelas`), `<HapusItemBtn>`.
+- **Tampil ke ortu**: `/anak/[id]/laporan` & `/konsultasi/[id]` (bagian "Rekomendasi Produk/Event/Materi").
 
 ### 🧠 Konsultasi (customer) — `/konsultasi`, `/konsultasi/[pendaftaranId]`
 Sisi orang tua; **khusus member `aktif`** (gate `getStatusLangganan` → `<Terkunci fitur="Konsultasi Psikolog">`, pola Komunitas).
@@ -556,11 +564,12 @@ Semua Route Handler (`app/api/**/route.ts`) mengembalikan amplop JSON seragam vi
 | `anggaran` | budget per bulan & kategori | 0054 |
 | `sponsor`, `sponsorship` | modul sponsor (perusahaan + deal/invoice/pembayaran inline) | 0058 |
 | `pengaturan_trial` | izin akses trial (batas anak, toggle Komunitas) — akses fitur per item via `boleh_trial` | 0059, 0061 |
-| `pengaturan_menu` | matriks Akses Menu per role (single-row id=1, `akses` jsonb `{admin,investor,guru}`) | 0063 |
+| `pengaturan_menu` | Akses Menu (`akses` jsonb) + Akses Fitur rekomendasi (`fitur` jsonb `{guru,psikolog}`), single-row id=1 | 0063, 0067 |
 | `jadwal_psikolog` | jam buka + kuota konsultasi per psikolog (`nama`, `hari_buka int[]`, `maks_per_hari`, `aktif`) | 0065 |
 | `pendaftaran_konsultasi` | booking konsultasi = kontainer sesi chat (`status` menunggu/diterima/ditolak/selesai/batal) | 0065 |
 | `pesan_konsultasi` | pesan chat konsultasi (`pengirim_id`, `teks`, `dibaca_at`) | 0065 |
 | `rekomendasi_psikolog` | rekomendasi ("resep") psikolog per anak (`isi`, `butir jsonb`) | 0065 |
+| `rekomendasi_item` | rekomendasi produk/event/materi dari psikolog/guru (`jenis`, `ref_id`) | 0067 |
 | `riwayat_kelas` | riwayat materi kelas yang dibuka | 0018 |
 
 ---

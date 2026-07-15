@@ -277,6 +277,21 @@ export interface RekomendasiPsikolog {
   created_at: string;
 }
 
+export type JenisRekomendasi = 'produk' | 'event' | 'materi';
+export interface RekomendasiItem {
+  id: string;
+  anak_id: string;
+  ortu_id: string;
+  pemberi_id: string;
+  pemberi_nama: string | null;
+  pendaftaran_id: string | null;
+  jenis: JenisRekomendasi;
+  ref_id: string;
+  judul: string | null;
+  catatan: string | null;
+  created_at: string;
+}
+
 export interface Pesanan {
   id: string;
   ortu_id: string;

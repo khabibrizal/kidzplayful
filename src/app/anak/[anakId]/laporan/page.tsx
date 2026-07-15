@@ -3,8 +3,10 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getRekomendasiAnak } from '@/lib/data/konsultasi';
+import { getRekomendasiItemAnak } from '@/lib/data/rekomendasi-item';
 import LaporanAnakView from '@/components/LaporanAnakView';
 import RekomendasiCard from '@/components/RekomendasiCard';
+import RekomendasiItemList from '@/components/RekomendasiItemList';
 import RekamAktivitas from '@/components/RekamAktivitas';
 
 export default async function LaporanAnakPage({ params }: { params: Promise<{ anakId: string }> }) {
@@ -14,7 +16,7 @@ export default async function LaporanAnakPage({ params }: { params: Promise<{ an
   if (!user) redirect('/login');
   const { data: anak } = await supabase.from('anak').select('nama').eq('id', anakId).single();
   if (!anak) redirect('/pilih-anak');
-  const rekomendasi = await getRekomendasiAnak(anakId);
+  const [rekomendasi, itemRek] = await Promise.all([getRekomendasiAnak(anakId), getRekomendasiItemAnak(anakId)]);
 
   return (
     <main className="kp-page-narrow" style={{ padding: 16, marginTop: 20 }}>
@@ -28,6 +30,13 @@ export default async function LaporanAnakPage({ params }: { params: Promise<{ an
       {rekomendasi.length === 0
         ? <p style={{ color: 'var(--abu)', fontSize: 13 }}>Belum ada rekomendasi psikolog. Mulai konsultasi lewat menu Konsultasi.</p>
         : rekomendasi.map((r) => <RekomendasiCard key={r.id} r={r} />)}
+
+      {itemRek.length > 0 && (
+        <>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '18px 0 8px' }}>🎁 REKOMENDASI PRODUK / EVENT / MATERI</div>
+          <RekomendasiItemList items={itemRek} />
+        </>
+      )}
     </main>
   );
 }
