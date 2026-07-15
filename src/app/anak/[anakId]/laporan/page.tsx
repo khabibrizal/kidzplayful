@@ -123,7 +123,7 @@ export default async function LaporanAnakPage({ params }: { params: Promise<{ an
                 </div>
               ))}
               {b.catatan.length > 0
-                ? b.catatan.map((c) => <CatatanCard key={c.id} c={c} />)
+                ? b.catatan.map((c) => <CatatanCard key={c.id} c={c} judulEvent={b.judul} />)
                 : b.sertifikat.length === 0 && <p style={{ color: 'var(--abu)', fontSize: 13, margin: 0 }}>Belum ada detail.</p>}
             </div>
           </details>

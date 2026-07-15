@@ -16,8 +16,8 @@ export default function CatatanCard({ c, judulEvent }: { c: CatatanPerkembangan;
 
   return (
     <div className="kp-card" style={{ marginBottom: 10 }}>
-      <b style={{ color: 'var(--lavender-d)' }}>📋 Catatan Perkembangan Bermain</b>
-      {judulEvent && <div style={{ fontSize: 13, color: 'var(--abu)', marginTop: 2 }}>{judulEvent}</div>}
+      {judulEvent && <div style={{ fontWeight: 700, color: 'var(--tinta)', fontSize: 14 }}>{judulEvent}</div>}
+      <div style={{ fontSize: 12.5, color: 'var(--lavender-d)', fontWeight: 700, marginTop: judulEvent ? 2 : 0 }}>📋 Catatan Perkembangan Bermain</div>
 
       {baris.length === 0 ? (
         <p style={{ fontSize: 13, color: 'var(--abu)', marginTop: 8 }}>Belum ada penilaian.</p>
