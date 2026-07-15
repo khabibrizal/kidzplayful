@@ -11,7 +11,7 @@ import type { EventKelas } from '@/lib/game/tipe';
 import { formatTanggal, formatRupiah, linkWa } from '@/lib/format';
 import { hargaEventUntuk, persenEventUntuk } from '@/lib/domain/harga';
 
-export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor }: { ev: EventKelas; anak: { id: string; nama: string }[]; status?: string; waNomor?: string }) {
+export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor, bankTeks, qrisUrl }: { ev: EventKelas; anak: { id: string; nama: string }[]; status?: string; waNomor?: string; bankTeks?: string; qrisUrl?: string }) {
   const [pilih, setPilih] = useState<Set<string>>(new Set());
   const [buktiUrl, setBuktiUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -136,6 +136,20 @@ export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor }:
         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Total pembayaran</span><b>{formatRupiah(total)}</b></div>
         <small style={{ color: 'var(--abu)' }}>{pilih.size} anak × {formatRupiah(hargaAnak)}</small>
       </div>
+
+      {ev.harga_per_anak > 0 && (bankTeks || qrisUrl) && (
+        <div className="kp-card" style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)' }}>💳 PEMBAYARAN</div>
+          {bankTeks && <div style={{ marginTop: 6, whiteSpace: 'pre-wrap', fontSize: 14 }}>🏦 {bankTeks}</div>}
+          {qrisUrl && (
+            <div style={{ marginTop: 8 }}>
+              <div style={{ fontSize: 12, color: 'var(--abu)', marginBottom: 4 }}>atau scan QRIS:</div>
+              <Image src={qrisUrl} alt="QRIS pembayaran" width={200} height={200} style={{ width: 180, height: 'auto', borderRadius: 12 }} />
+            </div>
+          )}
+          <div style={{ fontSize: 12, color: 'var(--abu)', marginTop: 8 }}>Transfer sesuai total <b>{formatRupiah(total)}</b>, lalu unggah bukti bayar di bawah.</div>
+        </div>
+      )}
 
       {ev.harga_per_anak > 0 && (
         <div style={{ marginBottom: 12 }}>

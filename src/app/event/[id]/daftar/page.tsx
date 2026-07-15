@@ -36,5 +36,5 @@ export default async function DaftarEventPage({ params }: { params: Promise<{ id
   }
 
   const [status, cfg] = await Promise.all([getStatusLangganan(supabase, user.id), getPengaturanBayar()]);
-  return <DaftarForm ev={ev} anak={tersisa} status={status} waNomor={waUntuk(cfg, 'event')} />;
+  return <DaftarForm ev={ev} anak={tersisa} status={status} waNomor={waUntuk(cfg, 'event')} bankTeks={cfg.bank_teks} qrisUrl={cfg.qris_url} />;
 }
