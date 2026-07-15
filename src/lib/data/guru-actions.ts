@@ -9,9 +9,16 @@ async function pengisi() {
   const s = await createClient();
   const { data: { user } } = await s.auth.getUser();
   if (!user) throw new Error('Tidak terautentikasi');
-  const { data: prof } = await s.from('profiles').select('is_guru,is_admin,nama_tampilan').eq('id', user.id).single();
-  if (!prof?.is_guru && !prof?.is_admin) throw new Error('Tidak berwenang.');
-  return { s, nama: (prof.nama_tampilan as string) || (prof.is_guru ? 'Guru' : 'Admin') };
+  const { data: prof } = await s.from('profiles').select('is_guru,is_admin,is_psikolog,nama_tampilan').eq('id', user.id).single();
+  if (!prof?.is_guru && !prof?.is_admin && !prof?.is_psikolog) throw new Error('Tidak berwenang.');
+  // Admin selalu boleh; guru/psikolog perlu izin fitur "nilai"
+  if (!prof.is_admin) {
+    const { getFiturAkses } = await import('./pengaturan-menu');
+    const { fiturUntukRole } = await import('@/lib/menu-admin');
+    const boleh = fiturUntukRole(await getFiturAkses(), { is_guru: prof.is_guru, is_psikolog: prof.is_psikolog });
+    if (!boleh.has('nilai')) throw new Error('Fitur "Memberi Nilai" tidak diaktifkan untuk Anda.');
+  }
+  return { s, nama: (prof.nama_tampilan as string) || (prof.is_guru ? 'Guru' : prof.is_psikolog ? 'Psikolog' : 'Admin') };
 }
 
 export async function simpanCatatan(input: {

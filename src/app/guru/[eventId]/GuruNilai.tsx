@@ -8,9 +8,9 @@ import RekomendasiItemList from '@/components/RekomendasiItemList';
 
 type Peserta = { anak_id: string; nama: string; ortu_id: string };
 
-export default function GuruNilai({ eventId, peserta, catatanAwal, params, katalog, boleh, itemMap }: {
+export default function GuruNilai({ eventId, peserta, catatanAwal, params, katalog, boleh, itemMap, bolehNilai = true }: {
   eventId: string; peserta: Peserta[]; catatanAwal: Record<string, CatatanPerkembangan>; params: BarisParam[];
-  katalog: Katalog; boleh: string[]; itemMap: Record<string, RekomendasiItem[]>;
+  katalog: Katalog; boleh: string[]; itemMap: Record<string, RekomendasiItem[]>; bolehNilai?: boolean;
 }) {
   if (peserta.length === 0) return <p style={{ color: 'var(--abu)' }}>Belum ada peserta diterima untuk event ini.</p>;
 
@@ -27,10 +27,14 @@ export default function GuruNilai({ eventId, peserta, catatanAwal, params, katal
         return (
           <div key={p.anak_id} className="kp-card" style={{ marginBottom: 12 }}>
             <b>🧒 {p.nama}</b>
-            <div style={{ marginTop: 8 }}>
-              <NilaiPerkembanganForm eventId={eventId} anakId={p.anak_id} ortuId={p.ortu_id} nama={p.nama}
-                params={params} awal={{ penilaian: c?.penilaian ?? [], catatan: c?.catatan ?? '' }} />
-            </div>
+            {bolehNilai ? (
+              <div style={{ marginTop: 8 }}>
+                <NilaiPerkembanganForm eventId={eventId} anakId={p.anak_id} ortuId={p.ortu_id} nama={p.nama}
+                  params={params} awal={{ penilaian: c?.penilaian ?? [], catatan: c?.catatan ?? '' }} />
+              </div>
+            ) : (
+              <p style={{ color: 'var(--abu)', fontSize: 13, marginTop: 8 }}>Fitur "Memberi Nilai" tidak diaktifkan untuk Anda.</p>
+            )}
             {boleh.length > 0 && (
               <div style={{ marginTop: 12 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', marginBottom: 6 }}>🎁 Rekomendasi Produk / Event / Materi</div>

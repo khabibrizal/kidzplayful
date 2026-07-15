@@ -65,23 +65,27 @@ export function menuUntukRole(akses: AksesMenu, role: { is_admin?: boolean; is_i
   return set;
 }
 
-// ——— Akses Fitur: rekomendasi item untuk Guru & Psikolog (diatur super user) ———
+// ——— Akses Fitur Guru & Psikolog (diatur super user) ———
 export type RoleFitur = 'guru' | 'psikolog';
 export const ROLE_FITUR: { key: RoleFitur; label: string }[] = [
   { key: 'psikolog', label: 'Psikolog' },
   { key: 'guru', label: 'Guru' },
 ];
-export type JenisRekomendasi = 'produk' | 'event' | 'materi';
-export const FITUR_REKOMENDASI: { key: JenisRekomendasi; label: string }[] = [
+export type FiturKey = 'chat' | 'nilai' | 'produk' | 'event' | 'materi';
+export const FITUR_AKSES: { key: FiturKey; label: string }[] = [
+  { key: 'chat', label: '💬 Chat / Konsultasi Psikolog' },
+  { key: 'nilai', label: '📋 Memberi Nilai Perkembangan' },
   { key: 'produk', label: '🛍️ Rekomendasi Produk' },
   { key: 'event', label: '🎈 Rekomendasi Event' },
   { key: 'materi', label: '🏠 Rekomendasi Materi di Rumah' },
 ];
+// penanda bahwa konfigurasi sudah versi berisi chat/nilai (utk migrasi config lama)
+export const FITUR_MARK = '_v2';
 export interface AksesFitur { guru: string[]; psikolog: string[] }
-// default: guru & psikolog boleh merekomendasikan ketiganya
+// default: guru & psikolog boleh semua fitur
 export const DEFAULT_FITUR: AksesFitur = {
-  guru: FITUR_REKOMENDASI.map((f) => f.key),
-  psikolog: FITUR_REKOMENDASI.map((f) => f.key),
+  guru: FITUR_AKSES.map((f) => f.key),
+  psikolog: FITUR_AKSES.map((f) => f.key),
 };
 
 /** Jenis rekomendasi yang boleh dipakai user (gabungan role guru/psikolog). */

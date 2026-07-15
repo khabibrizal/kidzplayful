@@ -216,7 +216,7 @@ Menu top-level tersendiri (sumber pendapatan). Rincian lengkap: lihat **§6 Modu
 - **Server action**: `simpanMenuAkses(akses)` (`admin-bisnis.ts`) → update `pengaturan_menu.akses` + `revalidatePath('/admin','layout')`.
 - **Endpoint**: tabel `pengaturan_menu` (single-row id=1, kolom `akses` jsonb `{admin,investor,guru}`).
 - **Guard/Role**: `getSuperuserTerjamin()` (hanya super user). Super user = akses semua menu (matriks tak berlaku untuknya). Enforcement rute di `src/proxy.ts`.
-- **Akses Fitur (Guru & Psikolog)**: matriks kedua di halaman yang sama (Role `ROLE_FITUR` × `FITUR_REKOMENDASI` = produk/event/materi). Katalog di `menu-admin.ts` (`FITUR_REKOMENDASI`, `DEFAULT_FITUR`, `fiturUntukRole()`); baca `getFiturAkses()` (`pengaturan-menu.ts`), simpan `simpanFiturAkses()` (`admin-bisnis.ts`) → `pengaturan_menu.fitur` jsonb `{guru,psikolog}`. Menentukan jenis rekomendasi yang boleh dipilih guru/psikolog.
+- **Akses Fitur (Guru & Psikolog)**: matriks kedua di halaman yang sama (Role `ROLE_FITUR` × `FITUR_AKSES` = **chat, nilai, produk, event, materi**). Katalog di `menu-admin.ts` (`FITUR_AKSES`, `DEFAULT_FITUR`, `fiturUntukRole()`, penanda versi `FITUR_MARK` agar config lama tetap mengaktifkan chat/nilai); baca `getFiturAkses()` (`pengaturan-menu.ts`), simpan `simpanFiturAkses()` (`admin-bisnis.ts`) → `pengaturan_menu.fitur` jsonb `{guru,psikolog}`. Enforcement: **nilai** (`guru-actions.ts` `simpanCatatan` + `GuruNilai`), **chat** (`konsultasi-actions.ts` `kirimPesan` + `ChatKonsultasi nonaktif`), rekomendasi (`rekomendasi-item-actions.ts`).
 
 ### 📣 Reminder Event — `/admin/reminder`
 - **File**: `admin/reminder/page.tsx` → `ReminderAdmin.tsx`. Util `formatTanggal`, `linkWa`.

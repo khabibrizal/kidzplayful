@@ -2,7 +2,7 @@
 import { getSuperuserTerjamin } from '@/lib/data/admin';
 import { getMenuAkses, getFiturAkses } from '@/lib/data/pengaturan-menu';
 import { simpanMenuAkses, simpanFiturAkses } from '@/lib/data/admin-bisnis';
-import { MENU_ADMIN, ROLE_AKSES, KEY_KONFIGURABEL, ROLE_FITUR, FITUR_REKOMENDASI, type AksesMenu, type AksesFitur } from '@/lib/menu-admin';
+import { MENU_ADMIN, ROLE_AKSES, KEY_KONFIGURABEL, ROLE_FITUR, FITUR_AKSES, type AksesMenu, type AksesFitur } from '@/lib/menu-admin';
 import s from '../admin.module.css';
 
 export default async function AksesMenuPage({ searchParams }: { searchParams: Promise<{ ok?: string }> }) {
@@ -17,7 +17,7 @@ export default async function AksesMenuPage({ searchParams }: { searchParams: Pr
     'use server';
     const ambil = (role: string) => KEY_KONFIGURABEL.filter((k) => formData.get(`${role}_${k}`) === '1');
     await simpanMenuAkses({ admin: ambil('admin'), investor: ambil('investor'), guru: ambil('guru') });
-    const ambilFitur = (role: string) => FITUR_REKOMENDASI.map((f) => f.key).filter((k) => formData.get(`fitur_${role}_${k}`) === '1');
+    const ambilFitur = (role: string) => FITUR_AKSES.map((f) => f.key).filter((k) => formData.get(`fitur_${role}_${k}`) === '1');
     await simpanFiturAkses({ guru: ambilFitur('guru'), psikolog: ambilFitur('psikolog') });
     const { redirect } = await import('next/navigation');
     redirect('/admin/akses-menu?ok=1');
@@ -54,8 +54,8 @@ export default async function AksesMenuPage({ searchParams }: { searchParams: Pr
         </table>
         <p className={s.muted} style={{ fontSize: 12, marginTop: 8 }}>🔐 Akses Menu &amp; 🏠 Dashboard tidak ditampilkan di sini (Akses Menu selalu khusus Super User; Dashboard selalu tersedia bagi yang bisa masuk panel).</p>
 
-        <div className={s.section} style={{ marginTop: 18 }}>Akses Fitur Rekomendasi (Guru &amp; Psikolog)</div>
-        <p className={s.muted} style={{ fontSize: 12, marginBottom: 8 }}>Centang jenis rekomendasi yang boleh dipilih tiap role saat menangani anak (di area Guru / Psikolog).</p>
+        <div className={s.section} style={{ marginTop: 18 }}>Akses Fitur (Guru &amp; Psikolog)</div>
+        <p className={s.muted} style={{ fontSize: 12, marginBottom: 8 }}>Centang fitur yang boleh dipakai tiap role: chat/konsultasi, memberi nilai perkembangan, & jenis rekomendasi.</p>
         <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 380, fontSize: 13 }}>
           <thead>
             <tr>
@@ -66,7 +66,7 @@ export default async function AksesMenuPage({ searchParams }: { searchParams: Pr
             </tr>
           </thead>
           <tbody>
-            {FITUR_REKOMENDASI.map((f) => (
+            {FITUR_AKSES.map((f) => (
               <tr key={f.key} style={{ borderBottom: '1px solid #f0f0f5' }}>
                 <td style={{ padding: '7px 6px' }}>{f.label}</td>
                 {ROLE_FITUR.map((r) => (

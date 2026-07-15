@@ -1,6 +1,6 @@
 // src/lib/data/pengaturan-menu.ts — akses menu admin + akses fitur per role (diatur super user)
 import { createClient } from '@/lib/supabase/server';
-import { DEFAULT_AKSES, DEFAULT_FITUR, type AksesMenu, type AksesFitur } from '@/lib/menu-admin';
+import { DEFAULT_AKSES, DEFAULT_FITUR, FITUR_MARK, type AksesMenu, type AksesFitur } from '@/lib/menu-admin';
 
 export async function getMenuAkses(): Promise<AksesMenu> {
   try {
@@ -17,15 +17,24 @@ export async function getMenuAkses(): Promise<AksesMenu> {
   }
 }
 
-/** Akses fitur rekomendasi (guru/psikolog). Fallback ke DEFAULT_FITUR per role. */
+// Config lama (sebelum ada chat/nilai) tak punya penanda FITUR_MARK → aktifkan
+// chat & nilai secara default agar tak ada regresi. Setelah super user menyimpan
+// ulang (config baru ber-penanda), pilihan menjadi otoritatif.
+function normFitur(stored: string[] | undefined, role: 'guru' | 'psikolog'): string[] {
+  if (!Array.isArray(stored)) return DEFAULT_FITUR[role];
+  if (stored.includes(FITUR_MARK)) return stored.filter((k) => k !== FITUR_MARK);
+  return Array.from(new Set([...stored, 'chat', 'nilai']));
+}
+
+/** Akses fitur guru/psikolog (chat, nilai, rekomendasi). Fallback per role. */
 export async function getFiturAkses(): Promise<AksesFitur> {
   try {
     const s = await createClient();
     const { data } = await s.from('pengaturan_menu').select('fitur').eq('id', 1).single();
     const f = (data?.fitur ?? {}) as Partial<AksesFitur>;
     return {
-      guru: f.guru ?? DEFAULT_FITUR.guru,
-      psikolog: f.psikolog ?? DEFAULT_FITUR.psikolog,
+      guru: normFitur(f.guru, 'guru'),
+      psikolog: normFitur(f.psikolog, 'psikolog'),
     };
   } catch {
     return DEFAULT_FITUR;

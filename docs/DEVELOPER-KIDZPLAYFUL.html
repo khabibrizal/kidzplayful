@@ -55,7 +55,7 @@ li { margin:3px 0; }
     supabase/          # server.ts (SSR), client.ts (browser)
     api/               # helpers.ts (amplop JSON + auth Bearer untuk REST API)
     game/              # tipe &amp; util mesin game
-supabase/migrations/   # skema DB (0001..0067), dijalankan manual di SQL Editor
+supabase/migrations/   # skema DB (0001..0068), dijalankan manual di SQL Editor
 docs/                  # dokumentasi (termasuk file ini)
 tools/md2pdf.py        # generator PDF dokumentasi
 </code></pre>
@@ -82,7 +82,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </ul>
 <h3 id="deploy-migrasi">Deploy &amp; migrasi</h3>
 <ul>
-<li>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor (urut <code>0001..0067</code>), lalu diverifikasi via REST (<code>?select=col&amp;limit=1</code> → 200).</li>
+<li>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor (urut <code>0001..0068</code>), lalu diverifikasi via REST (<code>?select=col&amp;limit=1</code> → 200).</li>
 <li>Commit: <code>git -c commit.gpgsign=false commit</code> + baris <code>Co-Authored-By</code>. Push ke <code>master</code> → Vercel auto-deploy.</li>
 <li>Banyak reader dibungkus <code>try/catch</code> agar fitur aman dideploy sebelum migrasinya dijalankan (mengembalikan nilai default).</li>
 </ul>
@@ -251,7 +251,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <li><strong>Server action</strong>: <code>simpanMenuAkses(akses)</code> (<code>admin-bisnis.ts</code>) → update <code>pengaturan_menu.akses</code> + <code>revalidatePath('/admin','layout')</code>.</li>
 <li><strong>Endpoint</strong>: tabel <code>pengaturan_menu</code> (single-row id=1, kolom <code>akses</code> jsonb <code>{admin,investor,guru}</code>).</li>
 <li><strong>Guard/Role</strong>: <code>getSuperuserTerjamin()</code> (hanya super user). Super user = akses semua menu (matriks tak berlaku untuknya). Enforcement rute di <code>src/proxy.ts</code>.</li>
-<li><strong>Akses Fitur (Guru &amp; Psikolog)</strong>: matriks kedua di halaman yang sama (Role <code>ROLE_FITUR</code> × <code>FITUR_REKOMENDASI</code> = produk/event/materi). Katalog di <code>menu-admin.ts</code> (<code>FITUR_REKOMENDASI</code>, <code>DEFAULT_FITUR</code>, <code>fiturUntukRole()</code>); baca <code>getFiturAkses()</code> (<code>pengaturan-menu.ts</code>), simpan <code>simpanFiturAkses()</code> (<code>admin-bisnis.ts</code>) → <code>pengaturan_menu.fitur</code> jsonb <code>{guru,psikolog}</code>. Menentukan jenis rekomendasi yang boleh dipilih guru/psikolog.</li>
+<li><strong>Akses Fitur (Guru &amp; Psikolog)</strong>: matriks kedua di halaman yang sama (Role <code>ROLE_FITUR</code> × <code>FITUR_AKSES</code> = <strong>chat, nilai, produk, event, materi</strong>). Katalog di <code>menu-admin.ts</code> (<code>FITUR_AKSES</code>, <code>DEFAULT_FITUR</code>, <code>fiturUntukRole()</code>, penanda versi <code>FITUR_MARK</code> agar config lama tetap mengaktifkan chat/nilai); baca <code>getFiturAkses()</code> (<code>pengaturan-menu.ts</code>), simpan <code>simpanFiturAkses()</code> (<code>admin-bisnis.ts</code>) → <code>pengaturan_menu.fitur</code> jsonb <code>{guru,psikolog}</code>. Enforcement: <strong>nilai</strong> (<code>guru-actions.ts</code> <code>simpanCatatan</code> + <code>GuruNilai</code>), <strong>chat</strong> (<code>konsultasi-actions.ts</code> <code>kirimPesan</code> + <code>ChatKonsultasi nonaktif</code>), rekomendasi (<code>rekomendasi-item-actions.ts</code>).</li>
 </ul>
 <h3 id="reminder-event-adminreminder">📣 Reminder Event — <code>/admin/reminder</code></h3>
 <ul>

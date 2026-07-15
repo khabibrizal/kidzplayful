@@ -25,7 +25,9 @@ export default async function PsikologChatPage({ params }: { params: Promise<{ p
     getPesan(pendaftaranId), getRekomendasiAnak(p.anak_id),
     getKatalogRekomendasi(), getRekomendasiItemAnak(p.anak_id), getFiturAkses(),
   ]);
-  const boleh = [...fiturUntukRole(fitur, { is_psikolog: true })];
+  const fiturPsi = fiturUntukRole(fitur, { is_psikolog: true });
+  const boleh = [...fiturPsi];
+  const bolehChat = fiturPsi.has('chat');
 
   return (
     <main style={{ maxWidth: 560, margin: '24px auto', padding: 16 }}>
@@ -39,7 +41,8 @@ export default async function PsikologChatPage({ params }: { params: Promise<{ p
         </div>
       )}
 
-      <ChatKonsultasi pendaftaranId={pendaftaranId} userId={psi.id} awal={pesan} nonaktif={p.status !== 'diterima'} />
+      {!bolehChat && <p style={{ color: '#c0392b', fontSize: 13, marginBottom: 8 }}>Fitur chat/konsultasi tidak diaktifkan untuk Anda. Anda hanya bisa melihat riwayat.</p>}
+      <ChatKonsultasi pendaftaranId={pendaftaranId} userId={psi.id} awal={pesan} nonaktif={p.status !== 'diterima' || !bolehChat} />
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '20px 0 8px' }}>📊 LAPORAN TUMBUH KEMBANG</div>
       <LaporanAnakView anakId={p.anak_id} />

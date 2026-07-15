@@ -13,14 +13,16 @@ export default async function GuruEventPage({ params }: { params: Promise<{ even
   const [katalog, fitur, itemMap] = await Promise.all([
     getKatalogRekomendasi(), getFiturAkses(), getRekomendasiItemByAnakIds(peserta.map((p) => p.anak_id)),
   ]);
-  const boleh = [...fiturUntukRole(fitur, { is_guru: true })];
+  const fiturGuru = fiturUntukRole(fitur, { is_guru: true });
+  const boleh = [...fiturGuru];
+  const bolehNilai = fiturGuru.has('nilai');
 
   return (
     <main style={{ maxWidth: 480, margin: '24px auto', padding: 16 }}>
       <Link href="/guru" style={{ color: 'var(--abu)', fontSize: 13 }}>← Daftar event</Link>
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 20, margin: '8px 0 4px' }}>🎈 {event?.judul ?? 'Event'}</h1>
       <p style={{ color: 'var(--abu)', fontSize: 13, marginBottom: 14 }}>Catatan Perkembangan Bermain — {peserta.length} anak peserta.</p>
-      <GuruNilai eventId={eventId} peserta={peserta} catatanAwal={catatan} params={event?.indikator_perkembangan ?? []} katalog={katalog} boleh={boleh} itemMap={itemMap} />
+      <GuruNilai eventId={eventId} peserta={peserta} catatanAwal={catatan} params={event?.indikator_perkembangan ?? []} katalog={katalog} boleh={boleh} itemMap={itemMap} bolehNilai={bolehNilai} />
     </main>
   );
 }

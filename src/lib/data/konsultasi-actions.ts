@@ -39,6 +39,14 @@ export async function kirimPesan(pendaftaranId: string, teks: string): Promise<{
   try {
     const { s, userId, nama } = await sesi();
     if (!teks.trim()) return { ok: false, error: 'Pesan kosong.' };
+    // Bila pengirim adalah psikolog sesi ini, wajib punya izin fitur "chat".
+    const { data: pd } = await s.from('pendaftaran_konsultasi').select('psikolog_id').eq('id', pendaftaranId).maybeSingle();
+    if (pd?.psikolog_id === userId) {
+      const { getFiturAkses } = await import('./pengaturan-menu');
+      const { fiturUntukRole } = await import('@/lib/menu-admin');
+      const boleh = fiturUntukRole(await getFiturAkses(), { is_psikolog: true });
+      if (!boleh.has('chat')) return { ok: false, error: 'Fitur chat tidak diaktifkan untuk Anda.' };
+    }
     const { error } = await s.from('pesan_konsultasi').insert({
       pendaftaran_id: pendaftaranId, pengirim_id: userId, nama, teks: teks.trim(),
     });
