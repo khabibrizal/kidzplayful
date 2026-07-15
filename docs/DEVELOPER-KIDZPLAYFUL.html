@@ -22,7 +22,7 @@ li { margin:3px 0; }
 <blockquote>
 <p>Panduan teknis untuk developer baru. Menjelaskan <strong>per halaman/menu</strong>: file apa yang menanganinya, function/reader/server-action apa yang dipakai, dan <strong>endpoint backend</strong> (tabel Supabase / RPC / storage / auth) yang disentuh. Termasuk <strong>REST API internal</strong> (untuk aplikasi mobile) dan infrastruktur.</p>
 </blockquote>
-<p>Terakhir diperbarui: 2026-07-14.</p>
+<p>Terakhir diperbarui: 2026-07-15.</p>
 <hr />
 <h2 id="1-ringkasan-stack">1. Ringkasan &amp; Stack</h2>
 <ul>
@@ -55,7 +55,7 @@ li { margin:3px 0; }
     supabase/          # server.ts (SSR), client.ts (browser)
     api/               # helpers.ts (amplop JSON + auth Bearer untuk REST API)
     game/              # tipe &amp; util mesin game
-supabase/migrations/   # skema DB (0001..0063), dijalankan manual di SQL Editor
+supabase/migrations/   # skema DB (0001..0066), dijalankan manual di SQL Editor
 docs/                  # dokumentasi (termasuk file ini)
 tools/md2pdf.py        # generator PDF dokumentasi
 </code></pre>
@@ -82,7 +82,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </ul>
 <h3 id="deploy-migrasi">Deploy &amp; migrasi</h3>
 <ul>
-<li>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor (urut <code>0001..0063</code>), lalu diverifikasi via REST (<code>?select=col&amp;limit=1</code> → 200).</li>
+<li>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor (urut <code>0001..0066</code>), lalu diverifikasi via REST (<code>?select=col&amp;limit=1</code> → 200).</li>
 <li>Commit: <code>git -c commit.gpgsign=false commit</code> + baris <code>Co-Authored-By</code>. Push ke <code>master</code> → Vercel auto-deploy.</li>
 <li>Banyak reader dibungkus <code>try/catch</code> agar fitur aman dideploy sebelum migrasinya dijalankan (mengembalikan nilai default).</li>
 </ul>
@@ -220,6 +220,13 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <li><strong>Fungsi data</strong>: <code>getDaftarGuru()</code> (<code>admin-guru.ts</code>).</li>
 <li><strong>Server action</strong>: <code>jadikanGuru(email)</code>, <code>cabutGuru(id)</code> (<code>admin-guru-actions.ts</code>).</li>
 <li><strong>Endpoint</strong>: <code>profiles</code> (set <code>is_guru</code>).</li>
+</ul>
+<h3 id="kelola-psikolog-adminpsikolog">🧠 Kelola Psikolog — <code>/admin/psikolog</code></h3>
+<ul>
+<li><strong>File</strong>: <code>admin/psikolog/page.tsx</code> → <code>PsikologAdmin.tsx</code> (pola Kelola Guru).</li>
+<li><strong>Fungsi data</strong>: <code>getDaftarPsikolog()</code> (<code>admin-psikolog.ts</code>).</li>
+<li><strong>Server action</strong>: <code>jadikanPsikolog(email)</code>, <code>cabutPsikolog(id)</code> (<code>admin-psikolog-actions.ts</code>).</li>
+<li><strong>Endpoint</strong>: <code>profiles</code> (set <code>is_psikolog</code>). Dashboard kerjanya di <code>/psikolog</code> (lihat §8).</li>
 </ul>
 <h3 id="pengguna-role-adminusers">👤 Pengguna &amp; Role — <code>/admin/users</code></h3>
 <ul>
@@ -540,6 +547,19 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <li><strong>Server action</strong>: <code>simpanCatatan</code> (<code>guru-actions.ts</code>, upsert).</li>
 <li><strong>Endpoint</strong>: <code>profiles</code>, <code>event</code>, <code>pendaftaran_event</code>, <code>catatan_perkembangan</code>.</li>
 </ul>
+<h3 id="psikolog-psikolog-psikologjadwal-psikologpendaftaranid">🧠 Psikolog — <code>/psikolog</code>, <code>/psikolog/jadwal</code>, <code>/psikolog/[pendaftaranId]</code></h3>
+<p>Area kerja psikolog (self-guarded, pola seperti <code>/guru</code>). Role <code>is_psikolog</code> (0064).
+- <strong>Guard</strong>: <code>getPsikologTerjamin()</code> (<code>psikolog.ts</code>).
+- <strong>Beranda</strong> <code>/psikolog</code>: <code>getSesiPsikolog()</code> (pendaftaran <code>menunggu</code> + sesi <code>diterima</code>) + <code>getJadwalSaya()</code>; tombol Terima/Tolak/Selesai (<code>SesiActions.tsx</code> → <code>setStatusKonsultasi</code>).
+- <strong>Jadwal</strong> <code>/psikolog/jadwal</code>: <code>JadwalForm.tsx</code> → <code>simpanJadwal</code> (hari buka, jam, <code>maks_per_hari</code>, aktif). Denormalisasi <code>nama</code> psikolog ke <code>jadwal_psikolog</code> (customer tak boleh baca <code>profiles</code> psikolog).
+- <strong>Chat</strong> <code>/psikolog/[pendaftaranId]</code>: <code>&lt;ChatKonsultasi&gt;</code> (polling 3 dtk) + <code>&lt;LaporanAnakView&gt;</code> (laporan tumbuh kembang anak, akses via RLS <code>boleh_lihat_laporan_anak</code>) + <code>&lt;RekomendasiForm&gt;</code>/<code>&lt;RekomendasiCard&gt;</code> (<code>getRekomendasiAnak</code>, <code>simpanRekomendasi</code>).
+- <strong>Endpoint</strong>: <code>profiles</code>, <code>jadwal_psikolog</code>, <code>pendaftaran_konsultasi</code>, <code>pesan_konsultasi</code>, <code>rekomendasi_psikolog</code>, + tabel laporan (<code>anak</code>/<code>hasil_main</code>/<code>sertifikat</code>/gamifikasi/<code>catatan_perkembangan</code>).</p>
+<h3 id="konsultasi-customer-konsultasi-konsultasipendaftaranid">🧠 Konsultasi (customer) — <code>/konsultasi</code>, <code>/konsultasi/[pendaftaranId]</code></h3>
+<p>Sisi orang tua; <strong>khusus member <code>aktif</code></strong> (gate <code>getStatusLangganan</code> → <code>&lt;Terkunci fitur="Konsultasi Psikolog"&gt;</code>, pola Komunitas).
+- <strong>Fungsi data</strong> (<code>konsultasi.ts</code>): <code>getPsikologTersedia()</code> (dari <code>jadwal_psikolog</code> aktif), <code>getAnakSaya()</code>, <code>getKonsultasiSaya()</code>, <code>getPesan()</code>, <code>getRekomendasiAnak()</code>.
+- <strong>Server action</strong> (<code>konsultasi-actions.ts</code>, dipakai ortu &amp; psikolog): <code>daftarKonsultasi</code> (via RPC <code>daftar_konsultasi</code> — enforce hari buka + kuota harian + cegah booking ganda), <code>kirimPesan</code>, <code>tandaiDibaca</code>, <code>batalKonsultasi</code>.
+- <strong>Halaman</strong>: <code>/konsultasi</code> (<code>BookingForm.tsx</code> + daftar sesi + <code>BatalBtn.tsx</code>); <code>/konsultasi/[id]</code> (chat + <code>RekomendasiCard</code>).
+- <strong>Endpoint</strong>: <code>jadwal_psikolog</code>, <code>anak</code>, <code>pendaftaran_konsultasi</code>, <code>pesan_konsultasi</code>, <code>rekomendasi_psikolog</code>; RPC <code>daftar_konsultasi</code>/<code>sisa_kuota_konsultasi</code>.</p>
 <h3 id="investor-investor">📈 Investor — <code>/investor</code></h3>
 <ul>
 <li><strong>Guard</strong>: <code>getInvestorTerjamin()</code> (<code>investor.ts</code>). <code>robots: noindex</code>.</li>
@@ -874,6 +894,26 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <td>0063</td>
 </tr>
 <tr>
+<td><code>jadwal_psikolog</code></td>
+<td>jam buka + kuota konsultasi per psikolog (<code>nama</code>, <code>hari_buka int[]</code>, <code>maks_per_hari</code>, <code>aktif</code>)</td>
+<td>0065</td>
+</tr>
+<tr>
+<td><code>pendaftaran_konsultasi</code></td>
+<td>booking konsultasi = kontainer sesi chat (<code>status</code> menunggu/diterima/ditolak/selesai/batal)</td>
+<td>0065</td>
+</tr>
+<tr>
+<td><code>pesan_konsultasi</code></td>
+<td>pesan chat konsultasi (<code>pengirim_id</code>, <code>teks</code>, <code>dibaca_at</code>)</td>
+<td>0065</td>
+</tr>
+<tr>
+<td><code>rekomendasi_psikolog</code></td>
+<td>rekomendasi ("resep") psikolog per anak (<code>isi</code>, <code>butir jsonb</code>)</td>
+<td>0065</td>
+</tr>
+<tr>
 <td><code>riwayat_kelas</code></td>
 <td>riwayat materi kelas yang dibuka</td>
 <td>0018</td>
@@ -906,12 +946,13 @@ tools/md2pdf.py        # generator PDF dokumentasi
    untuk buat user (lib/supabase/admin.ts, server-only).
 </code></pre>
 <h3 id="132-auth-routing-masuk">13.2 Auth &amp; routing masuk</h3>
-<pre><code>Login (/login) ─signInWithPassword─▶ cek profiles (is_admin/is_superuser/is_guru)
+<pre><code>Login (/login) ─signInWithPassword─▶ cek profiles (is_admin/is_superuser/is_guru/is_psikolog)
       │                                      │
       │             is_admin/is_superuser? ──┼── ya ──▶ /admin  (panel admin)
       │                             is_guru? ├── ya ──▶ /guru  (area guru)
+      │                          is_psikolog?├── ya ──▶ /psikolog (area psikolog)
       │                                      └── tidak ─▶ /pilih-anak (ortu)
-   (admin/superuser yang mendarat di /pilih-anak → redirect /admin)
+   (admin/superuser/psikolog yang mendarat di /pilih-anak → redirect ke areanya)
 Daftar (/daftar) ─signUp─▶ (trigger DB buat profiles+langganan trial)
                           └─▶ update nama_tampilan, no_wa
 Guard halaman:
@@ -997,12 +1038,12 @@ Guard halaman:
           ▼  ditampilkan di /anak/[anakId]/laporan (getGamifikasiAnak)
 </code></pre>
 <h3 id="138-peran-role-proteksi-eskalasi">13.8 Peran role &amp; proteksi eskalasi</h3>
-<pre><code>Super User ──atur──▶ [Super User] [Admin] [Guru] [Investor]
-Admin      ──atur──▶                       [Guru] [Investor]
+<pre><code>Super User ──atur──▶ [Super User] [Admin] [Guru] [Investor] [Psikolog]
+Admin      ──atur──▶                       [Guru] [Investor] [Psikolog]
                      ▲ role tinggi hanya oleh Super User
 Trigger cegah_self_admin (DB):
   bukan superuser  → is_admin &amp; is_superuser DIBEKUKAN
-  bukan admin/super→ is_guru &amp; is_investor DIBEKUKAN
+  bukan admin/super→ is_guru &amp; is_investor &amp; is_psikolog DIBEKUKAN
   ⇒ user biasa tak bisa menaikkan role dirinya (mis. is_investor)
 </code></pre>
 <blockquote>

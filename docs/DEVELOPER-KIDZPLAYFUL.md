@@ -2,7 +2,7 @@
 
 > Panduan teknis untuk developer baru. Menjelaskan **per halaman/menu**: file apa yang menanganinya, function/reader/server-action apa yang dipakai, dan **endpoint backend** (tabel Supabase / RPC / storage / auth) yang disentuh. Termasuk **REST API internal** (untuk aplikasi mobile) dan infrastruktur.
 
-Terakhir diperbarui: 2026-07-14.
+Terakhir diperbarui: 2026-07-15.
 
 ---
 
@@ -41,7 +41,7 @@ src/
     supabase/          # server.ts (SSR), client.ts (browser)
     api/               # helpers.ts (amplop JSON + auth Bearer untuk REST API)
     game/              # tipe & util mesin game
-supabase/migrations/   # skema DB (0001..0063), dijalankan manual di SQL Editor
+supabase/migrations/   # skema DB (0001..0066), dijalankan manual di SQL Editor
 docs/                  # dokumentasi (termasuk file ini)
 tools/md2pdf.py        # generator PDF dokumentasi
 ```
@@ -67,7 +67,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 - Halaman tidak menaruh selector mentah bila bisa lewat reader; beberapa halaman melakukan query inline sederhana.
 
 ### Deploy & migrasi
-- Migrasi dijalankan **manual** di Supabase SQL Editor (urut `0001..0063`), lalu diverifikasi via REST (`?select=col&limit=1` → 200).
+- Migrasi dijalankan **manual** di Supabase SQL Editor (urut `0001..0066`), lalu diverifikasi via REST (`?select=col&limit=1` → 200).
 - Commit: `git -c commit.gpgsign=false commit` + baris `Co-Authored-By`. Push ke `master` → Vercel auto-deploy.
 - Banyak reader dibungkus `try/catch` agar fitur aman dideploy sebelum migrasinya dijalankan (mengembalikan nilai default).
 
@@ -189,6 +189,12 @@ Menu top-level tersendiri (sumber pendapatan). Rincian lengkap: lihat **§6 Modu
 - **Fungsi data**: `getDaftarGuru()` (`admin-guru.ts`).
 - **Server action**: `jadikanGuru(email)`, `cabutGuru(id)` (`admin-guru-actions.ts`).
 - **Endpoint**: `profiles` (set `is_guru`).
+
+### 🧠 Kelola Psikolog — `/admin/psikolog`
+- **File**: `admin/psikolog/page.tsx` → `PsikologAdmin.tsx` (pola Kelola Guru).
+- **Fungsi data**: `getDaftarPsikolog()` (`admin-psikolog.ts`).
+- **Server action**: `jadikanPsikolog(email)`, `cabutPsikolog(id)` (`admin-psikolog-actions.ts`).
+- **Endpoint**: `profiles` (set `is_psikolog`). Dashboard kerjanya di `/psikolog` (lihat §8).
 
 ### 👤 Pengguna & Role — `/admin/users`
 - **File**: `admin/users/page.tsx` (form inline; `BuatUserForm.tsx` di atas; toggle role `<form action={setRole}>`).
@@ -429,6 +435,21 @@ Penilaian perkembangan anak per event offline. **Parameter (Area + Indikator) di
 - **Server action**: `simpanCatatan` (`guru-actions.ts`, upsert).
 - **Endpoint**: `profiles`, `event`, `pendaftaran_event`, `catatan_perkembangan`.
 
+### 🧠 Psikolog — `/psikolog`, `/psikolog/jadwal`, `/psikolog/[pendaftaranId]`
+Area kerja psikolog (self-guarded, pola seperti `/guru`). Role `is_psikolog` (0064).
+- **Guard**: `getPsikologTerjamin()` (`psikolog.ts`).
+- **Beranda** `/psikolog`: `getSesiPsikolog()` (pendaftaran `menunggu` + sesi `diterima`) + `getJadwalSaya()`; tombol Terima/Tolak/Selesai (`SesiActions.tsx` → `setStatusKonsultasi`).
+- **Jadwal** `/psikolog/jadwal`: `JadwalForm.tsx` → `simpanJadwal` (hari buka, jam, `maks_per_hari`, aktif). Denormalisasi `nama` psikolog ke `jadwal_psikolog` (customer tak boleh baca `profiles` psikolog).
+- **Chat** `/psikolog/[pendaftaranId]`: `<ChatKonsultasi>` (polling 3 dtk) + `<LaporanAnakView>` (laporan tumbuh kembang anak, akses via RLS `boleh_lihat_laporan_anak`) + `<RekomendasiForm>`/`<RekomendasiCard>` (`getRekomendasiAnak`, `simpanRekomendasi`).
+- **Endpoint**: `profiles`, `jadwal_psikolog`, `pendaftaran_konsultasi`, `pesan_konsultasi`, `rekomendasi_psikolog`, + tabel laporan (`anak`/`hasil_main`/`sertifikat`/gamifikasi/`catatan_perkembangan`).
+
+### 🧠 Konsultasi (customer) — `/konsultasi`, `/konsultasi/[pendaftaranId]`
+Sisi orang tua; **khusus member `aktif`** (gate `getStatusLangganan` → `<Terkunci fitur="Konsultasi Psikolog">`, pola Komunitas).
+- **Fungsi data** (`konsultasi.ts`): `getPsikologTersedia()` (dari `jadwal_psikolog` aktif), `getAnakSaya()`, `getKonsultasiSaya()`, `getPesan()`, `getRekomendasiAnak()`.
+- **Server action** (`konsultasi-actions.ts`, dipakai ortu & psikolog): `daftarKonsultasi` (via RPC `daftar_konsultasi` — enforce hari buka + kuota harian + cegah booking ganda), `kirimPesan`, `tandaiDibaca`, `batalKonsultasi`.
+- **Halaman**: `/konsultasi` (`BookingForm.tsx` + daftar sesi + `BatalBtn.tsx`); `/konsultasi/[id]` (chat + `RekomendasiCard`).
+- **Endpoint**: `jadwal_psikolog`, `anak`, `pendaftaran_konsultasi`, `pesan_konsultasi`, `rekomendasi_psikolog`; RPC `daftar_konsultasi`/`sisa_kuota_konsultasi`.
+
 ### 📈 Investor — `/investor`
 - **Guard**: `getInvestorTerjamin()` (`investor.ts`). `robots: noindex`.
 - **Fungsi data**: `getDashboardKeuangan()`, `getPerBulan(6)` (`keuangan.ts`).
@@ -536,6 +557,10 @@ Semua Route Handler (`app/api/**/route.ts`) mengembalikan amplop JSON seragam vi
 | `sponsor`, `sponsorship` | modul sponsor (perusahaan + deal/invoice/pembayaran inline) | 0058 |
 | `pengaturan_trial` | izin akses trial (batas anak, toggle Komunitas) — akses fitur per item via `boleh_trial` | 0059, 0061 |
 | `pengaturan_menu` | matriks Akses Menu per role (single-row id=1, `akses` jsonb `{admin,investor,guru}`) | 0063 |
+| `jadwal_psikolog` | jam buka + kuota konsultasi per psikolog (`nama`, `hari_buka int[]`, `maks_per_hari`, `aktif`) | 0065 |
+| `pendaftaran_konsultasi` | booking konsultasi = kontainer sesi chat (`status` menunggu/diterima/ditolak/selesai/batal) | 0065 |
+| `pesan_konsultasi` | pesan chat konsultasi (`pengirim_id`, `teks`, `dibaca_at`) | 0065 |
+| `rekomendasi_psikolog` | rekomendasi ("resep") psikolog per anak (`isi`, `butir jsonb`) | 0065 |
 | `riwayat_kelas` | riwayat materi kelas yang dibuka | 0018 |
 
 ---
@@ -570,12 +595,13 @@ Semua Route Handler (`app/api/**/route.ts`) mengembalikan amplop JSON seragam vi
 
 ### 13.2 Auth & routing masuk
 ```
-Login (/login) ─signInWithPassword─▶ cek profiles (is_admin/is_superuser/is_guru)
+Login (/login) ─signInWithPassword─▶ cek profiles (is_admin/is_superuser/is_guru/is_psikolog)
       │                                      │
       │             is_admin/is_superuser? ──┼── ya ──▶ /admin  (panel admin)
       │                             is_guru? ├── ya ──▶ /guru  (area guru)
+      │                          is_psikolog?├── ya ──▶ /psikolog (area psikolog)
       │                                      └── tidak ─▶ /pilih-anak (ortu)
-   (admin/superuser yang mendarat di /pilih-anak → redirect /admin)
+   (admin/superuser/psikolog yang mendarat di /pilih-anak → redirect ke areanya)
 Daftar (/daftar) ─signUp─▶ (trigger DB buat profiles+langganan trial)
                           └─▶ update nama_tampilan, no_wa
 Guard halaman:
@@ -673,12 +699,12 @@ User transfer/QRIS ──▶ Admin /admin/langganan : Aktifkan (AktifkanForm)
 
 ### 13.8 Peran role & proteksi eskalasi
 ```
-Super User ──atur──▶ [Super User] [Admin] [Guru] [Investor]
-Admin      ──atur──▶                       [Guru] [Investor]
+Super User ──atur──▶ [Super User] [Admin] [Guru] [Investor] [Psikolog]
+Admin      ──atur──▶                       [Guru] [Investor] [Psikolog]
                      ▲ role tinggi hanya oleh Super User
 Trigger cegah_self_admin (DB):
   bukan superuser  → is_admin & is_superuser DIBEKUKAN
-  bukan admin/super→ is_guru & is_investor DIBEKUKAN
+  bukan admin/super→ is_guru & is_investor & is_psikolog DIBEKUKAN
   ⇒ user biasa tak bisa menaikkan role dirinya (mis. is_investor)
 ```
 
