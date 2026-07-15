@@ -10,6 +10,7 @@ import { youtubeId } from '@/lib/youtube';
 import { rekamRiwayat } from '@/lib/data/riwayat-kelas';
 import { getStatusLangganan, dibatasiTrial } from '@/lib/data/langganan-status';
 import Terkunci from '@/components/Terkunci';
+import TombolKembali from '@/components/TombolKembali';
 
 const COLS = 'id,judul,aktivitas,bahan,link_ide,worksheet_url,status,boleh_trial';
 
@@ -35,7 +36,7 @@ export default async function KelasDetailPage({ params }: { params: Promise<{ id
   return (
     <main style={{ maxWidth: 480, margin: '24px auto', padding: 16 }}>
       <div className="no-print">
-        <Link href="/pilih-anak" style={{ color: 'var(--abu)', fontSize: 13 }}>← Kembali</Link>
+        <TombolKembali fallback="/pilih-anak" style={{ color: 'var(--abu)', fontSize: 13 }} />
       </div>
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 24, margin: '10px 0 14px' }}>🎈 {kelas.judul}</h1>
 

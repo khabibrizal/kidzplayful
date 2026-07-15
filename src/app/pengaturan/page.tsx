@@ -10,6 +10,7 @@ import NamaForm from './NamaForm';
 import ProfilPengirimanForm from './ProfilPengirimanForm';
 import FeedbackForm from './FeedbackForm';
 import BottomNav from '@/components/BottomNav';
+import TombolKembali from '@/components/TombolKembali';
 
 export default async function Pengaturan() {
   const supabase = await createClient();
@@ -25,7 +26,7 @@ export default async function Pengaturan() {
 
   return (
     <main className="kp-page-narrow" style={{ padding: 16, paddingBottom: 90, marginTop: 20 }}>
-      <Link href="/pilih-anak" style={{ color: 'var(--abu)', fontSize: 13 }}>← kembali</Link>
+      <TombolKembali fallback="/pilih-anak" style={{ color: 'var(--abu)', fontSize: 13 }} />
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 22, margin: '8px 0 14px' }}>⚙️ Pengaturan</h1>
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '8px 0' }}>AKUN</div>

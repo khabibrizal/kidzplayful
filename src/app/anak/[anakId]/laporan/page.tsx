@@ -1,5 +1,6 @@
 // src/app/anak/[anakId]/laporan/page.tsx
 import Link from 'next/link';
+import TombolKembali from '@/components/TombolKembali';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getRekomendasiAnak, getKonsultasiAnak } from '@/lib/data/konsultasi';
@@ -26,7 +27,7 @@ export default async function LaporanAnakPage({ params }: { params: Promise<{ an
   return (
     <main className="kp-page-narrow" style={{ padding: 16, marginTop: 20 }}>
       <RekamAktivitas fitur="rapor" anakId={anakId} />
-      <Link href={`/anak/${anakId}`} style={{ color: 'var(--abu)', fontSize: 13 }}>← kembali</Link>
+      <TombolKembali fallback={`/anak/${anakId}`} style={{ color: 'var(--abu)', fontSize: 13 }} />
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 22, margin: '8px 0 14px' }}>📊 Perkembangan {anak.nama}</h1>
 
       <LaporanAnakView anakId={anakId} />

@@ -589,7 +589,8 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <li><strong>Endpoint</strong>: <code>sertifikat</code>, <code>event</code>, <code>pendaftaran_event</code>.</li>
 </ul>
 <blockquote>
-<p><strong>Lintas-halaman</strong>: <code>RekamAktivitas</code> (store/event/komunitas/pesanan/kelas-saya/pilih-anak/main/laporan) memanggil <code>catatAktivitas</code> → insert <code>aktivitas</code>. Fungsi <code>...Cached</code> di <code>publik.ts</code> memakai anon client + cache untuk <code>event</code>/<code>produk</code>/<code>kelas_bermain</code>.</p>
+<p><strong>Lintas-halaman</strong>: <code>RekamAktivitas</code> (store/event/komunitas/pesanan/kelas-saya/pilih-anak/main/laporan) memanggil <code>catatAktivitas</code> → insert <code>aktivitas</code>. Fungsi <code>...Cached</code> di <code>publik.ts</code> memakai anon client + cache untuk <code>event</code>/<code>produk</code>/<code>kelas_bermain</code>.
+<strong>Tombol kembali</strong>: <code>components/TombolKembali.tsx</code> (client) — semua tombol "← Kembali" memakai riwayat browser (<code>router.back()</code>) dengan <code>fallback</code> href bila halaman dibuka langsung/di-refresh. Contoh: buka Riwayat Chat dari halaman rapor anak → Kembali balik ke rapor. Dipakai di seluruh halaman ber-tombol-kembali (user &amp; admin detail).</p>
 </blockquote>
 <hr />
 <h2 id="9-rest-api-internal-untuk-aplikasi-mobile">9. REST API internal (untuk aplikasi mobile)</h2>

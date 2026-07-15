@@ -8,6 +8,7 @@ import { tambahKeranjang } from '@/lib/data/keranjang-actions';
 import type { Produk } from '@/lib/game/tipe';
 import { formatRupiah } from '@/lib/format';
 import { hargaProdukUntuk, persenProdukUntuk, persenTrial, persenLangganan } from '@/lib/domain/harga';
+import TombolKembali from '@/components/TombolKembali';
 
 export default function ProdukDetail({ p, status = 'kadaluarsa' }: { p: Produk; status?: string }) {
   const router = useRouter();
@@ -33,7 +34,7 @@ export default function ProdukDetail({ p, status = 'kadaluarsa' }: { p: Produk; 
 
   return (
     <main style={{ maxWidth: 480, margin: '24px auto', padding: 16 }}>
-      <Link href="/store" style={{ color: 'var(--abu)', fontSize: 13 }}>← Kembali ke Store</Link>
+      <TombolKembali fallback="/store" style={{ color: 'var(--abu)', fontSize: 13 }} />
       <div style={{ position: 'relative', aspectRatio: '4/3', borderRadius: 20, background: '#f3eefc', display: 'grid', placeItems: 'center', fontSize: 80, margin: '10px 0 12px', overflow: 'hidden' }}>
         {p.gambar_url ? (
           <Image src={p.gambar_url} alt={p.nama} fill sizes="(max-width: 480px) 100vw, 480px" style={{ objectFit: 'cover' }} />

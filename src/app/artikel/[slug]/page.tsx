@@ -7,6 +7,7 @@ import Logo from '@/components/Logo';
 import ArtikelBody from '@/components/ArtikelBody';
 import { createClient } from '@/lib/supabase/server';
 import { getArtikelBySlugCached } from '@/lib/data/artikel';
+import TombolKembali from '@/components/TombolKembali';
 
 const BASE = 'https://www.kidzplayful.com';
 
@@ -71,7 +72,7 @@ export default async function ArtikelDetailPage({ params }: { params: Promise<{ 
             : <Link href="/daftar" className="kp-btn" style={{ padding: '10px 20px', fontSize: 15 }}>Coba Gratis</Link>}
         </header>
 
-        <Link href="/artikel" style={{ color: 'var(--abu)', fontSize: 13 }}>← Semua artikel</Link>
+        <TombolKembali fallback="/artikel" style={{ color: 'var(--abu)', fontSize: 13 }} />
 
         <article style={{ marginTop: 14 }}>
           <h1 style={{ color: 'var(--lavender-d)', fontSize: 'clamp(26px,4.5vw,38px)', lineHeight: 1.2, margin: '6px 0 10px' }}>{a.judul}</h1>

@@ -6,6 +6,7 @@ import { getPesanan } from '@/lib/data/pesanan';
 import { formatRupiah, STATUS_PESANAN, linkWa } from '@/lib/format';
 import { getPengaturanBayar, waUntuk } from '@/lib/data/pengaturan-bayar';
 import BuktiUpload from './BuktiUpload';
+import TombolKembali from '@/components/TombolKembali';
 
 export default async function PesananDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -24,7 +25,7 @@ export default async function PesananDetailPage({ params }: { params: Promise<{ 
 
   return (
     <main className="kp-page-narrow" style={{ padding: 16, paddingBottom: 40, marginTop: 24 }}>
-      <Link href="/pesanan" style={{ color: 'var(--abu)', fontSize: 13 }}>← Pesanan saya</Link>
+      <TombolKembali fallback="/pesanan" style={{ color: 'var(--abu)', fontSize: 13 }} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '10px 0 14px' }}>
         <h1 style={{ color: 'var(--lavender-d)', fontSize: 20, margin: 0 }}>🧾 Invoice #{no8}</h1>
         <span style={{ fontSize: 12, fontWeight: 700, color: st.warna, background: st.bg, borderRadius: 99, padding: '4px 11px' }}>{st.teks}</span>

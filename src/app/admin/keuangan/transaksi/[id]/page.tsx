@@ -5,6 +5,7 @@ import { getTransaksiDetail, LABEL_KATEGORI } from '@/lib/data/keuangan';
 import { labelMetode } from '@/lib/metode';
 import { formatRupiah } from '@/lib/format';
 import s from '../../../admin.module.css';
+import TombolKembali from '@/components/TombolKembali';
 
 function tgl(iso: string | null | undefined): string {
   if (!iso) return '—';
@@ -35,7 +36,7 @@ export default async function DetailTransaksi({ params }: { params: Promise<{ id
     <div>
       <div className={s.head} style={{ marginTop: 8 }}>
         <h1>🔎 Detail Transaksi</h1>
-        <Link href="/admin/keuangan/transaksi" className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)' }}>← Kembali</Link>
+        <TombolKembali fallback="/admin/keuangan/transaksi" className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)' }} />
       </div>
 
       {/* Ringkasan ledger */}

@@ -6,6 +6,7 @@ import { getEvent } from '@/lib/data/event';
 import { getStatusLangganan } from '@/lib/data/langganan-status';
 import { getPengaturanBayar, waUntuk } from '@/lib/data/pengaturan-bayar';
 import DaftarForm from './DaftarForm';
+import TombolKembali from '@/components/TombolKembali';
 
 export default async function DaftarEventPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -27,7 +28,7 @@ export default async function DaftarEventPage({ params }: { params: Promise<{ id
   if ((anak ?? []).length > 0 && tersisa.length === 0) {
     return (
       <main style={{ maxWidth: 480, margin: '24px auto', padding: 16 }}>
-        <Link href="/event" style={{ color: 'var(--abu)', fontSize: 13 }}>← Kembali</Link>
+        <TombolKembali fallback="/event" style={{ color: 'var(--abu)', fontSize: 13 }} />
         <h1 style={{ color: 'var(--lavender-d)', fontSize: 22, margin: '10px 0 12px' }}>Daftar: {ev.judul}</h1>
         <div className="kp-card">Semua anak Anda sudah terdaftar di event ini. 🎉</div>
       </main>

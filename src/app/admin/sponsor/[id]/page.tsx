@@ -8,6 +8,7 @@ import { formatRupiah } from '@/lib/format';
 import InputRupiah from '@/components/InputRupiah';
 import UploadDok from '@/components/UploadDok';
 import s from '../../admin.module.css';
+import TombolKembali from '@/components/TombolKembali';
 
 function tgl(iso: string | null | undefined): string {
   if (!iso) return '—';
@@ -27,7 +28,7 @@ export default async function DetailDealPage({ params }: { params: Promise<{ id:
     <div>
       <div className={s.head} style={{ marginTop: 8 }}>
         <h1>🤝 Detail Deal</h1>
-        <Link href="/admin/sponsor" className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)' }}>← Kembali</Link>
+        <TombolKembali fallback="/admin/sponsor" className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)' }} />
       </div>
 
       {/* Info */}

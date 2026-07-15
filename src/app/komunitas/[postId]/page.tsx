@@ -8,6 +8,7 @@ import { getPengaturanTrial } from '@/lib/data/pengaturan-trial';
 import KomentarForm from './KomentarForm';
 import LaporBtn from '../LaporBtn';
 import Terkunci from '@/components/Terkunci';
+import TombolKembali from '@/components/TombolKembali';
 
 export default async function DetailPost({ params }: { params: Promise<{ postId: string }> }) {
   const { postId } = await params;
@@ -25,7 +26,7 @@ export default async function DetailPost({ params }: { params: Promise<{ postId:
 
   return (
     <main style={{ maxWidth: 480, margin: '20px auto', padding: 16 }}>
-      <Link href="/komunitas" style={{ color: 'var(--abu)', fontSize: 13 }}>← komunitas</Link>
+      <TombolKembali fallback="/komunitas" style={{ color: 'var(--abu)', fontSize: 13 }} />
       <div className="kp-card" style={{ margin: '10px 0' }}>
         <b>{post.nama}</b>
         <p style={{ margin: '8px 0', whiteSpace: 'pre-wrap' }}>{post.teks}</p>

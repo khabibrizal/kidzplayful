@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getFavoritKelas } from '@/lib/data/favorit';
 import FavoritBtn from '@/components/FavoritBtn';
 import BottomNav from '@/components/BottomNav';
+import TombolKembali from '@/components/TombolKembali';
 
 export default async function FavoritPage() {
   const supabase = await createClient();
@@ -16,7 +17,7 @@ export default async function FavoritPage() {
 
   return (
     <main className="kp-page" style={{ padding: 16, paddingBottom: 90, marginTop: 30 }}>
-      <Link href="/pilih-anak" style={{ color: 'var(--abu)', fontSize: 13 }}>← Kembali</Link>
+      <TombolKembali fallback="/pilih-anak" style={{ color: 'var(--abu)', fontSize: 13 }} />
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 24, margin: '10px 0 16px' }}>❤️ Kelas Bermain Favorit</h1>
 
       {favorit.length === 0 ? (

@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import type { TemaLengkap } from '@/lib/game/tipe';
 import { cocokUsia } from '@/lib/domain/usia';
+import TombolKembali from '@/components/TombolKembali';
 
 export default function PilihGame({
   anakId, nama, umur, pustaka, batasi = false,
@@ -35,7 +36,7 @@ export default function PilihGame({
         ▶ Masuk Mode Anak
       </button>
       <p style={{ textAlign: 'center', marginTop: 10 }}>
-        <a href="/pilih-anak" style={{ color: 'var(--biru-d)', fontSize: 13 }}>← kembali</a>
+        <TombolKembali fallback="/pilih-anak" style={{ color: 'var(--biru-d)', fontSize: 13 }} />
       </p>
     </main>
   );

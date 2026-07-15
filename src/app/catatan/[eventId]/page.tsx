@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getEvent } from '@/lib/data/event';
 import { getCatatanEventSaya } from '@/lib/data/catatan';
 import CatatanCard from '@/components/CatatanCard';
+import TombolKembali from '@/components/TombolKembali';
 
 export default async function CatatanEventPage({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = await params;
@@ -16,7 +17,7 @@ export default async function CatatanEventPage({ params }: { params: Promise<{ e
 
   return (
     <main style={{ maxWidth: 480, margin: '24px auto', padding: 16 }}>
-      <Link href="/event" style={{ color: 'var(--abu)', fontSize: 13 }}>← Kembali ke Event</Link>
+      <TombolKembali fallback="/event" style={{ color: 'var(--abu)', fontSize: 13 }} />
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 20, margin: '8px 0 14px' }}>📋 Catatan Perkembangan Bermain</h1>
       {ev && <p style={{ color: 'var(--abu)', fontSize: 14, marginTop: -8, marginBottom: 14 }}>{ev.judul}</p>}
       {list.length === 0

@@ -1,5 +1,6 @@
 // src/app/konsultasi/page.tsx — customer: daftar & lihat konsultasi psikolog (khusus member aktif)
 import Link from 'next/link';
+import TombolKembali from '@/components/TombolKembali';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getStatusLangganan } from '@/lib/data/langganan-status';
@@ -40,7 +41,7 @@ export default async function KonsultasiPage() {
   return (
     <main className="kp-page-narrow" style={{ padding: 16, paddingBottom: 90, marginTop: 20 }}>
       <RekamAktivitas fitur="konsultasi" />
-      <Link href="/pilih-anak" style={{ color: 'var(--abu)', fontSize: 13 }}>← kembali</Link>
+      <TombolKembali fallback="/pilih-anak" style={{ color: 'var(--abu)', fontSize: 13 }} />
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 22, margin: '8px 0 4px' }}>🧠 Konsultasi Psikolog</h1>
       <p style={{ color: 'var(--abu)', fontSize: 12, marginBottom: 12 }}>Daftar konsultasi lalu chat dengan psikolog. Rekomendasi akan tersimpan di laporan tumbuh kembang anak. 🌿</p>
 

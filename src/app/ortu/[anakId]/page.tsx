@@ -10,6 +10,7 @@ import YoutubeEmbed from '@/components/YoutubeEmbed';
 import Terkunci from '@/components/Terkunci';
 import { youtubeId } from '@/lib/youtube';
 import s from './ortu.module.css';
+import TombolKembali from '@/components/TombolKembali';
 
 export default async function ModeOrtu({ params }: { params: Promise<{ anakId: string }> }) {
   const { anakId } = await params;
@@ -25,7 +26,7 @@ export default async function ModeOrtu({ params }: { params: Promise<{ anakId: s
 
   return (
     <div className={s.wrap}>
-      <Link href="/pilih-anak" className={s.back}>← ganti anak</Link>
+      <TombolKembali fallback="/pilih-anak" className={s.back} />
       <div className={s.hd}>
         <Pewi size={72} />
         <div className={s.hdText}>

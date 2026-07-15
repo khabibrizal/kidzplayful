@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getSertifikat } from '@/lib/data/sertifikat';
 import SertifikatView from '@/components/SertifikatView';
 import UnduhPdfBtn from '@/components/UnduhPdfBtn';
+import TombolKembali from '@/components/TombolKembali';
 
 export default async function SertifikatPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -19,7 +20,7 @@ export default async function SertifikatPage({ params }: { params: Promise<{ id:
       {/* Cetak PDF dalam orientasi landscape */}
       <style>{`@media print{@page{size:A4 landscape;margin:8mm}}`}</style>
       <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
-        <Link href={`/anak/${sert.anak_id}/laporan`} style={{ color: 'var(--abu)', fontSize: 13 }}>← Kembali ke Rapor</Link>
+        <TombolKembali fallback={`/anak/${sert.anak_id}/laporan`} style={{ color: 'var(--abu)', fontSize: 13 }} />
         <UnduhPdfBtn judul={`Sertifikat ${sert.anak_nama}`} />
       </div>
       <SertifikatView s={sert} />

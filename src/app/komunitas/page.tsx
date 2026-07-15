@@ -11,6 +11,7 @@ import SukaBtn from './SukaBtn';
 import LaporBtn from './LaporBtn';
 import Terkunci from '@/components/Terkunci';
 import BottomNav from '@/components/BottomNav';
+import TombolKembali from '@/components/TombolKembali';
 
 export default async function Komunitas({ searchParams }: { searchParams: Promise<{ topik?: string }> }) {
   const { topik: topikAwal } = await searchParams;
@@ -29,7 +30,7 @@ export default async function Komunitas({ searchParams }: { searchParams: Promis
   return (
     <main className="kp-page-narrow" style={{ padding: 16, paddingBottom: 90, marginTop: 20 }}>
       <RekamAktivitas fitur="komunitas" />
-      <Link href="/pilih-anak" style={{ color: 'var(--abu)', fontSize: 13 }}>← kembali</Link>
+      <TombolKembali fallback="/pilih-anak" style={{ color: 'var(--abu)', fontSize: 13 }} />
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 22, margin: '8px 0 4px' }}>💬 Komunitas</h1>
       <p style={{ color: 'var(--abu)', fontSize: 12, marginBottom: 12 }}>Berbagi cerita & tips dengan sesama orang tua. Mohon santun & jaga privasi anak. 🌿</p>
 

@@ -1,5 +1,6 @@
 // src/app/konsultasi/[pendaftaranId]/page.tsx — customer: chat + rekomendasi psikolog
 import Link from 'next/link';
+import TombolKembali from '@/components/TombolKembali';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getPendaftaranById } from '@/lib/data/psikolog';
@@ -26,7 +27,7 @@ export default async function KonsultasiChatPage({ params }: { params: Promise<{
 
   return (
     <main className="kp-page-narrow" style={{ padding: 16, paddingBottom: 90, marginTop: 20 }}>
-      <Link href="/konsultasi" style={{ color: 'var(--abu)', fontSize: 13 }}>← Konsultasi</Link>
+      <TombolKembali fallback="/konsultasi" style={{ color: 'var(--abu)', fontSize: 13 }} />
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 20, margin: '8px 0 4px' }}>💬 Konsultasi — {p.anak_nama || 'Anak'}</h1>
       <p style={{ color: 'var(--abu)', fontSize: 13, marginBottom: 14 }}>{formatTanggal(p.tanggal)} · status {p.status}</p>
 

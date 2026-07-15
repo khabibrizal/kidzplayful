@@ -8,6 +8,7 @@ import { simpanArtikel, hapusArtikel } from '@/lib/data/artikel-admin';
 import { slugify } from '@/lib/slug';
 import type { Artikel } from '@/lib/data/artikel';
 import s from '../../admin.module.css';
+import TombolKembali from '@/components/TombolKembali';
 
 export default function ArtikelForm({ artikel }: { artikel: Artikel }) {
   const router = useRouter();
@@ -100,7 +101,7 @@ export default function ArtikelForm({ artikel }: { artikel: Artikel }) {
             ? <button className={s.btnSm} style={{ background: 'var(--mint-d)', color: '#fff' }} onClick={() => simpan('terbit')} disabled={loading}>🚀 Terbitkan</button>
             : <button className={s.btnSm} style={{ background: '#fff3d6', color: '#b88600' }} onClick={() => simpan('draf')} disabled={loading}>Jadikan Draf</button>}
           {status === 'terbit' && <Link href={`/artikel/${slug}`} target="_blank" className={s.btnSm} style={{ background: '#e6f7ee', color: '#2e9e63' }}>Lihat ↗</Link>}
-          <Link href="/admin/artikel" className={s.btnSm} style={{ background: '#f0ecf9', color: 'var(--tinta)' }}>← Daftar</Link>
+          <TombolKembali fallback="/admin/artikel" className={s.btnSm} style={{ background: '#f0ecf9', color: 'var(--tinta)' }} />
           <button className={`${s.btnSm} ${s.danger}`} onClick={hapus} disabled={loading} style={{ marginLeft: 'auto' }}>Hapus</button>
         </div>
       </div>

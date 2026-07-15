@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { daftarEvent } from '@/lib/data/event-actions';
+import TombolKembali from '@/components/TombolKembali';
 import type { EventKelas } from '@/lib/game/tipe';
 import { formatTanggal, formatRupiah, linkWa } from '@/lib/format';
 import { hargaEventUntuk, persenEventUntuk } from '@/lib/domain/harga';
@@ -92,7 +93,7 @@ export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor }:
 
   return (
     <main style={{ maxWidth: 480, margin: '24px auto', padding: 16 }}>
-      <Link href="/event" style={{ color: 'var(--abu)', fontSize: 13 }}>← Kembali</Link>
+      <TombolKembali fallback="/event" style={{ color: 'var(--abu)', fontSize: 13 }} />
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 22, margin: '10px 0 12px' }}>Daftar: {ev.judul}</h1>
 
       {ev.gambar_url && (

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import KelolaAnak from './KelolaAnak';
+import TombolKembali from '@/components/TombolKembali';
 
 export default async function AnakPage({ params }: { params: Promise<{ anakId: string }> }) {
   const { anakId } = await params;
@@ -14,7 +15,7 @@ export default async function AnakPage({ params }: { params: Promise<{ anakId: s
 
   return (
     <main style={{ maxWidth: 440, margin: '20px auto', padding: 16 }}>
-      <Link href="/pilih-anak" style={{ color: 'var(--abu)', fontSize: 13 }}>← kembali</Link>
+      <TombolKembali fallback="/pilih-anak" style={{ color: 'var(--abu)', fontSize: 13 }} />
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 22, margin: '8px 0 14px' }}>🧒 Kelola {anak.nama}</h1>
       <KelolaAnak anak={anak} />
       <p style={{ textAlign: 'center', marginTop: 14 }}>

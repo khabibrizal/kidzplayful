@@ -5,6 +5,7 @@ import { getAdminTerjamin } from '@/lib/data/admin';
 import { getEventAdmin, getPendaftaranByEvent } from '@/lib/data/admin-event';
 import UnduhPdfBtn from '@/components/UnduhPdfBtn';
 import StikerSheet from '@/components/StikerSheet';
+import TombolKembali from '@/components/TombolKembali';
 
 export default async function StikerEventPage({ params }: { params: Promise<{ id: string }> }) {
   await getAdminTerjamin(); // guard admin (redirect bila bukan admin)
@@ -18,7 +19,7 @@ export default async function StikerEventPage({ params }: { params: Promise<{ id
     <main style={{ maxWidth: '196mm', margin: '12px auto', padding: 12 }}>
       <style>{`@media print{ @page{ size:215mm 330mm; margin:7mm } }`}</style>
       <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
-        <Link href="/admin/event" style={{ color: 'var(--abu)', fontSize: 13 }}>← Kembali</Link>
+        <TombolKembali fallback="/admin/event" style={{ color: 'var(--abu)', fontSize: 13 }} />
         <b>🏷️ Stiker: {ev.judul}</b>
         <span style={{ color: 'var(--abu)', fontSize: 13 }}>{nama.length} stiker · {Math.max(1, Math.ceil(nama.length / 10))} lembar F4</span>
         <UnduhPdfBtn judul={`Stiker ${ev.judul}`} />

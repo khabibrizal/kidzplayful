@@ -1,5 +1,6 @@
 // src/app/psikolog/[pendaftaranId]/page.tsx — chat + laporan anak + rekomendasi (sisi psikolog)
 import Link from 'next/link';
+import TombolKembali from '@/components/TombolKembali';
 import { redirect } from 'next/navigation';
 import { getPsikologTerjamin, getPendaftaranById } from '@/lib/data/psikolog';
 import { getPesan, getRekomendasiAnak } from '@/lib/data/konsultasi';
@@ -31,7 +32,7 @@ export default async function PsikologChatPage({ params }: { params: Promise<{ p
 
   return (
     <main style={{ maxWidth: 560, margin: '24px auto', padding: 16 }}>
-      <Link href="/psikolog" style={{ color: 'var(--abu)', fontSize: 13 }}>← Area Psikolog</Link>
+      <TombolKembali fallback="/psikolog" style={{ color: 'var(--abu)', fontSize: 13 }} />
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 20, margin: '8px 0 4px' }}>💬 {p.anak_nama || 'Anak'}</h1>
       <p style={{ color: 'var(--abu)', fontSize: 13, marginBottom: 14 }}>Konsultasi {formatTanggal(p.tanggal)} · status {p.status}{p.keluhan ? ` · “${p.keluhan}”` : ''}</p>
 

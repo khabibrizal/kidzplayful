@@ -8,6 +8,7 @@ import { getEventBerCatatan } from '@/lib/data/catatan';
 import EventCard from '@/components/EventCard';
 import RekamAktivitas from '@/components/RekamAktivitas';
 import BottomNav from '@/components/BottomNav';
+import TombolKembali from '@/components/TombolKembali';
 
 export default async function EventListPage() {
   const supabase = await createClient();
@@ -26,7 +27,7 @@ export default async function EventListPage() {
   return (
     <main className="kp-page" style={{ padding: 16, paddingBottom: 90, marginTop: 24 }}>
       <RekamAktivitas fitur="event" />
-      <Link href="/pilih-anak" style={{ color: 'var(--abu)', fontSize: 13 }}>← Kembali</Link>
+      <TombolKembali fallback="/pilih-anak" style={{ color: 'var(--abu)', fontSize: 13 }} />
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 24, margin: '10px 0 16px' }}>✨ Event Kelas Bermain</h1>
       {events.length === 0
         ? <p style={{ color: 'var(--abu)' }}>Belum ada event saat ini.</p>
