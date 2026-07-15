@@ -32,6 +32,11 @@ export default async function KonsultasiPage() {
 
   const [psikolog, anak, sesi] = await Promise.all([getPsikologTersedia(), getAnakSaya(), getKonsultasiSaya()]);
 
+  // Kelompokkan konsultasi per tanggal (terbaru dulu) — pola seperti blok event.
+  const grup = new Map<string, typeof sesi>();
+  for (const p of sesi) { const g = grup.get(p.tanggal); if (g) g.push(p); else grup.set(p.tanggal, [p]); }
+  const perTanggal = [...grup.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+
   return (
     <main className="kp-page-narrow" style={{ padding: 16, paddingBottom: 90, marginTop: 20 }}>
       <RekamAktivitas fitur="konsultasi" />
@@ -44,21 +49,32 @@ export default async function KonsultasiPage() {
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '18px 0 8px' }}>KONSULTASI SAYA ({sesi.length})</div>
       {sesi.length === 0 && <p style={{ color: 'var(--abu)', fontSize: 13 }}>Belum ada konsultasi.</p>}
-      {sesi.map((p) => {
-        const b = BADGE[p.status] ?? BADGE.menunggu;
-        return (
-          <div key={p.id} className="kp-card" style={{ marginBottom: 8 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <span><b>{p.anak_nama || 'Anak'}</b> · <small style={{ color: 'var(--abu)' }}>{formatTanggal(p.tanggal)}</small></span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: b.warna, background: b.bg, borderRadius: 99, padding: '3px 10px' }}>{b.teks}</span>
-            </div>
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 8 }}>
-              {p.status === 'diterima' && <Link href={`/konsultasi/${p.id}`} className="kp-btn" style={{ padding: '6px 14px', fontSize: 13 }}>💬 Buka chat</Link>}
-              {(p.status === 'menunggu' || p.status === 'diterima') && <BatalBtn id={p.id} />}
-            </div>
+      {perTanggal.map(([tgl, list]) => (
+        <details key={tgl} className="kp-card" style={{ padding: 12, marginBottom: 8 }} open={list.some((p) => p.status === 'menunggu' || p.status === 'diterima')}>
+          <summary style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 700 }}>
+            <span>🗓️ {formatTanggal(tgl)}</span>
+            <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--abu)' }}>{list.length} konsultasi ▾</span>
+          </summary>
+          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {list.map((p) => {
+              const b = BADGE[p.status] ?? BADGE.menunggu;
+              const adaChat = p.status === 'diterima' || p.status === 'selesai';
+              return (
+                <div key={p.id} style={{ borderTop: '1px solid #f4f1fa', paddingTop: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span><b>🧒 {p.anak_nama || 'Anak'}</b></span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: b.warna, background: b.bg, borderRadius: 99, padding: '3px 10px' }}>{b.teks}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 8 }}>
+                    {adaChat && <Link href={`/konsultasi/${p.id}`} className="kp-btn" style={{ padding: '6px 14px', fontSize: 13 }}>{p.status === 'selesai' ? '📜 Riwayat chat' : '💬 Buka chat'}</Link>}
+                    {(p.status === 'menunggu' || p.status === 'diterima') && <BatalBtn id={p.id} />}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        );
-      })}
+        </details>
+      ))}
       <BottomNav />
     </main>
   );
