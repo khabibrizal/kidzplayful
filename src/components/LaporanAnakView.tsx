@@ -35,9 +35,12 @@ export default async function LaporanAnakView({ anakId, tampilkanSertifikat = tr
   // Gabungkan catatan + sertifikat per EVENT (daftar collapse).
   type BlokEvent = { key: string; judul: string; tanggal: string | null; catatan: typeof catatan[number]['c'][]; sertifikat: typeof sertifikat };
   const blokMap = new Map<string, BlokEvent>();
+  const judulBaik = (j?: string | null) => !!j && j.trim() !== '' && j !== 'Event';
   const ambilBlok = (key: string, judul: string, tanggal: string | null) => {
     let b = blokMap.get(key);
     if (!b) { b = { key, judul, tanggal, catatan: [], sertifikat: [] }; blokMap.set(key, b); }
+    // upgrade ke judul yang lebih valid bila blok sebelumnya masih fallback "Event"
+    if (!judulBaik(b.judul) && judulBaik(judul)) b.judul = judul;
     if (!b.tanggal && tanggal) b.tanggal = tanggal;
     return b;
   };
