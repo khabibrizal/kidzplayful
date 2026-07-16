@@ -10,6 +10,7 @@ import { getPengaturanTrial } from '@/lib/data/pengaturan-trial';
 
 export async function tambahAnak(formData: FormData) {
   const nama = String(formData.get('nama') ?? '').trim();
+  const namaPanggilan = String(formData.get('nama_panggilan') ?? '').trim();
   const tgl = String(formData.get('tanggal_lahir') ?? '');
   const jk = String(formData.get('jenis_kelamin') ?? '');
   const jenisKelamin = jk === 'laki-laki' || jk === 'perempuan' ? jk : null;
@@ -35,6 +36,7 @@ export async function tambahAnak(formData: FormData) {
   const { error } = await supabase.from('anak').insert({
     ortu_id: user.id,
     nama,
+    nama_panggilan: namaPanggilan || null,
     tanggal_lahir: tgl,
     mode_default: mode,
     jenis_kelamin: jenisKelamin,

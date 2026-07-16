@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getAdminTerjamin } from '@/lib/data/admin';
 import { getEventAdmin, getPendaftaranByEvent } from '@/lib/data/admin-event';
+import { createClient } from '@/lib/supabase/server';
 import UnduhPdfBtn from '@/components/UnduhPdfBtn';
 import StikerSheet from '@/components/StikerSheet';
 import TombolKembali from '@/components/TombolKembali';
@@ -13,7 +14,20 @@ export default async function StikerEventPage({ params }: { params: Promise<{ id
   const ev = await getEventAdmin(id);
   if (!ev) redirect('/admin/event');
   const list = await getPendaftaranByEvent(id);
-  const nama = list.flatMap((p) => p.anak_nama).filter(Boolean); // semua anak yang mendaftar
+  // Stiker tampilkan NAMA PANGGILAN saja (fallback: kata pertama nama lengkap).
+  const kataPertama = (t: string) => (t ?? '').trim().split(/\s+/)[0] ?? '';
+  const anakIds = [...new Set(list.flatMap((p) => p.anak_ids ?? []))];
+  const panggilan: Record<string, string> = {};
+  if (anakIds.length) {
+    const supabase = await createClient();
+    const { data: rows } = await supabase.from('anak').select('id,nama,nama_panggilan').in('id', anakIds);
+    for (const a of rows ?? []) panggilan[a.id as string] = ((a.nama_panggilan as string)?.trim()) || kataPertama(a.nama as string);
+  }
+  const nama = list.flatMap((p) => {
+    const ids = p.anak_ids ?? [];
+    if (ids.length) return ids.map((anakId, i) => panggilan[anakId] || kataPertama(p.anak_nama[i] ?? ''));
+    return (p.anak_nama ?? []).map(kataPertama);
+  }).filter(Boolean);
 
   return (
     <main style={{ maxWidth: '196mm', margin: '12px auto', padding: 12 }}>

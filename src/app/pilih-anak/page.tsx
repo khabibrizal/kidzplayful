@@ -113,6 +113,7 @@ export default async function PilihAnakPage() {
         <summary className="kp-btn putih" style={{ display: 'inline-block', textAlign: 'center' }}>➕ Tambah data anak</summary>
         <form action={tambahAnak} style={{ marginTop: 12 }}>
           <input className="kp-input" name="nama" placeholder="Nama anak" required />
+          <input className="kp-input" name="nama_panggilan" placeholder="Nama panggilan (opsional)" />
           <select className="kp-input" name="jenis_kelamin" defaultValue="" required>
             <option value="" disabled>Jenis kelamin</option>
             <option value="laki-laki">Laki-laki</option>

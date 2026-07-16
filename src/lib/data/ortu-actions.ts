@@ -13,14 +13,14 @@ async function sesi() {
   return { supabase, userId: user.id };
 }
 
-export async function updateAnak(anakId: string, nama: string, tanggalLahir: string, jenisKelamin?: string) {
+export async function updateAnak(anakId: string, nama: string, tanggalLahir: string, jenisKelamin?: string, namaPanggilan?: string) {
   const { supabase } = await sesi();
   if (!nama.trim() || !tanggalLahir) throw new Error('Nama & tanggal lahir wajib.');
   if (tanggalLahir >= tanggalWIB()) throw new Error('Tanggal lahir harus sebelum hari ini.');
   const umur = umurTahun(new Date(tanggalLahir + 'T00:00:00Z'), new Date());
   const jk = jenisKelamin === 'laki-laki' || jenisKelamin === 'perempuan' ? jenisKelamin : null;
   const { error } = await supabase.from('anak')
-    .update({ nama: nama.trim(), tanggal_lahir: tanggalLahir, mode_default: modeDefault(umur), jenis_kelamin: jk })
+    .update({ nama: nama.trim(), nama_panggilan: (namaPanggilan ?? '').trim() || null, tanggal_lahir: tanggalLahir, mode_default: modeDefault(umur), jenis_kelamin: jk })
     .eq('id', anakId);
   if (error) throw new Error(error.message);
   revalidatePath('/pilih-anak'); revalidatePath(`/anak/${anakId}`);

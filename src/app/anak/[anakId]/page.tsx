@@ -10,7 +10,7 @@ export default async function AnakPage({ params }: { params: Promise<{ anakId: s
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
-  const { data: anak } = await supabase.from('anak').select('id,nama,tanggal_lahir,batas_menit,jenis_kelamin').eq('id', anakId).single();
+  const { data: anak } = await supabase.from('anak').select('id,nama,nama_panggilan,tanggal_lahir,batas_menit,jenis_kelamin').eq('id', anakId).single();
   if (!anak) redirect('/pilih-anak');
 
   return (
