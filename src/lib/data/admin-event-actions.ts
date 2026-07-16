@@ -14,12 +14,13 @@ export interface EventInput {
   deskripsi: string;
   gambarUrl: string | null;
   hargaPerAnak: number;
+  hargaPendamping: number; // biaya tambah 1 pendamping (0 = tak ditawarkan)
   diskonLanggananPersen: number; // % diskon untuk pelanggan aktif (0 = tanpa diskon)
   // Kelas terpisah (opsional). Kosongkan bila event gabungan.
   babyTanggal: string; babyJamMulai: string; babyJamSelesai: string;
   toddlerTanggal: string; toddlerJamMulai: string; toddlerJamSelesai: string;
 }
-const COLS = 'id,judul,lokasi,tanggal,jam_mulai,jam_selesai,deskripsi,gambar_url,harga_per_anak,diskon_langganan_persen,status,sertifikat_bg_url,dokumentasi_url,stiker_bg_url,baby_tanggal,baby_jam_mulai,baby_jam_selesai,toddler_tanggal,toddler_jam_mulai,toddler_jam_selesai';
+const COLS = 'id,judul,lokasi,tanggal,jam_mulai,jam_selesai,deskripsi,gambar_url,harga_per_anak,harga_pendamping,diskon_langganan_persen,status,sertifikat_bg_url,dokumentasi_url,stiker_bg_url,baby_tanggal,baby_jam_mulai,baby_jam_selesai,toddler_tanggal,toddler_jam_mulai,toddler_jam_selesai';
 
 async function adminDb() {
   const s = await createClient();
@@ -64,6 +65,7 @@ function row(i: EventInput) {
     deskripsi: i.deskripsi.trim() || null,
     gambar_url: i.gambarUrl?.trim() || null,
     harga_per_anak: Math.max(0, Math.floor(Number(i.hargaPerAnak) || 0)),
+    harga_pendamping: Math.max(0, Math.floor(Number(i.hargaPendamping) || 0)),
     diskon_langganan_persen: (() => { const n = Math.min(100, Math.max(0, Math.floor(Number(i.diskonLanggananPersen) || 0))); return n > 0 ? n : null; })(),
     baby_tanggal: i.babyTanggal || null,
     baby_jam_mulai: i.babyJamMulai?.trim() || null,

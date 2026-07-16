@@ -55,7 +55,7 @@ li { margin:3px 0; }
     supabase/          # server.ts (SSR), client.ts (browser)
     api/               # helpers.ts (amplop JSON + auth Bearer untuk REST API)
     game/              # tipe &amp; util mesin game
-supabase/migrations/   # skema DB (0001..0069), dijalankan manual di SQL Editor
+supabase/migrations/   # skema DB (0001..0070), dijalankan manual di SQL Editor
 docs/                  # dokumentasi (termasuk file ini)
 tools/md2pdf.py        # generator PDF dokumentasi
 </code></pre>
@@ -82,7 +82,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </ul>
 <h3 id="deploy-migrasi">Deploy &amp; migrasi</h3>
 <ul>
-<li>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor (urut <code>0001..0069</code>), lalu diverifikasi via REST (<code>?select=col&amp;limit=1</code> → 200).</li>
+<li>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor (urut <code>0001..0070</code>), lalu diverifikasi via REST (<code>?select=col&amp;limit=1</code> → 200).</li>
 <li>Commit: <code>git -c commit.gpgsign=false commit</code> + baris <code>Co-Authored-By</code>. Push ke <code>master</code> → Vercel auto-deploy.</li>
 <li>Banyak reader dibungkus <code>try/catch</code> agar fitur aman dideploy sebelum migrasinya dijalankan (mengembalikan nilai default).</li>
 </ul>
@@ -116,7 +116,8 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <li><strong>Fungsi data</strong>: <code>getEventSemua()</code>, <code>getJumlahPendaftar()</code> (<code>admin-event.ts</code>).</li>
 <li><strong>Server action</strong>: <code>buatEvent</code>, <code>updateEvent</code>, <code>toggleStatusEvent</code>, <code>hapusEvent</code>, <code>simpanBerkasSertifikat</code> (<code>admin-event-actions.ts</code>); <code>generateSertifikatEvent</code> (<code>admin-sertifikat-actions.ts</code>).</li>
 <li><strong>Kelas terpisah</strong>: form Add/Edit punya bagian <strong>Baby Class</strong> &amp; <strong>Toddler Class</strong> (tgl + jam mulai/selesai per kelas; <code>EventInput.baby*/toddler*</code> → kolom <code>event.baby_*</code>/<code>toddler_*</code>). Kosong = event gabungan (pakai tgl/jam utama).</li>
-<li><strong>Endpoint</strong>: <code>event</code> (+ kolom <code>baby_*</code>/<code>toddler_*</code>), <code>pendaftaran_event</code>, <code>sertifikat</code> (upsert), <code>storage.from('aset')</code> (folder <code>event/</code>, <code>event/sertifikat-*</code>, <code>event/stiker-*</code>).</li>
+<li><strong>Harga tambah pendamping</strong>: <code>EventInput.hargaPendamping</code> → <code>event.harga_pendamping</code> (per-event; 0 = tanpa opsi pendamping).</li>
+<li><strong>Endpoint</strong>: <code>event</code> (+ kolom <code>baby_*</code>/<code>toddler_*</code>/<code>harga_pendamping</code>), <code>pendaftaran_event</code>, <code>sertifikat</code> (upsert), <code>storage.from('aset')</code> (folder <code>event/</code>, <code>event/sertifikat-*</code>, <code>event/stiker-*</code>).</li>
 </ul>
 <h3 id="pendaftar-event-admineventidpendaftar">🗓️ Pendaftar Event — <code>/admin/event/[id]/pendaftar</code></h3>
 <ul>
@@ -500,8 +501,8 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <h3 id="event-event-eventiddaftar">🗓️ Event — <code>/event</code> &amp; <code>/event/[id]/daftar</code></h3>
 <ul>
 <li><strong>Fungsi data</strong>: <code>getEventTampilCached()</code> (<code>publik.ts</code>), <code>getStatusPendaftaranSaya()</code>/<code>getPesertaPerEvent()</code>/<code>getEvent(id)</code> (<code>event.ts</code>), <code>getEventBerCatatan()</code> (<code>catatan.ts</code>); daftar: <code>getStatusLangganan()</code>, <code>getPengaturanBayar()</code> + <code>waUntuk(cfg,'event')</code>.</li>
-<li><strong>Server action</strong>: <code>daftarEvent(eventId, anakIds, buktiUrl, kelas?)</code> (<code>event-actions.ts</code>); upload bukti via <code>DaftarForm.tsx</code>. Bila event punya kelas terpisah, <code>DaftarForm</code> menampilkan <strong>radio Baby/Toddler Class</strong> (dengan tgl+jam); pilihan disimpan ke <code>pendaftaran_event.kelas</code> + snapshot <code>kelas_jadwal</code>. Event gabungan → <code>kelas='gabungan'</code>.</li>
-<li><strong>Endpoint</strong>: <code>event</code>, <code>pendaftaran_event</code> (+ <code>kelas</code>/<code>kelas_jadwal</code>), <code>anak</code>, <code>catatan_perkembangan</code>, <code>langganan</code>, <code>pengaturan_pembayaran</code>, <code>storage.from('aset')</code>.</li>
+<li><strong>Server action</strong>: <code>daftarEvent(eventId, anakIds, buktiUrl, kelas?, jumlahPendamping?)</code> (<code>event-actions.ts</code>); upload bukti via <code>DaftarForm.tsx</code>. Bila event punya kelas terpisah, <code>DaftarForm</code> menampilkan <strong>radio Baby/Toddler Class</strong> (dengan tgl+jam); pilihan disimpan ke <code>pendaftaran_event.kelas</code> + snapshot <code>kelas_jadwal</code>. Event gabungan → <code>kelas='gabungan'</code>. Bila <code>harga_pendamping&gt;0</code>, tampil stepper <strong>Tambah pendamping</strong> → <code>pendaftaran_event.jumlah_pendamping</code>; <strong>total = anak×harga + pendamping×harga_pendamping</strong> (dihitung ulang di server). Kartu <strong>💳 Pembayaran</strong> menampilkan <code>bank_teks</code> + QRIS (<code>pengaturan_pembayaran</code>).</li>
+<li><strong>Endpoint</strong>: <code>event</code>, <code>pendaftaran_event</code> (+ <code>kelas</code>/<code>kelas_jadwal</code>/<code>jumlah_pendamping</code>), <code>anak</code>, <code>catatan_perkembangan</code>, <code>langganan</code>, <code>pengaturan_pembayaran</code>, <code>storage.from('aset')</code>.</li>
 </ul>
 <h3 id="komunitas-komunitas-komunitaspostid">💬 Komunitas — <code>/komunitas</code> &amp; <code>/komunitas/[postId]</code></h3>
 <ul>
@@ -827,8 +828,8 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </tr>
 <tr>
 <td><code>event</code>, <code>pendaftaran_event</code></td>
-<td>event + pendaftaran (status, bukti, kehadiran, reschedule; <code>event.indikator_perkembangan</code> parameter penilaian; kelas terpisah <code>event.baby_*</code>/<code>toddler_*</code> + <code>pendaftaran_event.kelas</code>/<code>kelas_jadwal</code>)</td>
-<td>0017, 0027, 0062, 0069</td>
+<td>event + pendaftaran (status, bukti, kehadiran, reschedule; <code>indikator_perkembangan</code>; kelas terpisah <code>event.baby_*</code>/<code>toddler_*</code> + <code>pendaftaran_event.kelas</code>/<code>kelas_jadwal</code>; <code>event.harga_pendamping</code> + <code>pendaftaran_event.jumlah_pendamping</code>)</td>
+<td>0017, 0027, 0062, 0069, 0070</td>
 </tr>
 <tr>
 <td><code>catatan_perkembangan</code></td>

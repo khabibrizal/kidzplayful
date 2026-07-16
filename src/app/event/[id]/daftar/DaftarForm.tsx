@@ -13,6 +13,7 @@ import { hargaEventUntuk, persenEventUntuk } from '@/lib/domain/harga';
 
 export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor, bankTeks, qrisUrl }: { ev: EventKelas; anak: { id: string; nama: string }[]; status?: string; waNomor?: string; bankTeks?: string; qrisUrl?: string }) {
   const [pilih, setPilih] = useState<Set<string>>(new Set());
+  const [pendamping, setPendamping] = useState(0);
   const [buktiUrl, setBuktiUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -23,7 +24,9 @@ export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor, b
   const hargaAnak = hargaEventUntuk(ev, status);
   const pctEv = persenEventUntuk(ev, status);
   const adaDiskon = hargaAnak < ev.harga_per_anak;
-  const total = hargaAnak * pilih.size;
+  const hargaPendamping = ev.harga_pendamping ?? 0;
+  const totalPendamping = hargaPendamping * pendamping;
+  const total = hargaAnak * pilih.size + totalPendamping;
 
   // Opsi kelas (Baby/Toddler) bila event dikonfigurasi terpisah
   const fmtJadwal = (tgl?: string | null, jm?: string | null, js?: string | null) =>
@@ -62,7 +65,7 @@ export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor, b
     if (ev.harga_per_anak > 0 && !buktiUrl) { setErr('Unggah bukti pembayaran dulu.'); return; }
     setSubmitting(true); setErr('');
     try {
-      await daftarEvent(ev.id, [...pilih], buktiUrl, kelasOpsi.length > 0 ? kelas : null);
+      await daftarEvent(ev.id, [...pilih], buktiUrl, kelasOpsi.length > 0 ? kelas : null, pendamping);
       setSukses(true); // tampilkan invoice + tombol konfirmasi WA
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Gagal mendaftar');
@@ -82,6 +85,7 @@ export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor, b
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}><span>{ev.judul}</span></div>
           {kelasTerpilih && <div style={{ fontSize: 13, marginTop: 4 }}>{kelasTerpilih.label} · <span style={{ color: 'var(--abu)' }}>{kelasTerpilih.jadwal}</span></div>}
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--abu)', marginTop: 4 }}><span>{pilih.size} anak × {formatRupiah(hargaAnak)}</span></div>
+          {pendamping > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--abu)', marginTop: 2 }}><span>{pendamping} pendamping × {formatRupiah(hargaPendamping)}</span></div>}
           <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: 16, borderTop: '1px dashed #e2dbf0', marginTop: 8, paddingTop: 8 }}><span>Total</span><span>{formatRupiah(total)}</span></div>
         </div>
         <p style={{ color: 'var(--abu)', fontSize: 13, margin: '12px 0' }}>Beri tahu admin agar pendaftaran & pembayaranmu segera diproses ya 🙏</p>
@@ -132,9 +136,20 @@ export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor, b
         </label>
       ))}
 
+      {hargaPendamping > 0 && (
+        <div className="kp-card" style={{ marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <span><b>➕ Tambah pendamping</b><br /><small style={{ color: 'var(--abu)' }}>{formatRupiah(hargaPendamping)} / pendamping</small></span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button type="button" onClick={() => setPendamping((p) => Math.max(0, p - 1))} style={{ width: 32, height: 32, borderRadius: 99, border: '1px solid #ddd', background: '#fff', fontSize: 18, cursor: 'pointer' }}>−</button>
+            <b style={{ minWidth: 16, textAlign: 'center' }}>{pendamping}</b>
+            <button type="button" onClick={() => setPendamping((p) => p + 1)} style={{ width: 32, height: 32, borderRadius: 99, border: 'none', background: 'var(--lavender-d)', color: '#fff', fontSize: 18, cursor: 'pointer' }}>+</button>
+          </div>
+        </div>
+      )}
+
       <div className="kp-card" style={{ marginBottom: 12, background: '#fff3d6' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Total pembayaran</span><b>{formatRupiah(total)}</b></div>
-        <small style={{ color: 'var(--abu)' }}>{pilih.size} anak × {formatRupiah(hargaAnak)}</small>
+        <small style={{ color: 'var(--abu)' }}>{pilih.size} anak × {formatRupiah(hargaAnak)}{pendamping > 0 ? ` + ${pendamping} pendamping × ${formatRupiah(hargaPendamping)}` : ''}</small>
       </div>
 
       {ev.harga_per_anak > 0 && (bankTeks || qrisUrl) && (

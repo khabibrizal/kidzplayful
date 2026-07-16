@@ -147,6 +147,7 @@ export interface EventKelas {
   deskripsi: string | null;
   gambar_url: string | null;
   harga_per_anak: number;
+  harga_pendamping?: number;                 // biaya tambah 1 pendamping (0 = tak ditawarkan)
   diskon_langganan_persen: number | null;   // % diskon untuk pelanggan aktif (opsional)
   status: 'tampil' | 'arsip';
   sertifikat_bg_url: string | null; // template sertifikat (JPEG)
@@ -170,6 +171,7 @@ export interface PendaftaranEvent {
   anak_nama: string[];
   hadir_anak_ids: string[]; // anak yang ditandai HADIR (absensi)
   jumlah_anak: number;
+  jumlah_pendamping?: number;
   total: number;
   bukti_url: string | null;
   status: 'menunggu' | 'diterima' | 'ditolak';

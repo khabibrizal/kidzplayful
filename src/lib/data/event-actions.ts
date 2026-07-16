@@ -13,14 +13,14 @@ function jadwalTeks(tgl: string | null, jm: string | null, js: string | null): s
   return gab || null;
 }
 
-export async function daftarEvent(eventId: string, anakIds: string[], buktiUrl: string | null, kelas: string | null = null): Promise<void> {
+export async function daftarEvent(eventId: string, anakIds: string[], buktiUrl: string | null, kelas: string | null = null, jumlahPendamping: number = 0): Promise<void> {
   const s = await createClient();
   const { data: { user } } = await s.auth.getUser();
   if (!user) throw new Error('Tidak terautentikasi');
   if (!anakIds.length) throw new Error('Pilih minimal 1 anak.');
 
   const { data: ev } = await s.from('event')
-    .select('harga_per_anak,diskon_langganan_persen,status,tanggal,jam_mulai,jam_selesai,baby_tanggal,baby_jam_mulai,baby_jam_selesai,toddler_tanggal,toddler_jam_mulai,toddler_jam_selesai')
+    .select('harga_per_anak,harga_pendamping,diskon_langganan_persen,status,tanggal,jam_mulai,jam_selesai,baby_tanggal,baby_jam_mulai,baby_jam_selesai,toddler_tanggal,toddler_jam_mulai,toddler_jam_selesai')
     .eq('id', eventId).maybeSingle();
   if (!ev || ev.status !== 'tampil') throw new Error('Event tidak tersedia.');
 
@@ -52,13 +52,16 @@ export async function daftarEvent(eventId: string, anakIds: string[], buktiUrl: 
   if (!baru.length) throw new Error('Semua anak yang dipilih sudah terdaftar di event ini.');
 
   const status = await getStatusLangganan(s, user.id);
-  const total = hargaEventUntuk({ harga_per_anak: ev.harga_per_anak ?? 0, diskon_langganan_persen: ev.diskon_langganan_persen ?? null }, status) * baru.length;
+  const nPendamping = Math.max(0, Math.floor(jumlahPendamping || 0));
+  const total = hargaEventUntuk({ harga_per_anak: ev.harga_per_anak ?? 0, diskon_langganan_persen: ev.diskon_langganan_persen ?? null }, status) * baru.length
+    + nPendamping * (ev.harga_pendamping ?? 0);
   const { error } = await s.from('pendaftaran_event').insert({
     event_id: eventId,
     ortu_id: user.id,
     anak_ids: baru.map((a) => a.id),
     anak_nama: baru.map((a) => a.nama),
     jumlah_anak: baru.length,
+    jumlah_pendamping: nPendamping,
     total,
     bukti_url: buktiUrl,
     kelas: kelasFinal,
