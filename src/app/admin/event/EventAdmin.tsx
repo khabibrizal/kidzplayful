@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { buatEvent, updateEvent, toggleStatusEvent, hapusEvent, simpanBerkasSertifikat, type EventInput } from '@/lib/data/admin-event-actions';
 import { generateSertifikatEvent } from '@/lib/data/admin-sertifikat-actions';
+import DownloadPesertaBtn from './DownloadPesertaBtn';
 import type { EventKelas } from '@/lib/game/tipe';
 import { formatRupiah } from '@/lib/format';
 import s from '../admin.module.css';
@@ -146,6 +147,7 @@ export default function EventAdmin({ awal, counts }: { awal: EventKelas[]; count
           </div>
           <div className={s.row} style={{ marginTop: 8, flexWrap: 'wrap' }}>
             <Link href={`/admin/event/${e.id}/pendaftar`} className={s.btnSm} style={{ background: '#dff5e6', color: '#1c7a43' }}>👥 Pendaftar ({counts[e.id] ?? 0})</Link>
+            <DownloadPesertaBtn eventId={e.id} judul={e.judul} />
             <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)' }} onClick={() => bukaEdit(e)} disabled={busyId === e.id}>Edit</button>
             <button className={s.btnSm} style={{ background: '#fff3d6', color: '#b88600' }} onClick={() => toggle(e)} disabled={busyId === e.id}>{busyId === e.id ? '...' : (e.status === 'tampil' ? 'Arsipkan' : 'Tampilkan')}</button>
             <button className={`${s.btnSm} ${s.danger}`} onClick={() => hapus(e)} disabled={busyId === e.id}>Hapus</button>

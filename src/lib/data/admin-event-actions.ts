@@ -4,6 +4,56 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import type { EventKelas, BarisParam } from '@/lib/game/tipe';
 import { catatLedger, hapusLedgerRef } from './ledger';
+import { umurTeks } from '@/lib/domain/anak';
+
+export interface BarisPesertaEkspor {
+  kelas: string;          // 'Baby Class' | 'Toddler Class' | 'Gabungan'
+  namaPanggilan: string;
+  namaLengkap: string;
+  tglLahir: string;       // "10 Juli 2022" (tanpa koma)
+  umur: string;           // "2 thn 3 bln"
+  namaOrtu: string;
+}
+
+/** Data peserta event untuk diunduh (dikelompokkan per kelas oleh pemanggil). Admin only. */
+export async function getPesertaEkspor(eventId: string): Promise<BarisPesertaEkspor[]> {
+  const s = await adminDb();
+  const { data: pend } = await s.from('pendaftaran_event')
+    .select('anak_ids,anak_nama,ortu_id,kelas,status').eq('event_id', eventId).neq('status', 'ditolak');
+  const rowsPend = pend ?? [];
+  const anakIds = [...new Set(rowsPend.flatMap((p) => (p.anak_ids as string[]) ?? []))];
+  const ortuIds = [...new Set(rowsPend.map((p) => p.ortu_id as string))];
+  const [aRes, oRes] = await Promise.all([
+    anakIds.length ? s.from('anak').select('id,nama,nama_panggilan,tanggal_lahir').in('id', anakIds) : Promise.resolve({ data: [] as unknown[] }),
+    ortuIds.length ? s.from('profiles').select('id,nama_tampilan,email').in('id', ortuIds) : Promise.resolve({ data: [] as unknown[] }),
+  ]);
+  const anakMap: Record<string, { nama?: string; nama_panggilan?: string; tanggal_lahir?: string }> = {};
+  for (const a of (aRes.data ?? []) as Record<string, string>[]) anakMap[a.id] = a;
+  const ortuMap: Record<string, string> = {};
+  for (const o of (oRes.data ?? []) as Record<string, string>[]) ortuMap[o.id] = (o.nama_tampilan?.trim()) || o.email || '';
+  const now = new Date();
+  const fmtTgl = (tgl: string) => new Date(tgl + 'T00:00:00Z').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+
+  const out: BarisPesertaEkspor[] = [];
+  for (const p of rowsPend) {
+    const ids = (p.anak_ids as string[]) ?? [];
+    const nm = (p.anak_nama as string[]) ?? [];
+    const kelas = p.kelas === 'baby' ? 'Baby Class' : p.kelas === 'toddler' ? 'Toddler Class' : 'Gabungan';
+    ids.forEach((id, i) => {
+      const a = anakMap[id];
+      const tgl = a?.tanggal_lahir ?? '';
+      out.push({
+        kelas,
+        namaPanggilan: a?.nama_panggilan?.trim() || '',
+        namaLengkap: a?.nama || nm[i] || '',
+        tglLahir: tgl ? fmtTgl(tgl) : '',
+        umur: tgl ? umurTeks(new Date(tgl + 'T00:00:00Z'), now) : '',
+        namaOrtu: ortuMap[p.ortu_id as string] || '',
+      });
+    });
+  }
+  return out;
+}
 
 export interface EventInput {
   judul: string;
