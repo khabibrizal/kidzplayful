@@ -2,7 +2,7 @@
 import { createClient } from '@/lib/supabase/server';
 import type { JadwalPsikolog, PendaftaranKonsultasi, PesanKonsultasi, RekomendasiPsikolog } from '@/lib/game/tipe';
 
-const PCOLS = 'id,ortu_id,psikolog_id,anak_id,anak_nama,tanggal,keluhan,status,diverifikasi_pada,dimulai_pada,durasi_menit,created_at';
+const PCOLS = 'id,ortu_id,psikolog_id,anak_id,anak_nama,tanggal,jam,keluhan,status,diverifikasi_pada,dimulai_pada,durasi_menit,created_at';
 
 /** Daftar psikolog yang membuka jadwal (aktif). Nama dari denormalisasi jadwal. */
 export async function getPsikologTersedia(): Promise<JadwalPsikolog[]> {

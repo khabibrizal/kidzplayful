@@ -15,7 +15,7 @@ async function sesi() {
 
 /** Customer daftar konsultasi. Validasi kuota/hari via RPC SECURITY DEFINER. */
 export async function daftarKonsultasi(input: {
-  psikologId: string; anakId: string; tanggal: string; keluhan: string;
+  psikologId: string; anakId: string; tanggal: string; jam: string; keluhan: string;
 }): Promise<{ ok: boolean; error?: string }> {
   try {
     const { s } = await sesi();
@@ -25,6 +25,7 @@ export async function daftarKonsultasi(input: {
       p_anak: input.anakId,
       p_tanggal: input.tanggal,
       p_keluhan: input.keluhan ?? '',
+      p_jam: input.jam ?? '',
     });
     if (error) return { ok: false, error: error.message };
     revalidatePath('/konsultasi');

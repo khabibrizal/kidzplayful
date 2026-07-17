@@ -36,7 +36,7 @@ export default async function PsikologChatPage({ params }: { params: Promise<{ p
     <main style={{ maxWidth: 560, margin: '24px auto', padding: 16 }}>
       <TombolKembali fallback="/psikolog" style={{ color: 'var(--abu)', fontSize: 13 }} />
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 20, margin: '8px 0 4px' }}>💬 {p.anak_nama || 'Anak'}</h1>
-      <p style={{ color: 'var(--abu)', fontSize: 13, marginBottom: 14 }}>Konsultasi {formatTanggal(p.tanggal)} · status {p.status}{p.keluhan ? ` · “${p.keluhan}”` : ''}</p>
+      <p style={{ color: 'var(--abu)', fontSize: 13, marginBottom: 14 }}>Konsultasi {formatTanggal(p.tanggal)}{p.jam ? ` · 🕐 ${p.jam} WIB` : ''} · status {p.status}{p.keluhan ? ` · “${p.keluhan}”` : ''}</p>
 
       {p.status === 'diterima' && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>

@@ -63,7 +63,7 @@ export default async function KonsultasiPage() {
               return (
                 <div key={p.id} style={{ borderTop: '1px solid #f4f1fa', paddingTop: 8 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <span><b>🧒 {p.anak_nama || 'Anak'}</b></span>
+                    <span><b>🧒 {p.anak_nama || 'Anak'}</b>{p.jam ? <small style={{ color: 'var(--abu)' }}> · 🕐 {p.jam} WIB</small> : null}</span>
                     <span style={{ fontSize: 11, fontWeight: 700, color: b.warna, background: b.bg, borderRadius: 99, padding: '3px 10px' }}>{b.teks}</span>
                   </div>
                   <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 8 }}>

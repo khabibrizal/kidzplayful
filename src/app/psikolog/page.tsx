@@ -31,7 +31,7 @@ export default async function PsikologHome() {
       {menunggu.length === 0 && <p style={{ color: 'var(--abu)', fontSize: 13 }}>Tidak ada pendaftaran baru.</p>}
       {menunggu.map((p) => (
         <div key={p.id} className="kp-card" style={{ marginBottom: 8 }}>
-          <div><b>{p.anak_nama || 'Anak'}</b> · <small style={{ color: 'var(--abu)' }}>{formatTanggal(p.tanggal)}</small></div>
+          <div><b>{p.anak_nama || 'Anak'}</b> · <small style={{ color: 'var(--abu)' }}>{formatTanggal(p.tanggal)}{p.jam ? ` · ${p.jam} WIB` : ''}</small></div>
           {p.keluhan && <p style={{ fontSize: 13, margin: '6px 0', color: 'var(--tinta)' }}>“{p.keluhan}”</p>}
           <div style={{ marginTop: 8 }}><SesiActions id={p.id} mode="menunggu" /></div>
         </div>
@@ -42,7 +42,7 @@ export default async function PsikologHome() {
       {aktif.map((p) => (
         <div key={p.id} className="kp-card" style={{ marginBottom: 8 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span><b>{p.anak_nama || 'Anak'}</b> · <small style={{ color: 'var(--abu)' }}>{formatTanggal(p.tanggal)}</small></span>
+            <span><b>{p.anak_nama || 'Anak'}</b> · <small style={{ color: 'var(--abu)' }}>{formatTanggal(p.tanggal)}{p.jam ? ` · ${p.jam} WIB` : ''}</small></span>
             <Link href={`/psikolog/${p.id}`} className="kp-btn" style={{ padding: '6px 14px', fontSize: 13 }}>💬 Buka chat</Link>
           </div>
         </div>

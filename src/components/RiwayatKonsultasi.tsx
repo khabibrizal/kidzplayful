@@ -35,7 +35,7 @@ export default function RiwayatKonsultasi({ sesi }: { sesi: PendaftaranKonsultas
               return (
                 <div key={p.id} style={{ borderTop: '1px solid #f4f1fa', paddingTop: 8 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 13 }}>{p.keluhan ? `“${p.keluhan}”` : 'Konsultasi psikolog'}</span>
+                    <span style={{ fontSize: 13 }}>{p.jam ? `🕐 ${p.jam} WIB · ` : ''}{p.keluhan ? `“${p.keluhan}”` : 'Konsultasi psikolog'}</span>
                     <span style={{ fontSize: 11, fontWeight: 700, color: b.warna, background: b.bg, borderRadius: 99, padding: '3px 10px', whiteSpace: 'nowrap' }}>{b.teks}</span>
                   </div>
                   {adaChat && (

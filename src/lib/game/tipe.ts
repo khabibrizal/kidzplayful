@@ -261,6 +261,7 @@ export interface PendaftaranKonsultasi {
   anak_id: string;
   anak_nama: string | null;
   tanggal: string;
+  jam: string | null;
   keluhan: string | null;
   status: StatusKonsultasi;
   diverifikasi_pada: string | null;
