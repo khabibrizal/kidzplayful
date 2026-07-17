@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { MENU_ADMIN } from '@/lib/menu-admin';
 
-export default function AdminNav({ allowed = [], isSuperuser = false }: { allowed?: string[]; isSuperuser?: boolean }) {
+export default function AdminNav({ allowed = [], isSuperuser = false, isPsikolog = false, isGuru = false }: { allowed?: string[]; isSuperuser?: boolean; isPsikolog?: boolean; isGuru?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
   const aktif = (href: string) => (href === '/admin' ? pathname === '/admin' : pathname.startsWith(href));
@@ -43,6 +43,13 @@ export default function AdminNav({ allowed = [], isSuperuser = false }: { allowe
             </Link>
           );
         })}
+        {/* Area kerja lain bila akun juga psikolog/guru */}
+        {isPsikolog && (
+          <Link href="/psikolog" style={{ flex: '0 0 auto', whiteSpace: 'nowrap', textDecoration: 'none', fontSize: 12, fontWeight: 800, padding: '7px 14px', borderRadius: 999, background: '#dff5e6', color: '#1c7a43', boxShadow: '0 3px 0 rgba(46,158,99,.18)' }}>🧠 Area Psikolog</Link>
+        )}
+        {isGuru && (
+          <Link href="/guru" style={{ flex: '0 0 auto', whiteSpace: 'nowrap', textDecoration: 'none', fontSize: 12, fontWeight: 800, padding: '7px 14px', borderRadius: 999, background: '#fff3d6', color: '#b88600', boxShadow: '0 3px 0 rgba(184,134,0,.18)' }}>🍎 Area Guru</Link>
+        )}
       </nav>
     </div>
   );

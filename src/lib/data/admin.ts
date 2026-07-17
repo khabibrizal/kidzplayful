@@ -28,12 +28,13 @@ export async function getAksesAdmin() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
-  const { data: prof } = await supabase.from('profiles').select('email,is_admin,is_superuser,is_investor,is_guru').eq('id', user.id).single();
+  const { data: prof } = await supabase.from('profiles').select('email,is_admin,is_superuser,is_investor,is_guru,is_psikolog').eq('id', user.id).single();
+  const lintas = { isPsikolog: !!prof?.is_psikolog, isGuru: !!prof?.is_guru };
   if (prof?.is_superuser) {
-    return { email: prof.email as string | null, isSuperuser: true, allowed: MENU_ADMIN.map((m) => m.key) };
+    return { email: prof.email as string | null, isSuperuser: true, allowed: MENU_ADMIN.map((m) => m.key), ...lintas };
   }
   const akses = await getMenuAkses();
   const allowed = menuUntukRole(akses, { is_admin: prof?.is_admin, is_investor: prof?.is_investor, is_guru: prof?.is_guru });
   if (allowed.size === 0) redirect('/pilih-anak'); // tak punya akses menu admin apa pun
-  return { email: (prof?.email as string | null) ?? null, isSuperuser: false, allowed: [...allowed] };
+  return { email: (prof?.email as string | null) ?? null, isSuperuser: false, allowed: [...allowed], ...lintas };
 }

@@ -15,7 +15,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <LogoutBtn />
         </span>
       </div>
-      <AdminNav allowed={admin.allowed} isSuperuser={admin.isSuperuser} />
+      <AdminNav allowed={admin.allowed} isSuperuser={admin.isSuperuser} isPsikolog={admin.isPsikolog} isGuru={admin.isGuru} />
       {children}
     </div>
   );
