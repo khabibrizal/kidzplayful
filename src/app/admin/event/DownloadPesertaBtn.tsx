@@ -23,10 +23,11 @@ export default function DownloadPesertaBtn({ eventId, judul }: { eventId: string
       for (const k of urutan) {
         const list = grup.get(k)!;
         lines.push(esc(`${k} (${list.length})`));
-        lines.push('No,Nama Panggilan,Nama Lengkap,Tgl Lahir (Umur),Nama Orang Tua');
+        lines.push('No,Nama Panggilan,Nama Lengkap,Tgl Lahir (Umur),Nama Orang Tua,Pendamping,Waktu Daftar');
         list.forEach((r, i) => lines.push([
           i + 1, esc(r.namaPanggilan), esc(r.namaLengkap),
           esc(`${r.tglLahir}${r.umur ? ` (${r.umur})` : ''}`), esc(r.namaOrtu),
+          esc(r.pendamping > 0 ? `+${r.pendamping} pendamping` : '-'), esc(r.waktuDaftar),
         ].join(',')));
         lines.push('');
       }

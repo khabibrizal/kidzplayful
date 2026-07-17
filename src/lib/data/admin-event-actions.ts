@@ -13,13 +13,15 @@ export interface BarisPesertaEkspor {
   tglLahir: string;       // "10 Juli 2022" (tanpa koma)
   umur: string;           // "2 thn 3 bln"
   namaOrtu: string;
+  pendamping: number;     // jumlah pendamping pada pendaftaran ini
+  waktuDaftar: string;    // waktu saat mendaftar (WIB)
 }
 
 /** Data peserta event untuk diunduh (dikelompokkan per kelas oleh pemanggil). Admin only. */
 export async function getPesertaEkspor(eventId: string): Promise<BarisPesertaEkspor[]> {
   const s = await adminDb();
   const { data: pend } = await s.from('pendaftaran_event')
-    .select('anak_ids,anak_nama,ortu_id,kelas,status').eq('event_id', eventId).neq('status', 'ditolak');
+    .select('anak_ids,anak_nama,ortu_id,kelas,status,jumlah_pendamping,created_at').eq('event_id', eventId).neq('status', 'ditolak');
   const rowsPend = pend ?? [];
   const anakIds = [...new Set(rowsPend.flatMap((p) => (p.anak_ids as string[]) ?? []))];
   const ortuIds = [...new Set(rowsPend.map((p) => p.ortu_id as string))];
@@ -33,12 +35,15 @@ export async function getPesertaEkspor(eventId: string): Promise<BarisPesertaEks
   for (const o of (oRes.data ?? []) as Record<string, string>[]) ortuMap[o.id] = (o.nama_tampilan?.trim()) || o.email || '';
   const now = new Date();
   const fmtTgl = (tgl: string) => new Date(tgl + 'T00:00:00Z').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+  const fmtWaktu = (iso: string | null | undefined) => iso ? new Date(iso).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) + ' WIB' : '';
 
   const out: BarisPesertaEkspor[] = [];
   for (const p of rowsPend) {
     const ids = (p.anak_ids as string[]) ?? [];
     const nm = (p.anak_nama as string[]) ?? [];
     const kelas = p.kelas === 'baby' ? 'Baby Class' : p.kelas === 'toddler' ? 'Toddler Class' : 'Gabungan';
+    const pendamping = Math.max(0, Math.floor((p.jumlah_pendamping as number) ?? 0));
+    const waktuDaftar = fmtWaktu(p.created_at as string);
     ids.forEach((id, i) => {
       const a = anakMap[id];
       const tgl = a?.tanggal_lahir ?? '';
@@ -49,6 +54,8 @@ export async function getPesertaEkspor(eventId: string): Promise<BarisPesertaEks
         tglLahir: tgl ? fmtTgl(tgl) : '',
         umur: tgl ? umurTeks(new Date(tgl + 'T00:00:00Z'), now) : '',
         namaOrtu: ortuMap[p.ortu_id as string] || '',
+        pendamping,
+        waktuDaftar,
       });
     });
   }
