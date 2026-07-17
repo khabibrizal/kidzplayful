@@ -52,11 +52,17 @@ export default function EjaKataGame({ data, onSelesai }: { data: DataEjaKata; on
       {soal.gambar && (
         <div style={{ background: '#fff', borderRadius: 20, padding: 10, boxShadow: '0 4px 0 #e6def5' }}><Aset value={soal.gambar} size={90} /></div>
       )}
-      {/* slot huруf (target sebagai panduan pudar, terisi solid saat benar) */}
+      {/* slot huruf: huruf belum dieja DISEMBUNYIKAN (anak mencari tahu sendiri),
+          hanya huruf pertama ditampilkan sebagai 1 petunjuk. Terisi solid saat benar. */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center' }}>
-        {kata.split('').map((c, i) => (
-          <span key={i} style={{ width: 40, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 10, fontSize: 26, fontWeight: i < pos ? 800 : 600, color: i < pos ? 'var(--lavender-d)' : '#cdbff0', background: '#fff', border: i === pos ? '3px solid var(--lavender-d)' : '2px dashed #cdbff0' }}>{c}</span>
-        ))}
+        {kata.split('').map((c, i) => {
+          const terisi = i < pos;            // sudah dieja benar
+          const petunjuk = i === 0 && !terisi; // huruf pertama = satu-satunya petunjuk
+          const tampil = terisi || petunjuk;
+          return (
+            <span key={i} style={{ width: 40, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 10, fontSize: 26, fontWeight: terisi ? 800 : 600, color: terisi ? 'var(--lavender-d)' : '#cdbff0', background: '#fff', border: i === pos ? '3px solid var(--lavender-d)' : '2px dashed #cdbff0' }}>{tampil ? c : ''}</span>
+          );
+        })}
       </div>
       {/* tumpukan huruf */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
