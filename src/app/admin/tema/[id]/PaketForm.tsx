@@ -57,7 +57,7 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
   const [jMode, setJMode] = useState<'mulai' | 'tujuan' | 'rintangan'>('rintangan');
   // hitung-kode
   const [hLeg, setHLeg] = useState<{ simbol: string; nilai: string }[]>([{ simbol: '', nilai: '' }]);
-  const [hSoal, setHSoal] = useState<{ kiri: string; kanan: string; operasi: '+' | '-' }[]>([{ kiri: '', kanan: '', operasi: '+' }]);
+  const [hSoal, setHSoal] = useState<{ kiri: string; kanan: string; operasi: '+' | '-' | 'x' | ':' }[]>([{ kiri: '', kanan: '', operasi: '+' }]);
   // cocokkan (asosiasi)
   const [cocokPairs, setCocokPairs] = useState<{ kiri: string; kanan: string }[]>([{ kiri: '', kanan: '' }, { kiri: '', kanan: '' }]);
   // eja kata
@@ -160,7 +160,7 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
     } else if (p.mesin === 'hitung') {
       const b = p.butir as DataHitung;
       setHLeg((b.legenda ?? []).map((m) => ({ simbol: m.simbol ?? '', nilai: String(m.nilai ?? '') })));
-      setHSoal((b.soal ?? []).map((sq) => ({ kiri: sq.kiri ?? '', kanan: sq.kanan ?? '', operasi: sq.operasi === '-' ? '-' : '+' })));
+      setHSoal((b.soal ?? []).map((sq) => ({ kiri: sq.kiri ?? '', kanan: sq.kanan ?? '', operasi: (['-', 'x', ':'] as const).includes(sq.operasi as '-' | 'x' | ':') ? sq.operasi : '+' })));
     } else if (p.mesin === 'cocokkan') {
       const b = p.butir as DataCocokkan;
       setCocokPairs(b.pasangan?.length ? b.pasangan : [{ kiri: '', kanan: '' }, { kiri: '', kanan: '' }]);
@@ -483,7 +483,7 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
 
       {mesin === 'hitung' && (
         <div style={{ marginTop: 10 }}>
-          <div className={s.muted} style={{ fontSize: 12 }}>Tiap simbol punya <b>nilai angka</b>. Lalu buat soal: simbol {'{operasi}'} simbol → anak pilih hasilnya. (Untuk −, nilai kiri harus ≥ kanan.)</div>
+          <div className={s.muted} style={{ fontSize: 12 }}>Tiap simbol punya <b>nilai angka</b>. Lalu buat soal: simbol {'{operasi}'} simbol → anak pilih hasilnya. Operasi: + − × ÷. (Untuk −, kiri ≥ kanan; untuk ÷, kiri harus habis dibagi kanan & kanan ≠ 0.)</div>
 
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', marginTop: 8 }}>Legenda angka</div>
           {hLeg.map((m, i) => (
@@ -504,8 +504,8 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
                 <select className={s.inp} value={sq.kiri} onChange={(e) => setHSoal(hSoal.map((y, j) => j === i ? { ...y, kiri: e.target.value } : y))} style={{ marginBottom: 0 }}>
                   <option value="">—</option>{opsiSimbol.map((m, k) => <option key={k} value={m.simbol}>{m.simbol} ({m.nilai})</option>)}
                 </select>
-                <select className={s.inp} value={sq.operasi} onChange={(e) => setHSoal(hSoal.map((y, j) => j === i ? { ...y, operasi: e.target.value as '+' | '-' } : y))} style={{ width: 60, marginBottom: 0 }}>
-                  <option value="+">+</option><option value="-">−</option>
+                <select className={s.inp} value={sq.operasi} onChange={(e) => setHSoal(hSoal.map((y, j) => j === i ? { ...y, operasi: e.target.value as '+' | '-' | 'x' | ':' } : y))} style={{ width: 60, marginBottom: 0 }}>
+                  <option value="+">+</option><option value="-">−</option><option value="x">×</option><option value=":">÷</option>
                 </select>
                 <select className={s.inp} value={sq.kanan} onChange={(e) => setHSoal(hSoal.map((y, j) => j === i ? { ...y, kanan: e.target.value } : y))} style={{ marginBottom: 0 }}>
                   <option value="">—</option>{opsiSimbol.map((m, k) => <option key={k} value={m.simbol}>{m.simbol} ({m.nilai})</option>)}

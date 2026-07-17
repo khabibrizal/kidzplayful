@@ -88,8 +88,13 @@ export function validasiButir(mesin: Mesin, butir: unknown): string {
     const nilai = new Map(b.legenda.map((m) => [m.simbol, m.nilai]));
     for (const sq of b.soal) {
       if (!nilai.has(sq.kiri) || !nilai.has(sq.kanan)) return 'Simbol pada soal tidak ada di legenda.';
-      if (sq.operasi !== '+' && sq.operasi !== '-') return 'Operasi harus + atau -.';
+      if (sq.operasi !== '+' && sq.operasi !== '-' && sq.operasi !== 'x' && sq.operasi !== ':') return 'Operasi harus +, −, × (x), atau ÷ (:).';
       if (sq.operasi === '-' && (nilai.get(sq.kiri)! < nilai.get(sq.kanan)!)) return 'Untuk pengurangan, nilai kiri harus ≥ nilai kanan (hindari hasil minus).';
+      if (sq.operasi === ':') {
+        const ka = nilai.get(sq.kanan)!;
+        if (ka === 0) return 'Untuk pembagian, nilai kanan tidak boleh 0.';
+        if (nilai.get(sq.kiri)! % ka !== 0) return 'Untuk pembagian, nilai kiri harus habis dibagi nilai kanan (hasil bulat).';
+      }
     }
     return '';
   }

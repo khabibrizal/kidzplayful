@@ -23,4 +23,31 @@ describe('validasiButir', () => {
     expect(validasiButir('cari-pasangan', { pasangan: ['🐱'] })).toMatch(/pasangan/i);
     expect(validasiButir('cari-pasangan', { pasangan: ['🐱', '🐶'] })).toBe('');
   });
+
+  describe('hitung: operasi +, −, ×, ÷', () => {
+    const legenda = [
+      { simbol: '🍎', nilai: 6 },
+      { simbol: '🍌', nilai: 3 },
+      { simbol: '🍇', nilai: 0 },
+      { simbol: '🍒', nilai: 4 },
+    ];
+    const b = (soal: unknown[]) => ({ legenda, soal });
+
+    it('menerima perkalian (x) & pembagian (:) yang valid', () => {
+      expect(validasiButir('hitung', b([{ kiri: '🍎', kanan: '🍌', operasi: 'x' }]))).toBe('');
+      expect(validasiButir('hitung', b([{ kiri: '🍎', kanan: '🍌', operasi: ':' }]))).toBe(''); // 6 ÷ 3
+    });
+    it('menolak operasi tak dikenal', () => {
+      expect(validasiButir('hitung', b([{ kiri: '🍎', kanan: '🍌', operasi: '%' }]))).toMatch(/operasi/i);
+    });
+    it('pembagian: kanan tidak boleh 0', () => {
+      expect(validasiButir('hitung', b([{ kiri: '🍎', kanan: '🍇', operasi: ':' }]))).toMatch(/0/);
+    });
+    it('pembagian: kiri harus habis dibagi kanan', () => {
+      expect(validasiButir('hitung', b([{ kiri: '🍎', kanan: '🍒', operasi: ':' }]))).toMatch(/habis dibagi/i); // 6 ÷ 4
+    });
+    it('pengurangan: kiri harus ≥ kanan (aturan lama tetap)', () => {
+      expect(validasiButir('hitung', b([{ kiri: '🍌', kanan: '🍎', operasi: '-' }]))).toMatch(/kiri/i);
+    });
+  });
 });

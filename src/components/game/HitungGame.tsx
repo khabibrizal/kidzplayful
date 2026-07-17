@@ -1,7 +1,7 @@
-// src/components/game/HitungGame.tsx — engine "Hitung-Kode" (simbol->angka lalu +/-)
+// src/components/game/HitungGame.tsx — engine "Hitung-Kode" (simbol->angka lalu +, −, ×, ÷)
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { DataHitung, HasilSelesai } from '@/lib/game/tipe';
+import type { DataHitung, HasilSelesai, OperasiHitung } from '@/lib/game/tipe';
 import Aset from './Aset';
 import { speak } from '@/lib/tts';
 
@@ -19,6 +19,13 @@ function opsiAngka(ans: number, seed: number): number[] {
   while (set.size < 4 && d <= 8) { if (ans - d >= 0) set.add(ans - d); if (set.size < 4) set.add(ans + d); d++; }
   return acak([...set], seed);
 }
+const SIMBOL_OP: Record<OperasiHitung, string> = { '+': '+', '-': '−', x: '×', ':': '÷' };
+function hitungJawaban(op: OperasiHitung, kiri: number, kanan: number): number {
+  if (op === '+') return kiri + kanan;
+  if (op === '-') return kiri - kanan;
+  if (op === 'x') return kiri * kanan;
+  return kanan !== 0 ? Math.floor(kiri / kanan) : 0; // ÷ (dibuat pas oleh validasi admin)
+}
 
 export default function HitungGame({ data, onSelesai }: { data: DataHitung; onSelesai: (h: HasilSelesai) => void }) {
   const nilai = useMemo(() => new Map(data.legenda.map((m) => [m.simbol, m.nilai])), [data.legenda]);
@@ -28,7 +35,7 @@ export default function HitungGame({ data, onSelesai }: { data: DataHitung; onSe
   const mulaiRef = useRef(0);
   useEffect(() => { mulaiRef.current = Date.now(); }, []);
   const soal = data.soal[ronde];
-  const ans = soal ? (soal.operasi === '+' ? (nilai.get(soal.kiri) ?? 0) + (nilai.get(soal.kanan) ?? 0) : (nilai.get(soal.kiri) ?? 0) - (nilai.get(soal.kanan) ?? 0)) : 0;
+  const ans = soal ? hitungJawaban(soal.operasi, nilai.get(soal.kiri) ?? 0, nilai.get(soal.kanan) ?? 0) : 0;
   const opsi = useMemo(() => (soal ? opsiAngka(ans, ronde + 4) : []), [soal, ans, ronde]);
   if (!soal) return null;
 
@@ -60,7 +67,7 @@ export default function HitungGame({ data, onSelesai }: { data: DataHitung; onSe
 
       {/* persamaan */}
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'center', background: '#fff', borderRadius: 18, padding: 14, boxShadow: '0 4px 0 #e6def5', fontSize: 28, fontWeight: 800 }}>
-        <Sim v={soal.kiri} size={48} /><span>{soal.operasi}</span><Sim v={soal.kanan} size={48} /><span>=</span><span>❓</span>
+        <Sim v={soal.kiri} size={48} /><span>{SIMBOL_OP[soal.operasi] ?? soal.operasi}</span><Sim v={soal.kanan} size={48} /><span>=</span><span>❓</span>
       </div>
 
       {/* pilihan angka */}

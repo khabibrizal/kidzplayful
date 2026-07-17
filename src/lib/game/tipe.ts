@@ -44,9 +44,10 @@ export interface JalurSoal {
 }
 export interface DataJalur { soal: JalurSoal[]; }
 
-// Hitung-Kode: simbol -> angka, lalu operasi +/- (pilihan jawaban angka).
+// Hitung-Kode: simbol -> angka, lalu operasi +, −, × (perkalian: 'x'), ÷ (pembagian: ':').
 export interface HitungMap { simbol: string; nilai: number; } // simbol: emoji/gambar/#hex; nilai: angka
-export interface HitungSoal { kiri: string; kanan: string; operasi: '+' | '-'; }
+export type OperasiHitung = '+' | '-' | 'x' | ':';
+export interface HitungSoal { kiri: string; kanan: string; operasi: OperasiHitung; }
 export interface DataHitung { legenda: HitungMap[]; soal: HitungSoal[]; }
 
 // Cocokkan (asosiasi): pasangkan item kiri dengan pasangannya di kanan.
