@@ -19,6 +19,7 @@ export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = []
   const [list, setList] = useState<PendaftaranEvent[]>(awal);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [toast, setToast] = useState('');
+  const [cari, setCari] = useState('');
   const [rsOpen, setRsOpen] = useState<string | null>(null); // id pendaftaran yang form reschedule-nya terbuka
   const [rsEvent, setRsEvent] = useState<Record<string, string>>({});
   const [rsAlasan, setRsAlasan] = useState<Record<string, string>>({});
@@ -63,13 +64,15 @@ export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = []
   if (list.length === 0) return <p className={s.muted}>Belum ada pendaftar.</p>;
 
   const totalHadir = list.reduce((n, p) => n + (p.hadir_anak_ids?.length ?? 0), 0);
+  const q = cari.trim().toLowerCase();
+  const tampil = q ? list.filter((p) => (p.anak_nama ?? []).some((n) => (n ?? '').toLowerCase().includes(q))) : list;
+  const GRUP: { key: string; label: string }[] = [
+    { key: 'baby', label: '👶 Baby Class' },
+    { key: 'toddler', label: '🧒 Toddler Class' },
+    { key: 'gabungan', label: 'Gabungan' },
+  ];
 
-  return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
-        <span className={s.tag} style={{ background: '#dff5e6', color: '#1c7a43' }}>✅ {totalHadir} anak hadir</span>
-      </div>
-      {list.map((p) => (
+  const kartu = (p: PendaftaranEvent) => (
         <div key={p.id} className={s.card}>
           <div className={s.row}>
             <span style={{ flex: 1 }}>
@@ -153,7 +156,26 @@ export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = []
             </div>
           )}
         </div>
-      ))}
+  );
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+        <input className={s.inp} placeholder="🔎 Cari nama anak…" value={cari} onChange={(e) => setCari(e.target.value)} style={{ flex: 1, minWidth: 160, marginBottom: 0 }} />
+        <span className={s.tag} style={{ background: '#dff5e6', color: '#1c7a43' }}>✅ {totalHadir} anak hadir</span>
+      </div>
+      {tampil.length === 0 && <p className={s.muted}>Tidak ada pendaftar yang cocok.</p>}
+      {GRUP.map((g) => {
+        const items = tampil.filter((p) => (p.kelas ?? 'gabungan') === g.key);
+        if (!items.length) return null;
+        const jml = items.reduce((n, p) => n + (p.jumlah_anak ?? (p.anak_nama?.length ?? 0)), 0);
+        return (
+          <div key={g.key}>
+            <div className={s.section}>{g.label} · {jml} peserta</div>
+            {items.map(kartu)}
+          </div>
+        );
+      })}
       {toast && <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: '#2b2440', color: '#fff', padding: '10px 18px', borderRadius: 99, fontSize: 14, zIndex: 80 }}>{toast}</div>}
     </div>
   );
