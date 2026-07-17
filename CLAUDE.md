@@ -22,6 +22,7 @@ node tools/<nama>.mjs   # skrip verifikasi e2e di PRODUKSI (puppeteer)
 ```
 
 Sebelum commit: pastikan `npx tsc --noEmit` bersih dan `npm run build` sukses.
+CI (`.github/workflows/ci.yml`) menjalankan `tsc --noEmit` → `npm test` (vitest) → `npm run build` di tiap PR & push ke `master` — jaga ketiganya tetap hijau.
 
 ## Variabel lingkungan (`.env.local`, gitignored)
 
