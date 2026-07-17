@@ -663,6 +663,24 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <td><code>catatan_perkembangan</code> (+<code>event</code>)</td>
 </tr>
 <tr>
+<td><code>GET /api/anak/[id]/gamifikasi</code></td>
+<td><code>anak/[id]/gamifikasi/route.ts</code></td>
+<td>ringkasan gamifikasi anak (<code>getGamifikasiAnakDengan</code>)</td>
+<td><code>anak</code>, <code>hasil_main</code>, <code>lencana_anak</code>, <code>tantangan_kustom*</code></td>
+</tr>
+<tr>
+<td><code>GET /api/pustaka</code></td>
+<td><code>pustaka/route.ts</code></td>
+<td>pustaka game + <code>status_langganan</code> (<code>getPustakaDengan</code>)</td>
+<td><code>tema</code>, <code>paket_aset</code>, <code>video</code>, <code>langganan</code></td>
+</tr>
+<tr>
+<td><code>POST /api/hasil-main</code></td>
+<td><code>hasil-main/route.ts</code></td>
+<td>catat sesi main → koin/streak/lencana/tantangan (<strong>inti bersama</strong> <code>skor-core.ts</code> <code>catatHasilCore</code>, dipakai juga Server Action web <code>skor.ts</code>)</td>
+<td><code>hasil_main</code>, <code>anak</code>, <code>lencana_anak</code>, <code>tantangan_anak</code>, <code>tantangan_kustom*</code></td>
+</tr>
+<tr>
 <td><code>GET /api/events</code></td>
 <td><code>events/route.ts</code></td>
 <td>event <code>tampil</code>, urut tanggal</td>

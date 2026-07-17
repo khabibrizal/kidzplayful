@@ -1,5 +1,6 @@
 // src/lib/data/gamifikasi.ts — baca ringkasan gamifikasi anak (streak, lencana, tantangan harian + kustom)
 import { createClient } from '@/lib/supabase/server';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { tanggalWIB, LENCANA, lencanaByKode, tantanganHariIni, progresTantangan } from '@/lib/domain/gamifikasi';
 import { progresTantanganKustom, type SyaratItem, type RowMain } from '@/lib/domain/tantangan-kustom';
 import { umurTahun } from '@/lib/domain/anak';
@@ -18,6 +19,12 @@ export interface GamifikasiAnak {
 type RawKustom = { id: string; judul: string; deskripsi: string; lencana_kode: string; syarat: SyaratItem[]; usia_min: number; usia_max: number };
 
 export async function getGamifikasiAnak(anakId: string): Promise<GamifikasiAnak> {
+  const s = await createClient();
+  return getGamifikasiAnakDengan(s, anakId);
+}
+
+/** Varian yang menerima client dari pemanggil (dipakai REST API mobile — token-scoped). */
+export async function getGamifikasiAnakDengan(s: SupabaseClient, anakId: string): Promise<GamifikasiAnak> {
   const today = tanggalWIB();
   const t0 = tantanganHariIni(today);
   const kosong: GamifikasiAnak = {
@@ -27,7 +34,6 @@ export async function getGamifikasiAnak(anakId: string): Promise<GamifikasiAnak>
     kustom: [],
   };
   try {
-    const s = await createClient();
     const [{ data: anak, error: e1 }, { data: rows }, { data: lenc }, { data: kustomDef }, { data: kustomDone }] = await Promise.all([
       s.from('anak').select('streak,koin,tanggal_lahir').eq('id', anakId).single(),
       s.from('hasil_main').select('mesin,bintang,tanggal,tema_id,paket_id').eq('anak_id', anakId),

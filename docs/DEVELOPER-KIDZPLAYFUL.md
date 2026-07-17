@@ -500,6 +500,9 @@ Semua Route Handler (`app/api/**/route.ts`) mengembalikan amplop JSON seragam vi
 | `GET /api/anak` | `anak/route.ts` | daftar anak milik user | `anak` |
 | `POST /api/anak` | `anak/route.ts` | tambah anak (validasi tgl lahir < hari ini, `mode_default` dari umur; **user non-aktif dibatasi `pengaturan_trial.trial_maks_anak`** → 403 bila lewat) | `anak`, `langganan`, `pengaturan_trial` |
 | `GET /api/anak/[id]/catatan` | `anak/[id]/catatan/route.ts` | catatan perkembangan per anak (join judul event) | `catatan_perkembangan` (+`event`) |
+| `GET /api/anak/[id]/gamifikasi` | `anak/[id]/gamifikasi/route.ts` | ringkasan gamifikasi anak (`getGamifikasiAnakDengan`) | `anak`, `hasil_main`, `lencana_anak`, `tantangan_kustom*` |
+| `GET /api/pustaka` | `pustaka/route.ts` | pustaka game + `status_langganan` (`getPustakaDengan`) | `tema`, `paket_aset`, `video`, `langganan` |
+| `POST /api/hasil-main` | `hasil-main/route.ts` | catat sesi main → koin/streak/lencana/tantangan (**inti bersama** `skor-core.ts` `catatHasilCore`, dipakai juga Server Action web `skor.ts`) | `hasil_main`, `anak`, `lencana_anak`, `tantangan_anak`, `tantangan_kustom*` |
 | `GET /api/events` | `events/route.ts` | event `tampil`, urut tanggal | `event` |
 | `GET /api/events/[id]` | `events/[id]/route.ts` | detail event (404 bila kosong) | `event` |
 | `POST /api/events/[id]/daftar` | `events/[id]/daftar/route.ts` | daftar utk `anak_ids`; **total dihitung server** (harga×jumlah) | `event`, `anak`, `pendaftaran_event` (insert) |

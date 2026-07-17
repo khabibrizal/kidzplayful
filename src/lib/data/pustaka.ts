@@ -1,9 +1,15 @@
 // src/lib/data/pustaka.ts
 import { createClient } from '@/lib/supabase/server';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { TemaLengkap, Paket, Video } from '@/lib/game/tipe';
 
 export async function getPustaka(): Promise<TemaLengkap[]> {
   const supabase = await createClient();
+  return getPustakaDengan(supabase);
+}
+
+/** Varian yang menerima client dari pemanggil (dipakai REST API mobile — token-scoped). */
+export async function getPustakaDengan(supabase: SupabaseClient): Promise<TemaLengkap[]> {
   const { data: tema } = await supabase
     .from('tema').select('id,nama,sampul,is_minggu_ini,boleh_trial')
     .eq('status', 'disetujui')

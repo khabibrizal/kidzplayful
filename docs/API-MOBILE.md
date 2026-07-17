@@ -32,6 +32,11 @@ Content-Type: application/json
 | POST | `/api/anak` | `{ nama, tanggal_lahir }` (tanggal `YYYY-MM-DD`) | anak baru |
 | GET | `/api/anak/{id}/catatan` | — | Catatan Perkembangan Bermain anak (rubrik `aspek` + `catatan` + `event_judul`) |
 
+### Game & Gamifikasi
+| GET | `/api/pustaka` | — | `{ status_langganan, pustaka }` — pustaka game (tema + paket + video); klien wajib gating `boleh_trial` bila status ≠ `aktif` |
+| POST | `/api/hasil-main` | `{ anak_id, tema_id, paket_id?, mesin, area_skill, benar, total, durasi_detik, target_detik? }` | catat 1 sesi main → `{ bintang, bonus, koin, streak, lencanaBaru, tantangan, kustomBaru }` (koin/streak/lencana/tantangan dihitung server) |
+| GET | `/api/anak/{id}/gamifikasi` | — | ringkasan gamifikasi anak: streak, koin, lencana (+dapat), tantangan harian & kustom |
+
 ### Kelas Bermain
 | GET | `/api/kelas-bermain` | — | daftar kelas aktif (`bahan`/`aktivitas` = JSON) |
 | GET | `/api/kelas-bermain/{id}` | — | detail |
@@ -71,5 +76,28 @@ final events = await http.get(
 ## Catatan
 - **Keamanan:** tiap request dijalankan sebagai user pemilik token; **RLS** Supabase membatasi data (hanya milik sendiri). Total uang selalu dihitung ulang di server.
 - **Produksi auth:** aktifkan **SMTP + Confirm email** di Supabase agar register aman (saat ini confirm email mungkin OFF untuk dev).
-- **Belum tersedia (bisa ditambah pola sama):** favorit, riwayat kelas, komunitas, ubah/hapus keranjang, upload bukti pesanan via endpoint, endpoint admin/guru. Minta bila diperlukan.
 - Kode endpoint: `src/app/api/**/route.ts`; helper auth: `src/lib/api/helpers.ts`.
+- **Pola porting**: logika bisnis web ada di `src/lib/data/*` — bila butuh endpoint baru, ekstrak fungsi inti agar menerima `SupabaseClient` (contoh: `skor-core.ts` → `catatHasilCore`, dipakai Server Action web `skor.ts` **dan** `POST /api/hasil-main`), lalu bungkus route dengan `getAuth` dari `helpers.ts`.
+
+## Peta fitur × ketersediaan endpoint
+
+| Fitur | Endpoint mobile | Logika web (Server Action/reader) |
+|---|---|---|
+| Auth (login/register/refresh) | ✅ `/api/auth/*` | `login/page.tsx`, `daftar/` |
+| Profil + status langganan | ✅ `/api/me` | `pengaturan/` |
+| Anak (list/tambah) | ✅ `/api/anak` | `pilih-anak/actions.ts`, `ortu-actions.ts` |
+| Catatan perkembangan anak | ✅ `/api/anak/{id}/catatan` | `catatan.ts` |
+| **Pustaka game** | ✅ `/api/pustaka` | `pustaka.ts` |
+| **Catat hasil main (koin/streak/lencana)** | ✅ `/api/hasil-main` | `skor.ts` (inti bersama: `skor-core.ts`) |
+| **Gamifikasi anak (rapor ringkas)** | ✅ `/api/anak/{id}/gamifikasi` | `gamifikasi.ts` |
+| Kelas bermain | ✅ `/api/kelas-bermain` | `publik.ts` |
+| Event + daftar event | ✅ `/api/events*` | `event.ts`, `event-actions.ts` |
+| Store (produk/keranjang/pesanan) | ✅ `/api/produk`, `/api/keranjang`, `/api/pesanan` | `keranjang*.ts`, `pesanan*.ts` |
+| Favorit | ❌ belum | `favorit.ts` |
+| Riwayat kelas | ❌ belum | `riwayat-kelas.ts` |
+| Komunitas (feed/komentar/suka) | ❌ belum | `komunitas*.ts` |
+| Konsultasi psikolog (booking/chat/rekomendasi) | ❌ belum | `konsultasi*.ts`, `psikolog*.ts` |
+| Laporan tumbuh kembang lengkap | ❌ belum (sebagian via catatan+gamifikasi) | `laporan-anak.ts` (domain, pure) |
+| Sertifikat | ❌ belum | `sertifikat.ts` |
+| Keranjang ubah/hapus, upload bukti via endpoint | ❌ belum | `keranjang-actions.ts` |
+| Admin / Guru / Psikolog (kelola) | ❌ tidak direncanakan utk mobile customer | `admin-*.ts`, `guru*.ts` |
