@@ -9,6 +9,11 @@ import s from '../../../admin.module.css';
 
 const WARNA: Record<string, string> = { menunggu: '#b88600', diterima: '#1c7a43', ditolak: '#b3261e' };
 
+function waktuDaftar(iso?: string | null): string {
+  if (!iso) return '';
+  return new Date(iso).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) + ' WIB';
+}
+
 type EventOpsi = { id: string; judul: string; tanggal: string | null };
 
 export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = [], catatanMap = {}, umurMap = {} }: {
@@ -78,6 +83,7 @@ export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = []
             <span style={{ flex: 1 }}>
               <b>{p.anak_ids?.length ? p.anak_ids.map((id, i) => `${p.anak_nama[i] ?? 'Anak'}${umurMap[id] ? ` (${umurMap[id]})` : ''}`).join(', ') : (p.anak_nama.join(', ') || `${p.jumlah_anak} anak`)}</b>
               <br /><small className={s.muted}>{p.jumlah_anak} anak{p.jumlah_pendamping ? ` + ${p.jumlah_pendamping} pendamping` : ''} · {formatRupiah(p.total)}</small>
+              {p.created_at && <><br /><small className={s.muted}>🕐 Daftar: {waktuDaftar(p.created_at)}</small></>}
               {p.kelas && p.kelas !== 'gabungan' && <><br /><small className={s.muted}>{p.kelas === 'baby' ? '👶 Baby Class' : p.kelas === 'toddler' ? '🧒 Toddler Class' : p.kelas}{p.kelas_jadwal ? ` · ${p.kelas_jadwal}` : ''}</small></>}
               {p.alasan_reschedule && <><br /><small className={s.muted}>🔁 Direschedule: {p.alasan_reschedule}</small></>}
             </span>
