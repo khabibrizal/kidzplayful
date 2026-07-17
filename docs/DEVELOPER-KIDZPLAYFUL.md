@@ -2,7 +2,7 @@
 
 > Panduan teknis untuk developer baru. Menjelaskan **per halaman/menu**: file apa yang menanganinya, function/reader/server-action apa yang dipakai, dan **endpoint backend** (tabel Supabase / RPC / storage / auth) yang disentuh. Termasuk **REST API internal** (untuk aplikasi mobile) dan infrastruktur.
 
-Terakhir diperbarui: 2026-07-15.
+Terakhir diperbarui: 2026-07-17.
 
 ---
 
@@ -12,7 +12,7 @@ Terakhir diperbarui: 2026-07-15.
 - **Bahasa**: TypeScript. Semua kode/komentar/UI berbahasa Indonesia.
 - **Backend**: Supabase (Postgres + Row Level Security + Auth + Storage).
 - **Hosting**: Vercel (`www.kidzplayful.com`).
-- **Tanpa build/lint khusus**: gerbang mutu = `npx tsc --noEmit` + `npm run build`.
+- **Gerbang mutu**: `npx tsc --noEmit` + `npm test` (vitest) + `npm run build` — juga dijalankan otomatis oleh **CI GitHub Actions** (`.github/workflows/ci.yml`) di tiap PR & push ke `master`.
 - **Akses backend via anon key + RLS**. Operasi admin diamankan guard aplikasi + RLS + fungsi SQL `is_admin()`/`is_guru()`/`is_investor()`/`is_superuser()`. Bypass RLS: RPC `laporan_engagement()` (SECURITY DEFINER, ber-guard `is_admin()`) + **service-role key opsional** (`SUPABASE_SERVICE_ROLE_KEY`, server-only) hanya untuk **buat user** (`lib/supabase/admin.ts`).
 
 ### Cara membaca dokumen ini
@@ -41,7 +41,7 @@ src/
     supabase/          # server.ts (SSR), client.ts (browser)
     api/               # helpers.ts (amplop JSON + auth Bearer untuk REST API)
     game/              # tipe & util mesin game
-supabase/migrations/   # skema DB (0001..0070), dijalankan manual di SQL Editor
+supabase/migrations/   # skema DB (0001..0073), dijalankan manual di SQL Editor
 docs/                  # dokumentasi (termasuk file ini)
 tools/md2pdf.py        # generator PDF dokumentasi
 ```
@@ -67,7 +67,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 - Halaman tidak menaruh selector mentah bila bisa lewat reader; beberapa halaman melakukan query inline sederhana.
 
 ### Deploy & migrasi
-- Migrasi dijalankan **manual** di Supabase SQL Editor (urut `0001..0070`), lalu diverifikasi via REST (`?select=col&limit=1` → 200).
+- Migrasi dijalankan **manual** di Supabase SQL Editor (urut `0001..0073`), lalu diverifikasi via REST (`?select=col&limit=1` → 200).
 - Commit: `git -c commit.gpgsign=false commit` + baris `Co-Authored-By`. Push ke `master` → Vercel auto-deploy.
 - Banyak reader dibungkus `try/catch` agar fitur aman dideploy sebelum migrasinya dijalankan (mengembalikan nilai default).
 
@@ -82,7 +82,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 
 ## 4. Panel Admin — per menu (non-keuangan)
 
-Pembungkus: `admin/layout.tsx` (guard `getAksesAdmin`, kirim `allowed`+`isSuperuser` ke nav) + `AdminNav.tsx` (navigasi, filter menu sesuai akses) + `LogoutBtn.tsx`. Akses menu per role diatur di **🔐 Akses Menu** (super user).
+Pembungkus: `admin/layout.tsx` (guard `getAksesAdmin`, kirim `allowed`+`isSuperuser`+`isPsikolog`+`isGuru` ke nav) + `AdminNav.tsx` (navigasi, filter menu sesuai akses; bila akun juga psikolog/guru tampil chip **🧠 Area Psikolog** / **🍎 Area Guru** menuju dashboard kerjanya) + `LogoutBtn.tsx`. Akses menu per role diatur di **🔐 Akses Menu** (super user).
 
 ### 🏠 Dashboard (Tema) — `/admin`
 - **File**: `admin/page.tsx` (server, form inline).
@@ -100,14 +100,16 @@ Pembungkus: `admin/layout.tsx` (guard `getAksesAdmin`, kirim `allowed`+`isSuperu
 - **Server action**: `buatEvent`, `updateEvent`, `toggleStatusEvent`, `hapusEvent`, `simpanBerkasSertifikat` (`admin-event-actions.ts`); `generateSertifikatEvent` (`admin-sertifikat-actions.ts`).
 - **Kelas terpisah**: form Add/Edit punya bagian **Baby Class** & **Toddler Class** (tgl + jam mulai/selesai per kelas; `EventInput.baby*/toddler*` → kolom `event.baby_*`/`toddler_*`). Kosong = event gabungan (pakai tgl/jam utama).
 - **Harga tambah pendamping**: `EventInput.hargaPendamping` → `event.harga_pendamping` (per-event; 0 = tanpa opsi pendamping).
-- **Endpoint**: `event` (+ kolom `baby_*`/`toddler_*`/`harga_pendamping`), `pendaftaran_event`, `sertifikat` (upsert), `storage.from('aset')` (folder `event/`, `event/sertifikat-*`, `event/stiker-*`).
+- **⬇ Download Peserta**: tombol per card event (`DownloadPesertaBtn.tsx`) → server action `getPesertaEkspor(eventId)` (`admin-event-actions.ts`) → CSV BOM UTF-8, **dikelompokkan per kelas** (Baby/Toddler/Gabungan), kolom: No, Nama Panggilan, Nama Lengkap, Tgl Lahir (Umur), Nama Orang Tua, Pendamping, Waktu Daftar (WIB).
+- **Endpoint**: `event` (+ kolom `baby_*`/`toddler_*`/`harga_pendamping`), `pendaftaran_event`, `anak`+`profiles` (join ekspor), `sertifikat` (upsert), `storage.from('aset')` (folder `event/`, `event/sertifikat-*`, `event/stiker-*`).
 
 ### 🗓️ Pendaftar Event — `/admin/event/[id]/pendaftar`
 - **File**: `admin/event/[id]/pendaftar/page.tsx` → `PendaftarAdmin.tsx` + `ParameterPerkembanganForm.tsx` + `NilaiPerkembanganForm.tsx`.
 - **Fungsi data**: `getEventAdmin(id)`, `getPendaftaranByEvent(id)`, `getSertifikatMapByEvent(id)`, `getEventSemua()` (`admin-event.ts`); `getPesertaEvent(id)`, `getEventBerParameter(id)` (`guru.ts`, untuk catatan per anak & opsi duplikat).
 - **Server action**: `setStatusPendaftaran`, `setKehadiran`, `reschedulePendaftaran`, **`simpanParameterPerkembangan`**, **`duplikatParameterPerkembangan`** (`admin-event-actions.ts`); **`simpanCatatan`** (`guru-actions.ts`, admin boleh isi nilai per anak).
 - **Endpoint**: `event` (`indikator_perkembangan`), `pendaftaran_event`, `sertifikat`, `catatan_perkembangan` (`penilaian`); `setStatusPendaftaran` → `catatLedger`/`hapusLedgerRef` ke `transaksi_keuangan`.
-- **Catatan Tumbuh Kembang** (lihat §7½): admin tetapkan **Parameter (Area+Indikator) per event** (+ tombol Duplikat dari event lain), lalu beri **Nilai** per anak.
+- **Catatan Tumbuh Kembang** (lihat §7½): admin tetapkan **Parameter (Area+Indikator) per event** (+ tombol Duplikat dari event lain), lalu beri **Nilai** per anak. Bagian Parameter kini **collapsible** (`<details>`) agar tak memenuhi layar.
+- **UI daftar pendaftar**: **filter 🔎 cari nama anak** (live); pendaftar **di-group per kelas** (Baby/Toddler/Gabungan) dengan **jumlah peserta** di header grup; tiap kartu menampilkan **umur anak per hari ini** (`umurTeks`/`umurBulanTotal` di `domain/anak.ts` — mis. "2 thn 3 bln", admin baca `anak.tanggal_lahir` via RLS `boleh_lihat_laporan_anak`), jumlah pendamping, dan **🕐 waktu daftar** (`created_at`, WIB).
 
 ### 🛍️ Produk — `/admin/produk`
 - **File**: `admin/produk/page.tsx` → `ProdukAdmin.tsx`.
@@ -423,7 +425,8 @@ Penilaian perkembangan anak per event offline. **Parameter (Area + Indikator) di
 ### 👶 Ortu & Anak — `/pilih-anak`, `/anak/[anakId]`, `/ortu/[anakId]`, `/pengaturan`
 - **Fungsi data**: `getEventTampilCached()`, `getStatusPendaftaranSaya()`, `getArtikelTerbit({limit:3})`, `getPengaturanBayar()`; sisanya inline.
 - **Server action**: `tambahAnak` (`pilih-anak/actions.ts`), `updateAnak`/`setBatas`/`hapusAnak`/`simpanProfilPengiriman`/`setPin` (`ortu-actions.ts`), `setNamaTampilan` (`komunitas-actions.ts`), `kirimFeedback` (`feedback-actions.ts`).
-- **Endpoint**: `anak`, `langganan`, `profiles`, `hasil_main`, `event`, `pendaftaran_event`, `artikel`, `feedback`, `aktivitas`.
+- **Nama panggilan** (0071): form Tambah Data Anak & Kelola Anak (`KelolaAnak.tsx`) punya input `nama_panggilan` (opsional) — dipakai a.l. **stiker event** (fallback: kata pertama nama lengkap).
+- **Endpoint**: `anak` (+`nama_panggilan`), `langganan`, `profiles`, `hasil_main`, `event`, `pendaftaran_event`, `artikel`, `feedback`, `aktivitas`.
 
 #### 📊 Laporan perkembangan anak — `/anak/[anakId]/laporan`
 - **File**: `anak/[anakId]/laporan/page.tsx` (guard login + kepemilikan anak).
@@ -438,6 +441,7 @@ Penilaian perkembangan anak per event offline. **Parameter (Area + Indikator) di
 - **Server action**: `catatHasil` (`skor.ts`) via `GameRunner`, `catatRiwayatKelas` (`riwayat-actions.ts`), `catatAktivitas`.
 - **Endpoint**: `anak`, `langganan`, `tema`, `paket_aset`, `video`, `kelas_bermain`, `favorit`, `hasil_main`, `lencana_anak`, `tantangan_kustom`(+`_anak`), `tantangan_anak`, `profiles` (pin), `riwayat_kelas`, `aktivitas`.
 - **Gating trial**: `MenuAnak`/`PilihGame`/`VideoPojok` menerima flag `batasi`; item `boleh_trial === false` tampil **🔒** dan diklik → `<Terkunci>`/`/pengaturan`. `MenuAnak.tsx` juga cegah deep-link (`?paket=`) auto-start game terkunci. `/ortu/[anakId]` sama (kartu 🔒). Lihat §7.
+- **Catatan mesin game** (`components/game/`): **Hitung-Kode** (`HitungGame.tsx`) mendukung operasi **+ − × ÷** (`OperasiHitung`; disimpan `'x'`/`':'`, ditampilkan × ÷; validasi `validasiButir`: ÷ wajib kanan ≠ 0 & kiri habis dibagi kanan, − wajib kiri ≥ kanan); pilihan operasi di form admin `PaketForm.tsx`. **Eja Kata** (`EjaKataGame.tsx`): huruf di slot **disembunyikan** — hanya huruf pertama tampil sebagai 1 petunjuk, anak mencari urutan sendiri dari tumpukan huruf.
 
 ### 🍎 Guru — `/guru`, `/guru/[eventId]` (isi Nilai tumbuh kembang), `/catatan/[eventId]`
 - **Guard**: `getGuruTerjamin()` (`guru.ts`).
@@ -450,8 +454,9 @@ Penilaian perkembangan anak per event offline. **Parameter (Area + Indikator) di
 Area kerja psikolog (self-guarded, pola seperti `/guru`). Role `is_psikolog` (0064).
 - **Guard**: `getPsikologTerjamin()` (`psikolog.ts`).
 - **Beranda** `/psikolog`: `getSesiPsikolog()` (pendaftaran `menunggu` + sesi `diterima`) + `getJadwalSaya()`; tombol Terima/Tolak/Selesai (`SesiActions.tsx` → `setStatusKonsultasi`).
-- **Jadwal** `/psikolog/jadwal`: `JadwalForm.tsx` → `simpanJadwal` (hari buka, jam, `maks_per_hari`, aktif). Denormalisasi `nama` psikolog ke `jadwal_psikolog` (customer tak boleh baca `profiles` psikolog).
+- **Jadwal** `/psikolog/jadwal`: `JadwalForm.tsx` → `simpanJadwal` (hari buka, jam, `maks_per_hari`, **`durasi_menit`** per sesi — 0 = tanpa batas, aktif). Denormalisasi `nama` psikolog ke `jadwal_psikolog` (customer tak boleh baca `profiles` psikolog).
 - **Chat** `/psikolog/[pendaftaranId]`: tombol **✅ Selesaikan konsultasi** (bila status `diterima`, `SesiActions` → `setStatusKonsultasi('selesai')`); `<ChatKonsultasi>` (polling 3 dtk, **nonaktif bila status ≠ diterima atau izin fitur `chat` off**) + `<LaporanAnakView>` (akses via RLS `boleh_lihat_laporan_anak`) + `<RekomendasiForm>`/`<RekomendasiCard>` + **`<RekomendasiItemPicker>`** (gate `fiturUntukRole({is_psikolog,is_admin})`).
+- **Durasi & timer sesi** (0072): bila `durasi_menit>0` dan sesi belum dimulai, tampil **▶ Mulai Konsultasi** (`MulaiKonsultasiBtn.tsx` → `mulaiKonsultasi` — set `dimulai_pada` + snapshot `durasi_menit` di pendaftaran). `<ChatKonsultasi>` menampilkan **hitung mundur ⏳** (sinkron di sisi psikolog & ortu); ≤1 menit terakhir bar merah **⚠️ 1 menit terakhir!**; waktu habis → `selesaikanKonsultasi` (idempoten, `konsultasi-actions.ts`) → status `selesai`, chat nonaktif otomatis.
 - **Endpoint**: `profiles`, `jadwal_psikolog`, `pendaftaran_konsultasi`, `pesan_konsultasi`, `rekomendasi_psikolog`, `rekomendasi_item`, + tabel laporan (`anak`/`hasil_main`/`sertifikat`/gamifikasi/`catatan_perkembangan`).
 
 **Rekomendasi item (produk/event/materi)** — dipakai psikolog & guru (izin via Akses Fitur):
@@ -463,8 +468,9 @@ Area kerja psikolog (self-guarded, pola seperti `/guru`). Role `is_psikolog` (00
 ### 🧠 Konsultasi (customer) — `/konsultasi`, `/konsultasi/[pendaftaranId]`
 Sisi orang tua; **khusus member `aktif`** (gate `getStatusLangganan` → `<Terkunci fitur="Konsultasi Psikolog">`, pola Komunitas).
 - **Fungsi data** (`konsultasi.ts`): `getPsikologTersedia()` (dari `jadwal_psikolog` aktif), `getAnakSaya()`, `getKonsultasiSaya()`, `getKonsultasiAnak()`, `getPesan()`, `getRekomendasiAnak()`.
-- **Server action** (`konsultasi-actions.ts`, dipakai ortu & psikolog): `daftarKonsultasi` (via RPC `daftar_konsultasi` — enforce hari buka + kuota harian + cegah booking ganda), `kirimPesan` (gate izin `chat` bila pengirim psikolog), `tandaiDibaca`, `batalKonsultasi`.
-- **Halaman**: `/konsultasi` (`BookingForm.tsx` + **daftar sesi di-group per tanggal** collapsible + `BatalBtn.tsx`); `/konsultasi/[id]` (chat + rekomendasi psikolog + rekomendasi item, **difilter per `pendaftaran_id` sesi**; sesi `selesai` → read-only "Riwayat chat").
+- **Server action** (`konsultasi-actions.ts`, dipakai ortu & psikolog): `daftarKonsultasi` (via RPC `daftar_konsultasi` — enforce hari buka + **jam dalam window jadwal** + kuota harian + cegah booking ganda), `kirimPesan` (gate izin `chat` bila pengirim psikolog), `tandaiDibaca`, `batalKonsultasi`, `selesaikanKonsultasi` (auto-selesai timer).
+- **Booking dibatasi jadwal** (0073): `BookingForm.tsx` — **tanggal = dropdown hari buka saja** (30 hari ke depan dari `hari_buka`), **jam = dropdown slot** per `durasi_menit` dalam window `jam_mulai–jam_selesai` (atau input time ber-min/max bila durasi 0). Jam tersimpan di `pendaftaran_konsultasi.jam` dan divalidasi ulang di RPC (`p_jam`) — tak bisa memilih di luar jadwal psikolog.
+- **Halaman**: `/konsultasi` (`BookingForm.tsx` + **daftar sesi di-group per tanggal** collapsible, tampilkan 🕐 jam + `BatalBtn.tsx`); `/konsultasi/[id]` (chat ber-timer + rekomendasi psikolog + rekomendasi item, **difilter per `pendaftaran_id` sesi**; sesi `selesai` → read-only "Riwayat chat").
 - **Endpoint**: `jadwal_psikolog`, `anak`, `pendaftaran_konsultasi`, `pesan_konsultasi`, `rekomendasi_psikolog`, `rekomendasi_item`; RPC `daftar_konsultasi`/`sisa_kuota_konsultasi`.
 
 ### 📈 Investor — `/investor`
@@ -475,7 +481,8 @@ Sisi orang tua; **khusus member `aktif`** (gate `getStatusLangganan` → `<Terku
 ### 🏅 Sertifikat & Stiker — `/sertifikat/[id]`, `/stiker-event/[id]`
 - **Fungsi data**: `getSertifikat(id)` (`sertifikat.ts`); stiker (**guard admin** `getAdminTerjamin`): `getEventAdmin(id)`, `getPendaftaranByEvent(id)`.
 - **Komponen**: `SertifikatView`, `StikerSheet`, `UnduhPdfBtn`.
-- **Endpoint**: `sertifikat`, `event`, `pendaftaran_event`.
+- **Nama di stiker**: memakai **`anak.nama_panggilan`** (fallback: kata pertama nama lengkap) — join `anak` per `anak_ids` pendaftaran.
+- **Endpoint**: `sertifikat`, `event`, `pendaftaran_event`, `anak` (nama panggilan).
 
 > **Lintas-halaman**: `RekamAktivitas` (store/event/komunitas/pesanan/kelas-saya/pilih-anak/main/laporan) memanggil `catatAktivitas` → insert `aktivitas`. Fungsi `...Cached` di `publik.ts` memakai anon client + cache untuk `event`/`produk`/`kelas_bermain`.
 > **Tombol kembali**: `components/TombolKembali.tsx` (client) — semua tombol "← Kembali" memakai riwayat browser (`router.back()`) dengan `fallback` href bila halaman dibuka langsung/di-refresh. Contoh: buka Riwayat Chat dari halaman rapor anak → Kembali balik ke rapor. Dipakai di seluruh halaman ber-tombol-kembali (user & admin detail).
@@ -520,6 +527,11 @@ Semua Route Handler (`app/api/**/route.ts`) mengembalikan amplop JSON seragam vi
 
 ## 10. Infrastruktur & integrasi
 
+### CI (GitHub Actions)
+- **`.github/workflows/ci.yml`** — jalan di tiap **PR** dan **push ke `master`**: `npm ci` → `tsc --noEmit` → `npm test` (vitest) → `npm run build` (ESLint ikut). Node 20 + cache npm; `concurrency cancel-in-progress` per ref.
+- Env Supabase dari **GitHub Secrets** (`NEXT_PUBLIC_SUPABASE_URL`/`ANON_KEY`) dengan fallback placeholder (build tak mengeksekusi query runtime).
+- Deploy tetap otomatis via Vercel saat push `master`; disarankan aktifkan **branch protection** (require PR + check "CI / ci") sebelum tim bertambah.
+
 ### Supabase client (empat cara)
 - `lib/supabase/server.ts` — `createClient()` async (anon), `@supabase/ssr` `createServerClient` + cookie SSR (`cookies()`; `setAll` di-try/catch). Untuk Server Component/halaman & reader/action.
 - `lib/supabase/client.ts` — `createClient()` browser (anon, `createBrowserClient`). Untuk komponen client (upload dsb).
@@ -553,7 +565,7 @@ Semua Route Handler (`app/api/**/route.ts`) mengembalikan amplop JSON seragam vi
 | Tabel | Kegunaan | Migrasi |
 |---|---|---|
 | `profiles` | akun + role (is_superuser/admin/guru/investor) + nama_tampilan/no_wa/alamat/pin_ortu | 0001, 0004, 0020, 0023, 0056 |
-| `anak` | data anak (nama, tgl lahir, jenis kelamin, mode, koin/streak) | 0001, 0024, 0042 |
+| `anak` | data anak (nama, `nama_panggilan` utk stiker, tgl lahir, jenis kelamin, mode, koin/streak) | 0001, 0024, 0042, 0071 |
 | `langganan` | status langganan/trial per user (trial_mulai, aktif_sampai, nominal) | 0001 |
 | `pembayaran_langganan` | riwayat pembayaran membership | 0052 |
 | `tema`, `paket_aset` | katalog game (tema + paket/butir aset); `tema.boleh_trial` | 0001–0003, 0025–0037, 0060 |
@@ -578,8 +590,8 @@ Semua Route Handler (`app/api/**/route.ts`) mengembalikan amplop JSON seragam vi
 | `sponsor`, `sponsorship` | modul sponsor (perusahaan + deal/invoice/pembayaran inline) | 0058 |
 | `pengaturan_trial` | izin akses trial (batas anak, toggle Komunitas) — akses fitur per item via `boleh_trial` | 0059, 0061 |
 | `pengaturan_menu` | Akses Menu (`akses` jsonb) + Akses Fitur rekomendasi (`fitur` jsonb `{guru,psikolog}`), single-row id=1 | 0063, 0067 |
-| `jadwal_psikolog` | jam buka + kuota konsultasi per psikolog (`nama`, `hari_buka int[]`, `maks_per_hari`, `aktif`) | 0065 |
-| `pendaftaran_konsultasi` | booking konsultasi = kontainer sesi chat (`status` menunggu/diterima/ditolak/selesai/batal) | 0065 |
+| `jadwal_psikolog` | jam buka + kuota + durasi konsultasi per psikolog (`nama`, `hari_buka int[]`, `maks_per_hari`, `durasi_menit`, `aktif`) | 0065, 0072 |
+| `pendaftaran_konsultasi` | booking konsultasi = kontainer sesi chat (`status` menunggu/diterima/ditolak/selesai/batal; `jam` terpilih; `dimulai_pada`+`durasi_menit` utk timer) | 0065, 0072, 0073 |
 | `pesan_konsultasi` | pesan chat konsultasi (`pengirim_id`, `teks`, `dibaca_at`) | 0065 |
 | `rekomendasi_psikolog` | rekomendasi ("resep") psikolog per anak (`isi`, `butir jsonb`) | 0065 |
 | `rekomendasi_item` | rekomendasi produk/event/materi dari psikolog/guru (`jenis`, `ref_id`) | 0067 |

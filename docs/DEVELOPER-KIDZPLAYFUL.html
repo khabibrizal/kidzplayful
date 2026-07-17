@@ -22,7 +22,7 @@ li { margin:3px 0; }
 <blockquote>
 <p>Panduan teknis untuk developer baru. Menjelaskan <strong>per halaman/menu</strong>: file apa yang menanganinya, function/reader/server-action apa yang dipakai, dan <strong>endpoint backend</strong> (tabel Supabase / RPC / storage / auth) yang disentuh. Termasuk <strong>REST API internal</strong> (untuk aplikasi mobile) dan infrastruktur.</p>
 </blockquote>
-<p>Terakhir diperbarui: 2026-07-15.</p>
+<p>Terakhir diperbarui: 2026-07-17.</p>
 <hr />
 <h2 id="1-ringkasan-stack">1. Ringkasan &amp; Stack</h2>
 <ul>
@@ -30,7 +30,7 @@ li { margin:3px 0; }
 <li><strong>Bahasa</strong>: TypeScript. Semua kode/komentar/UI berbahasa Indonesia.</li>
 <li><strong>Backend</strong>: Supabase (Postgres + Row Level Security + Auth + Storage).</li>
 <li><strong>Hosting</strong>: Vercel (<code>www.kidzplayful.com</code>).</li>
-<li><strong>Tanpa build/lint khusus</strong>: gerbang mutu = <code>npx tsc --noEmit</code> + <code>npm run build</code>.</li>
+<li><strong>Gerbang mutu</strong>: <code>npx tsc --noEmit</code> + <code>npm test</code> (vitest) + <code>npm run build</code> — juga dijalankan otomatis oleh <strong>CI GitHub Actions</strong> (<code>.github/workflows/ci.yml</code>) di tiap PR &amp; push ke <code>master</code>.</li>
 <li><strong>Akses backend via anon key + RLS</strong>. Operasi admin diamankan guard aplikasi + RLS + fungsi SQL <code>is_admin()</code>/<code>is_guru()</code>/<code>is_investor()</code>/<code>is_superuser()</code>. Bypass RLS: RPC <code>laporan_engagement()</code> (SECURITY DEFINER, ber-guard <code>is_admin()</code>) + <strong>service-role key opsional</strong> (<code>SUPABASE_SERVICE_ROLE_KEY</code>, server-only) hanya untuk <strong>buat user</strong> (<code>lib/supabase/admin.ts</code>).</li>
 </ul>
 <h3 id="cara-membaca-dokumen-ini">Cara membaca dokumen ini</h3>
@@ -55,7 +55,7 @@ li { margin:3px 0; }
     supabase/          # server.ts (SSR), client.ts (browser)
     api/               # helpers.ts (amplop JSON + auth Bearer untuk REST API)
     game/              # tipe &amp; util mesin game
-supabase/migrations/   # skema DB (0001..0070), dijalankan manual di SQL Editor
+supabase/migrations/   # skema DB (0001..0073), dijalankan manual di SQL Editor
 docs/                  # dokumentasi (termasuk file ini)
 tools/md2pdf.py        # generator PDF dokumentasi
 </code></pre>
@@ -82,7 +82,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </ul>
 <h3 id="deploy-migrasi">Deploy &amp; migrasi</h3>
 <ul>
-<li>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor (urut <code>0001..0070</code>), lalu diverifikasi via REST (<code>?select=col&amp;limit=1</code> → 200).</li>
+<li>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor (urut <code>0001..0073</code>), lalu diverifikasi via REST (<code>?select=col&amp;limit=1</code> → 200).</li>
 <li>Commit: <code>git -c commit.gpgsign=false commit</code> + baris <code>Co-Authored-By</code>. Push ke <code>master</code> → Vercel auto-deploy.</li>
 <li>Banyak reader dibungkus <code>try/catch</code> agar fitur aman dideploy sebelum migrasinya dijalankan (mengembalikan nilai default).</li>
 </ul>
@@ -97,7 +97,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </ul>
 <hr />
 <h2 id="4-panel-admin-per-menu-non-keuangan">4. Panel Admin — per menu (non-keuangan)</h2>
-<p>Pembungkus: <code>admin/layout.tsx</code> (guard <code>getAksesAdmin</code>, kirim <code>allowed</code>+<code>isSuperuser</code> ke nav) + <code>AdminNav.tsx</code> (navigasi, filter menu sesuai akses) + <code>LogoutBtn.tsx</code>. Akses menu per role diatur di <strong>🔐 Akses Menu</strong> (super user).</p>
+<p>Pembungkus: <code>admin/layout.tsx</code> (guard <code>getAksesAdmin</code>, kirim <code>allowed</code>+<code>isSuperuser</code>+<code>isPsikolog</code>+<code>isGuru</code> ke nav) + <code>AdminNav.tsx</code> (navigasi, filter menu sesuai akses; bila akun juga psikolog/guru tampil chip <strong>🧠 Area Psikolog</strong> / <strong>🍎 Area Guru</strong> menuju dashboard kerjanya) + <code>LogoutBtn.tsx</code>. Akses menu per role diatur di <strong>🔐 Akses Menu</strong> (super user).</p>
 <h3 id="dashboard-tema-admin">🏠 Dashboard (Tema) — <code>/admin</code></h3>
 <ul>
 <li><strong>File</strong>: <code>admin/page.tsx</code> (server, form inline).</li>
@@ -117,7 +117,8 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <li><strong>Server action</strong>: <code>buatEvent</code>, <code>updateEvent</code>, <code>toggleStatusEvent</code>, <code>hapusEvent</code>, <code>simpanBerkasSertifikat</code> (<code>admin-event-actions.ts</code>); <code>generateSertifikatEvent</code> (<code>admin-sertifikat-actions.ts</code>).</li>
 <li><strong>Kelas terpisah</strong>: form Add/Edit punya bagian <strong>Baby Class</strong> &amp; <strong>Toddler Class</strong> (tgl + jam mulai/selesai per kelas; <code>EventInput.baby*/toddler*</code> → kolom <code>event.baby_*</code>/<code>toddler_*</code>). Kosong = event gabungan (pakai tgl/jam utama).</li>
 <li><strong>Harga tambah pendamping</strong>: <code>EventInput.hargaPendamping</code> → <code>event.harga_pendamping</code> (per-event; 0 = tanpa opsi pendamping).</li>
-<li><strong>Endpoint</strong>: <code>event</code> (+ kolom <code>baby_*</code>/<code>toddler_*</code>/<code>harga_pendamping</code>), <code>pendaftaran_event</code>, <code>sertifikat</code> (upsert), <code>storage.from('aset')</code> (folder <code>event/</code>, <code>event/sertifikat-*</code>, <code>event/stiker-*</code>).</li>
+<li><strong>⬇ Download Peserta</strong>: tombol per card event (<code>DownloadPesertaBtn.tsx</code>) → server action <code>getPesertaEkspor(eventId)</code> (<code>admin-event-actions.ts</code>) → CSV BOM UTF-8, <strong>dikelompokkan per kelas</strong> (Baby/Toddler/Gabungan), kolom: No, Nama Panggilan, Nama Lengkap, Tgl Lahir (Umur), Nama Orang Tua, Pendamping, Waktu Daftar (WIB).</li>
+<li><strong>Endpoint</strong>: <code>event</code> (+ kolom <code>baby_*</code>/<code>toddler_*</code>/<code>harga_pendamping</code>), <code>pendaftaran_event</code>, <code>anak</code>+<code>profiles</code> (join ekspor), <code>sertifikat</code> (upsert), <code>storage.from('aset')</code> (folder <code>event/</code>, <code>event/sertifikat-*</code>, <code>event/stiker-*</code>).</li>
 </ul>
 <h3 id="pendaftar-event-admineventidpendaftar">🗓️ Pendaftar Event — <code>/admin/event/[id]/pendaftar</code></h3>
 <ul>
@@ -125,7 +126,8 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <li><strong>Fungsi data</strong>: <code>getEventAdmin(id)</code>, <code>getPendaftaranByEvent(id)</code>, <code>getSertifikatMapByEvent(id)</code>, <code>getEventSemua()</code> (<code>admin-event.ts</code>); <code>getPesertaEvent(id)</code>, <code>getEventBerParameter(id)</code> (<code>guru.ts</code>, untuk catatan per anak &amp; opsi duplikat).</li>
 <li><strong>Server action</strong>: <code>setStatusPendaftaran</code>, <code>setKehadiran</code>, <code>reschedulePendaftaran</code>, <strong><code>simpanParameterPerkembangan</code></strong>, <strong><code>duplikatParameterPerkembangan</code></strong> (<code>admin-event-actions.ts</code>); <strong><code>simpanCatatan</code></strong> (<code>guru-actions.ts</code>, admin boleh isi nilai per anak).</li>
 <li><strong>Endpoint</strong>: <code>event</code> (<code>indikator_perkembangan</code>), <code>pendaftaran_event</code>, <code>sertifikat</code>, <code>catatan_perkembangan</code> (<code>penilaian</code>); <code>setStatusPendaftaran</code> → <code>catatLedger</code>/<code>hapusLedgerRef</code> ke <code>transaksi_keuangan</code>.</li>
-<li><strong>Catatan Tumbuh Kembang</strong> (lihat §7½): admin tetapkan <strong>Parameter (Area+Indikator) per event</strong> (+ tombol Duplikat dari event lain), lalu beri <strong>Nilai</strong> per anak.</li>
+<li><strong>Catatan Tumbuh Kembang</strong> (lihat §7½): admin tetapkan <strong>Parameter (Area+Indikator) per event</strong> (+ tombol Duplikat dari event lain), lalu beri <strong>Nilai</strong> per anak. Bagian Parameter kini <strong>collapsible</strong> (<code>&lt;details&gt;</code>) agar tak memenuhi layar.</li>
+<li><strong>UI daftar pendaftar</strong>: <strong>filter 🔎 cari nama anak</strong> (live); pendaftar <strong>di-group per kelas</strong> (Baby/Toddler/Gabungan) dengan <strong>jumlah peserta</strong> di header grup; tiap kartu menampilkan <strong>umur anak per hari ini</strong> (<code>umurTeks</code>/<code>umurBulanTotal</code> di <code>domain/anak.ts</code> — mis. "2 thn 3 bln", admin baca <code>anak.tanggal_lahir</code> via RLS <code>boleh_lihat_laporan_anak</code>), jumlah pendamping, dan <strong>🕐 waktu daftar</strong> (<code>created_at</code>, WIB).</li>
 </ul>
 <h3 id="produk-adminproduk">🛍️ Produk — <code>/admin/produk</code></h3>
 <ul>
@@ -533,7 +535,8 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <ul>
 <li><strong>Fungsi data</strong>: <code>getEventTampilCached()</code>, <code>getStatusPendaftaranSaya()</code>, <code>getArtikelTerbit({limit:3})</code>, <code>getPengaturanBayar()</code>; sisanya inline.</li>
 <li><strong>Server action</strong>: <code>tambahAnak</code> (<code>pilih-anak/actions.ts</code>), <code>updateAnak</code>/<code>setBatas</code>/<code>hapusAnak</code>/<code>simpanProfilPengiriman</code>/<code>setPin</code> (<code>ortu-actions.ts</code>), <code>setNamaTampilan</code> (<code>komunitas-actions.ts</code>), <code>kirimFeedback</code> (<code>feedback-actions.ts</code>).</li>
-<li><strong>Endpoint</strong>: <code>anak</code>, <code>langganan</code>, <code>profiles</code>, <code>hasil_main</code>, <code>event</code>, <code>pendaftaran_event</code>, <code>artikel</code>, <code>feedback</code>, <code>aktivitas</code>.</li>
+<li><strong>Nama panggilan</strong> (0071): form Tambah Data Anak &amp; Kelola Anak (<code>KelolaAnak.tsx</code>) punya input <code>nama_panggilan</code> (opsional) — dipakai a.l. <strong>stiker event</strong> (fallback: kata pertama nama lengkap).</li>
+<li><strong>Endpoint</strong>: <code>anak</code> (+<code>nama_panggilan</code>), <code>langganan</code>, <code>profiles</code>, <code>hasil_main</code>, <code>event</code>, <code>pendaftaran_event</code>, <code>artikel</code>, <code>feedback</code>, <code>aktivitas</code>.</li>
 </ul>
 <h4 id="laporan-perkembangan-anak-anakanakidlaporan">📊 Laporan perkembangan anak — <code>/anak/[anakId]/laporan</code></h4>
 <ul>
@@ -550,6 +553,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <li><strong>Server action</strong>: <code>catatHasil</code> (<code>skor.ts</code>) via <code>GameRunner</code>, <code>catatRiwayatKelas</code> (<code>riwayat-actions.ts</code>), <code>catatAktivitas</code>.</li>
 <li><strong>Endpoint</strong>: <code>anak</code>, <code>langganan</code>, <code>tema</code>, <code>paket_aset</code>, <code>video</code>, <code>kelas_bermain</code>, <code>favorit</code>, <code>hasil_main</code>, <code>lencana_anak</code>, <code>tantangan_kustom</code>(+<code>_anak</code>), <code>tantangan_anak</code>, <code>profiles</code> (pin), <code>riwayat_kelas</code>, <code>aktivitas</code>.</li>
 <li><strong>Gating trial</strong>: <code>MenuAnak</code>/<code>PilihGame</code>/<code>VideoPojok</code> menerima flag <code>batasi</code>; item <code>boleh_trial === false</code> tampil <strong>🔒</strong> dan diklik → <code>&lt;Terkunci&gt;</code>/<code>/pengaturan</code>. <code>MenuAnak.tsx</code> juga cegah deep-link (<code>?paket=</code>) auto-start game terkunci. <code>/ortu/[anakId]</code> sama (kartu 🔒). Lihat §7.</li>
+<li><strong>Catatan mesin game</strong> (<code>components/game/</code>): <strong>Hitung-Kode</strong> (<code>HitungGame.tsx</code>) mendukung operasi <strong>+ − × ÷</strong> (<code>OperasiHitung</code>; disimpan <code>'x'</code>/<code>':'</code>, ditampilkan × ÷; validasi <code>validasiButir</code>: ÷ wajib kanan ≠ 0 &amp; kiri habis dibagi kanan, − wajib kiri ≥ kanan); pilihan operasi di form admin <code>PaketForm.tsx</code>. <strong>Eja Kata</strong> (<code>EjaKataGame.tsx</code>): huruf di slot <strong>disembunyikan</strong> — hanya huruf pertama tampil sebagai 1 petunjuk, anak mencari urutan sendiri dari tumpukan huruf.</li>
 </ul>
 <h3 id="guru-guru-gurueventid-isi-nilai-tumbuh-kembang-catataneventid">🍎 Guru — <code>/guru</code>, <code>/guru/[eventId]</code> (isi Nilai tumbuh kembang), <code>/catatan/[eventId]</code></h3>
 <ul>
@@ -563,8 +567,9 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <p>Area kerja psikolog (self-guarded, pola seperti <code>/guru</code>). Role <code>is_psikolog</code> (0064).
 - <strong>Guard</strong>: <code>getPsikologTerjamin()</code> (<code>psikolog.ts</code>).
 - <strong>Beranda</strong> <code>/psikolog</code>: <code>getSesiPsikolog()</code> (pendaftaran <code>menunggu</code> + sesi <code>diterima</code>) + <code>getJadwalSaya()</code>; tombol Terima/Tolak/Selesai (<code>SesiActions.tsx</code> → <code>setStatusKonsultasi</code>).
-- <strong>Jadwal</strong> <code>/psikolog/jadwal</code>: <code>JadwalForm.tsx</code> → <code>simpanJadwal</code> (hari buka, jam, <code>maks_per_hari</code>, aktif). Denormalisasi <code>nama</code> psikolog ke <code>jadwal_psikolog</code> (customer tak boleh baca <code>profiles</code> psikolog).
+- <strong>Jadwal</strong> <code>/psikolog/jadwal</code>: <code>JadwalForm.tsx</code> → <code>simpanJadwal</code> (hari buka, jam, <code>maks_per_hari</code>, <strong><code>durasi_menit</code></strong> per sesi — 0 = tanpa batas, aktif). Denormalisasi <code>nama</code> psikolog ke <code>jadwal_psikolog</code> (customer tak boleh baca <code>profiles</code> psikolog).
 - <strong>Chat</strong> <code>/psikolog/[pendaftaranId]</code>: tombol <strong>✅ Selesaikan konsultasi</strong> (bila status <code>diterima</code>, <code>SesiActions</code> → <code>setStatusKonsultasi('selesai')</code>); <code>&lt;ChatKonsultasi&gt;</code> (polling 3 dtk, <strong>nonaktif bila status ≠ diterima atau izin fitur <code>chat</code> off</strong>) + <code>&lt;LaporanAnakView&gt;</code> (akses via RLS <code>boleh_lihat_laporan_anak</code>) + <code>&lt;RekomendasiForm&gt;</code>/<code>&lt;RekomendasiCard&gt;</code> + <strong><code>&lt;RekomendasiItemPicker&gt;</code></strong> (gate <code>fiturUntukRole({is_psikolog,is_admin})</code>).
+- <strong>Durasi &amp; timer sesi</strong> (0072): bila <code>durasi_menit&gt;0</code> dan sesi belum dimulai, tampil <strong>▶ Mulai Konsultasi</strong> (<code>MulaiKonsultasiBtn.tsx</code> → <code>mulaiKonsultasi</code> — set <code>dimulai_pada</code> + snapshot <code>durasi_menit</code> di pendaftaran). <code>&lt;ChatKonsultasi&gt;</code> menampilkan <strong>hitung mundur ⏳</strong> (sinkron di sisi psikolog &amp; ortu); ≤1 menit terakhir bar merah <strong>⚠️ 1 menit terakhir!</strong>; waktu habis → <code>selesaikanKonsultasi</code> (idempoten, <code>konsultasi-actions.ts</code>) → status <code>selesai</code>, chat nonaktif otomatis.
 - <strong>Endpoint</strong>: <code>profiles</code>, <code>jadwal_psikolog</code>, <code>pendaftaran_konsultasi</code>, <code>pesan_konsultasi</code>, <code>rekomendasi_psikolog</code>, <code>rekomendasi_item</code>, + tabel laporan (<code>anak</code>/<code>hasil_main</code>/<code>sertifikat</code>/gamifikasi/<code>catatan_perkembangan</code>).</p>
 <p><strong>Rekomendasi item (produk/event/materi)</strong> — dipakai psikolog &amp; guru (izin via Akses Fitur):
 - <strong>Katalog &amp; data</strong>: <code>getKatalogRekomendasi()</code> (produk tampil/event tampil/<code>kelas_bermain</code> aktif), <code>getRekomendasiItemAnak()</code>, <code>getRekomendasiItemByAnakIds()</code> (<code>rekomendasi-item.ts</code>).
@@ -574,8 +579,9 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <h3 id="konsultasi-customer-konsultasi-konsultasipendaftaranid">🧠 Konsultasi (customer) — <code>/konsultasi</code>, <code>/konsultasi/[pendaftaranId]</code></h3>
 <p>Sisi orang tua; <strong>khusus member <code>aktif</code></strong> (gate <code>getStatusLangganan</code> → <code>&lt;Terkunci fitur="Konsultasi Psikolog"&gt;</code>, pola Komunitas).
 - <strong>Fungsi data</strong> (<code>konsultasi.ts</code>): <code>getPsikologTersedia()</code> (dari <code>jadwal_psikolog</code> aktif), <code>getAnakSaya()</code>, <code>getKonsultasiSaya()</code>, <code>getKonsultasiAnak()</code>, <code>getPesan()</code>, <code>getRekomendasiAnak()</code>.
-- <strong>Server action</strong> (<code>konsultasi-actions.ts</code>, dipakai ortu &amp; psikolog): <code>daftarKonsultasi</code> (via RPC <code>daftar_konsultasi</code> — enforce hari buka + kuota harian + cegah booking ganda), <code>kirimPesan</code> (gate izin <code>chat</code> bila pengirim psikolog), <code>tandaiDibaca</code>, <code>batalKonsultasi</code>.
-- <strong>Halaman</strong>: <code>/konsultasi</code> (<code>BookingForm.tsx</code> + <strong>daftar sesi di-group per tanggal</strong> collapsible + <code>BatalBtn.tsx</code>); <code>/konsultasi/[id]</code> (chat + rekomendasi psikolog + rekomendasi item, <strong>difilter per <code>pendaftaran_id</code> sesi</strong>; sesi <code>selesai</code> → read-only "Riwayat chat").
+- <strong>Server action</strong> (<code>konsultasi-actions.ts</code>, dipakai ortu &amp; psikolog): <code>daftarKonsultasi</code> (via RPC <code>daftar_konsultasi</code> — enforce hari buka + <strong>jam dalam window jadwal</strong> + kuota harian + cegah booking ganda), <code>kirimPesan</code> (gate izin <code>chat</code> bila pengirim psikolog), <code>tandaiDibaca</code>, <code>batalKonsultasi</code>, <code>selesaikanKonsultasi</code> (auto-selesai timer).
+- <strong>Booking dibatasi jadwal</strong> (0073): <code>BookingForm.tsx</code> — <strong>tanggal = dropdown hari buka saja</strong> (30 hari ke depan dari <code>hari_buka</code>), <strong>jam = dropdown slot</strong> per <code>durasi_menit</code> dalam window <code>jam_mulai–jam_selesai</code> (atau input time ber-min/max bila durasi 0). Jam tersimpan di <code>pendaftaran_konsultasi.jam</code> dan divalidasi ulang di RPC (<code>p_jam</code>) — tak bisa memilih di luar jadwal psikolog.
+- <strong>Halaman</strong>: <code>/konsultasi</code> (<code>BookingForm.tsx</code> + <strong>daftar sesi di-group per tanggal</strong> collapsible, tampilkan 🕐 jam + <code>BatalBtn.tsx</code>); <code>/konsultasi/[id]</code> (chat ber-timer + rekomendasi psikolog + rekomendasi item, <strong>difilter per <code>pendaftaran_id</code> sesi</strong>; sesi <code>selesai</code> → read-only "Riwayat chat").
 - <strong>Endpoint</strong>: <code>jadwal_psikolog</code>, <code>anak</code>, <code>pendaftaran_konsultasi</code>, <code>pesan_konsultasi</code>, <code>rekomendasi_psikolog</code>, <code>rekomendasi_item</code>; RPC <code>daftar_konsultasi</code>/<code>sisa_kuota_konsultasi</code>.</p>
 <h3 id="investor-investor">📈 Investor — <code>/investor</code></h3>
 <ul>
@@ -587,7 +593,8 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <ul>
 <li><strong>Fungsi data</strong>: <code>getSertifikat(id)</code> (<code>sertifikat.ts</code>); stiker (<strong>guard admin</strong> <code>getAdminTerjamin</code>): <code>getEventAdmin(id)</code>, <code>getPendaftaranByEvent(id)</code>.</li>
 <li><strong>Komponen</strong>: <code>SertifikatView</code>, <code>StikerSheet</code>, <code>UnduhPdfBtn</code>.</li>
-<li><strong>Endpoint</strong>: <code>sertifikat</code>, <code>event</code>, <code>pendaftaran_event</code>.</li>
+<li><strong>Nama di stiker</strong>: memakai <strong><code>anak.nama_panggilan</code></strong> (fallback: kata pertama nama lengkap) — join <code>anak</code> per <code>anak_ids</code> pendaftaran.</li>
+<li><strong>Endpoint</strong>: <code>sertifikat</code>, <code>event</code>, <code>pendaftaran_event</code>, <code>anak</code> (nama panggilan).</li>
 </ul>
 <blockquote>
 <p><strong>Lintas-halaman</strong>: <code>RekamAktivitas</code> (store/event/komunitas/pesanan/kelas-saya/pilih-anak/main/laporan) memanggil <code>catatAktivitas</code> → insert <code>aktivitas</code>. Fungsi <code>...Cached</code> di <code>publik.ts</code> memakai anon client + cache untuk <code>event</code>/<code>produk</code>/<code>kelas_bermain</code>.
@@ -756,6 +763,12 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </table>
 <hr />
 <h2 id="10-infrastruktur-integrasi">10. Infrastruktur &amp; integrasi</h2>
+<h3 id="ci-github-actions">CI (GitHub Actions)</h3>
+<ul>
+<li><strong><code>.github/workflows/ci.yml</code></strong> — jalan di tiap <strong>PR</strong> dan <strong>push ke <code>master</code></strong>: <code>npm ci</code> → <code>tsc --noEmit</code> → <code>npm test</code> (vitest) → <code>npm run build</code> (ESLint ikut). Node 20 + cache npm; <code>concurrency cancel-in-progress</code> per ref.</li>
+<li>Env Supabase dari <strong>GitHub Secrets</strong> (<code>NEXT_PUBLIC_SUPABASE_URL</code>/<code>ANON_KEY</code>) dengan fallback placeholder (build tak mengeksekusi query runtime).</li>
+<li>Deploy tetap otomatis via Vercel saat push <code>master</code>; disarankan aktifkan <strong>branch protection</strong> (require PR + check "CI / ci") sebelum tim bertambah.</li>
+</ul>
 <h3 id="supabase-client-empat-cara">Supabase client (empat cara)</h3>
 <ul>
 <li><code>lib/supabase/server.ts</code> — <code>createClient()</code> async (anon), <code>@supabase/ssr</code> <code>createServerClient</code> + cookie SSR (<code>cookies()</code>; <code>setAll</code> di-try/catch). Untuk Server Component/halaman &amp; reader/action.</li>
@@ -806,8 +819,8 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </tr>
 <tr>
 <td><code>anak</code></td>
-<td>data anak (nama, tgl lahir, jenis kelamin, mode, koin/streak)</td>
-<td>0001, 0024, 0042</td>
+<td>data anak (nama, <code>nama_panggilan</code> utk stiker, tgl lahir, jenis kelamin, mode, koin/streak)</td>
+<td>0001, 0024, 0042, 0071</td>
 </tr>
 <tr>
 <td><code>langganan</code></td>
@@ -931,13 +944,13 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </tr>
 <tr>
 <td><code>jadwal_psikolog</code></td>
-<td>jam buka + kuota konsultasi per psikolog (<code>nama</code>, <code>hari_buka int[]</code>, <code>maks_per_hari</code>, <code>aktif</code>)</td>
-<td>0065</td>
+<td>jam buka + kuota + durasi konsultasi per psikolog (<code>nama</code>, <code>hari_buka int[]</code>, <code>maks_per_hari</code>, <code>durasi_menit</code>, <code>aktif</code>)</td>
+<td>0065, 0072</td>
 </tr>
 <tr>
 <td><code>pendaftaran_konsultasi</code></td>
-<td>booking konsultasi = kontainer sesi chat (<code>status</code> menunggu/diterima/ditolak/selesai/batal)</td>
-<td>0065</td>
+<td>booking konsultasi = kontainer sesi chat (<code>status</code> menunggu/diterima/ditolak/selesai/batal; <code>jam</code> terpilih; <code>dimulai_pada</code>+<code>durasi_menit</code> utk timer)</td>
+<td>0065, 0072, 0073</td>
 </tr>
 <tr>
 <td><code>pesan_konsultasi</code></td>
