@@ -16,7 +16,7 @@ async function psikolog() {
 
 /** Simpan jadwal & kuota psikolog (upsert satu baris per psikolog). */
 export async function simpanJadwal(input: {
-  hariBuka: number[]; jamMulai: string; jamSelesai: string; maksPerHari: number; aktif: boolean; catatan: string;
+  hariBuka: number[]; jamMulai: string; jamSelesai: string; maksPerHari: number; durasiMenit: number; aktif: boolean; catatan: string;
 }): Promise<{ ok: boolean; error?: string }> {
   try {
     const { s, id, nama } = await psikolog();
@@ -27,6 +27,7 @@ export async function simpanJadwal(input: {
       jam_mulai: input.jamMulai.trim() || null,
       jam_selesai: input.jamSelesai.trim() || null,
       maks_per_hari: Math.max(0, Math.floor(input.maksPerHari || 0)),
+      durasi_menit: Math.max(0, Math.floor(input.durasiMenit || 0)),
       aktif: input.aktif,
       catatan: input.catatan.trim() || null,
       updated_at: new Date().toISOString(),
@@ -54,6 +55,24 @@ export async function setStatusKonsultasi(id: string, status: StatusKonsultasi):
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Gagal mengubah status.' };
+  }
+}
+
+/** Mulai sesi konsultasi (psikolog): set waktu mulai + snapshot durasi dari jadwal. */
+export async function mulaiKonsultasi(id: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const { s, id: uid } = await psikolog();
+    const { data: j } = await s.from('jadwal_psikolog').select('durasi_menit').eq('psikolog_id', uid).maybeSingle();
+    const durasi = Math.max(0, Math.floor((j?.durasi_menit as number) ?? 0));
+    const { error } = await s.from('pendaftaran_konsultasi')
+      .update({ dimulai_pada: new Date().toISOString(), durasi_menit: durasi, updated_at: new Date().toISOString() })
+      .eq('id', id).eq('psikolog_id', uid).eq('status', 'diterima').is('dimulai_pada', null);
+    if (error) return { ok: false, error: error.message };
+    revalidatePath(`/psikolog/${id}`);
+    revalidatePath(`/konsultasi/${id}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Gagal memulai sesi.' };
   }
 }
 

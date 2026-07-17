@@ -2,13 +2,13 @@
 import { createClient } from '@/lib/supabase/server';
 import type { JadwalPsikolog, PendaftaranKonsultasi, PesanKonsultasi, RekomendasiPsikolog } from '@/lib/game/tipe';
 
-const PCOLS = 'id,ortu_id,psikolog_id,anak_id,anak_nama,tanggal,keluhan,status,diverifikasi_pada,created_at';
+const PCOLS = 'id,ortu_id,psikolog_id,anak_id,anak_nama,tanggal,keluhan,status,diverifikasi_pada,dimulai_pada,durasi_menit,created_at';
 
 /** Daftar psikolog yang membuka jadwal (aktif). Nama dari denormalisasi jadwal. */
 export async function getPsikologTersedia(): Promise<JadwalPsikolog[]> {
   const s = await createClient();
   const { data } = await s.from('jadwal_psikolog')
-    .select('psikolog_id,nama,hari_buka,jam_mulai,jam_selesai,maks_per_hari,aktif,catatan')
+    .select('psikolog_id,nama,hari_buka,jam_mulai,jam_selesai,maks_per_hari,durasi_menit,aktif,catatan')
     .eq('aktif', true).order('nama');
   return (data ?? []) as unknown as JadwalPsikolog[];
 }

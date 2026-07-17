@@ -1,18 +1,46 @@
 // src/components/ChatKonsultasi.tsx — chat konsultasi (polling ~3 detik) — dipakai ortu & psikolog
 'use client';
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { kirimPesan, tandaiDibaca } from '@/lib/data/konsultasi-actions';
+import { kirimPesan, tandaiDibaca, selesaikanKonsultasi } from '@/lib/data/konsultasi-actions';
 import type { PesanKonsultasi } from '@/lib/game/tipe';
 
-export default function ChatKonsultasi({ pendaftaranId, userId, awal, nonaktif = false }: {
+function mmss(ms: number): string {
+  const t = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(t / 60), s = t % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+export default function ChatKonsultasi({ pendaftaranId, userId, awal, nonaktif = false, dimulaiPada = null, durasiMenit = 0 }: {
   pendaftaranId: string; userId: string; awal: PesanKonsultasi[]; nonaktif?: boolean;
+  dimulaiPada?: string | null; durasiMenit?: number;
 }) {
+  const router = useRouter();
   const [pesan, setPesan] = useState<PesanKonsultasi[]>(awal);
   const [teks, setTeks] = useState('');
   const [kirim, setKirim] = useState(false);
   const bawahRef = useRef<HTMLDivElement>(null);
   const supa = useRef(createClient());
+
+  // Hitung mundur durasi sesi (bila diatur & sesi sudah dimulai)
+  const deadline = (!nonaktif && dimulaiPada && durasiMenit > 0) ? new Date(dimulaiPada).getTime() + durasiMenit * 60000 : null;
+  const [sisaMs, setSisaMs] = useState<number | null>(deadline ? deadline - Date.now() : null);
+  const selesaiRef = useRef(false);
+  useEffect(() => {
+    if (!deadline) { setSisaMs(null); return; }
+    const tick = () => {
+      const s = deadline - Date.now();
+      setSisaMs(s);
+      if (s <= 0 && !selesaiRef.current) {
+        selesaiRef.current = true;
+        selesaikanKonsultasi(pendaftaranId).finally(() => router.refresh());
+      }
+    };
+    tick();
+    const t = setInterval(tick, 1000);
+    return () => clearInterval(t);
+  }, [deadline, pendaftaranId, router]);
 
   const scrollBawah = useCallback(() => { bawahRef.current?.scrollIntoView({ behavior: 'smooth' }); }, []);
 
@@ -53,6 +81,11 @@ export default function ChatKonsultasi({ pendaftaranId, userId, awal, nonaktif =
 
   return (
     <div className="kp-card" style={{ padding: 12 }}>
+      {sisaMs !== null && sisaMs > 0 && (
+        <div style={{ textAlign: 'center', fontWeight: 800, marginBottom: 10, padding: '6px 10px', borderRadius: 10, background: sisaMs <= 60000 ? '#fde8e6' : '#efe7fb', color: sisaMs <= 60000 ? '#b3261e' : 'var(--lavender-d)' }}>
+          ⏳ Sisa waktu {mmss(sisaMs)}{sisaMs <= 60000 ? ' · ⚠️ 1 menit terakhir!' : ''}
+        </div>
+      )}
       <div style={{ maxHeight: 380, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, paddingRight: 4 }}>
         {pesan.length === 0 && <p style={{ color: 'var(--abu)', fontSize: 13, textAlign: 'center', margin: '18px 0' }}>Belum ada pesan. Mulai percakapan 👋</p>}
         {pesan.map((m) => {

@@ -60,6 +60,22 @@ export async function kirimPesan(pendaftaranId: string, teks: string): Promise<{
   }
 }
 
+/** Selesaikan sesi (dipakai auto-selesai saat waktu habis; peserta mana pun boleh). Idempoten. */
+export async function selesaikanKonsultasi(pendaftaranId: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const { s } = await sesi();
+    const { error } = await s.from('pendaftaran_konsultasi')
+      .update({ status: 'selesai', updated_at: new Date().toISOString() })
+      .eq('id', pendaftaranId).eq('status', 'diterima');
+    if (error) return { ok: false, error: error.message };
+    revalidatePath(`/konsultasi/${pendaftaranId}`);
+    revalidatePath(`/psikolog/${pendaftaranId}`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Gagal.' };
+  }
+}
+
 /** Tandai pesan lawan bicara sebagai dibaca. */
 export async function tandaiDibaca(pendaftaranId: string): Promise<void> {
   const { s, userId } = await sesi();

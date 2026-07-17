@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import type { JadwalPsikolog, PendaftaranKonsultasi } from '@/lib/game/tipe';
 
-const PCOLS = 'id,ortu_id,psikolog_id,anak_id,anak_nama,tanggal,keluhan,status,diverifikasi_pada,created_at';
+const PCOLS = 'id,ortu_id,psikolog_id,anak_id,anak_nama,tanggal,keluhan,status,diverifikasi_pada,dimulai_pada,durasi_menit,created_at';
 
 /** Guard: pastikan user adalah psikolog. Mengembalikan profil psikolog. */
 export async function getPsikologTerjamin() {
@@ -33,7 +33,7 @@ export async function getSesiPsikolog(psikologId: string): Promise<{ menunggu: P
 export async function getJadwalSaya(psikologId: string): Promise<JadwalPsikolog | null> {
   const s = await createClient();
   const { data } = await s.from('jadwal_psikolog')
-    .select('psikolog_id,nama,hari_buka,jam_mulai,jam_selesai,maks_per_hari,aktif,catatan')
+    .select('psikolog_id,nama,hari_buka,jam_mulai,jam_selesai,maks_per_hari,durasi_menit,aktif,catatan')
     .eq('psikolog_id', psikologId).maybeSingle();
   return (data as unknown as JadwalPsikolog) ?? null;
 }

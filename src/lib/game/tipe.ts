@@ -249,6 +249,7 @@ export interface JadwalPsikolog {
   jam_mulai: string | null;
   jam_selesai: string | null;
   maks_per_hari: number;
+  durasi_menit: number;       // batas durasi 1 sesi konsultasi (0 = tanpa batas)
   aktif: boolean;
   catatan: string | null;
 }
@@ -263,6 +264,8 @@ export interface PendaftaranKonsultasi {
   keluhan: string | null;
   status: StatusKonsultasi;
   diverifikasi_pada: string | null;
+  dimulai_pada: string | null;   // waktu sesi konsultasi dimulai (untuk hitung mundur)
+  durasi_menit: number;          // snapshot durasi saat dimulai (0 = tanpa batas)
   created_at: string;
 }
 export interface PesanKonsultasi {

@@ -13,6 +13,7 @@ export default function JadwalForm({ awal }: { awal: JadwalPsikolog | null }) {
   const [jamMulai, setJamMulai] = useState(awal?.jam_mulai ?? '09:00');
   const [jamSelesai, setJamSelesai] = useState(awal?.jam_selesai ?? '15:00');
   const [maks, setMaks] = useState(String(awal?.maks_per_hari ?? 5));
+  const [durasi, setDurasi] = useState(String(awal?.durasi_menit ?? 0));
   const [aktif, setAktif] = useState(awal?.aktif ?? true);
   const [catatan, setCatatan] = useState(awal?.catatan ?? '');
   const [busy, setBusy] = useState(false);
@@ -26,7 +27,7 @@ export default function JadwalForm({ awal }: { awal: JadwalPsikolog | null }) {
   async function simpan() {
     setBusy(true); setMsg(''); setOk(false);
     const r = await simpanJadwal({
-      hariBuka: hari, jamMulai, jamSelesai, maksPerHari: Number(maks) || 0, aktif, catatan,
+      hariBuka: hari, jamMulai, jamSelesai, maksPerHari: Number(maks) || 0, durasiMenit: Number(durasi) || 0, aktif, catatan,
     });
     setBusy(false);
     if (r.ok) { setOk(true); setMsg('Jadwal tersimpan ✓'); router.refresh(); }
@@ -60,7 +61,11 @@ export default function JadwalForm({ awal }: { awal: JadwalPsikolog | null }) {
         <label style={{ fontSize: 12, color: 'var(--abu)' }}>Maks customer / hari
           <input className="kp-input" type="number" min={0} value={maks} onChange={(e) => setMaks(e.target.value)} style={{ marginBottom: 0, display: 'block', width: 100 }} />
         </label>
+        <label style={{ fontSize: 12, color: 'var(--abu)' }}>Durasi / sesi (menit)
+          <input className="kp-input" type="number" min={0} value={durasi} onChange={(e) => setDurasi(e.target.value)} style={{ marginBottom: 0, display: 'block', width: 120 }} />
+        </label>
       </div>
+      <p style={{ fontSize: 11, color: 'var(--abu)', margin: 0 }}>Durasi 0 = tanpa batas waktu. Bila diisi, saat sesi dimulai muncul hitung mundur; 1 menit terakhir muncul peringatan, dan saat habis chat otomatis selesai.</p>
 
       <textarea className="kp-input" placeholder="Catatan untuk customer (opsional)" rows={2} value={catatan} onChange={(e) => setCatatan(e.target.value)} style={{ resize: 'vertical', marginBottom: 0 }} />
 

@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import TombolKembali from '@/components/TombolKembali';
 import { redirect } from 'next/navigation';
-import { getPsikologTerjamin, getPendaftaranById } from '@/lib/data/psikolog';
+import { getPsikologTerjamin, getPendaftaranById, getJadwalSaya } from '@/lib/data/psikolog';
 import { getPesan, getRekomendasiAnak } from '@/lib/data/konsultasi';
 import { getKatalogRekomendasi, getRekomendasiItemAnak } from '@/lib/data/rekomendasi-item';
 import { getFiturAkses } from '@/lib/data/pengaturan-menu';
@@ -15,6 +15,7 @@ import RekomendasiCard from '@/components/RekomendasiCard';
 import RekomendasiItemPicker from '@/components/RekomendasiItemPicker';
 import RekomendasiItemList from '@/components/RekomendasiItemList';
 import SesiActions from '../SesiActions';
+import MulaiKonsultasiBtn from '../MulaiKonsultasiBtn';
 
 export default async function PsikologChatPage({ params }: { params: Promise<{ pendaftaranId: string }> }) {
   const psi = await getPsikologTerjamin();
@@ -22,13 +23,14 @@ export default async function PsikologChatPage({ params }: { params: Promise<{ p
   const p = await getPendaftaranById(pendaftaranId);
   if (!p || p.psikolog_id !== psi.id) redirect('/psikolog');
 
-  const [pesan, rekomendasi, katalog, itemRek, fitur] = await Promise.all([
+  const [pesan, rekomendasi, katalog, itemRek, fitur, jadwal] = await Promise.all([
     getPesan(pendaftaranId), getRekomendasiAnak(p.anak_id),
-    getKatalogRekomendasi(), getRekomendasiItemAnak(p.anak_id), getFiturAkses(),
+    getKatalogRekomendasi(), getRekomendasiItemAnak(p.anak_id), getFiturAkses(), getJadwalSaya(psi.id),
   ]);
   const fiturPsi = fiturUntukRole(fitur, { is_psikolog: true, is_admin: psi.isAdmin });
   const boleh = [...fiturPsi];
   const bolehChat = fiturPsi.has('chat');
+  const jadwalDurasi = jadwal?.durasi_menit ?? 0;
 
   return (
     <main style={{ maxWidth: 560, margin: '24px auto', padding: 16 }}>
@@ -43,7 +45,13 @@ export default async function PsikologChatPage({ params }: { params: Promise<{ p
       )}
 
       {!bolehChat && <p style={{ color: '#c0392b', fontSize: 13, marginBottom: 8 }}>Fitur chat/konsultasi tidak diaktifkan untuk Anda. Anda hanya bisa melihat riwayat.</p>}
-      <ChatKonsultasi pendaftaranId={pendaftaranId} userId={psi.id} awal={pesan} nonaktif={p.status !== 'diterima' || !bolehChat} />
+      {p.status === 'diterima' && !p.dimulai_pada && jadwalDurasi > 0 && (
+        <div style={{ marginBottom: 10 }}>
+          <MulaiKonsultasiBtn id={pendaftaranId} durasiMenit={jadwalDurasi} />
+          <p style={{ fontSize: 12, color: 'var(--abu)', marginTop: 4 }}>Klik untuk memulai — waktu {jadwalDurasi} menit mulai berjalan dan chat otomatis selesai saat habis.</p>
+        </div>
+      )}
+      <ChatKonsultasi pendaftaranId={pendaftaranId} userId={psi.id} awal={pesan} nonaktif={p.status !== 'diterima' || !bolehChat} dimulaiPada={p.dimulai_pada} durasiMenit={p.durasi_menit} />
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '20px 0 8px' }}>📊 LAPORAN TUMBUH KEMBANG</div>
       <LaporanAnakView anakId={p.anak_id} />

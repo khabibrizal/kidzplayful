@@ -31,7 +31,7 @@ export default async function KonsultasiChatPage({ params }: { params: Promise<{
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 20, margin: '8px 0 4px' }}>💬 Konsultasi — {p.anak_nama || 'Anak'}</h1>
       <p style={{ color: 'var(--abu)', fontSize: 13, marginBottom: 14 }}>{formatTanggal(p.tanggal)} · status {p.status}</p>
 
-      <ChatKonsultasi pendaftaranId={pendaftaranId} userId={user.id} awal={pesan} nonaktif={p.status !== 'diterima'} />
+      <ChatKonsultasi pendaftaranId={pendaftaranId} userId={user.id} awal={pesan} nonaktif={p.status !== 'diterima'} dimulaiPada={p.dimulai_pada} durasiMenit={p.durasi_menit} />
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '20px 0 8px' }}>🧠 REKOMENDASI PSIKOLOG</div>
       {rekomendasi.length === 0
