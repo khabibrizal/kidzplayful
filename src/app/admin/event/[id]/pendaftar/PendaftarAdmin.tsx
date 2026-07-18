@@ -180,7 +180,9 @@ export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = []
       </div>
       {tampil.length === 0 && <p className={s.muted}>Tidak ada pendaftar yang cocok.</p>}
       {GRUP.map((g) => {
-        const items = tampil.filter((p) => (p.kelas ?? 'gabungan') === g.key);
+        // kelas tak dikenal / kosong → masuk grup Gabungan (jangan sampai kartu tersembunyi)
+        const kelasDari = (p: PendaftaranEvent) => (p.kelas === 'baby' || p.kelas === 'toddler') ? p.kelas : 'gabungan';
+        const items = tampil.filter((p) => kelasDari(p) === g.key);
         if (!items.length) return null;
         // peserta dihitung TANPA pendaftaran yang ditolak
         const jml = items.filter((p) => p.status !== 'ditolak').reduce((n, p) => n + (p.jumlah_anak ?? (p.anak_nama?.length ?? 0)), 0);

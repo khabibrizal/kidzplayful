@@ -36,10 +36,11 @@ export async function getSertifikatMapByEvent(eventId: string): Promise<Record<s
 
 export async function getPendaftaranByEvent(eventId: string): Promise<PendaftaranEvent[]> {
   const s = await createClient();
-  const { data } = await s
+  const { data, error } = await s
     .from('pendaftaran_event')
     .select('id,event_id,ortu_id,anak_ids,anak_nama,hadir_anak_ids,jumlah_anak,jumlah_pendamping,total,bukti_url,status,created_at,event_asal_id,alasan_reschedule,alasan_tolak,kelas,kelas_jadwal')
     .eq('event_id', eventId)
     .order('created_at', { ascending: false });
+  if (error) console.error('getPendaftaranByEvent:', error.message); // tampak di Vercel Logs (jangan telan diam-diam)
   return (data ?? []) as unknown as PendaftaranEvent[];
 }
