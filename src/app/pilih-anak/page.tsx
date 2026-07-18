@@ -77,7 +77,7 @@ export default async function PilihAnakPage() {
         ❤️ Favoritmu
       </Link>
 
-      <EventCarousel events={events} statusMap={statusEvent} sisaMap={sisaMap} pesertaMap={peserta} />
+      <EventCarousel events={events} statusMap={statusEvent} sisaMap={sisaMap} pesertaMap={peserta} alasanMap={pendaftaran.alasanMap} />
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '10px 0' }}>PROFIL ANAK</div>
       <div className="kp-grid-kartu">{(anakList ?? []).map((a) => (

@@ -31,7 +31,7 @@ export default async function EventListPage() {
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 24, margin: '10px 0 16px' }}>✨ Event Kelas Bermain</h1>
       {events.length === 0
         ? <p style={{ color: 'var(--abu)' }}>Belum ada event saat ini.</p>
-        : <div className="kp-grid-kartu">{events.map((ev) => <div key={ev.id}><EventCard ev={ev} status={statusEvent[ev.id]} peserta={peserta[ev.id]} sisaAnak={jumlahAnak - (peserta[ev.id]?.length ?? 0)} catatanHref={adaCatatan.has(ev.id) ? `/catatan/${ev.id}` : undefined} /></div>)}</div>}
+        : <div className="kp-grid-kartu">{events.map((ev) => <div key={ev.id}><EventCard ev={ev} status={statusEvent[ev.id]} peserta={peserta[ev.id]} sisaAnak={jumlahAnak - (peserta[ev.id]?.length ?? 0)} alasanTolak={pendaftaran.alasanMap[ev.id]} catatanHref={adaCatatan.has(ev.id) ? `/catatan/${ev.id}` : undefined} /></div>)}</div>}
       <BottomNav />
     </main>
   );

@@ -161,15 +161,17 @@ export async function hapusEvent(id: string): Promise<void> {
   revalidatePath('/pilih-anak'); revalidatePath('/event');
 }
 
-export async function setStatusPendaftaran(id: string, statusBaru: 'menunggu' | 'diterima' | 'ditolak'): Promise<void> {
+export async function setStatusPendaftaran(id: string, statusBaru: 'menunggu' | 'diterima' | 'ditolak', alasan?: string): Promise<void> {
   const s = await adminDb();
   if (statusBaru === 'diterima') {
     const { data: p } = await s.from('pendaftaran_event').select('total').eq('id', id).single();
-    const { error } = await s.from('pendaftaran_event').update({ status: 'diterima', diverifikasi_pada: new Date().toISOString() }).eq('id', id);
+    const { error } = await s.from('pendaftaran_event').update({ status: 'diterima', diverifikasi_pada: new Date().toISOString(), alasan_tolak: null }).eq('id', id);
     if (error) throw new Error(error.message);
     await catatLedger(s, { arah: 'masuk', kategori: 'event', jumlah: p?.total ?? 0, ref_tipe: 'pendaftaran', ref_id: id, keterangan: 'Pendaftaran event', metode: 'transfer' });
   } else {
-    const { error } = await s.from('pendaftaran_event').update({ status: statusBaru }).eq('id', id);
+    const { error } = await s.from('pendaftaran_event')
+      .update({ status: statusBaru, alasan_tolak: statusBaru === 'ditolak' ? (alasan?.trim() || null) : null })
+      .eq('id', id);
     if (error) throw new Error(error.message);
     if (statusBaru === 'ditolak') await hapusLedgerRef(s, 'pendaftaran', id); // batalkan pemasukan bila sudah tercatat
   }

@@ -16,10 +16,10 @@ export async function getEventAdmin(id: string): Promise<EventKelas | null> {
   return (data as unknown as EventKelas) ?? null;
 }
 
-/** Jumlah pendaftar per event (untuk badge di daftar admin). */
+/** Jumlah pendaftar per event (untuk badge di daftar admin). Pendaftaran DITOLAK tidak dihitung. */
 export async function getJumlahPendaftar(): Promise<Record<string, number>> {
   const s = await createClient();
-  const { data } = await s.from('pendaftaran_event').select('event_id');
+  const { data } = await s.from('pendaftaran_event').select('event_id,status').neq('status', 'ditolak');
   const map: Record<string, number> = {};
   for (const r of data ?? []) map[r.event_id as string] = (map[r.event_id as string] ?? 0) + 1;
   return map;
@@ -38,7 +38,7 @@ export async function getPendaftaranByEvent(eventId: string): Promise<Pendaftara
   const s = await createClient();
   const { data } = await s
     .from('pendaftaran_event')
-    .select('id,event_id,ortu_id,anak_ids,anak_nama,hadir_anak_ids,jumlah_anak,jumlah_pendamping,total,bukti_url,status,created_at,event_asal_id,alasan_reschedule,kelas,kelas_jadwal')
+    .select('id,event_id,ortu_id,anak_ids,anak_nama,hadir_anak_ids,jumlah_anak,jumlah_pendamping,total,bukti_url,status,created_at,event_asal_id,alasan_reschedule,alasan_tolak,kelas,kelas_jadwal')
     .eq('event_id', eventId)
     .order('created_at', { ascending: false });
   return (data ?? []) as unknown as PendaftaranEvent[];

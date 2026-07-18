@@ -5,7 +5,7 @@ import Link from 'next/link';
 import type { EventKelas } from '@/lib/game/tipe';
 import EventCard from './EventCard';
 
-export default function EventCarousel({ events, statusMap = {}, sisaMap = {}, pesertaMap = {} }: { events: EventKelas[]; statusMap?: Record<string, string>; sisaMap?: Record<string, number>; pesertaMap?: Record<string, { nama: string; status: string }[]> }) {
+export default function EventCarousel({ events, statusMap = {}, sisaMap = {}, pesertaMap = {}, alasanMap = {} }: { events: EventKelas[]; statusMap?: Record<string, string>; sisaMap?: Record<string, number>; pesertaMap?: Record<string, { nama: string; status: string }[]>; alasanMap?: Record<string, string> }) {
   const ref = useRef<HTMLDivElement>(null);
   const [idx, setIdx] = useState(0);
   if (!events.length) return null;
@@ -24,7 +24,7 @@ export default function EventCarousel({ events, statusMap = {}, sisaMap = {}, pe
       <div ref={ref} onScroll={onScroll}
         style={{ display: 'flex', gap: 12, overflowX: 'auto', scrollSnapType: 'x mandatory', paddingBottom: 4 }}>
         {events.map((ev) => (
-          <div key={ev.id} style={{ flex: '0 0 100%', scrollSnapAlign: 'start' }}><EventCard ev={ev} status={statusMap[ev.id]} sisaAnak={sisaMap[ev.id]} peserta={pesertaMap[ev.id]} /></div>
+          <div key={ev.id} style={{ flex: '0 0 100%', scrollSnapAlign: 'start' }}><EventCard ev={ev} status={statusMap[ev.id]} sisaAnak={sisaMap[ev.id]} peserta={pesertaMap[ev.id]} alasanTolak={alasanMap[ev.id]} /></div>
         ))}
       </div>
       {events.length > 1 && (

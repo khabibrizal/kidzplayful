@@ -206,6 +206,7 @@ export interface PendaftaranEvent {
   created_at: string;
   event_asal_id: string | null;      // event asal bila pendaftaran ini di-reschedule
   alasan_reschedule: string | null;  // alasan reschedule (mis. anak sakit)
+  alasan_tolak?: string | null;      // alasan penolakan (tampil ke orang tua)
   kelas?: string | null;             // 'baby' | 'toddler' | 'gabungan'
   kelas_jadwal?: string | null;      // snapshot tgl+jam kelas terpilih
 }

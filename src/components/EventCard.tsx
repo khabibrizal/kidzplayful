@@ -10,7 +10,7 @@ const STATUS: Record<string, { t: string; c: string; bg: string }> = {
   ditolak: { t: '❌ Pendaftaran ditolak', c: '#b3261e', bg: '#fde8e6' },
 };
 
-export default function EventCard({ ev, status, catatanHref, sisaAnak, peserta }: { ev: EventKelas; status?: string; catatanHref?: string; sisaAnak?: number; peserta?: { nama: string; status: string }[] }) {
+export default function EventCard({ ev, status, catatanHref, sisaAnak, peserta, alasanTolak }: { ev: EventKelas; status?: string; catatanHref?: string; sisaAnak?: number; peserta?: { nama: string; status: string }[]; alasanTolak?: string }) {
   const meta = status ? STATUS[status] : null;
   const adaSisa = typeof sisaAnak === 'number' && sisaAnak > 0;
   const adaPeserta = !!peserta && peserta.length > 0;
@@ -50,6 +50,9 @@ export default function EventCard({ ev, status, catatanHref, sisaAnak, peserta }
         ) : meta ? (
           <>
             <div style={{ marginTop: 10, textAlign: 'center', fontWeight: 700, fontSize: 13, color: meta.c, background: meta.bg, borderRadius: 99, padding: '8px 12px' }}>{meta.t}</div>
+            {status === 'ditolak' && alasanTolak && (
+              <div style={{ marginTop: 6, fontSize: 12, color: '#b3261e', background: '#fde8e6', borderRadius: 10, padding: '6px 10px' }}>Alasan: {alasanTolak}</div>
+            )}
             {status === 'ditolak'
               ? <Link href={`/event/${ev.id}/daftar`} className="kp-btn putih" style={{ display: 'block', textAlign: 'center', marginTop: 8 }}>Daftar lagi</Link>
               : tombolSisa}

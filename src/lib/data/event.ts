@@ -44,6 +44,8 @@ export interface PendaftaranSaya {
   statusMap: Record<string, string>;
   /** anak terdaftar (bukan 'ditolak') per event + status masing-masing. */
   pesertaMap: Record<string, { nama: string; status: string }[]>;
+  /** alasan penolakan terbaru per event (bila status terakhir 'ditolak'). */
+  alasanMap: Record<string, string>;
 }
 
 /**
@@ -56,17 +58,19 @@ export async function getPendaftaranSaya(userId: string): Promise<PendaftaranSay
   const s = await createClient();
   const { data } = await s
     .from('pendaftaran_event')
-    .select('event_id,anak_nama,status,created_at')
+    .select('event_id,anak_nama,status,alasan_tolak,created_at')
     .eq('ortu_id', userId)
     .order('created_at', { ascending: true });
   const statusMap: Record<string, string> = {};
   const pesertaMap: Record<string, { nama: string; status: string }[]> = {};
+  const alasanMap: Record<string, string> = {};
   for (const r of data ?? []) {
     const key = r.event_id as string;
     statusMap[key] = r.status as string; // urut asc → status terbaru menang
-    if (r.status === 'ditolak') continue;
+    if (r.status === 'ditolak') { if (r.alasan_tolak) alasanMap[key] = r.alasan_tolak as string; continue; }
+    delete alasanMap[key]; // status terbaru bukan ditolak → alasan lama tak relevan
     if (!pesertaMap[key]) pesertaMap[key] = [];
     for (const nama of (r.anak_nama as string[]) ?? []) pesertaMap[key].push({ nama, status: r.status as string });
   }
-  return { statusMap, pesertaMap };
+  return { statusMap, pesertaMap, alasanMap };
 }

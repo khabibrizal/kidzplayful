@@ -13,7 +13,7 @@ export default async function StikerEventPage({ params }: { params: Promise<{ id
   const { id } = await params;
   const ev = await getEventAdmin(id);
   if (!ev) redirect('/admin/event');
-  const list = await getPendaftaranByEvent(id);
+  const list = (await getPendaftaranByEvent(id)).filter((p) => p.status !== 'ditolak'); // ditolak tak dapat stiker
   // Stiker tampilkan NAMA PANGGILAN saja (fallback: kata pertama nama lengkap).
   const kataPertama = (t: string) => (t ?? '').trim().split(/\s+/)[0] ?? '';
   const anakIds = [...new Set(list.flatMap((p) => p.anak_ids ?? []))];

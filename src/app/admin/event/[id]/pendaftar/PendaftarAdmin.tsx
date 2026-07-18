@@ -46,10 +46,17 @@ export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = []
   }
 
   async function ubah(p: PendaftaranEvent, status: 'diterima' | 'ditolak') {
+    let alasan: string | undefined;
+    if (status === 'ditolak') {
+      const j = window.prompt('Alasan penolakan (akan tampil ke orang tua):', p.alasan_tolak ?? '');
+      if (j === null) return; // batal
+      if (!j.trim()) { flash('Alasan penolakan wajib diisi.'); return; }
+      alasan = j.trim();
+    }
     setBusyId(p.id);
     try {
-      await setStatusPendaftaran(p.id, status);
-      setList(list.map((x) => (x.id === p.id ? { ...x, status } : x)));
+      await setStatusPendaftaran(p.id, status, alasan);
+      setList(list.map((x) => (x.id === p.id ? { ...x, status, alasan_tolak: status === 'ditolak' ? alasan : null } : x)));
       flash(status === 'diterima' ? 'Diterima ✓' : 'Ditolak');
     } catch (e) { flash(e instanceof Error ? e.message : 'Gagal'); }
     finally { setBusyId(null); }
@@ -86,6 +93,7 @@ export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = []
               {p.created_at && <><br /><small className={s.muted}>🕐 Daftar: {waktuDaftar(p.created_at)}</small></>}
               {p.kelas && p.kelas !== 'gabungan' && <><br /><small className={s.muted}>{p.kelas === 'baby' ? '👶 Baby Class' : p.kelas === 'toddler' ? '🧒 Toddler Class' : p.kelas}{p.kelas_jadwal ? ` · ${p.kelas_jadwal}` : ''}</small></>}
               {p.alasan_reschedule && <><br /><small className={s.muted}>🔁 Direschedule: {p.alasan_reschedule}</small></>}
+              {p.status === 'ditolak' && p.alasan_tolak && <><br /><small style={{ color: '#b3261e' }}>❌ Alasan ditolak: {p.alasan_tolak}</small></>}
             </span>
             <span className={s.tag} style={{ background: '#f3f0fb', color: WARNA[p.status] }}>{p.status}</span>
           </div>
@@ -174,7 +182,8 @@ export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = []
       {GRUP.map((g) => {
         const items = tampil.filter((p) => (p.kelas ?? 'gabungan') === g.key);
         if (!items.length) return null;
-        const jml = items.reduce((n, p) => n + (p.jumlah_anak ?? (p.anak_nama?.length ?? 0)), 0);
+        // peserta dihitung TANPA pendaftaran yang ditolak
+        const jml = items.filter((p) => p.status !== 'ditolak').reduce((n, p) => n + (p.jumlah_anak ?? (p.anak_nama?.length ?? 0)), 0);
         return (
           <div key={g.key}>
             <div className={s.section}>{g.label} · {jml} peserta</div>
