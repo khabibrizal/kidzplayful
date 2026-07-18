@@ -1,7 +1,7 @@
 // src/components/game/GameRunner.tsx
 'use client';
 import { useEffect, useState } from 'react';
-import type { Paket, HasilSelesai, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode, DataUrutan, DataJalur, DataHitung, DataCocokkan, DataEjaKata, DataGaris } from '@/lib/game/tipe';
+import type { Paket, HasilSelesai, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode, DataUrutan, DataJalur, DataHitung, DataCocokkan, DataEjaKata, DataGaris, DataSukuKata, DataJiplak, DataHitungBenda } from '@/lib/game/tipe';
 import ManaYa from './ManaYa';
 import BeresBeres from './BeresBeres';
 import CariPasangan from './CariPasangan';
@@ -13,6 +13,9 @@ import HitungGame from './HitungGame';
 import CocokkanGame from './CocokkanGame';
 import EjaKataGame from './EjaKataGame';
 import GarisGame from './GarisGame';
+import SukuKataGame from './SukuKataGame';
+import JiplakGame from './JiplakGame';
+import HitungBendaGame from './HitungBendaGame';
 import Reward from './Reward';
 import { catatHasil } from '@/lib/data/skor';
 import { hitungBintang } from '@/lib/domain/skor';
@@ -76,6 +79,9 @@ export default function GameRunner({
   else if (paket.mesin === 'cocokkan') engine = <CocokkanGame key={key} data={paket.butir as DataCocokkan} onSelesai={selesai} />;
   else if (paket.mesin === 'ejakata') engine = <EjaKataGame key={key} data={paket.butir as DataEjaKata} onSelesai={selesai} />;
   else if (paket.mesin === 'garis') engine = <GarisGame key={key} data={paket.butir as DataGaris} onSelesai={selesai} />;
+  else if (paket.mesin === 'sukukata') engine = <SukuKataGame key={key} data={paket.butir as DataSukuKata} onSelesai={selesai} />;
+  else if (paket.mesin === 'jiplak') engine = <JiplakGame key={key} data={paket.butir as DataJiplak} onSelesai={selesai} />;
+  else if (paket.mesin === 'hitung-benda') engine = <HitungBendaGame key={key} data={paket.butir as DataHitungBenda} onSelesai={selesai} />;
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>

@@ -50,4 +50,43 @@ describe('validasiButir', () => {
       expect(validasiButir('hitung', b([{ kiri: '🍌', kanan: '🍎', operasi: '-' }]))).toMatch(/kiri/i);
     });
   });
+
+  describe('calistung: sukukata', () => {
+    it('menerima soal susun & dengar yang valid', () => {
+      expect(validasiButir('sukukata', { soal: [{ kata: 'buku', sukuKata: ['bu', 'ku'], pengecoh: ['ka'], mode: 'susun' }] })).toBe('');
+      expect(validasiButir('sukukata', { soal: [{ kata: 'ma', sukuKata: ['ma'], pengecoh: ['na', 'mi'], mode: 'dengar' }] })).toBe('');
+    });
+    it('menolak gabungan suku kata ≠ kata', () => {
+      expect(validasiButir('sukukata', { soal: [{ kata: 'buku', sukuKata: ['bu', 'ka'], pengecoh: [], mode: 'susun' }] })).toMatch(/tidak sama/i);
+    });
+    it('mode susun butuh ≥2 suku kata; dengar butuh pengecoh', () => {
+      expect(validasiButir('sukukata', { soal: [{ kata: 'ma', sukuKata: ['ma'], pengecoh: ['na'], mode: 'susun' }] })).toMatch(/2 suku kata/i);
+      expect(validasiButir('sukukata', { soal: [{ kata: 'ma', sukuKata: ['ma'], pengecoh: [], mode: 'dengar' }] })).toMatch(/pengecoh/i);
+    });
+  });
+
+  describe('calistung: jiplak', () => {
+    it('menerima karakter yang tersedia (huruf & angka)', () => {
+      expect(validasiButir('jiplak', { soal: [{ karakter: 'A' }, { karakter: 'b' }, { karakter: '3' }] })).toBe('');
+    });
+    it('menolak karakter di luar jalur', () => {
+      expect(validasiButir('jiplak', { soal: [{ karakter: '?' }] })).toMatch(/belum tersedia/i);
+      expect(validasiButir('jiplak', { soal: [] })).toMatch(/minimal/i);
+    });
+  });
+
+  describe('calistung: hitung-benda', () => {
+    it('menerima mode hitung & banyak-mana yang valid', () => {
+      expect(validasiButir('hitung-benda', { soal: [{ benda: '🍎', jumlah: 7, mode: 'hitung' }] })).toBe('');
+      expect(validasiButir('hitung-benda', { soal: [{ benda: '🍎', jumlah: 3, benda2: '🍌', jumlah2: 5, mode: 'banyak-mana' }] })).toBe('');
+    });
+    it('jumlah harus 1–10', () => {
+      expect(validasiButir('hitung-benda', { soal: [{ benda: '🍎', jumlah: 0, mode: 'hitung' }] })).toMatch(/1–10/);
+      expect(validasiButir('hitung-benda', { soal: [{ benda: '🍎', jumlah: 11, mode: 'hitung' }] })).toMatch(/1–10/);
+    });
+    it('banyak-mana wajib kelompok kedua & jumlah beda', () => {
+      expect(validasiButir('hitung-benda', { soal: [{ benda: '🍎', jumlah: 3, mode: 'banyak-mana' }] })).toMatch(/kedua/i);
+      expect(validasiButir('hitung-benda', { soal: [{ benda: '🍎', jumlah: 3, benda2: '🍌', jumlah2: 3, mode: 'banyak-mana' }] })).toMatch(/sama/i);
+    });
+  });
 });

@@ -1,7 +1,8 @@
 // src/lib/game/butir.ts
-import type { Mesin, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode, DataUrutan, DataJalur, DataHitung, DataCocokkan, DataEjaKata, DataGaris } from './tipe';
+import type { Mesin, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode, DataUrutan, DataJalur, DataHitung, DataCocokkan, DataEjaKata, DataGaris, DataSukuKata, DataJiplak, DataHitungBenda } from './tipe';
+import { JALUR_KARAKTER } from './jiplak-path';
 
-export function butirDariForm(mesin: Mesin, form: unknown): DataTekan | DataSeret | DataCocok | DataMewarnai | DataDekode | DataUrutan | DataJalur | DataHitung | DataCocokkan | DataEjaKata | DataGaris {
+export function butirDariForm(mesin: Mesin, form: unknown): DataTekan | DataSeret | DataCocok | DataMewarnai | DataDekode | DataUrutan | DataJalur | DataHitung | DataCocokkan | DataEjaKata | DataGaris | DataSukuKata | DataJiplak | DataHitungBenda {
   // form sudah berbentuk objek sesuai mesin; fungsi ini titik normalisasi tunggal
   if (mesin === 'tekan-sesuai') return form as DataTekan;
   if (mesin === 'seret-wadah') return form as DataSeret;
@@ -13,6 +14,9 @@ export function butirDariForm(mesin: Mesin, form: unknown): DataTekan | DataSere
   if (mesin === 'cocokkan') return form as DataCocokkan;
   if (mesin === 'ejakata') return form as DataEjaKata;
   if (mesin === 'garis') return form as DataGaris;
+  if (mesin === 'sukukata') return form as DataSukuKata;
+  if (mesin === 'jiplak') return form as DataJiplak;
+  if (mesin === 'hitung-benda') return form as DataHitungBenda;
   return form as DataCocok;
 }
 
@@ -108,6 +112,40 @@ export function validasiButir(mesin: Mesin, butir: unknown): string {
     const b = butir as DataEjaKata;
     if (!b.soal?.length) return 'Butuh minimal 1 soal.';
     for (const sq of b.soal) { if (!sq.kata?.trim()) return 'Tiap soal butuh kata yang dieja.'; if (sq.kata.trim().length < 2) return 'Kata minimal 2 huruf.'; }
+    return '';
+  }
+  if (mesin === 'sukukata') {
+    const b = butir as DataSukuKata;
+    if (!b.soal?.length) return 'Butuh minimal 1 soal.';
+    for (const sq of b.soal) {
+      if (!sq.kata?.trim()) return 'Tiap soal butuh kata.';
+      if (!sq.sukuKata?.length) return 'Tiap soal butuh suku kata (pisahkan dengan strip, mis. bu-ku).';
+      if (sq.sukuKata.join('') !== sq.kata.replace(/[\s-]/g, '')) return `Gabungan suku kata "${sq.sukuKata.join('-')}" tidak sama dengan kata "${sq.kata}".`;
+      if (sq.mode === 'susun' && sq.sukuKata.length < 2) return 'Mode susun butuh minimal 2 suku kata.';
+      if (sq.mode === 'dengar' && !(sq.pengecoh?.filter((x) => x.trim()).length)) return 'Mode dengar butuh minimal 1 pengecoh.';
+    }
+    return '';
+  }
+  if (mesin === 'jiplak') {
+    const b = butir as DataJiplak;
+    if (!b.soal?.length) return 'Butuh minimal 1 karakter.';
+    for (const sq of b.soal) {
+      if (!sq.karakter || !JALUR_KARAKTER[sq.karakter]) return `Karakter "${sq.karakter}" belum tersedia (pakai A–Z, a–z, 0–9).`;
+    }
+    return '';
+  }
+  if (mesin === 'hitung-benda') {
+    const b = butir as DataHitungBenda;
+    if (!b.soal?.length) return 'Butuh minimal 1 soal.';
+    for (const sq of b.soal) {
+      if (!sq.benda?.trim()) return 'Tiap soal butuh benda (emoji/gambar).';
+      if (!Number.isInteger(sq.jumlah) || sq.jumlah < 1 || sq.jumlah > 10) return 'Jumlah benda harus 1–10.';
+      if (sq.mode === 'banyak-mana') {
+        if (!sq.benda2?.trim()) return 'Mode banyak-mana butuh benda kedua.';
+        if (!Number.isInteger(sq.jumlah2) || (sq.jumlah2 ?? 0) < 1 || (sq.jumlah2 ?? 0) > 10) return 'Jumlah benda kedua harus 1–10.';
+        if (sq.jumlah2 === sq.jumlah) return 'Mode banyak-mana: kedua jumlah tidak boleh sama.';
+      }
+    }
     return '';
   }
   if (mesin === 'garis') {

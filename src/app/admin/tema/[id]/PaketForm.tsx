@@ -1,7 +1,8 @@
 // src/app/admin/tema/[id]/PaketForm.tsx
 'use client';
 import { useState } from 'react';
-import type { Mesin, Paket, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode, DataUrutan, DataJalur, DataHitung, DataCocokkan, DataEjaKata, DataGaris } from '@/lib/game/tipe';
+import type { Mesin, Paket, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode, DataUrutan, DataJalur, DataHitung, DataCocokkan, DataEjaKata, DataGaris, DataSukuKata, DataJiplak, DataHitungBenda } from '@/lib/game/tipe';
+import { KARAKTER_TERSEDIA } from '@/lib/game/jiplak-path';
 import { buatPaket, updatePaket } from '@/lib/data/admin-konten';
 import { validasiButir } from '@/lib/game/butir';
 import AsetInput from '@/components/admin/AsetInput';
@@ -11,7 +12,7 @@ import { sanitizeSvg, tandaiArea } from '@/lib/game/svg-sanitize';
 import TargetEditor from './TargetEditor';
 import s from '../../admin.module.css';
 
-const AREA: Record<Mesin, string> = { 'tekan-sesuai': 'kognitif', 'seret-wadah': 'motorik-halus', 'cari-pasangan': 'kognitif', 'mewarnai': 'kreativitas', 'dekode': 'kognitif', 'urutan': 'kognitif', 'jalur': 'kognitif', 'hitung': 'kognitif', 'cocokkan': 'kognitif', 'ejakata': 'kognitif', 'garis': 'motorik-halus' };
+const AREA: Record<Mesin, string> = { 'tekan-sesuai': 'kognitif', 'seret-wadah': 'motorik-halus', 'cari-pasangan': 'kognitif', 'mewarnai': 'kreativitas', 'dekode': 'kognitif', 'urutan': 'kognitif', 'jalur': 'kognitif', 'hitung': 'kognitif', 'cocokkan': 'kognitif', 'ejakata': 'kognitif', 'garis': 'motorik-halus', 'sukukata': 'kognitif', 'jiplak': 'motorik-halus', 'hitung-benda': 'kognitif' };
 type JSoal = { kolom: number; baris: number; mulai: [number, number]; tujuan: [number, number]; rintangan: [number, number][]; karakter: string; hadiah: string };
 
 const isHex = (v: string) => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v.trim());
@@ -65,6 +66,12 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
   // titik & garis
   const [gSoal, setGSoal] = useState<{ kolom: number; baris: number; garis: [number, number][] }[]>([{ kolom: 2, baris: 2, garis: [] }]);
   const [gSel, setGSel] = useState<{ i: number; dot: number } | null>(null);
+  // calistung: rangkai suku kata
+  const [skSoal, setSkSoal] = useState<{ kata: string; suku: string; pengecoh: string; gambar: string; mode: 'susun' | 'dengar' }[]>([{ kata: '', suku: '', pengecoh: '', gambar: '', mode: 'susun' }]);
+  // calistung: jiplak huruf & angka
+  const [jpKarakter, setJpKarakter] = useState('');
+  // calistung: hitung benda
+  const [hbSoal, setHbSoal] = useState<{ benda: string; jumlah: string; benda2: string; jumlah2: string; mode: 'hitung' | 'banyak-mana' }[]>([{ benda: '', jumlah: '5', benda2: '', jumlah2: '', mode: 'hitung' }]);
 
   async function pilihSvg(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]; if (!f) return;
@@ -113,6 +120,28 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
       butir = { soal: ejaSoal.filter((x) => x.kata.trim()).map((x) => ({ gambar: x.gambar.trim() || undefined, kata: x.kata.trim(), pengecoh: x.pengecoh.trim() || undefined })) };
     } else if (mesin === 'garis') {
       butir = { soal: gSoal.map((sq) => ({ kolom: sq.kolom, baris: sq.baris, garis: sq.garis })).filter((sq) => sq.garis.length > 0) };
+    } else if (mesin === 'sukukata') {
+      butir = {
+        soal: skSoal.filter((x) => x.kata.trim()).map((x) => ({
+          kata: x.kata.trim().toLowerCase(),
+          sukuKata: x.suku.split('-').map((sk) => sk.trim().toLowerCase()).filter(Boolean),
+          pengecoh: x.pengecoh.split(',').map((pg) => pg.trim().toLowerCase()).filter(Boolean),
+          gambar: x.gambar.trim() || undefined,
+          mode: x.mode,
+        })),
+      };
+    } else if (mesin === 'jiplak') {
+      butir = { soal: [...jpKarakter.replace(/\s+/g, '')].map((karakter) => ({ karakter })) };
+    } else if (mesin === 'hitung-benda') {
+      butir = {
+        soal: hbSoal.filter((x) => x.benda.trim()).map((x) => ({
+          benda: x.benda.trim(),
+          jumlah: Number(x.jumlah) || 0,
+          benda2: x.mode === 'banyak-mana' ? (x.benda2.trim() || undefined) : undefined,
+          jumlah2: x.mode === 'banyak-mana' ? (Number(x.jumlah2) || 0) : undefined,
+          mode: x.mode,
+        })),
+      };
     } else {
       butir = { pasangan: pasangan.filter(Boolean) };
     }
@@ -170,6 +199,15 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
     } else if (p.mesin === 'garis') {
       const b = p.butir as DataGaris;
       setGSoal(b.soal?.length ? b.soal.map((x) => ({ kolom: x.kolom, baris: x.baris, garis: x.garis })) : [{ kolom: 2, baris: 2, garis: [] }]);
+    } else if (p.mesin === 'sukukata') {
+      const b = p.butir as DataSukuKata;
+      setSkSoal(b.soal?.length ? b.soal.map((x) => ({ kata: x.kata ?? '', suku: (x.sukuKata ?? []).join('-'), pengecoh: (x.pengecoh ?? []).join(', '), gambar: x.gambar ?? '', mode: x.mode === 'dengar' ? 'dengar' : 'susun' })) : [{ kata: '', suku: '', pengecoh: '', gambar: '', mode: 'susun' }]);
+    } else if (p.mesin === 'jiplak') {
+      const b = p.butir as DataJiplak;
+      setJpKarakter((b.soal ?? []).map((x) => x.karakter).join(''));
+    } else if (p.mesin === 'hitung-benda') {
+      const b = p.butir as DataHitungBenda;
+      setHbSoal(b.soal?.length ? b.soal.map((x) => ({ benda: x.benda ?? '', jumlah: String(x.jumlah ?? ''), benda2: x.benda2 ?? '', jumlah2: x.jumlah2 != null ? String(x.jumlah2) : '', mode: x.mode === 'banyak-mana' ? 'banyak-mana' : 'hitung' })) : [{ benda: '', jumlah: '5', benda2: '', jumlah2: '', mode: 'hitung' }]);
     }
   }
 
@@ -203,6 +241,9 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
           <option value="cocokkan">Cocokkan / Asosiasi (cocokkan)</option>
           <option value="ejakata">Eja Kata (ejakata)</option>
           <option value="garis">Titik & Garis (garis)</option>
+          <option value="sukukata">📖 Rangkai Suku Kata — calistung baca</option>
+          <option value="jiplak">✍️ Jiplak Huruf & Angka — calistung tulis</option>
+          <option value="hitung-benda">🔢 Hitung Benda — calistung hitung</option>
         </select>
         <input className={s.inp} value={judul} onChange={(e) => setJudul(e.target.value)} placeholder="Judul game" style={{ flex: 1 }} />
       </div>
@@ -586,6 +627,65 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
             );
           })}
           <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => setGSoal([...gSoal, { kolom: 2, baris: 2, garis: [] }])}>+ soal</button>
+        </div>
+      )}
+
+      {mesin === 'sukukata' && (
+        <div style={{ marginTop: 10 }}>
+          <div className={s.muted} style={{ fontSize: 12 }}>Mode <b>susun</b>: anak menyusun suku kata jadi kata (gambar + suara). Mode <b>dengar</b> (fonik): anak mendengar lalu memilih suku kata yang benar — isi <b>kata</b> dengan 1 suku kata (mis. "ma") dan suku kata = kata itu sendiri.</div>
+          {skSoal.map((sq, i) => (
+            <div key={i} className={s.card} style={{ background: '#faf7ff' }}>
+              <div className={s.row} style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                <select className={s.inp} value={sq.mode} onChange={(e) => setSkSoal(skSoal.map((y, j) => j === i ? { ...y, mode: e.target.value as 'susun' | 'dengar' } : y))} style={{ width: 110, marginBottom: 0 }}>
+                  <option value="susun">susun</option><option value="dengar">dengar</option>
+                </select>
+                <input className={s.inp} placeholder="kata (buku)" value={sq.kata} onChange={(e) => setSkSoal(skSoal.map((y, j) => j === i ? { ...y, kata: e.target.value } : y))} style={{ width: 120, marginBottom: 0 }} />
+                <input className={s.inp} placeholder="suku kata (bu-ku)" value={sq.suku} onChange={(e) => setSkSoal(skSoal.map((y, j) => j === i ? { ...y, suku: e.target.value } : y))} style={{ width: 140, marginBottom: 0 }} />
+                <input className={s.inp} placeholder="pengecoh (ka, bi)" value={sq.pengecoh} onChange={(e) => setSkSoal(skSoal.map((y, j) => j === i ? { ...y, pengecoh: e.target.value } : y))} style={{ width: 140, marginBottom: 0 }} />
+                {sq.mode === 'susun' && <AsetInput value={sq.gambar} onChange={(v) => setSkSoal(skSoal.map((y, j) => j === i ? { ...y, gambar: v } : y))} placeholder="🖼 gambar" />}
+                {skSoal.length > 1 && <button className={`${s.btnSm} ${s.danger}`} onClick={() => setSkSoal(skSoal.filter((_, j) => j !== i))}>×</button>}
+              </div>
+            </div>
+          ))}
+          <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => setSkSoal([...skSoal, { kata: '', suku: '', pengecoh: '', gambar: '', mode: 'susun' }])}>+ soal</button>
+        </div>
+      )}
+
+      {mesin === 'jiplak' && (
+        <div style={{ marginTop: 10 }}>
+          <div className={s.muted} style={{ fontSize: 12 }}>Ketik daftar karakter yang dijiplak anak (tanpa pemisah). Tersedia: A–Z, a–z, 0–9. Contoh: <b>ABC123</b> → 6 soal berurutan.</div>
+          <input className={s.inp} placeholder="ABC123" value={jpKarakter} onChange={(e) => setJpKarakter(e.target.value)} style={{ width: '100%', marginTop: 6 }} />
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+            {[...jpKarakter.replace(/\s+/g, '')].map((c, i) => (
+              <span key={i} style={{ width: 40, height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 10, fontSize: 24, fontWeight: 800, background: KARAKTER_TERSEDIA.includes(c) ? '#dff5e6' : '#fde8e6', color: KARAKTER_TERSEDIA.includes(c) ? '#1c7a43' : '#b3261e' }}>{c}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {mesin === 'hitung-benda' && (
+        <div style={{ marginTop: 10 }}>
+          <div className={s.muted} style={{ fontSize: 12 }}>Mode <b>hitung</b>: anak mengetuk benda satu-satu lalu memilih angkanya. Mode <b>banyak mana</b>: bandingkan 2 kelompok (jumlah harus beda). Jumlah 1–10.</div>
+          {hbSoal.map((sq, i) => (
+            <div key={i} className={s.card} style={{ background: '#faf7ff' }}>
+              <div className={s.row} style={{ gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                <select className={s.inp} value={sq.mode} onChange={(e) => setHbSoal(hbSoal.map((y, j) => j === i ? { ...y, mode: e.target.value as 'hitung' | 'banyak-mana' } : y))} style={{ width: 130, marginBottom: 0 }}>
+                  <option value="hitung">hitung</option><option value="banyak-mana">banyak mana</option>
+                </select>
+                <AsetInput value={sq.benda} onChange={(v) => setHbSoal(hbSoal.map((y, j) => j === i ? { ...y, benda: v } : y))} placeholder="🍎 benda" />
+                <input className={s.inp} type="number" min={1} max={10} placeholder="jml" value={sq.jumlah} onChange={(e) => setHbSoal(hbSoal.map((y, j) => j === i ? { ...y, jumlah: e.target.value } : y))} style={{ width: 64, marginBottom: 0 }} />
+                {sq.mode === 'banyak-mana' && (
+                  <>
+                    <span className={s.muted}>vs</span>
+                    <AsetInput value={sq.benda2} onChange={(v) => setHbSoal(hbSoal.map((y, j) => j === i ? { ...y, benda2: v } : y))} placeholder="🍌 benda 2" />
+                    <input className={s.inp} type="number" min={1} max={10} placeholder="jml" value={sq.jumlah2} onChange={(e) => setHbSoal(hbSoal.map((y, j) => j === i ? { ...y, jumlah2: e.target.value } : y))} style={{ width: 64, marginBottom: 0 }} />
+                  </>
+                )}
+                {hbSoal.length > 1 && <button className={`${s.btnSm} ${s.danger}`} onClick={() => setHbSoal(hbSoal.filter((_, j) => j !== i))}>×</button>}
+              </div>
+            </div>
+          ))}
+          <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => setHbSoal([...hbSoal, { benda: '', jumlah: '5', benda2: '', jumlah2: '', mode: 'hitung' }])}>+ soal</button>
         </div>
       )}
 

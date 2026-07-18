@@ -442,6 +442,10 @@ Penilaian perkembangan anak per event offline. **Parameter (Area + Indikator) di
 - **Endpoint**: `anak`, `langganan`, `tema`, `paket_aset`, `video`, `kelas_bermain`, `favorit`, `hasil_main`, `lencana_anak`, `tantangan_kustom`(+`_anak`), `tantangan_anak`, `profiles` (pin), `riwayat_kelas`, `aktivitas`.
 - **Gating trial**: `MenuAnak`/`PilihGame`/`VideoPojok` menerima flag `batasi`; item `boleh_trial === false` tampil **🔒** dan diklik → `<Terkunci>`/`/pengaturan`. `MenuAnak.tsx` juga cegah deep-link (`?paket=`) auto-start game terkunci. `/ortu/[anakId]` sama (kartu 🔒). Lihat §7.
 - **Catatan mesin game** (`components/game/`): **Hitung-Kode** (`HitungGame.tsx`) mendukung operasi **+ − × ÷** (`OperasiHitung`; disimpan `'x'`/`':'`, ditampilkan × ÷; validasi `validasiButir`: ÷ wajib kanan ≠ 0 & kiri habis dibagi kanan, − wajib kiri ≥ kanan); pilihan operasi di form admin `PaketForm.tsx`. **Eja Kata** (`EjaKataGame.tsx`): huruf di slot **disembunyikan** — hanya huruf pertama tampil sebagai 1 petunjuk, anak mencari urutan sendiri dari tumpukan huruf.
+- **Mesin CALISTUNG** (spec `docs/superpowers/specs/2026-07-17-game-calistung-design.md`; tanpa migrasi DB; semua soal ber-`audio_url?` — TTS `bunyikan()` di `lib/tts.ts`, rekaman override bila diisi):
+  - 📖 **`sukukata`** (`SukuKataGame.tsx`, kognitif) — mode `susun` (gambar+suara → susun suku kata jadi kata) & `dengar` (fonik: dengar → pilih). Validasi: `sukuKata.join('')===kata`, susun ≥2 suku, dengar ≥1 pengecoh.
+  - ✍️ **`jiplak`** (`JiplakGame.tsx`, motorik-halus) — tracing goresan karakter; jalur bawaan `lib/game/jiplak-path.ts` (`JALUR_KARAKTER` A–Z a–z 0–9, viewBox 100×140, `rapatkan()` utk deteksi progres); toleransi longgar, keluar-jalur ≤3 = rapi. Admin cukup ketik daftar karakter.
+  - 🔢 **`hitung-benda`** (`HitungBendaGame.tsx`, kognitif) — mode `hitung` (tap benda satu-satu + TTS hitungan → pilih angka) & `banyak-mana` (bandingkan 2 kelompok). Validasi jumlah 1–10, banyak-mana wajib kelompok-2 & jumlah beda.
 
 ### 🍎 Guru — `/guru`, `/guru/[eventId]` (isi Nilai tumbuh kembang), `/catatan/[eventId]`
 - **Guard**: `getGuruTerjamin()` (`guru.ts`).

@@ -1,5 +1,5 @@
 // src/lib/game/tipe.ts
-export type Mesin = 'tekan-sesuai' | 'seret-wadah' | 'cari-pasangan' | 'mewarnai' | 'dekode' | 'urutan' | 'jalur' | 'hitung' | 'cocokkan' | 'ejakata' | 'garis';
+export type Mesin = 'tekan-sesuai' | 'seret-wadah' | 'cari-pasangan' | 'mewarnai' | 'dekode' | 'urutan' | 'jalur' | 'hitung' | 'cocokkan' | 'ejakata' | 'garis' | 'sukukata' | 'jiplak' | 'hitung-benda';
 
 export interface ButirTekan { tanya: string; benar: string; salah: string[]; }
 export interface DataTekan { soal: ButirTekan[]; }
@@ -62,6 +62,33 @@ export interface DataEjaKata { soal: EjaSoal[]; }
 export interface GarisSoal { kolom: number; baris: number; garis: [number, number][] } // garis = pasangan indeks titik (idx = y*kolom + x)
 export interface DataGaris { soal: GarisSoal[]; }
 
+// ——— Calistung ———
+// Rangkai Suku Kata (BACA): susun suku kata jadi kata (mode 'susun') / dengar-pilih fonik (mode 'dengar').
+export interface SukuKataSoal {
+  kata: string;          // kata target, mis. "buku"
+  sukuKata: string[];    // ["bu","ku"] — join('') harus = kata
+  pengecoh: string[];    // suku kata pengganggu ["ka","bi"]
+  gambar?: string;       // emoji/URL (mode 'susun')
+  audio_url?: string;    // override TTS bila diisi rekaman
+  mode: 'susun' | 'dengar';
+}
+export interface DataSukuKata { soal: SukuKataSoal[]; }
+
+// Jiplak Huruf & Angka (TULIS): tracing goresan karakter (path bawaan JALUR_KARAKTER).
+export interface JiplakSoal { karakter: string; audio_url?: string } // 1 karakter A–Z a–z 0–9
+export interface DataJiplak { soal: JiplakSoal[]; }
+
+// Hitung Benda (HITUNG): tap-hitung benda ('hitung') / bandingkan dua kelompok ('banyak-mana').
+export interface HitungBendaSoal {
+  benda: string;         // emoji/URL benda
+  jumlah: number;        // 1–10
+  benda2?: string;       // mode 'banyak-mana'
+  jumlah2?: number;      // mode 'banyak-mana' (≠ jumlah)
+  mode: 'hitung' | 'banyak-mana';
+  audio_url?: string;
+}
+export interface DataHitungBenda { soal: HitungBendaSoal[]; }
+
 export interface Paket {
   id: string;
   mesin: Mesin;
@@ -70,7 +97,7 @@ export interface Paket {
   usia_min: number;
   usia_max: number;
   target_detik?: number | null;  // Mode Tantangan: selesai ≤ target = bonus (opsional)
-  butir: DataTekan | DataSeret | DataCocok | DataMewarnai | DataDekode | DataUrutan | DataJalur | DataHitung | DataCocokkan | DataEjaKata | DataGaris;
+  butir: DataTekan | DataSeret | DataCocok | DataMewarnai | DataDekode | DataUrutan | DataJalur | DataHitung | DataCocokkan | DataEjaKata | DataGaris | DataSukuKata | DataJiplak | DataHitungBenda;
 }
 
 export interface HasilSelesai {

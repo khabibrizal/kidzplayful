@@ -33,3 +33,15 @@ export function speak(t: string, opts?: { rate?: number; pitch?: number }) {
     window.speechSynthesis.speak(u);
   } catch { /* abaikan */ }
 }
+
+/** Bunyikan teks: putar rekaman bila audio_url tersedia, selain itu TTS. */
+export function bunyikan(teks: string, audioUrl?: string | null, opts?: { rate?: number; pitch?: number }) {
+  if (audioUrl) {
+    try {
+      const a = new Audio(audioUrl);
+      a.play().catch(() => speak(teks, opts)); // gagal putar (mis. URL rusak) → fallback TTS
+      return;
+    } catch { /* fallback TTS di bawah */ }
+  }
+  speak(teks, opts);
+}
