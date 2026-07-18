@@ -44,36 +44,40 @@ export async function setMingguIni(id: string) {
   revalidatePath('/admin'); revalidatePath(`/admin/tema/${id}`);
 }
 
+// buatPaket/updatePaket MENGEMBALIKAN {ok,error} (bukan throw) agar pesan error DB
+// (mis. CHECK constraint mesin) tidak diredaksi Next.js di production.
 export async function buatPaket(input: {
   temaId: string; mesin: Mesin; judul: string; areaSkill: string; usiaMin: number; usiaMax: number; targetDetik?: number | null; butir: unknown;
-}) {
+}): Promise<{ ok: boolean; error?: string }> {
   const supabase = await db();
   const err = validasiButir(input.mesin, input.butir);
-  if (err) throw new Error(err);
+  if (err) return { ok: false, error: err };
   const { error } = await supabase.from('paket_aset').insert({
     tema_id: input.temaId, mesin: input.mesin, judul: input.judul.trim() || 'Game',
     area_skill: input.areaSkill, usia_min: input.usiaMin, usia_max: input.usiaMax,
     target_detik: input.targetDetik && input.targetDetik > 0 ? Math.floor(input.targetDetik) : null,
     sumber: 'manual', status: 'disetujui', butir: input.butir,
   });
-  if (error) throw new Error(error.message);
+  if (error) return { ok: false, error: error.message };
   revalidatePath(`/admin/tema/${input.temaId}`);
+  return { ok: true };
 }
 
 export async function updatePaket(input: {
   id: string; temaId: string; mesin: Mesin; judul: string; areaSkill: string; usiaMin: number; usiaMax: number; targetDetik?: number | null; butir: unknown;
-}) {
+}): Promise<{ ok: boolean; error?: string }> {
   const supabase = await db();
   const err = validasiButir(input.mesin, input.butir);
-  if (err) throw new Error(err);
+  if (err) return { ok: false, error: err };
   const { error } = await supabase.from('paket_aset').update({
     mesin: input.mesin, judul: input.judul.trim() || 'Game',
     area_skill: input.areaSkill, usia_min: input.usiaMin, usia_max: input.usiaMax,
     target_detik: input.targetDetik && input.targetDetik > 0 ? Math.floor(input.targetDetik) : null,
     butir: input.butir,
   }).eq('id', input.id);
-  if (error) throw new Error(error.message);
+  if (error) return { ok: false, error: error.message };
   revalidatePath(`/admin/tema/${input.temaId}`);
+  return { ok: true };
 }
 
 export async function hapusPaket(id: string, temaId: string) {

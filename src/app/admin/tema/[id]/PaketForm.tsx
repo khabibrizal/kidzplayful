@@ -151,8 +151,10 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
     if (usiaMin > usiaMax) { setErr('Usia minimal tidak boleh lebih besar dari usia maksimal.'); return; }
     const target = targetDetik.trim() ? Number(targetDetik) : null;
     try {
-      if (editId) await updatePaket({ id: editId, temaId, mesin, judul, areaSkill: AREA[mesin], usiaMin, usiaMax, targetDetik: target, butir });
-      else await buatPaket({ temaId, mesin, judul, areaSkill: AREA[mesin], usiaMin, usiaMax, targetDetik: target, butir });
+      const r = editId
+        ? await updatePaket({ id: editId, temaId, mesin, judul, areaSkill: AREA[mesin], usiaMin, usiaMax, targetDetik: target, butir })
+        : await buatPaket({ temaId, mesin, judul, areaSkill: AREA[mesin], usiaMin, usiaMax, targetDetik: target, butir });
+      if (!r.ok) { setErr(r.error ?? 'Gagal menyimpan.'); return; }
       location.reload();
     } catch (e) { setErr(e instanceof Error ? e.message : 'Gagal menyimpan. Cek koneksi & coba lagi.'); }
   }
