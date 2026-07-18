@@ -13,7 +13,7 @@ export default function DownloadPesertaBtn({ eventId, judul }: { eventId: string
     setBusy(true);
     try {
       const rows = await getPesertaEkspor(eventId);
-      if (!rows.length) { alert('Belum ada peserta untuk event ini.'); return; }
+      if (!rows.length) { alert('Belum ada peserta berstatus DITERIMA untuk event ini.'); return; }
       // kelompokkan per kelas
       const grup = new Map<string, typeof rows>();
       for (const r of rows) { const g = grup.get(r.kelas); if (g) g.push(r); else grup.set(r.kelas, [r]); }

@@ -17,11 +17,12 @@ export interface BarisPesertaEkspor {
   waktuDaftar: string;    // waktu saat mendaftar (WIB)
 }
 
-/** Data peserta event untuk diunduh (dikelompokkan per kelas oleh pemanggil). Admin only. */
+/** Data peserta event untuk diunduh (dikelompokkan per kelas oleh pemanggil). Admin only.
+ *  Hanya pendaftaran ber-status DITERIMA (menunggu/ditolak tidak diekspor). */
 export async function getPesertaEkspor(eventId: string): Promise<BarisPesertaEkspor[]> {
   const s = await adminDb();
   const { data: pend } = await s.from('pendaftaran_event')
-    .select('anak_ids,anak_nama,ortu_id,kelas,status,jumlah_pendamping,created_at').eq('event_id', eventId).neq('status', 'ditolak');
+    .select('anak_ids,anak_nama,ortu_id,kelas,status,jumlah_pendamping,created_at').eq('event_id', eventId).eq('status', 'diterima');
   const rowsPend = pend ?? [];
   const anakIds = [...new Set(rowsPend.flatMap((p) => (p.anak_ids as string[]) ?? []))];
   const ortuIds = [...new Set(rowsPend.map((p) => p.ortu_id as string))];
