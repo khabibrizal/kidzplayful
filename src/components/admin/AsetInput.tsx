@@ -5,8 +5,9 @@ import { createClient } from '@/lib/supabase/client';
 import { isUrlAset } from '@/lib/game/aset';
 
 export default function AsetInput({
-  value, onChange, placeholder, width = 130,
-}: { value: string; onChange: (v: string) => void; placeholder?: string; width?: number }) {
+  value, onChange, placeholder, width = 130, tandaiKosong = false,
+}: { value: string; onChange: (v: string) => void; placeholder?: string; width?: number; tandaiKosong?: boolean }) {
+  const kosong = tandaiKosong && !value.trim();
   const fileRef = useRef<HTMLInputElement>(null);
   const [naik, setNaik] = useState(false);
   const [err, setErr] = useState('');
@@ -39,7 +40,7 @@ export default function AsetInput({
       </span>
       <input value={isUrlAset(value) ? '' : value} placeholder={placeholder ?? '🐱 / teks'}
         onChange={(e) => onChange(e.target.value)}
-        style={{ width, background: '#f3f3f8', border: 'none', borderRadius: 8, padding: 8, fontFamily: 'inherit' }} />
+        style={{ width, background: kosong ? '#fde8e6' : '#f3f3f8', border: kosong ? '2px solid #e57373' : 'none', borderRadius: 8, padding: kosong ? 6 : 8, fontFamily: 'inherit' }} />
       <button type="button" onClick={() => fileRef.current?.click()} disabled={naik}
         style={{ border: 'none', cursor: 'pointer', background: '#efe7fb', color: '#9B7FD4', borderRadius: 8, padding: '7px 9px', fontWeight: 700, fontSize: 12 }}>
         {naik ? '...' : '⬆ gambar'}

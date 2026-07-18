@@ -72,6 +72,7 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
   const [jpKarakter, setJpKarakter] = useState('');
   // calistung: hitung benda
   const [hbSoal, setHbSoal] = useState<{ benda: string; jumlah: string; benda2: string; jumlah2: string; mode: 'hitung' | 'banyak-mana' }[]>([{ benda: '', jumlah: '5', benda2: '', jumlah2: '', mode: 'hitung' }]);
+  const [hbTandai, setHbTandai] = useState(false); // sorot kolom benda kosong setelah gagal simpan
 
   async function pilihSvg(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]; if (!f) return;
@@ -84,6 +85,16 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
 
   async function simpan() {
     setErr('');
+    // pra-cek ramah: kolom benda kosong sering terkecoh placeholder 🍎
+    if (mesin === 'hitung-benda') {
+      const kurang = hbSoal.some((x) => !x.benda.trim() || (x.mode === 'banyak-mana' && !x.benda2.trim()));
+      if (kurang) {
+        setHbTandai(true);
+        setErr('Kolom BENDA masih kosong (yang tampak 🍎 hanya contoh). Ketik emoji di kotaknya — Windows: tekan Win + . — atau klik ⬆ gambar.');
+        return;
+      }
+      setHbTandai(false);
+    }
     let butir: unknown;
     if (mesin === 'tekan-sesuai') {
       butir = { soal: soal.filter((x) => x.tanya && x.benar).map((x) => ({ tanya: x.tanya.trim(), benar: x.benar, salah: x.pengecoh.filter(Boolean) })) };
@@ -674,12 +685,12 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
                 <select className={s.inp} value={sq.mode} onChange={(e) => setHbSoal(hbSoal.map((y, j) => j === i ? { ...y, mode: e.target.value as 'hitung' | 'banyak-mana' } : y))} style={{ width: 130, marginBottom: 0 }}>
                   <option value="hitung">hitung</option><option value="banyak-mana">banyak mana</option>
                 </select>
-                <AsetInput value={sq.benda} onChange={(v) => setHbSoal(hbSoal.map((y, j) => j === i ? { ...y, benda: v } : y))} placeholder="🍎 benda" />
+                <AsetInput value={sq.benda} onChange={(v) => setHbSoal(hbSoal.map((y, j) => j === i ? { ...y, benda: v } : y))} placeholder="ketik emoji…" tandaiKosong={hbTandai} />
                 <input className={s.inp} type="number" min={1} max={10} placeholder="jml" value={sq.jumlah} onChange={(e) => setHbSoal(hbSoal.map((y, j) => j === i ? { ...y, jumlah: e.target.value } : y))} style={{ width: 64, marginBottom: 0 }} />
                 {sq.mode === 'banyak-mana' && (
                   <>
                     <span className={s.muted}>vs</span>
-                    <AsetInput value={sq.benda2} onChange={(v) => setHbSoal(hbSoal.map((y, j) => j === i ? { ...y, benda2: v } : y))} placeholder="🍌 benda 2" />
+                    <AsetInput value={sq.benda2} onChange={(v) => setHbSoal(hbSoal.map((y, j) => j === i ? { ...y, benda2: v } : y))} placeholder="ketik emoji…" tandaiKosong={hbTandai} />
                     <input className={s.inp} type="number" min={1} max={10} placeholder="jml" value={sq.jumlah2} onChange={(e) => setHbSoal(hbSoal.map((y, j) => j === i ? { ...y, jumlah2: e.target.value } : y))} style={{ width: 64, marginBottom: 0 }} />
                   </>
                 )}
