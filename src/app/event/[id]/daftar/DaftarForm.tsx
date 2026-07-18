@@ -60,12 +60,13 @@ export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor, b
   }
 
   async function kirim() {
-    if (pilih.size === 0) { setErr('Pilih minimal 1 anak.'); return; }
+    if (pilih.size === 0) { setErr('Pilih minimal 1 anak dulu — pendamping tidak bisa didaftarkan tanpa anak.'); return; }
     if (kelasOpsi.length > 0 && !kelas) { setErr('Pilih kelas dulu.'); return; }
     if (ev.harga_per_anak > 0 && !buktiUrl) { setErr('Unggah bukti pembayaran dulu.'); return; }
     setSubmitting(true); setErr('');
     try {
-      await daftarEvent(ev.id, [...pilih], buktiUrl, kelasOpsi.length > 0 ? kelas : null, pendamping);
+      const r = await daftarEvent(ev.id, [...pilih], buktiUrl, kelasOpsi.length > 0 ? kelas : null, pendamping);
+      if (!r.ok) { setErr(r.error ?? 'Gagal mendaftar'); setSubmitting(false); return; }
       setSukses(true); // tampilkan invoice + tombol konfirmasi WA
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Gagal mendaftar');
@@ -127,10 +128,10 @@ export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor, b
         </div>
       )}
 
-      <div style={{ fontWeight: 700, marginBottom: 6 }}>Pilih anak yang ikut:</div>
+      <div style={{ fontWeight: 700, marginBottom: 6 }}>Pilih anak yang ikut: <span style={{ color: '#c0392b' }}>*</span></div>
       {anak.length === 0 && <p style={{ color: 'var(--abu)' }}>Belum ada profil anak. Tambahkan dulu di dashboard.</p>}
       {anak.map((a) => (
-        <label key={a.id} className="kp-card" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, cursor: 'pointer' }}>
+        <label key={a.id} className="kp-card" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, cursor: 'pointer', border: pilih.size === 0 && err ? '2px solid #e57373' : undefined }}>
           <input type="checkbox" checked={pilih.has(a.id)} onChange={() => toggle(a.id)} style={{ width: 20, height: 20 }} />
           <span style={{ fontSize: 24 }}>🧒</span><b>{a.nama}</b>
         </label>
@@ -177,9 +178,10 @@ export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor, b
       )}
 
       {err && <div className="kp-error" style={{ marginBottom: 10 }}>{err}</div>}
-      <button className="kp-btn" onClick={kirim} disabled={submitting} style={{ width: '100%' }}>
-        {submitting ? 'Mengirim…' : 'Daftar Sekarang'}
+      <button className="kp-btn" onClick={kirim} disabled={submitting || pilih.size === 0} style={{ width: '100%', opacity: pilih.size === 0 ? 0.55 : 1 }}>
+        {submitting ? 'Mengirim…' : pilih.size === 0 ? 'Pilih anak dulu untuk mendaftar' : 'Daftar Sekarang'}
       </button>
+      {pilih.size === 0 && <p style={{ color: 'var(--abu)', fontSize: 12, textAlign: 'center', marginTop: 6 }}>Centang minimal 1 anak — pendamping hanya pelengkap, tidak bisa didaftarkan sendiri.</p>}
     </main>
   );
 }

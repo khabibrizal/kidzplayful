@@ -13,16 +13,17 @@ function jadwalTeks(tgl: string | null, jm: string | null, js: string | null): s
   return gab || null;
 }
 
-export async function daftarEvent(eventId: string, anakIds: string[], buktiUrl: string | null, kelas: string | null = null, jumlahPendamping: number = 0): Promise<void> {
+// Mengembalikan {ok,error} (bukan throw) agar pesan validasi tampil jelas di production.
+export async function daftarEvent(eventId: string, anakIds: string[], buktiUrl: string | null, kelas: string | null = null, jumlahPendamping: number = 0): Promise<{ ok: boolean; error?: string }> {
   const s = await createClient();
   const { data: { user } } = await s.auth.getUser();
-  if (!user) throw new Error('Tidak terautentikasi');
-  if (!anakIds.length) throw new Error('Pilih minimal 1 anak.');
+  if (!user) return { ok: false, error: 'Tidak terautentikasi' };
+  if (!anakIds.length) return { ok: false, error: 'Pilih minimal 1 anak dulu — pendamping tidak bisa didaftarkan tanpa anak.' };
 
   const { data: ev } = await s.from('event')
     .select('harga_per_anak,harga_pendamping,diskon_langganan_persen,status,tanggal,jam_mulai,jam_selesai,baby_tanggal,baby_jam_mulai,baby_jam_selesai,toddler_tanggal,toddler_jam_mulai,toddler_jam_selesai')
     .eq('id', eventId).maybeSingle();
-  if (!ev || ev.status !== 'tampil') throw new Error('Event tidak tersedia.');
+  if (!ev || ev.status !== 'tampil') return { ok: false, error: 'Event tidak tersedia.' };
 
   // Tentukan kelas terpilih + snapshot jadwal
   const adaBaby = !!(ev.baby_jam_mulai || ev.baby_tanggal);
@@ -32,7 +33,7 @@ export async function daftarEvent(eventId: string, anakIds: string[], buktiUrl: 
   if (adaBaby || adaToddler) {
     if (kelas === 'baby' && adaBaby) kelasJadwal = jadwalTeks(ev.baby_tanggal ?? ev.tanggal, ev.baby_jam_mulai, ev.baby_jam_selesai);
     else if (kelas === 'toddler' && adaToddler) kelasJadwal = jadwalTeks(ev.toddler_tanggal ?? ev.tanggal, ev.toddler_jam_mulai, ev.toddler_jam_selesai);
-    else throw new Error('Pilih kelas yang tersedia (Baby/Toddler) dulu.');
+    else return { ok: false, error: 'Pilih kelas yang tersedia (Baby/Toddler) dulu.' };
     kelasFinal = kelas;
   } else {
     kelasFinal = 'gabungan';
@@ -42,14 +43,14 @@ export async function daftarEvent(eventId: string, anakIds: string[], buktiUrl: 
   // hanya anak milik ortu yang valid
   const { data: anak } = await s.from('anak').select('id,nama').in('id', anakIds).eq('ortu_id', user.id);
   const valid = anak ?? [];
-  if (!valid.length) throw new Error('Anak tidak valid.');
+  if (!valid.length) return { ok: false, error: 'Anak tidak valid.' };
 
   // cegah daftar ganda: buang anak yang sudah terdaftar (menunggu/diterima) di event ini
   const { data: pend } = await s.from('pendaftaran_event').select('anak_ids,status').eq('ortu_id', user.id).eq('event_id', eventId);
   const sudah = new Set<string>();
   for (const r of pend ?? []) if (r.status !== 'ditolak') for (const x of (r.anak_ids as string[]) ?? []) sudah.add(x);
   const baru = valid.filter((a) => !sudah.has(a.id));
-  if (!baru.length) throw new Error('Semua anak yang dipilih sudah terdaftar di event ini.');
+  if (!baru.length) return { ok: false, error: 'Semua anak yang dipilih sudah terdaftar di event ini.' };
 
   const status = await getStatusLangganan(s, user.id);
   const nPendamping = Math.max(0, Math.floor(jumlahPendamping || 0));
@@ -67,7 +68,8 @@ export async function daftarEvent(eventId: string, anakIds: string[], buktiUrl: 
     kelas: kelasFinal,
     kelas_jadwal: kelasJadwal,
   });
-  if (error) throw new Error(error.message);
+  if (error) return { ok: false, error: error.message };
   revalidatePath('/event');
   revalidatePath('/pilih-anak');
+  return { ok: true };
 }
