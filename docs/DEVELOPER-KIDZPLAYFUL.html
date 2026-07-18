@@ -22,7 +22,7 @@ li { margin:3px 0; }
 <blockquote>
 <p>Panduan teknis untuk developer baru. Menjelaskan <strong>per halaman/menu</strong>: file apa yang menanganinya, function/reader/server-action apa yang dipakai, dan <strong>endpoint backend</strong> (tabel Supabase / RPC / storage / auth) yang disentuh. Termasuk <strong>REST API internal</strong> (untuk aplikasi mobile) dan infrastruktur.</p>
 </blockquote>
-<p>Terakhir diperbarui: 2026-07-17.</p>
+<p>Terakhir diperbarui: 2026-07-18.</p>
 <hr />
 <h2 id="1-ringkasan-stack">1. Ringkasan &amp; Stack</h2>
 <ul>
@@ -267,7 +267,9 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <h3 id="kelola-tema-admintemaid">🎨 Kelola Tema — <code>/admin/tema/[id]</code></h3>
 <ul>
 <li><strong>File</strong>: <code>admin/tema/[id]/page.tsx</code> (query + aksi inline) → <code>PaketForm.tsx</code> (+ <code>TargetEditor</code>, <code>@/components/admin/AsetInput</code>, <code>@/components/game/Aset</code>).</li>
-<li><strong>Server action</strong>: <code>hapusPaket</code>, <code>setStatusTema</code>, <code>setMingguIni</code>, <code>buatPaket</code>, <code>updatePaket</code> (<code>admin-konten.ts</code>, validasi <code>validasiButir</code>).</li>
+<li><strong>Server action</strong>: <code>hapusPaket</code>, <code>setStatusTema</code>, <code>setMingguIni</code>, <code>buatPaket</code>, <code>updatePaket</code> (<code>admin-konten.ts</code>, validasi <code>validasiButir</code>). <strong><code>buatPaket</code>/<code>updatePaket</code> return <code>{ok,error}</code></strong> (bukan throw) agar pesan error DB — mis. CHECK constraint <code>paket_aset_mesin_check</code> — tampil jelas di production (pola sama dgn <code>buatUser</code>).</li>
+<li><strong>Penting saat menambah MESIN baru</strong>: selain 5 titik kode (tipe → engine → GameRunner → PaketForm → butir), <strong>wajib migrasi perluas CHECK <code>paket_aset_mesin_check</code></strong> (pola <code>0025..0037</code>, terbaru <code>0074_mesin_calistung.sql</code>) — tanpa itu INSERT paket ditolak DB.</li>
+<li><strong>UX form</strong>: <code>AsetInput</code> punya prop <code>tandaiKosong</code> (sorot merah bila kosong); form Hitung Benda melakukan pra-cek kolom benda kosong dengan pesan spesifik (placeholder "ketik emoji…").</li>
 <li><strong>Endpoint</strong>: <code>tema</code>, <code>paket_aset</code>; <code>storage.from('aset')</code> (aset game via AsetInput).</li>
 </ul>
 <hr />
@@ -838,8 +840,8 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </tr>
 <tr>
 <td><code>tema</code>, <code>paket_aset</code></td>
-<td>katalog game (tema + paket/butir aset); <code>tema.boleh_trial</code></td>
-<td>0001–0003, 0025–0037, 0060</td>
+<td>katalog game (tema + paket/butir aset); <code>tema.boleh_trial</code>; <code>paket_aset.mesin</code> ber-CHECK constraint (perluas tiap mesin baru)</td>
+<td>0001–0003, 0025–0037, 0060, 0074</td>
 </tr>
 <tr>
 <td><code>video</code></td>

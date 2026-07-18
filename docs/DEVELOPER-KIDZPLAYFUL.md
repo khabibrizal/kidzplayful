@@ -2,7 +2,7 @@
 
 > Panduan teknis untuk developer baru. Menjelaskan **per halaman/menu**: file apa yang menanganinya, function/reader/server-action apa yang dipakai, dan **endpoint backend** (tabel Supabase / RPC / storage / auth) yang disentuh. Termasuk **REST API internal** (untuk aplikasi mobile) dan infrastruktur.
 
-Terakhir diperbarui: 2026-07-17.
+Terakhir diperbarui: 2026-07-18.
 
 ---
 
@@ -230,7 +230,9 @@ Menu top-level tersendiri (sumber pendapatan). Rincian lengkap: lihat **§6 Modu
 
 ### 🎨 Kelola Tema — `/admin/tema/[id]`
 - **File**: `admin/tema/[id]/page.tsx` (query + aksi inline) → `PaketForm.tsx` (+ `TargetEditor`, `@/components/admin/AsetInput`, `@/components/game/Aset`).
-- **Server action**: `hapusPaket`, `setStatusTema`, `setMingguIni`, `buatPaket`, `updatePaket` (`admin-konten.ts`, validasi `validasiButir`).
+- **Server action**: `hapusPaket`, `setStatusTema`, `setMingguIni`, `buatPaket`, `updatePaket` (`admin-konten.ts`, validasi `validasiButir`). **`buatPaket`/`updatePaket` return `{ok,error}`** (bukan throw) agar pesan error DB — mis. CHECK constraint `paket_aset_mesin_check` — tampil jelas di production (pola sama dgn `buatUser`).
+- **Penting saat menambah MESIN baru**: selain 5 titik kode (tipe → engine → GameRunner → PaketForm → butir), **wajib migrasi perluas CHECK `paket_aset_mesin_check`** (pola `0025..0037`, terbaru `0074_mesin_calistung.sql`) — tanpa itu INSERT paket ditolak DB.
+- **UX form**: `AsetInput` punya prop `tandaiKosong` (sorot merah bila kosong); form Hitung Benda melakukan pra-cek kolom benda kosong dengan pesan spesifik (placeholder "ketik emoji…").
 - **Endpoint**: `tema`, `paket_aset`; `storage.from('aset')` (aset game via AsetInput).
 
 ---
@@ -572,7 +574,7 @@ Semua Route Handler (`app/api/**/route.ts`) mengembalikan amplop JSON seragam vi
 | `anak` | data anak (nama, `nama_panggilan` utk stiker, tgl lahir, jenis kelamin, mode, koin/streak) | 0001, 0024, 0042, 0071 |
 | `langganan` | status langganan/trial per user (trial_mulai, aktif_sampai, nominal) | 0001 |
 | `pembayaran_langganan` | riwayat pembayaran membership | 0052 |
-| `tema`, `paket_aset` | katalog game (tema + paket/butir aset); `tema.boleh_trial` | 0001–0003, 0025–0037, 0060 |
+| `tema`, `paket_aset` | katalog game (tema + paket/butir aset); `tema.boleh_trial`; `paket_aset.mesin` ber-CHECK constraint (perluas tiap mesin baru) | 0001–0003, 0025–0037, 0060, 0074 |
 | `video` | video edukasi (kategori baby/toddler); `boleh_trial` | 0003, 0005, 0060 |
 | `kelas_bermain` | materi kelas bermain (+ worksheet, bahan); `boleh_trial` | 0009, 0013–0016, 0060 |
 | `favorit` | kelas favorit user | 0015 |

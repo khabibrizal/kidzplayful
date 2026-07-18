@@ -54,6 +54,7 @@ Jangan pakai *secret key*. `NEXT_PUBLIC_*` harus ada **sebelum build** (juga di 
 2. Tipe di `src/lib/game/tipe.ts`; util format di `src/lib/format.ts`.
 3. Halaman di `src/app/<rute>/page.tsx` (Server) + komponen Client bila perlu; admin di `src/app/admin/<fitur>/` + tambah link di `src/app/admin/page.tsx`.
 4. Skema baru → migrasi `00NN_*.sql` + RLS (baca milik sendiri/admin/guru sesuai kebutuhan).
+   - **Mesin game baru** WAJIB migrasi perluas CHECK `paket_aset_mesin_check` (pola `0025..0037`, `0074`) — tanpa itu INSERT paket ditolak DB (error ter-redact di production).
 5. Verifikasi: `tsc --noEmit` + `npm run build`; untuk fitur besar buat skrip `tools/<fitur>_check.mjs` (puppeteer) yang uji e2e di produksi lalu **bersihkan data uji**.
 6. Commit (Indonesian) + push → Vercel auto-deploy. Ingatkan user menjalankan migrasi bila ada.
 
