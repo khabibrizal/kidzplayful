@@ -41,7 +41,7 @@ src/
     supabase/          # server.ts (SSR), client.ts (browser)
     api/               # helpers.ts (amplop JSON + auth Bearer untuk REST API)
     game/              # tipe & util mesin game
-supabase/migrations/   # skema DB (0001..0077), dijalankan manual di SQL Editor
+supabase/migrations/   # skema DB (0001..0078), dijalankan manual di SQL Editor
 docs/                  # dokumentasi (termasuk file ini)
 tools/md2pdf.py        # generator PDF dokumentasi
 ```
@@ -67,7 +67,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 - Halaman tidak menaruh selector mentah bila bisa lewat reader; beberapa halaman melakukan query inline sederhana.
 
 ### Deploy & migrasi
-- Migrasi dijalankan **manual** di Supabase SQL Editor (urut `0001..0077`), lalu diverifikasi via REST (`?select=col&limit=1` → 200).
+- Migrasi dijalankan **manual** di Supabase SQL Editor (urut `0001..0078`), lalu diverifikasi via REST (`?select=col&limit=1` → 200).
 - Commit: `git -c commit.gpgsign=false commit` + baris `Co-Authored-By`. Push ke `master` → Vercel auto-deploy.
 - Banyak reader dibungkus `try/catch` agar fitur aman dideploy sebelum migrasinya dijalankan (mengembalikan nilai default).
 
@@ -127,11 +127,19 @@ Pembungkus: `admin/layout.tsx` (guard `getAksesAdmin`, kirim `allowed`+`isSuperu
 
 ### 🎈 Kelas Bermain — `/admin/kelas-bermain`
 - **File**: `admin/kelas-bermain/page.tsx` → `KelasAdmin.tsx`.
-- **Fungsi data**: `getKelasSemua()` (`kelas-bermain.ts`), `getProdukSemua()` (`admin-store.ts`).
+- **Fungsi data**: `getKelasSemua()` (`kelas-bermain.ts`), `getProdukSemua()` (`admin-store.ts`), `getFokusAreaAktif()` (`fokus-area.ts` → chips form).
 - **Server action**: `buatKelas`, `updateKelas`, `toggleStatusKelas`, `hapusKelas`, **`setBolehTrialKelas`** (toggle Trial ✓/✗) (`kelas-bermain-actions.ts`).
-- **Field per kelas** (kolom tabel, 0076–0077): **🎯 `tujuan`**, **👶 `usia_min`/`usia_max`**, **🧩 `fokus_area` text[]** (chips multi-pilih 8 area: motorik halus/kasar, kognitif, bahasa, sosial-emosional, sensorik, kemandirian, kreativitas), **🤝 `peran_ortu`**. Tampil di detail user `/kelas/[id]` sebagai kartu info.
+- **Field per kelas** (kolom tabel, 0076–0077): **🎯 `tujuan`**, **👶 `usia_min`/`usia_max`**, **🧩 `fokus_area` text[]** (chips multi-pilih; daftar area dari **master `fokus_area`**, lihat di bawah), **🤝 `peran_ortu`**. Tampil di detail user `/kelas/[id]` sebagai kartu info (label badge juga dari master, fallback bawaan).
 - **Field per AKTIVITAS** (key bernama di jsonb `aktivitas` — keputusan owner: tetap jsonb, 1 kelas = N aktivitas): `judul`, `cara_membuat`, `langkah[]`, **`catatan_ortu`**. Tampilan user memakai subjudul **🛠️ CARA MEMBUAT**, **🎲 CARA BERMAIN** (langkah), **💡 CATATAN UNTUK ORANG TUA** (kartu kuning).
-- **Endpoint**: `kelas_bermain` (+`boleh_trial`/`tujuan`/`fokus_area`/`peran_ortu`/`usia_*`), `produk`; `storage.from('aset')` (folder `worksheet/`).
+- **Endpoint**: `kelas_bermain` (+`boleh_trial`/`tujuan`/`fokus_area`/`peran_ortu`/`usia_*`), `produk`, `fokus_area`; `storage.from('aset')` (folder `worksheet/`).
+
+### 🧩 Master Fokus Area — `/admin/fokus-area`
+Master data pilihan chips Fokus Area Perkembangan (dipakai form Kelas Bermain & label di sisi user).
+- **File**: `admin/fokus-area/page.tsx` → `FokusAreaAdmin.tsx`.
+- **Fungsi data**: `getFokusAreaSemua()`, `getFokusAreaAktif()`, `getLabelFokusArea()` (peta key→label) (`fokus-area.ts`).
+- **Server action** (`fokus-area-actions.ts`, return `{ok,error}`): `buatFokusArea(label, urutan)` — **key di-slug dari label tanpa emoji** dan **tak berubah saat label diedit** (data kelas lama tetap cocok); `updateFokusArea(id, {label,urutan,aktif})`; `hapusFokusArea(id)` (saran: **nonaktifkan** bila masih dipakai — hapus membuat kelas lama menampilkan key mentah).
+- **Endpoint**: tabel `fokus_area` (0078: key unik, label, urutan, aktif; RLS baca authenticated, kelola admin; seed 8 area bawaan).
+- Area **nonaktif** hilang dari chips form tanpa menyentuh data kelas lama.
 
 ### 📝 Artikel — `/admin/artikel` & `/admin/artikel/[id]`
 - **File**: `admin/artikel/page.tsx` (daftar) + `admin/artikel/[id]/page.tsx` → `ArtikelForm.tsx`.
@@ -583,6 +591,7 @@ Semua Route Handler (`app/api/**/route.ts`) mengembalikan amplop JSON seragam vi
 | `tema`, `paket_aset` | katalog game (tema + paket/butir aset); `tema.boleh_trial`; `paket_aset.mesin` ber-CHECK constraint (perluas tiap mesin baru) | 0001–0003, 0025–0037, 0060, 0074 |
 | `video` | video edukasi (kategori baby/toddler); `boleh_trial` | 0003, 0005, 0060 |
 | `kelas_bermain` | materi kelas bermain (+ worksheet, bahan; `tujuan`/`usia_*`/`fokus_area[]`/`peran_ortu`; aktivitas jsonb ber-key `catatan_ortu`); `boleh_trial` | 0009, 0013–0016, 0060, 0076, 0077 |
+| `fokus_area` | master Fokus Area Perkembangan (`key` unik → dipakai `kelas_bermain.fokus_area`, label, urutan, aktif) | 0078 |
 | `favorit` | kelas favorit user | 0015 |
 | `postingan`, `komentar`, `suka`, `laporan` | komunitas + moderasi | 0010, 0011, 0028 |
 | `event`, `pendaftaran_event` | event + pendaftaran (status, bukti, kehadiran, reschedule, `alasan_tolak`; `indikator_perkembangan`; kelas terpisah `event.baby_*`/`toddler_*` + `pendaftaran_event.kelas`/`kelas_jadwal`; `event.harga_pendamping` + `pendaftaran_event.jumlah_pendamping`) | 0017, 0027, 0062, 0069, 0070, 0075 |

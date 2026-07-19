@@ -55,7 +55,7 @@ li { margin:3px 0; }
     supabase/          # server.ts (SSR), client.ts (browser)
     api/               # helpers.ts (amplop JSON + auth Bearer untuk REST API)
     game/              # tipe &amp; util mesin game
-supabase/migrations/   # skema DB (0001..0077), dijalankan manual di SQL Editor
+supabase/migrations/   # skema DB (0001..0078), dijalankan manual di SQL Editor
 docs/                  # dokumentasi (termasuk file ini)
 tools/md2pdf.py        # generator PDF dokumentasi
 </code></pre>
@@ -82,7 +82,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </ul>
 <h3 id="deploy-migrasi">Deploy &amp; migrasi</h3>
 <ul>
-<li>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor (urut <code>0001..0077</code>), lalu diverifikasi via REST (<code>?select=col&amp;limit=1</code> → 200).</li>
+<li>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor (urut <code>0001..0078</code>), lalu diverifikasi via REST (<code>?select=col&amp;limit=1</code> → 200).</li>
 <li>Commit: <code>git -c commit.gpgsign=false commit</code> + baris <code>Co-Authored-By</code>. Push ke <code>master</code> → Vercel auto-deploy.</li>
 <li>Banyak reader dibungkus <code>try/catch</code> agar fitur aman dideploy sebelum migrasinya dijalankan (mengembalikan nilai default).</li>
 </ul>
@@ -148,12 +148,19 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <h3 id="kelas-bermain-adminkelas-bermain">🎈 Kelas Bermain — <code>/admin/kelas-bermain</code></h3>
 <ul>
 <li><strong>File</strong>: <code>admin/kelas-bermain/page.tsx</code> → <code>KelasAdmin.tsx</code>.</li>
-<li><strong>Fungsi data</strong>: <code>getKelasSemua()</code> (<code>kelas-bermain.ts</code>), <code>getProdukSemua()</code> (<code>admin-store.ts</code>).</li>
+<li><strong>Fungsi data</strong>: <code>getKelasSemua()</code> (<code>kelas-bermain.ts</code>), <code>getProdukSemua()</code> (<code>admin-store.ts</code>), <code>getFokusAreaAktif()</code> (<code>fokus-area.ts</code> → chips form).</li>
 <li><strong>Server action</strong>: <code>buatKelas</code>, <code>updateKelas</code>, <code>toggleStatusKelas</code>, <code>hapusKelas</code>, <strong><code>setBolehTrialKelas</code></strong> (toggle Trial ✓/✗) (<code>kelas-bermain-actions.ts</code>).</li>
-<li><strong>Field per kelas</strong> (kolom tabel, 0076–0077): <strong>🎯 <code>tujuan</code></strong>, <strong>👶 <code>usia_min</code>/<code>usia_max</code></strong>, <strong>🧩 <code>fokus_area</code> text[]</strong> (chips multi-pilih 8 area: motorik halus/kasar, kognitif, bahasa, sosial-emosional, sensorik, kemandirian, kreativitas), <strong>🤝 <code>peran_ortu</code></strong>. Tampil di detail user <code>/kelas/[id]</code> sebagai kartu info.</li>
+<li><strong>Field per kelas</strong> (kolom tabel, 0076–0077): <strong>🎯 <code>tujuan</code></strong>, <strong>👶 <code>usia_min</code>/<code>usia_max</code></strong>, <strong>🧩 <code>fokus_area</code> text[]</strong> (chips multi-pilih; daftar area dari <strong>master <code>fokus_area</code></strong>, lihat di bawah), <strong>🤝 <code>peran_ortu</code></strong>. Tampil di detail user <code>/kelas/[id]</code> sebagai kartu info (label badge juga dari master, fallback bawaan).</li>
 <li><strong>Field per AKTIVITAS</strong> (key bernama di jsonb <code>aktivitas</code> — keputusan owner: tetap jsonb, 1 kelas = N aktivitas): <code>judul</code>, <code>cara_membuat</code>, <code>langkah[]</code>, <strong><code>catatan_ortu</code></strong>. Tampilan user memakai subjudul <strong>🛠️ CARA MEMBUAT</strong>, <strong>🎲 CARA BERMAIN</strong> (langkah), <strong>💡 CATATAN UNTUK ORANG TUA</strong> (kartu kuning).</li>
-<li><strong>Endpoint</strong>: <code>kelas_bermain</code> (+<code>boleh_trial</code>/<code>tujuan</code>/<code>fokus_area</code>/<code>peran_ortu</code>/<code>usia_*</code>), <code>produk</code>; <code>storage.from('aset')</code> (folder <code>worksheet/</code>).</li>
+<li><strong>Endpoint</strong>: <code>kelas_bermain</code> (+<code>boleh_trial</code>/<code>tujuan</code>/<code>fokus_area</code>/<code>peran_ortu</code>/<code>usia_*</code>), <code>produk</code>, <code>fokus_area</code>; <code>storage.from('aset')</code> (folder <code>worksheet/</code>).</li>
 </ul>
+<h3 id="master-fokus-area-adminfokus-area">🧩 Master Fokus Area — <code>/admin/fokus-area</code></h3>
+<p>Master data pilihan chips Fokus Area Perkembangan (dipakai form Kelas Bermain &amp; label di sisi user).
+- <strong>File</strong>: <code>admin/fokus-area/page.tsx</code> → <code>FokusAreaAdmin.tsx</code>.
+- <strong>Fungsi data</strong>: <code>getFokusAreaSemua()</code>, <code>getFokusAreaAktif()</code>, <code>getLabelFokusArea()</code> (peta key→label) (<code>fokus-area.ts</code>).
+- <strong>Server action</strong> (<code>fokus-area-actions.ts</code>, return <code>{ok,error}</code>): <code>buatFokusArea(label, urutan)</code> — <strong>key di-slug dari label tanpa emoji</strong> dan <strong>tak berubah saat label diedit</strong> (data kelas lama tetap cocok); <code>updateFokusArea(id, {label,urutan,aktif})</code>; <code>hapusFokusArea(id)</code> (saran: <strong>nonaktifkan</strong> bila masih dipakai — hapus membuat kelas lama menampilkan key mentah).
+- <strong>Endpoint</strong>: tabel <code>fokus_area</code> (0078: key unik, label, urutan, aktif; RLS baca authenticated, kelola admin; seed 8 area bawaan).
+- Area <strong>nonaktif</strong> hilang dari chips form tanpa menyentuh data kelas lama.</p>
 <h3 id="artikel-adminartikel-adminartikelid">📝 Artikel — <code>/admin/artikel</code> &amp; <code>/admin/artikel/[id]</code></h3>
 <ul>
 <li><strong>File</strong>: <code>admin/artikel/page.tsx</code> (daftar) + <code>admin/artikel/[id]/page.tsx</code> → <code>ArtikelForm.tsx</code>.</li>
@@ -858,6 +865,11 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <td><code>kelas_bermain</code></td>
 <td>materi kelas bermain (+ worksheet, bahan; <code>tujuan</code>/<code>usia_*</code>/<code>fokus_area[]</code>/<code>peran_ortu</code>; aktivitas jsonb ber-key <code>catatan_ortu</code>); <code>boleh_trial</code></td>
 <td>0009, 0013–0016, 0060, 0076, 0077</td>
+</tr>
+<tr>
+<td><code>fokus_area</code></td>
+<td>master Fokus Area Perkembangan (<code>key</code> unik → dipakai <code>kelas_bermain.fokus_area</code>, label, urutan, aktif)</td>
+<td>0078</td>
 </tr>
 <tr>
 <td><code>favorit</code></td>
