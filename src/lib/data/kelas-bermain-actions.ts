@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import type { KelasBermain } from '@/lib/game/tipe';
 
 export interface BahanInput { nama: string; link: string; produkId: string }
-export interface AktivitasInput { judul: string; caraMembuat: string; langkah: string[] }
+export interface AktivitasInput { judul: string; caraMembuat: string; langkah: string[]; catatanOrtu: string }
 export interface KelasInput {
   judul: string;
   tujuan: string;
@@ -40,6 +40,7 @@ function row(i: KelasInput) {
         judul: a.judul.trim() || 'Aktivitas',
         cara_membuat: a.caraMembuat.trim() || null,
         langkah: a.langkah.filter((l) => l.trim()),
+        catatan_ortu: a.catatanOrtu.trim() || null,
       })),
     link_ide: i.linkIde.trim() || null,
     worksheet_url: i.worksheetUrl?.trim() || null,

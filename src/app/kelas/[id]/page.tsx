@@ -63,11 +63,25 @@ export default async function KelasDetailPage({ params }: { params: Promise<{ id
       {kelas.aktivitas?.map((a, ai) => (
         <div key={ai} className="kp-card" style={{ marginBottom: 10 }}>
           <b>🎯 {a.judul || `Aktivitas ${ai + 1}`}</b>
-          {a.cara_membuat && <p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>🛠️ {a.cara_membuat}</p>}
+          {a.cara_membuat && (
+            <>
+              <div style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: 'var(--abu)' }}>🛠️ CARA MEMBUAT</div>
+              <p style={{ marginTop: 4, whiteSpace: 'pre-wrap' }}>{a.cara_membuat}</p>
+            </>
+          )}
           {a.langkah?.length > 0 && (
-            <ol style={{ margin: '8px 0 0 18px', lineHeight: 1.7 }}>
-              {a.langkah.map((l, i) => <li key={i}>{l}</li>)}
-            </ol>
+            <>
+              <div style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: 'var(--abu)' }}>🎲 CARA BERMAIN</div>
+              <ol style={{ margin: '4px 0 0 18px', lineHeight: 1.7 }}>
+                {a.langkah.map((l, i) => <li key={i}>{l}</li>)}
+              </ol>
+            </>
+          )}
+          {a.catatan_ortu && (
+            <div style={{ marginTop: 10, background: '#fff3d6', borderRadius: 12, padding: '8px 12px' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#b88600' }}>💡 CATATAN UNTUK ORANG TUA</div>
+              <p style={{ margin: '4px 0 0', fontSize: 14, whiteSpace: 'pre-wrap' }}>{a.catatan_ortu}</p>
+            </div>
           )}
         </div>
       ))}

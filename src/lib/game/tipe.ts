@@ -152,7 +152,8 @@ export interface BahanItem {
 export interface AktivitasItem {
   judul: string;
   cara_membuat: string | null;
-  langkah: string[];
+  langkah: string[];          // urutan cara bermain
+  catatan_ortu?: string | null; // catatan/tips untuk orang tua
 }
 export interface KelasBermain {
   id: string;

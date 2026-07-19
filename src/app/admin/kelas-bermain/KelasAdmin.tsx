@@ -12,7 +12,7 @@ const KOSONG: KelasInput = {
   usiaMin: 0,
   usiaMax: 6,
   bahan: [{ nama: '', link: '', produkId: '' }],
-  aktivitas: [{ judul: '', caraMembuat: '', langkah: [''] }],
+  aktivitas: [{ judul: '', caraMembuat: '', langkah: [''], catatanOrtu: '' }],
   linkIde: '',
   worksheetUrl: null,
 };
@@ -40,8 +40,8 @@ export default function KelasAdmin({ awal, produkOpsi = [] }: { awal: KelasBerma
       usiaMax: k.usia_max ?? 6,
       bahan: k.bahan?.length ? k.bahan.map((b) => ({ nama: b.nama, link: b.link ?? '', produkId: b.produk_id ?? '' })) : [{ nama: '', link: '', produkId: '' }],
       aktivitas: k.aktivitas?.length
-        ? k.aktivitas.map((a) => ({ judul: a.judul, caraMembuat: a.cara_membuat ?? '', langkah: a.langkah?.length ? a.langkah : [''] }))
-        : [{ judul: '', caraMembuat: '', langkah: [''] }],
+        ? k.aktivitas.map((a) => ({ judul: a.judul, caraMembuat: a.cara_membuat ?? '', langkah: a.langkah?.length ? a.langkah : [''], catatanOrtu: a.catatan_ortu ?? '' }))
+        : [{ judul: '', caraMembuat: '', langkah: [''], catatanOrtu: '' }],
       linkIde: k.link_ide ?? '',
       worksheetUrl: k.worksheet_url,
     });
@@ -55,11 +55,11 @@ export default function KelasAdmin({ awal, produkOpsi = [] }: { awal: KelasBerma
   function tambahBahan() { if (form) setForm({ ...form, bahan: [...form.bahan, { nama: '', link: '', produkId: '' }] }); }
   function hapusBahan(i: number) { if (form) setForm({ ...form, bahan: form.bahan.filter((_, j) => j !== i) }); }
 
-  function setAkt(ai: number, patch: Partial<{ judul: string; caraMembuat: string }>) {
+  function setAkt(ai: number, patch: Partial<{ judul: string; caraMembuat: string; catatanOrtu: string }>) {
     if (!form) return;
     setForm({ ...form, aktivitas: form.aktivitas.map((a, j) => (j === ai ? { ...a, ...patch } : a)) });
   }
-  function tambahAktivitas() { if (form) setForm({ ...form, aktivitas: [...form.aktivitas, { judul: '', caraMembuat: '', langkah: [''] }] }); }
+  function tambahAktivitas() { if (form) setForm({ ...form, aktivitas: [...form.aktivitas, { judul: '', caraMembuat: '', langkah: [''], catatanOrtu: '' }] }); }
   function hapusAktivitas(ai: number) { if (form) setForm({ ...form, aktivitas: form.aktivitas.filter((_, j) => j !== ai) }); }
   function setLangkah(ai: number, li: number, val: string) {
     if (!form) return;
@@ -190,6 +190,7 @@ export default function KelasAdmin({ awal, produkOpsi = [] }: { awal: KelasBerma
                 </div>
               ))}
               <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => tambahLangkah(ai)}>+ langkah</button>
+              <textarea className={s.inp} placeholder="💡 Catatan untuk orang tua (mis. dampingi anak saat menggunting) — tampil di halaman user" rows={2} value={a.catatanOrtu} onChange={(e) => setAkt(ai, { catatanOrtu: e.target.value })} style={{ width: '100%', resize: 'vertical', marginTop: 8 }} />
             </div>
           ))}
           <button className={s.btnSm} style={{ background: '#dff5e6', color: '#1c7a43', marginTop: 8 }} onClick={tambahAktivitas}>+ tambah aktivitas</button>
