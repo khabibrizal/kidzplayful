@@ -6,9 +6,22 @@ import { buatKelas, updateKelas, toggleStatusKelas, hapusKelas, setBolehTrialKel
 import type { KelasBermain } from '@/lib/game/tipe';
 import s from '../admin.module.css';
 
+const AREA_FOKUS = [
+  { key: 'motorik-halus', label: '✋ Motorik Halus' },
+  { key: 'motorik-kasar', label: '🏃 Motorik Kasar' },
+  { key: 'kognitif', label: '🧠 Kognitif' },
+  { key: 'bahasa', label: '🗣️ Bahasa' },
+  { key: 'sosial-emosional', label: '💞 Sosial-Emosional' },
+  { key: 'sensorik', label: '🖐️ Sensorik' },
+  { key: 'kemandirian', label: '🌟 Kemandirian' },
+  { key: 'kreativitas', label: '🎨 Kreativitas' },
+];
+
 const KOSONG: KelasInput = {
   judul: '',
   tujuan: '',
+  fokusArea: [],
+  peranOrtu: '',
   usiaMin: 0,
   usiaMax: 6,
   bahan: [{ nama: '', link: '', produkId: '' }],
@@ -36,6 +49,8 @@ export default function KelasAdmin({ awal, produkOpsi = [] }: { awal: KelasBerma
     setForm({
       judul: k.judul,
       tujuan: k.tujuan ?? '',
+      fokusArea: k.fokus_area ?? [],
+      peranOrtu: k.peran_ortu ?? '',
       usiaMin: k.usia_min ?? 0,
       usiaMax: k.usia_max ?? 6,
       bahan: k.bahan?.length ? k.bahan.map((b) => ({ nama: b.nama, link: b.link ?? '', produkId: b.produk_id ?? '' })) : [{ nama: '', link: '', produkId: '' }],
@@ -151,6 +166,22 @@ export default function KelasAdmin({ awal, produkOpsi = [] }: { awal: KelasBerma
             <input className={s.inp} type="number" min={0} max={12} value={form.usiaMax} onChange={(e) => setForm({ ...form, usiaMax: Number(e.target.value) })} style={{ width: 64, marginBottom: 0 }} />
             <span className={s.muted} style={{ fontSize: 11 }}>tahun</span>
           </div>
+
+          {/* FOKUS AREA + PERAN ORTU */}
+          <div className={s.muted} style={{ margin: '10px 0 4px', fontSize: 12 }}>🧩 Fokus area perkembangan (bisa pilih lebih dari satu):</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {AREA_FOKUS.map((ar) => {
+              const on = form.fokusArea.includes(ar.key);
+              return (
+                <button key={ar.key} type="button"
+                  onClick={() => setForm({ ...form, fokusArea: on ? form.fokusArea.filter((x) => x !== ar.key) : [...form.fokusArea, ar.key] })}
+                  style={{ border: 'none', cursor: 'pointer', borderRadius: 99, padding: '6px 12px', fontSize: 12, fontWeight: 700, background: on ? 'var(--lavender-d)' : '#f1eef8', color: on ? '#fff' : 'var(--abu)' }}>
+                  {ar.label}
+                </button>
+              );
+            })}
+          </div>
+          <textarea className={s.inp} placeholder="🤝 Peran orang tua dalam kelas bermain ini (mis. mendampingi, membacakan instruksi, memuji usaha anak) — tampil ke orang tua" rows={2} value={form.peranOrtu} onChange={(e) => setForm({ ...form, peranOrtu: e.target.value })} style={{ width: '100%', resize: 'vertical', marginTop: 8 }} />
 
           {/* BAHAN (nama + link toko opsional) */}
           <div className={s.muted} style={{ margin: '8px 0 4px' }}>🧺 Bahan (boleh hubungkan ke produk Store, atau pakai link toko luar):</div>

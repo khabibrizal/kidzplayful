@@ -12,7 +12,12 @@ import { getStatusLangganan, dibatasiTrial } from '@/lib/data/langganan-status';
 import Terkunci from '@/components/Terkunci';
 import TombolKembali from '@/components/TombolKembali';
 
-const COLS = 'id,judul,tujuan,usia_min,usia_max,aktivitas,bahan,link_ide,worksheet_url,status,boleh_trial';
+const COLS = 'id,judul,tujuan,fokus_area,peran_ortu,usia_min,usia_max,aktivitas,bahan,link_ide,worksheet_url,status,boleh_trial';
+const LABEL_AREA: Record<string, string> = {
+  'motorik-halus': '✋ Motorik Halus', 'motorik-kasar': '🏃 Motorik Kasar', kognitif: '🧠 Kognitif',
+  bahasa: '🗣️ Bahasa', 'sosial-emosional': '💞 Sosial-Emosional', sensorik: '🖐️ Sensorik',
+  kemandirian: '🌟 Kemandirian', kreativitas: '🎨 Kreativitas',
+};
 
 export default async function KelasDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -43,6 +48,22 @@ export default async function KelasDetailPage({ params }: { params: Promise<{ id
         <div className="kp-card" style={{ marginBottom: 14, background: '#f7f5fc' }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)' }}>👶 Untuk usia {kelas.usia_min ?? 0}–{kelas.usia_max ?? 6} tahun</div>
           {kelas.tujuan && <p style={{ margin: '6px 0 0', fontSize: 14 }}>🎯 <b>Tujuan:</b> {kelas.tujuan}</p>}
+          {(kelas.fokus_area?.length ?? 0) > 0 && (
+            <div style={{ marginTop: 8 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)' }}>🧩 FOKUS AREA PERKEMBANGAN</div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+                {kelas.fokus_area!.map((ar) => (
+                  <span key={ar} style={{ fontSize: 12, fontWeight: 700, background: '#efe7fb', color: 'var(--lavender-d)', borderRadius: 99, padding: '4px 10px' }}>{LABEL_AREA[ar] ?? ar}</span>
+                ))}
+              </div>
+            </div>
+          )}
+          {kelas.peran_ortu && (
+            <div style={{ marginTop: 8 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)' }}>🤝 PERAN ORANG TUA</div>
+              <p style={{ margin: '4px 0 0', fontSize: 14, whiteSpace: 'pre-wrap' }}>{kelas.peran_ortu}</p>
+            </div>
+          )}
         </div>
       )}
 

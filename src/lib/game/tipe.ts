@@ -159,6 +159,8 @@ export interface KelasBermain {
   id: string;
   judul: string;
   tujuan?: string | null;   // tujuan pembelajaran kelas ini (utk ortu)
+  fokus_area?: string[];    // area perkembangan yang dilatih (motorik-halus, kognitif, …)
+  peran_ortu?: string | null; // peran/keterlibatan orang tua saat bermain
   usia_min?: number;        // rentang usia yang disarankan
   usia_max?: number;
   bahan: BahanItem[];
