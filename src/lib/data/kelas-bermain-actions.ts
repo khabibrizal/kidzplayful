@@ -7,12 +7,15 @@ export interface BahanInput { nama: string; link: string; produkId: string }
 export interface AktivitasInput { judul: string; caraMembuat: string; langkah: string[] }
 export interface KelasInput {
   judul: string;
+  tujuan: string;
+  usiaMin: number;
+  usiaMax: number;
   bahan: BahanInput[];
   aktivitas: AktivitasInput[];
   linkIde: string;
   worksheetUrl: string | null;
 }
-const COLS = 'id,judul,aktivitas,bahan,link_ide,worksheet_url,status';
+const COLS = 'id,judul,tujuan,usia_min,usia_max,aktivitas,bahan,link_ide,worksheet_url,status';
 
 async function adminDb() {
   const s = await createClient();
@@ -25,6 +28,9 @@ async function adminDb() {
 function row(i: KelasInput) {
   return {
     judul: i.judul.trim() || 'Tanpa judul',
+    tujuan: i.tujuan.trim() || null,
+    usia_min: Math.max(0, Math.min(12, Math.floor(Number(i.usiaMin) || 0))),
+    usia_max: Math.max(0, Math.min(12, Math.floor(Number(i.usiaMax) || 6))),
     bahan: i.bahan
       .filter((b) => b.nama.trim())
       .map((b) => ({ nama: b.nama.trim(), link: b.link.trim() || null, produk_id: b.produkId || null })),

@@ -157,6 +157,9 @@ export interface AktivitasItem {
 export interface KelasBermain {
   id: string;
   judul: string;
+  tujuan?: string | null;   // tujuan pembelajaran kelas ini (utk ortu)
+  usia_min?: number;        // rentang usia yang disarankan
+  usia_max?: number;
   bahan: BahanItem[];
   aktivitas: AktivitasItem[];
   link_ide: string | null;

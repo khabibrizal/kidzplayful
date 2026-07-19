@@ -8,6 +8,9 @@ import s from '../admin.module.css';
 
 const KOSONG: KelasInput = {
   judul: '',
+  tujuan: '',
+  usiaMin: 0,
+  usiaMax: 6,
   bahan: [{ nama: '', link: '', produkId: '' }],
   aktivitas: [{ judul: '', caraMembuat: '', langkah: [''] }],
   linkIde: '',
@@ -32,6 +35,9 @@ export default function KelasAdmin({ awal, produkOpsi = [] }: { awal: KelasBerma
     setEditId(k.id);
     setForm({
       judul: k.judul,
+      tujuan: k.tujuan ?? '',
+      usiaMin: k.usia_min ?? 0,
+      usiaMax: k.usia_max ?? 6,
       bahan: k.bahan?.length ? k.bahan.map((b) => ({ nama: b.nama, link: b.link ?? '', produkId: b.produk_id ?? '' })) : [{ nama: '', link: '', produkId: '' }],
       aktivitas: k.aktivitas?.length
         ? k.aktivitas.map((a) => ({ judul: a.judul, caraMembuat: a.cara_membuat ?? '', langkah: a.langkah?.length ? a.langkah : [''] }))
@@ -136,6 +142,16 @@ export default function KelasAdmin({ awal, produkOpsi = [] }: { awal: KelasBerma
 
           <input className={s.inp} placeholder="Judul kelas" value={form.judul} onChange={(e) => setForm({ ...form, judul: e.target.value })} style={{ width: '100%', marginTop: 8 }} />
 
+          {/* TUJUAN + USIA */}
+          <textarea className={s.inp} placeholder="🎯 Tujuan kelas bermain ini (mis. melatih motorik halus & mengenal warna) — tampil ke orang tua" rows={2} value={form.tujuan} onChange={(e) => setForm({ ...form, tujuan: e.target.value })} style={{ width: '100%', resize: 'vertical' }} />
+          <div className={s.row} style={{ gap: 6, alignItems: 'center' }}>
+            <span className={s.muted} style={{ fontSize: 12 }}>👶 Untuk usia:</span>
+            <input className={s.inp} type="number" min={0} max={12} value={form.usiaMin} onChange={(e) => setForm({ ...form, usiaMin: Number(e.target.value) })} style={{ width: 64, marginBottom: 0 }} />
+            <span className={s.muted}>–</span>
+            <input className={s.inp} type="number" min={0} max={12} value={form.usiaMax} onChange={(e) => setForm({ ...form, usiaMax: Number(e.target.value) })} style={{ width: 64, marginBottom: 0 }} />
+            <span className={s.muted} style={{ fontSize: 11 }}>tahun</span>
+          </div>
+
           {/* BAHAN (nama + link toko opsional) */}
           <div className={s.muted} style={{ margin: '8px 0 4px' }}>🧺 Bahan (boleh hubungkan ke produk Store, atau pakai link toko luar):</div>
           {form.bahan.map((b, i) => (
@@ -197,7 +213,8 @@ export default function KelasAdmin({ awal, produkOpsi = [] }: { awal: KelasBerma
           <div className={s.row}>
             <span style={{ flex: 1 }}><b>{k.judul}</b> {k.status === 'nonaktif' && <span className={`${s.tag} ${s.tagDraf}`}>nonaktif</span>}
               {k.boleh_trial === false && <span className={`${s.tag} ${s.tagDraf}`} style={{ marginLeft: 4 }}>🔒 non-trial</span>}
-              <br /><small className={s.muted}>{k.aktivitas?.length ?? 0} aktivitas · {k.bahan?.length ?? 0} bahan</small>
+              <br /><small className={s.muted}>{k.aktivitas?.length ?? 0} aktivitas · {k.bahan?.length ?? 0} bahan · 👶 {k.usia_min ?? 0}–{k.usia_max ?? 6} th</small>
+              {k.tujuan && <><br /><small className={s.muted}>🎯 {k.tujuan}</small></>}
             </span>
           </div>
           <div className={s.row} style={{ marginTop: 8, flexWrap: 'wrap' }}>

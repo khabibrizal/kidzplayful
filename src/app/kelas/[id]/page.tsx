@@ -12,7 +12,7 @@ import { getStatusLangganan, dibatasiTrial } from '@/lib/data/langganan-status';
 import Terkunci from '@/components/Terkunci';
 import TombolKembali from '@/components/TombolKembali';
 
-const COLS = 'id,judul,aktivitas,bahan,link_ide,worksheet_url,status,boleh_trial';
+const COLS = 'id,judul,tujuan,usia_min,usia_max,aktivitas,bahan,link_ide,worksheet_url,status,boleh_trial';
 
 export default async function KelasDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -38,7 +38,13 @@ export default async function KelasDetailPage({ params }: { params: Promise<{ id
       <div className="no-print">
         <TombolKembali fallback="/pilih-anak" style={{ color: 'var(--abu)', fontSize: 13 }} />
       </div>
-      <h1 style={{ color: 'var(--lavender-d)', fontSize: 24, margin: '10px 0 14px' }}>🎈 {kelas.judul}</h1>
+      <h1 style={{ color: 'var(--lavender-d)', fontSize: 24, margin: '10px 0 6px' }}>🎈 {kelas.judul}</h1>
+      {(kelas.tujuan || kelas.usia_min != null) && (
+        <div className="kp-card" style={{ marginBottom: 14, background: '#f7f5fc' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)' }}>👶 Untuk usia {kelas.usia_min ?? 0}–{kelas.usia_max ?? 6} tahun</div>
+          {kelas.tujuan && <p style={{ margin: '6px 0 0', fontSize: 14 }}>🎯 <b>Tujuan:</b> {kelas.tujuan}</p>}
+        </div>
+      )}
 
       {kelas.bahan?.length > 0 && (
         <div className="kp-card" style={{ marginBottom: 12, background: '#fff3d6' }}>

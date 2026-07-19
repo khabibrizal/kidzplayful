@@ -10,7 +10,7 @@ const anon = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEX
 
 const E = 'id,judul,lokasi,tanggal,jam_mulai,jam_selesai,deskripsi,gambar_url,harga_per_anak,diskon_langganan_persen,status';
 const P = 'id,nama,deskripsi,kategori,harga,diskon_trial_persen,diskon_langganan_persen,berat_gram,stok,terjual,gambar_url,status';
-const K = 'id,judul,aktivitas,bahan,link_ide,worksheet_url,status,boleh_trial';
+const K = 'id,judul,tujuan,usia_min,usia_max,aktivitas,bahan,link_ide,worksheet_url,status,boleh_trial';
 
 export const getEventTampilCached = unstable_cache(
   async (): Promise<EventKelas[]> => {
