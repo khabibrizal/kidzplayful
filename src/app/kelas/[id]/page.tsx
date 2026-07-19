@@ -11,9 +11,10 @@ import { rekamRiwayat } from '@/lib/data/riwayat-kelas';
 import { getStatusLangganan, dibatasiTrial } from '@/lib/data/langganan-status';
 import Terkunci from '@/components/Terkunci';
 import TombolKembali from '@/components/TombolKembali';
+import { getLabelFokusArea } from '@/lib/data/fokus-area';
 
 const COLS = 'id,judul,tujuan,fokus_area,peran_ortu,usia_min,usia_max,aktivitas,bahan,link_ide,worksheet_url,status,boleh_trial';
-const LABEL_AREA: Record<string, string> = {
+const LABEL_FALLBACK: Record<string, string> = {
   'motorik-halus': '✋ Motorik Halus', 'motorik-kasar': '🏃 Motorik Kasar', kognitif: '🧠 Kognitif',
   bahasa: '🗣️ Bahasa', 'sosial-emosional': '💞 Sosial-Emosional', sensorik: '🖐️ Sensorik',
   kemandirian: '🌟 Kemandirian', kreativitas: '🎨 Kreativitas',
@@ -25,10 +26,12 @@ export default async function KelasDetailPage({ params }: { params: Promise<{ id
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const [{ data }, status] = await Promise.all([
+  const [{ data }, status, labelMaster] = await Promise.all([
     supabase.from('kelas_bermain').select(COLS).eq('id', id).eq('status', 'aktif').maybeSingle(),
     getStatusLangganan(supabase, user.id),
+    getLabelFokusArea(),
   ]);
+  const LABEL_AREA: Record<string, string> = { ...LABEL_FALLBACK, ...labelMaster };
   if (!data) redirect('/pilih-anak');
   const kelas = data as unknown as KelasBermain;
 

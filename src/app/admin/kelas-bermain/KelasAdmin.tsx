@@ -6,17 +6,6 @@ import { buatKelas, updateKelas, toggleStatusKelas, hapusKelas, setBolehTrialKel
 import type { KelasBermain } from '@/lib/game/tipe';
 import s from '../admin.module.css';
 
-const AREA_FOKUS = [
-  { key: 'motorik-halus', label: '✋ Motorik Halus' },
-  { key: 'motorik-kasar', label: '🏃 Motorik Kasar' },
-  { key: 'kognitif', label: '🧠 Kognitif' },
-  { key: 'bahasa', label: '🗣️ Bahasa' },
-  { key: 'sosial-emosional', label: '💞 Sosial-Emosional' },
-  { key: 'sensorik', label: '🖐️ Sensorik' },
-  { key: 'kemandirian', label: '🌟 Kemandirian' },
-  { key: 'kreativitas', label: '🎨 Kreativitas' },
-];
-
 const KOSONG: KelasInput = {
   judul: '',
   tujuan: '',
@@ -30,7 +19,7 @@ const KOSONG: KelasInput = {
   worksheetUrl: null,
 };
 
-export default function KelasAdmin({ awal, produkOpsi = [] }: { awal: KelasBermain[]; produkOpsi?: { id: string; nama: string }[] }) {
+export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [] }: { awal: KelasBermain[]; produkOpsi?: { id: string; nama: string }[]; areaOpsi?: { key: string; label: string }[] }) {
   const [list, setList] = useState<KelasBermain[]>(awal);
   const [q, setQ] = useState('');
   const [form, setForm] = useState<KelasInput | null>(null);
@@ -168,9 +157,9 @@ export default function KelasAdmin({ awal, produkOpsi = [] }: { awal: KelasBerma
           </div>
 
           {/* FOKUS AREA + PERAN ORTU */}
-          <div className={s.muted} style={{ margin: '10px 0 4px', fontSize: 12 }}>🧩 Fokus area perkembangan (bisa pilih lebih dari satu):</div>
+          <div className={s.muted} style={{ margin: '10px 0 4px', fontSize: 12 }}>🧩 Fokus area perkembangan (bisa pilih lebih dari satu — kelola daftarnya di menu 🧩 Fokus Area):</div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {AREA_FOKUS.map((ar) => {
+            {areaOpsi.map((ar) => {
               const on = form.fokusArea.includes(ar.key);
               return (
                 <button key={ar.key} type="button"
