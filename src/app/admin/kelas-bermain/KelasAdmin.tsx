@@ -236,8 +236,7 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [] }: { a
           <div className={s.row}>
             <span style={{ flex: 1 }}><b>{k.judul}</b> {k.status === 'nonaktif' && <span className={`${s.tag} ${s.tagDraf}`}>nonaktif</span>}
               {k.boleh_trial === false && <span className={`${s.tag} ${s.tagDraf}`} style={{ marginLeft: 4 }}>🔒 non-trial</span>}
-              <br /><small className={s.muted}>{k.aktivitas?.length ?? 0} aktivitas · {k.bahan?.length ?? 0} bahan · 👶 {k.usia_min ?? 0}–{k.usia_max ?? 6} th</small>
-              {k.tujuan && <><br /><small className={s.muted}>🎯 {k.tujuan}</small></>}
+              <br /><small className={s.muted}>👶 {k.usia_min ?? 0}–{k.usia_max ?? 6} th</small>
             </span>
           </div>
           <div className={s.row} style={{ marginTop: 8, flexWrap: 'wrap' }}>
