@@ -16,10 +16,11 @@ function waktuDaftar(iso?: string | null): string {
 
 type EventOpsi = { id: string; judul: string; tanggal: string | null };
 
-export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = [], catatanMap = {}, umurMap = {} }: {
+export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = [], catatanMap = {}, umurMap = {}, ortuMap = {} }: {
   awal: PendaftaranEvent[]; sertMap: Record<string, string>; eventsAktif: EventOpsi[];
   params?: BarisParam[]; catatanMap?: Record<string, { penilaian: BarisNilai[]; catatan: string | null }>;
   umurMap?: Record<string, string>;
+  ortuMap?: Record<string, string>;
 }) {
   const [list, setList] = useState<PendaftaranEvent[]>(awal);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -77,7 +78,7 @@ export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = []
 
   const totalHadir = list.reduce((n, p) => n + (p.hadir_anak_ids?.length ?? 0), 0);
   const q = cari.trim().toLowerCase();
-  const tampil = q ? list.filter((p) => (p.anak_nama ?? []).some((n) => (n ?? '').toLowerCase().includes(q))) : list;
+  const tampil = q ? list.filter((p) => (p.anak_nama ?? []).some((n) => (n ?? '').toLowerCase().includes(q)) || (ortuMap[p.ortu_id] ?? '').toLowerCase().includes(q)) : list;
   const GRUP: { key: string; label: string }[] = [
     { key: 'baby', label: '👶 Baby Class' },
     { key: 'toddler', label: '🧒 Toddler Class' },
@@ -89,6 +90,7 @@ export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = []
           <div className={s.row}>
             <span style={{ flex: 1 }}>
               <b>{p.anak_ids?.length ? p.anak_ids.map((id, i) => `${p.anak_nama[i] ?? 'Anak'}${umurMap[id] ? ` (${umurMap[id]})` : ''}`).join(', ') : (p.anak_nama.join(', ') || `${p.jumlah_anak} anak`)}</b>
+              {ortuMap[p.ortu_id] && <><br /><small className={s.muted}>👤 Orang tua: {ortuMap[p.ortu_id]}</small></>}
               <br /><small className={s.muted}>{p.jumlah_anak} anak{p.jumlah_pendamping ? ` + ${p.jumlah_pendamping} pendamping` : ''} · {formatRupiah(p.total)}</small>
               {p.created_at && <><br /><small className={s.muted}>🕐 Daftar: {waktuDaftar(p.created_at)}</small></>}
               {p.kelas && p.kelas !== 'gabungan' && <><br /><small className={s.muted}>{p.kelas === 'baby' ? '👶 Baby Class' : p.kelas === 'toddler' ? '🧒 Toddler Class' : p.kelas}{p.kelas_jadwal ? ` · ${p.kelas_jadwal}` : ''}</small></>}
@@ -175,7 +177,7 @@ export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = []
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
-        <input className={s.inp} placeholder="🔎 Cari nama anak…" value={cari} onChange={(e) => setCari(e.target.value)} style={{ flex: 1, minWidth: 160, marginBottom: 0 }} />
+        <input className={s.inp} placeholder="🔎 Cari nama anak / orang tua…" value={cari} onChange={(e) => setCari(e.target.value)} style={{ flex: 1, minWidth: 160, marginBottom: 0 }} />
         <span className={s.tag} style={{ background: '#dff5e6', color: '#1c7a43' }}>✅ {totalHadir} anak hadir</span>
       </div>
       {tampil.length === 0 && <p className={s.muted}>Tidak ada pendaftar yang cocok.</p>}
