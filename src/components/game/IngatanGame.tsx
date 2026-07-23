@@ -58,7 +58,7 @@ export default function IngatanGame({ data, onSelesai }: { data: DataIngatan; on
   }
 
   const deck = kartu.length;
-  const cols = deck <= 6 ? 2 : deck <= 12 ? 3 : 4;
+  const cols = deck <= 6 ? 2 : deck <= 12 ? 3 : deck <= 24 ? 4 : deck <= 40 ? 5 : 6; // grid menyesuaikan jumlah kartu
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>

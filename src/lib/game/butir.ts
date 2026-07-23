@@ -153,7 +153,6 @@ export function validasiButir(mesin: Mesin, butir: unknown): string {
     const b = butir as DataIngatan;
     const it = (b.pasangan ?? []).filter((x) => x && x.trim());
     if (it.length < 2) return 'Butuh minimal 2 kartu (tiap entri jadi sepasang).';
-    if (it.length > 8) return 'Maksimal 8 kartu (16 kartu di papan).';
     return '';
   }
   if (mesin === 'garis') {

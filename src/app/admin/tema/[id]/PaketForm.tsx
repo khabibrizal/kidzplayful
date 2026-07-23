@@ -337,7 +337,7 @@ export default function PaketForm({ temaId, paketList = [], kategoriOpsi = [] }:
 
       {(mesin === 'cari-pasangan' || mesin === 'ingatan') && (
         <div style={{ marginTop: 10 }}>
-          <div className={s.muted}>{mesin === 'ingatan' ? 'Kartu tertutup — anak buka 2 & cari yang sama. Tiap entri jadi sepasang (2–8 entri).' : 'Tiap entri jadi sepasang (emoji/gambar). Minimal 2.'}</div>
+          <div className={s.muted}>{mesin === 'ingatan' ? 'Kartu tertutup — anak buka 2 & cari yang sama. Tiap entri jadi sepasang (minimal 2, tanpa batas maksimal).' : 'Tiap entri jadi sepasang (emoji/gambar). Minimal 2.'}</div>
           {pasangan.map((p, i) => (
             <div key={i} style={{ marginTop: 6 }}>
               <AsetInput value={p} onChange={(v) => setPasangan(pasangan.map((q, j) => j === i ? v : q))} />

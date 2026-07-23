@@ -24,10 +24,10 @@ describe('validasiButir', () => {
     expect(validasiButir('cari-pasangan', { pasangan: ['🐱', '🐶'] })).toBe('');
   });
 
-  it('ingatan (memory) butuh 2–8 kartu', () => {
+  it('ingatan (memory) butuh minimal 2 kartu, tanpa batas maksimal', () => {
     expect(validasiButir('ingatan', { pasangan: ['🍎'] })).toMatch(/minimal 2/i);
     expect(validasiButir('ingatan', { pasangan: ['🍎', '🍌', '🍇'] })).toBe('');
-    expect(validasiButir('ingatan', { pasangan: Array.from({ length: 9 }, (_, i) => `x${i}`) })).toMatch(/maksimal 8/i);
+    expect(validasiButir('ingatan', { pasangan: Array.from({ length: 20 }, (_, i) => `x${i}`) })).toBe('');
     expect(butirDariForm('ingatan', { pasangan: ['🍎', '🍌'] })).toEqual({ pasangan: ['🍎', '🍌'] });
   });
 
