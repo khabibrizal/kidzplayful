@@ -2,7 +2,7 @@
 
 > Panduan teknis untuk developer baru. Menjelaskan **per halaman/menu**: file apa yang menanganinya, function/reader/server-action apa yang dipakai, dan **endpoint backend** (tabel Supabase / RPC / storage / auth) yang disentuh. Termasuk **REST API internal** (untuk aplikasi mobile) dan infrastruktur.
 
-Terakhir diperbarui: 2026-07-18.
+Terakhir diperbarui: 2026-07-23.
 
 ---
 
@@ -41,7 +41,7 @@ src/
     supabase/          # server.ts (SSR), client.ts (browser)
     api/               # helpers.ts (amplop JSON + auth Bearer untuk REST API)
     game/              # tipe & util mesin game
-supabase/migrations/   # skema DB (0001..0078), dijalankan manual di SQL Editor
+supabase/migrations/   # skema DB (0001..0079), dijalankan manual di SQL Editor
 docs/                  # dokumentasi (termasuk file ini)
 tools/md2pdf.py        # generator PDF dokumentasi
 ```
@@ -67,7 +67,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 - Halaman tidak menaruh selector mentah bila bisa lewat reader; beberapa halaman melakukan query inline sederhana.
 
 ### Deploy & migrasi
-- Migrasi dijalankan **manual** di Supabase SQL Editor (urut `0001..0078`), lalu diverifikasi via REST (`?select=col&limit=1` → 200).
+- Migrasi dijalankan **manual** di Supabase SQL Editor (urut `0001..0079`), lalu diverifikasi via REST (`?select=col&limit=1` → 200).
 - Commit: `git -c commit.gpgsign=false commit` + baris `Co-Authored-By`. Push ke `master` → Vercel auto-deploy.
 - Banyak reader dibungkus `try/catch` agar fitur aman dideploy sebelum migrasinya dijalankan (mengembalikan nilai default).
 
@@ -110,7 +110,7 @@ Pembungkus: `admin/layout.tsx` (guard `getAksesAdmin`, kirim `allowed`+`isSuperu
 - **Server action**: `setStatusPendaftaran(id, status, alasan?)` (Tolak **wajib alasan** via prompt → `pendaftaran_event.alasan_tolak` (0075), di-null-kan saat kembali diterima/menunggu), `setKehadiran`, `reschedulePendaftaran`, **`simpanParameterPerkembangan`**, **`duplikatParameterPerkembangan`** (`admin-event-actions.ts`); **`simpanCatatan`** (`guru-actions.ts`, admin boleh isi nilai per anak).
 - **Endpoint**: `event` (`indikator_perkembangan`), `pendaftaran_event`, `sertifikat`, `catatan_perkembangan` (`penilaian`); `setStatusPendaftaran` → `catatLedger`/`hapusLedgerRef` ke `transaksi_keuangan`.
 - **Catatan Tumbuh Kembang** (lihat §7½): admin tetapkan **Parameter (Area+Indikator) per event** (+ tombol Duplikat dari event lain), lalu beri **Nilai** per anak. Bagian Parameter kini **collapsible** (`<details>`) agar tak memenuhi layar.
-- **UI daftar pendaftar**: **filter 🔎 cari nama anak** (live); pendaftar **di-group per kelas** (Baby/Toddler/Gabungan — nilai kelas kosong/tak dikenal dipetakan ke Gabungan agar kartu tak tersembunyi) dengan **jumlah peserta** di header grup (**tanpa** yang `ditolak`); tiap kartu menampilkan **umur anak per hari ini** (`umurTeks`/`umurBulanTotal` di `domain/anak.ts`), jumlah pendamping, **🕐 waktu daftar** (`created_at`, WIB), dan **❌ alasan ditolak** bila ada. Error query `getPendaftaranByEvent` di-`console.error` (Vercel Logs).
+- **UI daftar pendaftar**: **filter 🔎 cari nama anak / orang tua** (live); pendaftar **di-group per kelas** (Baby/Toddler/Gabungan — nilai kelas kosong/tak dikenal dipetakan ke Gabungan agar kartu tak tersembunyi) dengan **jumlah peserta** di header grup (**tanpa** yang `ditolak`); tiap kartu menampilkan **umur anak per hari ini** (`umurTeks`/`umurBulanTotal` di `domain/anak.ts`), **👤 nama orang tua** (`ortuMap` dari `profiles.nama_tampilan`, fallback email), jumlah pendamping, **🕐 waktu daftar** (`created_at`, WIB), dan **❌ alasan ditolak** bila ada. Error query `getPendaftaranByEvent` di-`console.error` (Vercel Logs).
 - **Stiker nama**: pendaftaran `ditolak` **tidak** ikut dicetak (`/stiker-event/[id]`).
 
 ### 🛍️ Produk — `/admin/produk`
@@ -130,7 +130,8 @@ Pembungkus: `admin/layout.tsx` (guard `getAksesAdmin`, kirim `allowed`+`isSuperu
 - **Fungsi data**: `getKelasSemua()` (`kelas-bermain.ts`), `getProdukSemua()` (`admin-store.ts`), `getFokusAreaAktif()` (`fokus-area.ts` → chips form).
 - **Server action**: `buatKelas`, `updateKelas`, `toggleStatusKelas`, `hapusKelas`, **`setBolehTrialKelas`** (toggle Trial ✓/✗) (`kelas-bermain-actions.ts`).
 - **Field per kelas** (kolom tabel, 0076–0077): **🎯 `tujuan`**, **👶 `usia_min`/`usia_max`**, **🧩 `fokus_area` text[]** (chips multi-pilih; daftar area dari **master `fokus_area`**, lihat di bawah), **🤝 `peran_ortu`**. Tampil di detail user `/kelas/[id]` sebagai kartu info (label badge juga dari master, fallback bawaan).
-- **Field per AKTIVITAS** (key bernama di jsonb `aktivitas` — keputusan owner: tetap jsonb, 1 kelas = N aktivitas): `judul`, `cara_membuat`, `langkah[]`, **`catatan_ortu`**. Tampilan user memakai subjudul **🛠️ CARA MEMBUAT**, **🎲 CARA BERMAIN** (langkah), **💡 CATATAN UNTUK ORANG TUA** (kartu kuning).
+- **Field per AKTIVITAS** (key bernama di jsonb `aktivitas` — keputusan owner: tetap jsonb, 1 kelas = N aktivitas): `judul`, `cara_membuat`, `langkah[]`, **`catatan_ortu`**. Tampilan user memakai subjudul **🛠️ CARA MEMBUAT**, **🎲 CARA BERMAIN** (langkah), **💡 CATATAN UNTUK ORANG TUA** (kartu kuning); teks Tujuan/Peran/Catatan `pre-wrap` (baris & penomoran admin dipertahankan).
+- **Tampilan user KONSISTEN**: komponen bersama **`components/KelasIsi.tsx`** merender isi materi (kartu info + bahan + aktivitas ber-subjudul + media) → dipakai di **detail `/kelas/[id]`**, **Mode Anak** (`MenuAnak`), **Mode Ortu** (`/ortu/[anakId]`) supaya identik dgn admin. Label fokus area via `getLabelFokusArea()` (fallback bawaan). Card daftar admin kini ringkas: judul + range usia (+ badge status/trial).
 - **Endpoint**: `kelas_bermain` (+`boleh_trial`/`tujuan`/`fokus_area`/`peran_ortu`/`usia_*`), `produk`, `fokus_area`; `storage.from('aset')` (folder `worksheet/`).
 
 ### 🧩 Master Fokus Area — `/admin/fokus-area`
@@ -240,12 +241,21 @@ Menu top-level tersendiri (sumber pendapatan). Rincian lengkap: lihat **§6 Modu
 - **Server action**: `tandaiReminder(pendaftaranId, terkirim)` (`admin-reminder-actions.ts`).
 - **Endpoint**: `pendaftaran_event` (+ embed `event`, `ortu`).
 
+### 👶 Master Kategori Usia — `/admin/kategori-usia`
+Master data rentang usia (dipakai dropdown di form Game). Game dikelompokkan per kategori.
+- **File**: `admin/kategori-usia/page.tsx` → `KategoriUsiaAdmin.tsx`.
+- **Fungsi data**: `getKategoriUsiaSemua()`, `getKategoriUsiaAktif()` (`kategori-usia.ts`).
+- **Server action** (`kategori-usia-actions.ts`, `{ok,error}`): `buatKategoriUsia(nama, usiaMin, usiaMax, urutan)`, `updateKategoriUsia(id, {nama,usiaMin,usiaMax,urutan,aktif})`, `hapusKategoriUsia(id)` (game yang memakainya di-set null via FK; saran **nonaktifkan** bila masih dipakai).
+- **Endpoint**: tabel `kategori_usia` (0079: nama, usia_min/max, urutan, aktif; RLS baca authenticated, kelola admin; seed 4). `paket_aset.kategori_usia_id` FK `on delete set null`.
+
 ### 🎨 Kelola Tema — `/admin/tema/[id]`
 - **File**: `admin/tema/[id]/page.tsx` (query + aksi inline) → `PaketForm.tsx` (+ `TargetEditor`, `@/components/admin/AsetInput`, `@/components/game/Aset`).
 - **Server action**: `hapusPaket`, `setStatusTema`, `setMingguIni`, `buatPaket`, `updatePaket` (`admin-konten.ts`, validasi `validasiButir`). **`buatPaket`/`updatePaket` return `{ok,error}`** (bukan throw) agar pesan error DB — mis. CHECK constraint `paket_aset_mesin_check` — tampil jelas di production (pola sama dgn `buatUser`).
 - **Penting saat menambah MESIN baru**: selain 5 titik kode (tipe → engine → GameRunner → PaketForm → butir), **wajib migrasi perluas CHECK `paket_aset_mesin_check`** (pola `0025..0037`, terbaru `0074_mesin_calistung.sql`) — tanpa itu INSERT paket ditolak DB.
 - **UX form**: `AsetInput` punya prop `tandaiKosong` (sorot merah bila kosong); form Hitung Benda melakukan pra-cek kolom benda kosong dengan pesan spesifik (placeholder "ketik emoji…").
-- **Endpoint**: `tema`, `paket_aset`; `storage.from('aset')` (aset game via AsetInput).
+- **Kategori usia (0079)**: input range usia game **diganti dropdown Kategori Usia** (master, lihat `/admin/kategori-usia`). Memilih kategori → `usia_min/usia_max` di-snapshot dari range-nya (filter umur `cocokUsia` di PilihGame tetap jalan) + simpan `kategori_usia_id`. Daftar game **dikelompokkan per kategori** (+ grup "Tanpa kategori" utk game lama). `buatPaket`/`updatePaket` menerima `kategoriUsiaId`.
+- **Ikon tema = UPLOAD GAMBAR**: `TambahTemaForm.tsx` (client) mengunggah gambar ke `storage 'aset/tema/'` → URL disimpan di `tema.sampul` (kosong → default 🎈). Komponen **`components/Sampul.tsx`** merender `<img>` bila `sampul` URL / emoji bila bukan; dipakai di semua penampil ikon tema (admin & user: MenuAnak, PilihGame).
+- **Endpoint**: `tema`, `paket_aset` (+`kategori_usia_id`), `kategori_usia`; `storage.from('aset')` (aset game + folder `tema/`).
 
 ---
 
@@ -462,6 +472,7 @@ Penilaian perkembangan anak per event offline. **Parameter (Area + Indikator) di
   - 📖 **`sukukata`** (`SukuKataGame.tsx`, kognitif) — mode `susun` (gambar+suara → susun suku kata jadi kata) & `dengar` (fonik: dengar → pilih). Validasi: `sukuKata.join('')===kata`, susun ≥2 suku, dengar ≥1 pengecoh.
   - ✍️ **`jiplak`** (`JiplakGame.tsx`, motorik-halus) — tracing goresan karakter; jalur bawaan `lib/game/jiplak-path.ts` (`JALUR_KARAKTER` A–Z a–z 0–9, viewBox 100×140, `rapatkan()` utk deteksi progres); toleransi longgar, keluar-jalur ≤3 = rapi. Admin cukup ketik daftar karakter.
   - 🔢 **`hitung-benda`** (`HitungBendaGame.tsx`, kognitif) — mode `hitung` (tap benda satu-satu + TTS hitungan → pilih angka) & `banyak-mana` (bandingkan 2 kelompok). Validasi jumlah 1–10, banyak-mana wajib kelompok-2 & jumlah beda.
+- **Mesin MEMORY**: 🧠 **`ingatan`** (`IngatanGame.tsx`, kognitif; tanpa migrasi) — memory/concentration: kartu **tertutup**, buka 2 → cocok tetap terbuka, beda tertutup lagi (working memory; beda dari `cari-pasangan` yang kartunya selalu terlihat). Data `DataIngatan { pasangan: string[] }` — tiap entri jadi sepasang kartu (dek teracak, grid adaptif). Validasi 2–8 entri; form admin meng-reuse input aset `cari-pasangan`.
 
 ### 🍎 Guru — `/guru`, `/guru/[eventId]` (isi Nilai tumbuh kembang), `/catatan/[eventId]`
 - **Guard**: `getGuruTerjamin()` (`guru.ts`).
@@ -588,7 +599,8 @@ Semua Route Handler (`app/api/**/route.ts`) mengembalikan amplop JSON seragam vi
 | `anak` | data anak (nama, `nama_panggilan` utk stiker, tgl lahir, jenis kelamin, mode, koin/streak) | 0001, 0024, 0042, 0071 |
 | `langganan` | status langganan/trial per user (trial_mulai, aktif_sampai, nominal) | 0001 |
 | `pembayaran_langganan` | riwayat pembayaran membership | 0052 |
-| `tema`, `paket_aset` | katalog game (tema + paket/butir aset); `tema.boleh_trial`; `paket_aset.mesin` ber-CHECK constraint (perluas tiap mesin baru) | 0001–0003, 0025–0037, 0060, 0074 |
+| `tema`, `paket_aset` | katalog game (tema + paket/butir aset); `tema.sampul` = emoji/URL gambar; `paket_aset.mesin` ber-CHECK (perluas tiap mesin baru), `kategori_usia_id` FK | 0001–0003, 0025–0037, 0060, 0074, 0079 |
+| `kategori_usia` | master rentang usia (nama, usia_min/max, urutan, aktif) → dropdown form Game & pengelompokan | 0079 |
 | `video` | video edukasi (kategori baby/toddler); `boleh_trial` | 0003, 0005, 0060 |
 | `kelas_bermain` | materi kelas bermain (+ worksheet, bahan; `tujuan`/`usia_*`/`fokus_area[]`/`peran_ortu`; aktivitas jsonb ber-key `catatan_ortu`); `boleh_trial` | 0009, 0013–0016, 0060, 0076, 0077 |
 | `fokus_area` | master Fokus Area Perkembangan (`key` unik → dipakai `kelas_bermain.fokus_area`, label, urutan, aktif) | 0078 |

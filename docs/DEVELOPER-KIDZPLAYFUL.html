@@ -22,7 +22,7 @@ li { margin:3px 0; }
 <blockquote>
 <p>Panduan teknis untuk developer baru. Menjelaskan <strong>per halaman/menu</strong>: file apa yang menanganinya, function/reader/server-action apa yang dipakai, dan <strong>endpoint backend</strong> (tabel Supabase / RPC / storage / auth) yang disentuh. Termasuk <strong>REST API internal</strong> (untuk aplikasi mobile) dan infrastruktur.</p>
 </blockquote>
-<p>Terakhir diperbarui: 2026-07-18.</p>
+<p>Terakhir diperbarui: 2026-07-23.</p>
 <hr />
 <h2 id="1-ringkasan-stack">1. Ringkasan &amp; Stack</h2>
 <ul>
@@ -55,7 +55,7 @@ li { margin:3px 0; }
     supabase/          # server.ts (SSR), client.ts (browser)
     api/               # helpers.ts (amplop JSON + auth Bearer untuk REST API)
     game/              # tipe &amp; util mesin game
-supabase/migrations/   # skema DB (0001..0078), dijalankan manual di SQL Editor
+supabase/migrations/   # skema DB (0001..0079), dijalankan manual di SQL Editor
 docs/                  # dokumentasi (termasuk file ini)
 tools/md2pdf.py        # generator PDF dokumentasi
 </code></pre>
@@ -82,7 +82,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </ul>
 <h3 id="deploy-migrasi">Deploy &amp; migrasi</h3>
 <ul>
-<li>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor (urut <code>0001..0078</code>), lalu diverifikasi via REST (<code>?select=col&amp;limit=1</code> → 200).</li>
+<li>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor (urut <code>0001..0079</code>), lalu diverifikasi via REST (<code>?select=col&amp;limit=1</code> → 200).</li>
 <li>Commit: <code>git -c commit.gpgsign=false commit</code> + baris <code>Co-Authored-By</code>. Push ke <code>master</code> → Vercel auto-deploy.</li>
 <li>Banyak reader dibungkus <code>try/catch</code> agar fitur aman dideploy sebelum migrasinya dijalankan (mengembalikan nilai default).</li>
 </ul>
@@ -128,7 +128,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <li><strong>Server action</strong>: <code>setStatusPendaftaran(id, status, alasan?)</code> (Tolak <strong>wajib alasan</strong> via prompt → <code>pendaftaran_event.alasan_tolak</code> (0075), di-null-kan saat kembali diterima/menunggu), <code>setKehadiran</code>, <code>reschedulePendaftaran</code>, <strong><code>simpanParameterPerkembangan</code></strong>, <strong><code>duplikatParameterPerkembangan</code></strong> (<code>admin-event-actions.ts</code>); <strong><code>simpanCatatan</code></strong> (<code>guru-actions.ts</code>, admin boleh isi nilai per anak).</li>
 <li><strong>Endpoint</strong>: <code>event</code> (<code>indikator_perkembangan</code>), <code>pendaftaran_event</code>, <code>sertifikat</code>, <code>catatan_perkembangan</code> (<code>penilaian</code>); <code>setStatusPendaftaran</code> → <code>catatLedger</code>/<code>hapusLedgerRef</code> ke <code>transaksi_keuangan</code>.</li>
 <li><strong>Catatan Tumbuh Kembang</strong> (lihat §7½): admin tetapkan <strong>Parameter (Area+Indikator) per event</strong> (+ tombol Duplikat dari event lain), lalu beri <strong>Nilai</strong> per anak. Bagian Parameter kini <strong>collapsible</strong> (<code>&lt;details&gt;</code>) agar tak memenuhi layar.</li>
-<li><strong>UI daftar pendaftar</strong>: <strong>filter 🔎 cari nama anak</strong> (live); pendaftar <strong>di-group per kelas</strong> (Baby/Toddler/Gabungan — nilai kelas kosong/tak dikenal dipetakan ke Gabungan agar kartu tak tersembunyi) dengan <strong>jumlah peserta</strong> di header grup (<strong>tanpa</strong> yang <code>ditolak</code>); tiap kartu menampilkan <strong>umur anak per hari ini</strong> (<code>umurTeks</code>/<code>umurBulanTotal</code> di <code>domain/anak.ts</code>), jumlah pendamping, <strong>🕐 waktu daftar</strong> (<code>created_at</code>, WIB), dan <strong>❌ alasan ditolak</strong> bila ada. Error query <code>getPendaftaranByEvent</code> di-<code>console.error</code> (Vercel Logs).</li>
+<li><strong>UI daftar pendaftar</strong>: <strong>filter 🔎 cari nama anak / orang tua</strong> (live); pendaftar <strong>di-group per kelas</strong> (Baby/Toddler/Gabungan — nilai kelas kosong/tak dikenal dipetakan ke Gabungan agar kartu tak tersembunyi) dengan <strong>jumlah peserta</strong> di header grup (<strong>tanpa</strong> yang <code>ditolak</code>); tiap kartu menampilkan <strong>umur anak per hari ini</strong> (<code>umurTeks</code>/<code>umurBulanTotal</code> di <code>domain/anak.ts</code>), <strong>👤 nama orang tua</strong> (<code>ortuMap</code> dari <code>profiles.nama_tampilan</code>, fallback email), jumlah pendamping, <strong>🕐 waktu daftar</strong> (<code>created_at</code>, WIB), dan <strong>❌ alasan ditolak</strong> bila ada. Error query <code>getPendaftaranByEvent</code> di-<code>console.error</code> (Vercel Logs).</li>
 <li><strong>Stiker nama</strong>: pendaftaran <code>ditolak</code> <strong>tidak</strong> ikut dicetak (<code>/stiker-event/[id]</code>).</li>
 </ul>
 <h3 id="produk-adminproduk">🛍️ Produk — <code>/admin/produk</code></h3>
@@ -151,7 +151,8 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <li><strong>Fungsi data</strong>: <code>getKelasSemua()</code> (<code>kelas-bermain.ts</code>), <code>getProdukSemua()</code> (<code>admin-store.ts</code>), <code>getFokusAreaAktif()</code> (<code>fokus-area.ts</code> → chips form).</li>
 <li><strong>Server action</strong>: <code>buatKelas</code>, <code>updateKelas</code>, <code>toggleStatusKelas</code>, <code>hapusKelas</code>, <strong><code>setBolehTrialKelas</code></strong> (toggle Trial ✓/✗) (<code>kelas-bermain-actions.ts</code>).</li>
 <li><strong>Field per kelas</strong> (kolom tabel, 0076–0077): <strong>🎯 <code>tujuan</code></strong>, <strong>👶 <code>usia_min</code>/<code>usia_max</code></strong>, <strong>🧩 <code>fokus_area</code> text[]</strong> (chips multi-pilih; daftar area dari <strong>master <code>fokus_area</code></strong>, lihat di bawah), <strong>🤝 <code>peran_ortu</code></strong>. Tampil di detail user <code>/kelas/[id]</code> sebagai kartu info (label badge juga dari master, fallback bawaan).</li>
-<li><strong>Field per AKTIVITAS</strong> (key bernama di jsonb <code>aktivitas</code> — keputusan owner: tetap jsonb, 1 kelas = N aktivitas): <code>judul</code>, <code>cara_membuat</code>, <code>langkah[]</code>, <strong><code>catatan_ortu</code></strong>. Tampilan user memakai subjudul <strong>🛠️ CARA MEMBUAT</strong>, <strong>🎲 CARA BERMAIN</strong> (langkah), <strong>💡 CATATAN UNTUK ORANG TUA</strong> (kartu kuning).</li>
+<li><strong>Field per AKTIVITAS</strong> (key bernama di jsonb <code>aktivitas</code> — keputusan owner: tetap jsonb, 1 kelas = N aktivitas): <code>judul</code>, <code>cara_membuat</code>, <code>langkah[]</code>, <strong><code>catatan_ortu</code></strong>. Tampilan user memakai subjudul <strong>🛠️ CARA MEMBUAT</strong>, <strong>🎲 CARA BERMAIN</strong> (langkah), <strong>💡 CATATAN UNTUK ORANG TUA</strong> (kartu kuning); teks Tujuan/Peran/Catatan <code>pre-wrap</code> (baris &amp; penomoran admin dipertahankan).</li>
+<li><strong>Tampilan user KONSISTEN</strong>: komponen bersama <strong><code>components/KelasIsi.tsx</code></strong> merender isi materi (kartu info + bahan + aktivitas ber-subjudul + media) → dipakai di <strong>detail <code>/kelas/[id]</code></strong>, <strong>Mode Anak</strong> (<code>MenuAnak</code>), <strong>Mode Ortu</strong> (<code>/ortu/[anakId]</code>) supaya identik dgn admin. Label fokus area via <code>getLabelFokusArea()</code> (fallback bawaan). Card daftar admin kini ringkas: judul + range usia (+ badge status/trial).</li>
 <li><strong>Endpoint</strong>: <code>kelas_bermain</code> (+<code>boleh_trial</code>/<code>tujuan</code>/<code>fokus_area</code>/<code>peran_ortu</code>/<code>usia_*</code>), <code>produk</code>, <code>fokus_area</code>; <code>storage.from('aset')</code> (folder <code>worksheet/</code>).</li>
 </ul>
 <h3 id="master-fokus-area-adminfokus-area">🧩 Master Fokus Area — <code>/admin/fokus-area</code></h3>
@@ -275,13 +276,21 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <li><strong>Server action</strong>: <code>tandaiReminder(pendaftaranId, terkirim)</code> (<code>admin-reminder-actions.ts</code>).</li>
 <li><strong>Endpoint</strong>: <code>pendaftaran_event</code> (+ embed <code>event</code>, <code>ortu</code>).</li>
 </ul>
+<h3 id="master-kategori-usia-adminkategori-usia">👶 Master Kategori Usia — <code>/admin/kategori-usia</code></h3>
+<p>Master data rentang usia (dipakai dropdown di form Game). Game dikelompokkan per kategori.
+- <strong>File</strong>: <code>admin/kategori-usia/page.tsx</code> → <code>KategoriUsiaAdmin.tsx</code>.
+- <strong>Fungsi data</strong>: <code>getKategoriUsiaSemua()</code>, <code>getKategoriUsiaAktif()</code> (<code>kategori-usia.ts</code>).
+- <strong>Server action</strong> (<code>kategori-usia-actions.ts</code>, <code>{ok,error}</code>): <code>buatKategoriUsia(nama, usiaMin, usiaMax, urutan)</code>, <code>updateKategoriUsia(id, {nama,usiaMin,usiaMax,urutan,aktif})</code>, <code>hapusKategoriUsia(id)</code> (game yang memakainya di-set null via FK; saran <strong>nonaktifkan</strong> bila masih dipakai).
+- <strong>Endpoint</strong>: tabel <code>kategori_usia</code> (0079: nama, usia_min/max, urutan, aktif; RLS baca authenticated, kelola admin; seed 4). <code>paket_aset.kategori_usia_id</code> FK <code>on delete set null</code>.</p>
 <h3 id="kelola-tema-admintemaid">🎨 Kelola Tema — <code>/admin/tema/[id]</code></h3>
 <ul>
 <li><strong>File</strong>: <code>admin/tema/[id]/page.tsx</code> (query + aksi inline) → <code>PaketForm.tsx</code> (+ <code>TargetEditor</code>, <code>@/components/admin/AsetInput</code>, <code>@/components/game/Aset</code>).</li>
 <li><strong>Server action</strong>: <code>hapusPaket</code>, <code>setStatusTema</code>, <code>setMingguIni</code>, <code>buatPaket</code>, <code>updatePaket</code> (<code>admin-konten.ts</code>, validasi <code>validasiButir</code>). <strong><code>buatPaket</code>/<code>updatePaket</code> return <code>{ok,error}</code></strong> (bukan throw) agar pesan error DB — mis. CHECK constraint <code>paket_aset_mesin_check</code> — tampil jelas di production (pola sama dgn <code>buatUser</code>).</li>
 <li><strong>Penting saat menambah MESIN baru</strong>: selain 5 titik kode (tipe → engine → GameRunner → PaketForm → butir), <strong>wajib migrasi perluas CHECK <code>paket_aset_mesin_check</code></strong> (pola <code>0025..0037</code>, terbaru <code>0074_mesin_calistung.sql</code>) — tanpa itu INSERT paket ditolak DB.</li>
 <li><strong>UX form</strong>: <code>AsetInput</code> punya prop <code>tandaiKosong</code> (sorot merah bila kosong); form Hitung Benda melakukan pra-cek kolom benda kosong dengan pesan spesifik (placeholder "ketik emoji…").</li>
-<li><strong>Endpoint</strong>: <code>tema</code>, <code>paket_aset</code>; <code>storage.from('aset')</code> (aset game via AsetInput).</li>
+<li><strong>Kategori usia (0079)</strong>: input range usia game <strong>diganti dropdown Kategori Usia</strong> (master, lihat <code>/admin/kategori-usia</code>). Memilih kategori → <code>usia_min/usia_max</code> di-snapshot dari range-nya (filter umur <code>cocokUsia</code> di PilihGame tetap jalan) + simpan <code>kategori_usia_id</code>. Daftar game <strong>dikelompokkan per kategori</strong> (+ grup "Tanpa kategori" utk game lama). <code>buatPaket</code>/<code>updatePaket</code> menerima <code>kategoriUsiaId</code>.</li>
+<li><strong>Ikon tema = UPLOAD GAMBAR</strong>: <code>TambahTemaForm.tsx</code> (client) mengunggah gambar ke <code>storage 'aset/tema/'</code> → URL disimpan di <code>tema.sampul</code> (kosong → default 🎈). Komponen <strong><code>components/Sampul.tsx</code></strong> merender <code>&lt;img&gt;</code> bila <code>sampul</code> URL / emoji bila bukan; dipakai di semua penampil ikon tema (admin &amp; user: MenuAnak, PilihGame).</li>
+<li><strong>Endpoint</strong>: <code>tema</code>, <code>paket_aset</code> (+<code>kategori_usia_id</code>), <code>kategori_usia</code>; <code>storage.from('aset')</code> (aset game + folder <code>tema/</code>).</li>
 </ul>
 <hr />
 <h2 id="5-modul-keuangan-per-menu">5. Modul Keuangan — per menu</h2>
@@ -573,6 +582,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <li>📖 <strong><code>sukukata</code></strong> (<code>SukuKataGame.tsx</code>, kognitif) — mode <code>susun</code> (gambar+suara → susun suku kata jadi kata) &amp; <code>dengar</code> (fonik: dengar → pilih). Validasi: <code>sukuKata.join('')===kata</code>, susun ≥2 suku, dengar ≥1 pengecoh.</li>
 <li>✍️ <strong><code>jiplak</code></strong> (<code>JiplakGame.tsx</code>, motorik-halus) — tracing goresan karakter; jalur bawaan <code>lib/game/jiplak-path.ts</code> (<code>JALUR_KARAKTER</code> A–Z a–z 0–9, viewBox 100×140, <code>rapatkan()</code> utk deteksi progres); toleransi longgar, keluar-jalur ≤3 = rapi. Admin cukup ketik daftar karakter.</li>
 <li>🔢 <strong><code>hitung-benda</code></strong> (<code>HitungBendaGame.tsx</code>, kognitif) — mode <code>hitung</code> (tap benda satu-satu + TTS hitungan → pilih angka) &amp; <code>banyak-mana</code> (bandingkan 2 kelompok). Validasi jumlah 1–10, banyak-mana wajib kelompok-2 &amp; jumlah beda.</li>
+<li><strong>Mesin MEMORY</strong>: 🧠 <strong><code>ingatan</code></strong> (<code>IngatanGame.tsx</code>, kognitif; tanpa migrasi) — memory/concentration: kartu <strong>tertutup</strong>, buka 2 → cocok tetap terbuka, beda tertutup lagi (working memory; beda dari <code>cari-pasangan</code> yang kartunya selalu terlihat). Data <code>DataIngatan { pasangan: string[] }</code> — tiap entri jadi sepasang kartu (dek teracak, grid adaptif). Validasi 2–8 entri; form admin meng-reuse input aset <code>cari-pasangan</code>.</li>
 </ul>
 <h3 id="guru-guru-gurueventid-isi-nilai-tumbuh-kembang-catataneventid">🍎 Guru — <code>/guru</code>, <code>/guru/[eventId]</code> (isi Nilai tumbuh kembang), <code>/catatan/[eventId]</code></h3>
 <ul>
@@ -853,8 +863,13 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </tr>
 <tr>
 <td><code>tema</code>, <code>paket_aset</code></td>
-<td>katalog game (tema + paket/butir aset); <code>tema.boleh_trial</code>; <code>paket_aset.mesin</code> ber-CHECK constraint (perluas tiap mesin baru)</td>
-<td>0001–0003, 0025–0037, 0060, 0074</td>
+<td>katalog game (tema + paket/butir aset); <code>tema.sampul</code> = emoji/URL gambar; <code>paket_aset.mesin</code> ber-CHECK (perluas tiap mesin baru), <code>kategori_usia_id</code> FK</td>
+<td>0001–0003, 0025–0037, 0060, 0074, 0079</td>
+</tr>
+<tr>
+<td><code>kategori_usia</code></td>
+<td>master rentang usia (nama, usia_min/max, urutan, aktif) → dropdown form Game &amp; pengelompokan</td>
+<td>0079</td>
 </tr>
 <tr>
 <td><code>video</code></td>
