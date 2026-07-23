@@ -24,6 +24,13 @@ describe('validasiButir', () => {
     expect(validasiButir('cari-pasangan', { pasangan: ['🐱', '🐶'] })).toBe('');
   });
 
+  it('ingatan (memory) butuh 2–8 kartu', () => {
+    expect(validasiButir('ingatan', { pasangan: ['🍎'] })).toMatch(/minimal 2/i);
+    expect(validasiButir('ingatan', { pasangan: ['🍎', '🍌', '🍇'] })).toBe('');
+    expect(validasiButir('ingatan', { pasangan: Array.from({ length: 9 }, (_, i) => `x${i}`) })).toMatch(/maksimal 8/i);
+    expect(butirDariForm('ingatan', { pasangan: ['🍎', '🍌'] })).toEqual({ pasangan: ['🍎', '🍌'] });
+  });
+
   describe('hitung: operasi +, −, ×, ÷', () => {
     const legenda = [
       { simbol: '🍎', nilai: 6 },

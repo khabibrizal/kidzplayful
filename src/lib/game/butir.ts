@@ -1,8 +1,8 @@
 // src/lib/game/butir.ts
-import type { Mesin, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode, DataUrutan, DataJalur, DataHitung, DataCocokkan, DataEjaKata, DataGaris, DataSukuKata, DataJiplak, DataHitungBenda } from './tipe';
+import type { Mesin, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode, DataUrutan, DataJalur, DataHitung, DataCocokkan, DataEjaKata, DataGaris, DataSukuKata, DataJiplak, DataHitungBenda, DataIngatan } from './tipe';
 import { JALUR_KARAKTER } from './jiplak-path';
 
-export function butirDariForm(mesin: Mesin, form: unknown): DataTekan | DataSeret | DataCocok | DataMewarnai | DataDekode | DataUrutan | DataJalur | DataHitung | DataCocokkan | DataEjaKata | DataGaris | DataSukuKata | DataJiplak | DataHitungBenda {
+export function butirDariForm(mesin: Mesin, form: unknown): DataTekan | DataSeret | DataCocok | DataMewarnai | DataDekode | DataUrutan | DataJalur | DataHitung | DataCocokkan | DataEjaKata | DataGaris | DataSukuKata | DataJiplak | DataHitungBenda | DataIngatan {
   // form sudah berbentuk objek sesuai mesin; fungsi ini titik normalisasi tunggal
   if (mesin === 'tekan-sesuai') return form as DataTekan;
   if (mesin === 'seret-wadah') return form as DataSeret;
@@ -17,6 +17,7 @@ export function butirDariForm(mesin: Mesin, form: unknown): DataTekan | DataSere
   if (mesin === 'sukukata') return form as DataSukuKata;
   if (mesin === 'jiplak') return form as DataJiplak;
   if (mesin === 'hitung-benda') return form as DataHitungBenda;
+  if (mesin === 'ingatan') return form as DataIngatan;
   return form as DataCocok;
 }
 
@@ -146,6 +147,13 @@ export function validasiButir(mesin: Mesin, butir: unknown): string {
         if (sq.jumlah2 === sq.jumlah) return 'Mode banyak-mana: kedua jumlah tidak boleh sama.';
       }
     }
+    return '';
+  }
+  if (mesin === 'ingatan') {
+    const b = butir as DataIngatan;
+    const it = (b.pasangan ?? []).filter((x) => x && x.trim());
+    if (it.length < 2) return 'Butuh minimal 2 kartu (tiap entri jadi sepasang).';
+    if (it.length > 8) return 'Maksimal 8 kartu (16 kartu di papan).';
     return '';
   }
   if (mesin === 'garis') {

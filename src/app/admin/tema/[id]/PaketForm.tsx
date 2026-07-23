@@ -12,7 +12,7 @@ import { sanitizeSvg, tandaiArea } from '@/lib/game/svg-sanitize';
 import TargetEditor from './TargetEditor';
 import s from '../../admin.module.css';
 
-const AREA: Record<Mesin, string> = { 'tekan-sesuai': 'kognitif', 'seret-wadah': 'motorik-halus', 'cari-pasangan': 'kognitif', 'mewarnai': 'kreativitas', 'dekode': 'kognitif', 'urutan': 'kognitif', 'jalur': 'kognitif', 'hitung': 'kognitif', 'cocokkan': 'kognitif', 'ejakata': 'kognitif', 'garis': 'motorik-halus', 'sukukata': 'kognitif', 'jiplak': 'motorik-halus', 'hitung-benda': 'kognitif' };
+const AREA: Record<Mesin, string> = { 'tekan-sesuai': 'kognitif', 'seret-wadah': 'motorik-halus', 'cari-pasangan': 'kognitif', 'mewarnai': 'kreativitas', 'dekode': 'kognitif', 'urutan': 'kognitif', 'jalur': 'kognitif', 'hitung': 'kognitif', 'cocokkan': 'kognitif', 'ejakata': 'kognitif', 'garis': 'motorik-halus', 'sukukata': 'kognitif', 'jiplak': 'motorik-halus', 'hitung-benda': 'kognitif', 'ingatan': 'kognitif' };
 type JSoal = { kolom: number; baris: number; mulai: [number, number]; tujuan: [number, number]; rintangan: [number, number][]; karakter: string; hadiah: string };
 
 const isHex = (v: string) => /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v.trim());
@@ -181,7 +181,7 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
       const b = p.butir as DataSeret;
       setWadah(b.wadah?.length ? b.wadah : [{ kategori: '', label: '', emoji: '' }]);
       setBenda(b.benda?.length ? b.benda : [{ emoji: '', kategori: '' }]);
-    } else if (p.mesin === 'cari-pasangan') {
+    } else if (p.mesin === 'cari-pasangan' || p.mesin === 'ingatan') {
       const b = p.butir as DataCocok;
       setPasangan(b.pasangan?.length ? b.pasangan : ['', '']);
     } else if (p.mesin === 'mewarnai') {
@@ -257,6 +257,7 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
           <option value="sukukata">📖 Rangkai Suku Kata — calistung baca</option>
           <option value="jiplak">✍️ Jiplak Huruf & Angka — calistung tulis</option>
           <option value="hitung-benda">🔢 Hitung Benda — calistung hitung</option>
+          <option value="ingatan">🧠 Kartu Ingatan — memory (buka-tutup)</option>
         </select>
         <input className={s.inp} value={judul} onChange={(e) => setJudul(e.target.value)} placeholder="Judul game" style={{ flex: 1 }} />
       </div>
@@ -321,9 +322,9 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
         </div>
       )}
 
-      {mesin === 'cari-pasangan' && (
+      {(mesin === 'cari-pasangan' || mesin === 'ingatan') && (
         <div style={{ marginTop: 10 }}>
-          <div className={s.muted}>Tiap entri jadi sepasang (emoji/gambar). Minimal 2.</div>
+          <div className={s.muted}>{mesin === 'ingatan' ? 'Kartu tertutup — anak buka 2 & cari yang sama. Tiap entri jadi sepasang (2–8 entri).' : 'Tiap entri jadi sepasang (emoji/gambar). Minimal 2.'}</div>
           {pasangan.map((p, i) => (
             <div key={i} style={{ marginTop: 6 }}>
               <AsetInput value={p} onChange={(v) => setPasangan(pasangan.map((q, j) => j === i ? v : q))} />

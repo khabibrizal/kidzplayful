@@ -1,5 +1,5 @@
 // src/lib/game/tipe.ts
-export type Mesin = 'tekan-sesuai' | 'seret-wadah' | 'cari-pasangan' | 'mewarnai' | 'dekode' | 'urutan' | 'jalur' | 'hitung' | 'cocokkan' | 'ejakata' | 'garis' | 'sukukata' | 'jiplak' | 'hitung-benda';
+export type Mesin = 'tekan-sesuai' | 'seret-wadah' | 'cari-pasangan' | 'mewarnai' | 'dekode' | 'urutan' | 'jalur' | 'hitung' | 'cocokkan' | 'ejakata' | 'garis' | 'sukukata' | 'jiplak' | 'hitung-benda' | 'ingatan';
 
 export interface ButirTekan { tanya: string; benar: string; salah: string[]; }
 export interface DataTekan { soal: ButirTekan[]; }
@@ -9,6 +9,9 @@ export interface Benda { emoji: string; kategori: string; }
 export interface DataSeret { wadah: Wadah[]; benda: Benda[]; }
 
 export interface DataCocok { pasangan: string[]; }
+
+// Kartu Ingatan (memory/concentration): kartu tertutup, buka 2, yang sama tetap terbuka.
+export interface DataIngatan { pasangan: string[]; } // tiap entri → sepasang kartu
 
 export interface DataMewarnai {
   sumber?: 'template' | 'svg';         // default 'template'
@@ -97,7 +100,7 @@ export interface Paket {
   usia_min: number;
   usia_max: number;
   target_detik?: number | null;  // Mode Tantangan: selesai ≤ target = bonus (opsional)
-  butir: DataTekan | DataSeret | DataCocok | DataMewarnai | DataDekode | DataUrutan | DataJalur | DataHitung | DataCocokkan | DataEjaKata | DataGaris | DataSukuKata | DataJiplak | DataHitungBenda;
+  butir: DataTekan | DataSeret | DataCocok | DataMewarnai | DataDekode | DataUrutan | DataJalur | DataHitung | DataCocokkan | DataEjaKata | DataGaris | DataSukuKata | DataJiplak | DataHitungBenda | DataIngatan;
 }
 
 export interface HasilSelesai {
