@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { isUrlAset } from '@/lib/game/aset';
+import { kompresGambar } from '@/lib/img';
 
 export default function AsetInput({
   value, onChange, placeholder, width = 130, tandaiKosong = false,
@@ -18,9 +19,9 @@ export default function AsetInput({
     setErr(''); setNaik(true);
     try {
       const supabase = createClient();
-      const ext = (file.name.split('.').pop() || 'png').toLowerCase();
+      const { blob, ext } = await kompresGambar(file, { maksDim: 512, kualitas: 0.82 }); // kartu game kecil
       const path = `g/${Date.now()}-${Math.floor(performance.now())}.${ext}`;
-      const { error } = await supabase.storage.from('aset').upload(path, file, { upsert: false });
+      const { error } = await supabase.storage.from('aset').upload(path, blob, { upsert: false, contentType: blob.type || undefined });
       if (error) throw error;
       const { data } = supabase.storage.from('aset').getPublicUrl(path);
       onChange(data.publicUrl);

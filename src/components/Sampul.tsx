@@ -8,7 +8,7 @@ export default function Sampul({ value, size = 26 }: { value?: string | null; si
   const v = (value ?? '').trim();
   if (isSampulUrl(v)) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={v} alt="" width={size} height={size} style={{ width: size, height: size, objectFit: 'cover', borderRadius: 8, verticalAlign: 'middle', display: 'inline-block' }} />;
+    return <img src={v} alt="" width={size} height={size} loading="lazy" decoding="async" style={{ width: size, height: size, objectFit: 'cover', borderRadius: 8, verticalAlign: 'middle', display: 'inline-block' }} />;
   }
   return <span style={{ fontSize: size }}>{v || '🎈'}</span>;
 }

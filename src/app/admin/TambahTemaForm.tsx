@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { buatTema } from '@/lib/data/admin-konten';
+import { kompresGambar } from '@/lib/img';
 import Sampul from '@/components/Sampul';
 import s from './admin.module.css';
 
@@ -22,9 +23,9 @@ export default function TambahTemaForm() {
     setUploading(true); setMsg('');
     try {
       const sb = createClient();
-      const ext = (file.name.split('.').pop() || 'png').toLowerCase();
+      const { blob, ext } = await kompresGambar(file, { maksDim: 256, kualitas: 0.85 }); // ikon tema kecil
       const path = `tema/${Date.now()}-${Math.floor(performance.now())}.${ext}`;
-      const { error } = await sb.storage.from('aset').upload(path, file, { upsert: false });
+      const { error } = await sb.storage.from('aset').upload(path, blob, { upsert: false, contentType: blob.type || undefined });
       if (error) throw error;
       setSampul(sb.storage.from('aset').getPublicUrl(path).data.publicUrl);
     } catch (e2) { setMsg(e2 instanceof Error ? e2.message : 'Gagal mengunggah gambar.'); }
