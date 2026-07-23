@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import type { TemaLengkap } from '@/lib/game/tipe';
 import { cocokUsia } from '@/lib/domain/usia';
 import TombolKembali from '@/components/TombolKembali';
+import Sampul from '@/components/Sampul';
 
 export default function PilihGame({
   anakId, nama, umur, pustaka, batasi = false,
@@ -24,7 +25,7 @@ export default function PilihGame({
         return (
           <button key={p.id} className="kp-card" onClick={() => router.push(kunci ? '/pengaturan' : `/main/${anakId}?paket=${p.id}`)}
             style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 8, width: '100%', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', opacity: kunci ? 0.75 : 1 }}>
-            <span style={{ fontSize: 26 }}>{kunci ? '🔒' : (t.tema.sampul ?? '🎈')}</span>
+            <span style={{ fontSize: 26 }}>{kunci ? '🔒' : <Sampul value={t.tema.sampul} size={26} />}</span>
             <span style={{ flex: 1 }}><b>{p.judul}</b><br /><small style={{ color: 'var(--abu)' }}>{kunci ? `${t.tema.nama} · khusus pelanggan` : `${t.tema.nama} · ${p.usia_min}-${p.usia_max} thn ✓`}</small></span>
             <span style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: kunci ? 'var(--abu)' : 'var(--mint-d)', padding: '6px 12px', borderRadius: 99 }}>{kunci ? '🔒' : 'main ▶'}</span>
           </button>

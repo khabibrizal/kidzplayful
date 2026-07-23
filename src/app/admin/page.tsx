@@ -1,7 +1,9 @@
 // src/app/admin/page.tsx
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
-import { buatTema, setMingguIni, hapusTema, setBolehTrialTema } from '@/lib/data/admin-konten';
+import { setMingguIni, hapusTema, setBolehTrialTema } from '@/lib/data/admin-konten';
+import Sampul from '@/components/Sampul';
+import TambahTemaForm from './TambahTemaForm';
 import s from './admin.module.css';
 
 export default async function AdminHome() {
@@ -9,10 +11,6 @@ export default async function AdminHome() {
   const { data: tema } = await supabase
     .from('tema').select('id,nama,sampul,status,is_minggu_ini,boleh_trial').order('created_at', { ascending: false });
 
-  async function aksiBuat(formData: FormData) {
-    'use server';
-    await buatTema(String(formData.get('nama') ?? ''), String(formData.get('sampul') ?? ''));
-  }
   async function aksiMinggu(formData: FormData) {
     'use server';
     await setMingguIni(String(formData.get('id')));
@@ -29,19 +27,13 @@ export default async function AdminHome() {
   return (
     <div>
       <div className={s.section}>Tambah Tema</div>
-      <form action={aksiBuat} className={s.card}>
-        <div className={s.row}>
-          <input className={s.inp} name="sampul" placeholder="🎈" maxLength={4} style={{ width: 70, textAlign: 'center' }} />
-          <input className={s.inp} name="nama" placeholder="Nama tema (mis. Kendaraan)" style={{ flex: 1 }} required />
-          <button className={s.btn} type="submit">+ Buat</button>
-        </div>
-      </form>
+      <TambahTemaForm />
 
       <div className={s.section}>Tema ({tema?.length ?? 0})</div>
       {(tema ?? []).map((t) => (
         <div key={t.id} className={s.card}>
           <div className={s.row}>
-            <span style={{ fontSize: 26 }}>{t.sampul}</span>
+            <Sampul value={t.sampul} size={26} />
             <Link href={`/admin/tema/${t.id}`} style={{ flex: 1, fontWeight: 700, color: 'var(--tinta)' }}>{t.nama}</Link>
             <span className={`${s.tag} ${t.status === 'disetujui' ? s.tagOk : s.tagDraf}`}>{t.status}</span>
             {t.is_minggu_ini && <span className={`${s.tag} ${s.tagNow}`}>Minggu Ini</span>}

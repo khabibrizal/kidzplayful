@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { hapusPaket, setStatusTema, setMingguIni } from '@/lib/data/admin-konten';
 import { getKategoriUsiaAktif } from '@/lib/data/kategori-usia';
 import type { Paket } from '@/lib/game/tipe';
+import Sampul from '@/components/Sampul';
 import PaketForm from './PaketForm';
 import s from '../../admin.module.css';
 
@@ -36,7 +37,7 @@ export default async function KelolaTema({ params }: { params: Promise<{ id: str
   return (
     <div>
       <div className={s.head} style={{ marginTop: 8 }}>
-        <h1>{tema.sampul} {tema.nama}</h1>
+        <h1><Sampul value={tema.sampul} size={28} /> {tema.nama}</h1>
         <div className={s.row}>
           <span className={`${s.tag} ${tema.status === 'disetujui' ? s.tagOk : s.tagDraf}`}>{tema.status}</span>
           {tema.is_minggu_ini && <span className={`${s.tag} ${s.tagNow}`}>Minggu Ini</span>}

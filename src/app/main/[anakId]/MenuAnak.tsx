@@ -9,6 +9,7 @@ import PinGate from '@/components/game/PinGate';
 import VideoPojok from '@/components/game/VideoPojok';
 import FavoritBtn from '@/components/FavoritBtn';
 import KelasIsi from '@/components/KelasIsi';
+import Sampul from '@/components/Sampul';
 import { catatRiwayatKelas } from '@/lib/data/riwayat-actions';
 import { waktuHabis, kunciHari, sisaDetik } from '@/lib/domain/waktu';
 import Pewi from '@/components/ui/Pewi';
@@ -208,7 +209,7 @@ export default function MenuAnak({
             return (
               <button key={t.tema.id} className={`kp-tile ${['mint', 'lavender', 'biru'][i % 3]}`} style={{ opacity: kunci ? 0.7 : 1 }}
                 onClick={() => { if (kunci) { setKunciFitur('Game Edukasi'); return; } setTemaTerpilih(t); setLayar('daftar'); }}>
-                <span className="emo">{kunci ? '🔒' : (t.tema.sampul ?? '🎈')}</span><div>{t.tema.nama}<small>{kunci ? 'khusus pelanggan' : `${t.paket.length} permainan`}</small></div>
+                <span className="emo">{kunci ? '🔒' : <Sampul value={t.tema.sampul} size={40} />}</span><div>{t.tema.nama}<small>{kunci ? 'khusus pelanggan' : `${t.paket.length} permainan`}</small></div>
               </button>
             );
           })}
@@ -224,7 +225,7 @@ export default function MenuAnak({
       <div className={s.wrap}>
         <div className={s.top}>
           <button className="kp-lock" aria-label="Kembali" onClick={() => setLayar('menu')}>←</button>
-          <div className="kp-chip">{temaTerpilih.tema.sampul ?? '🎈'} {temaTerpilih.tema.nama}</div>
+          <div className="kp-chip"><Sampul value={temaTerpilih.tema.sampul} size={20} /> {temaTerpilih.tema.nama}</div>
           <div className="kp-coin">🪙 {koin}</div>
         </div>
         <div className={s.menu}>
@@ -243,7 +244,7 @@ export default function MenuAnak({
   return (
     <div className={s.wrap}>
       <div className={s.top}>
-        <div className="kp-chip">{mingguIni?.tema.sampul ?? '🎈'} {mingguIni?.tema.nama ?? 'KidzPlayful'}</div>
+        <div className="kp-chip"><Sampul value={mingguIni?.tema.sampul} size={20} /> {mingguIni?.tema.nama ?? 'KidzPlayful'}</div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <div className="kp-coin">🪙 {koin}</div>
           <button className="kp-lock" aria-label="Untuk orang tua" onClick={() => setPinUntuk('keluar')}>🔒</button>

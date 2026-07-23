@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getPengaturanTrial } from '@/lib/data/pengaturan-trial';
 import { simpanPengaturanTrial } from '@/lib/data/admin-bisnis';
 import { getKelasSemua } from '@/lib/data/kelas-bermain';
+import Sampul from '@/components/Sampul';
 import { setBolehTrialKelas } from '@/lib/data/kelas-bermain-actions';
 import { setBolehTrialTema, setBolehTrialVideo } from '@/lib/data/admin-konten';
 import s from '../admin.module.css';
@@ -72,7 +73,7 @@ export default async function PengaturanTrialPage({ searchParams }: { searchPara
         {tema.length === 0 && <p className={s.muted} style={{ marginTop: 8 }}>Belum ada tema.</p>}
         {tema.map((t) => (
           <div key={t.id} className={s.row} style={{ padding: '7px 0', borderBottom: '1px solid #f0f0f5', alignItems: 'center' }}>
-            <span style={{ flex: 1, fontSize: 14 }}>{t.sampul} {t.nama}</span>
+            <span style={{ flex: 1, fontSize: 14 }}><Sampul value={t.sampul} size={18} /> {t.nama}</span>
             <form action={trTema}><input type="hidden" name="id" value={t.id} /><Tombol boleh={t.boleh_trial !== false} /></form>
           </div>
         ))}

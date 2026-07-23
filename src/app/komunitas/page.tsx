@@ -40,7 +40,7 @@ export default async function Komunitas({ searchParams }: { searchParams: Promis
       {feed.map((p) => (
         <div key={p.id} className="kp-card" style={{ marginBottom: 10 }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13 }}>
-            <b>{p.nama}</b>{(p.topik || p.tema) && <span className="kp-chip" style={{ fontSize: 11, padding: '2px 10px', boxShadow: 'none' }}>{p.topik ?? `${p.tema?.sampul ?? ''} ${p.tema?.nama}`}</span>}
+            <b>{p.nama}</b>{(p.topik || p.tema) && <span className="kp-chip" style={{ fontSize: 11, padding: '2px 10px', boxShadow: 'none' }}>{p.topik ?? `${p.tema?.sampul && !/^https?:\/\//.test(p.tema.sampul) ? p.tema.sampul : ''} ${p.tema?.nama ?? ''}`.trim()}</span>}
           </div>
           <p style={{ margin: '8px 0', whiteSpace: 'pre-wrap' }}>{p.teks}</p>
           <div style={{ display: 'flex', gap: 14, alignItems: 'center', fontSize: 13 }}>
