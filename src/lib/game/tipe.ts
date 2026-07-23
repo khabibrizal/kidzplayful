@@ -99,6 +99,7 @@ export interface Paket {
   area_skill: string;
   usia_min: number;
   usia_max: number;
+  kategori_usia_id?: string | null;  // master Kategori Usia (0079); usia_min/max di-snapshot dari range-nya
   target_detik?: number | null;  // Mode Tantangan: selesai ≤ target = bonus (opsional)
   butir: DataTekan | DataSeret | DataCocok | DataMewarnai | DataDekode | DataUrutan | DataJalur | DataHitung | DataCocokkan | DataEjaKata | DataGaris | DataSukuKata | DataJiplak | DataHitungBenda | DataIngatan;
 }

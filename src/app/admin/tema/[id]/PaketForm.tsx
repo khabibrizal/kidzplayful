@@ -26,11 +26,12 @@ type Wadah = { kategori: string; label: string; emoji: string };
 type Benda = { emoji: string; kategori: string };
 type LegRow = { simbol: string; nilai: string };
 
-export default function PaketForm({ temaId, paketList = [] }: { temaId: string; paketList?: Paket[] }) {
+export default function PaketForm({ temaId, paketList = [], kategoriOpsi = [] }: { temaId: string; paketList?: Paket[]; kategoriOpsi?: { id: string; nama: string; usia_min: number; usia_max: number }[] }) {
   const [editId, setEditId] = useState<string | null>(null);
   const [mesin, setMesin] = useState<Mesin>('tekan-sesuai');
   const [judul, setJudul] = useState('Mana Ya?');
-  const [usiaMin, setUsiaMin] = useState(2);
+  const [kategoriId, setKategoriId] = useState('');       // kategori usia terpilih (master)
+  const [usiaMin, setUsiaMin] = useState(2);              // di-snapshot dari kategori (kompat filter umur)
   const [usiaMax, setUsiaMax] = useState(5);
   const [targetDetik, setTargetDetik] = useState('');  // Mode Tantangan (opsional)
   const [err, setErr] = useState('');
@@ -159,12 +160,13 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
     // validasi di klien dulu → pesan ramah (server action di-redact di production)
     const pesan = validasiButir(mesin, butir);
     if (pesan) { setErr(pesan); return; }
+    if (!kategoriId) { setErr('Pilih kategori usia dulu.'); return; }
     if (usiaMin > usiaMax) { setErr('Usia minimal tidak boleh lebih besar dari usia maksimal.'); return; }
     const target = targetDetik.trim() ? Number(targetDetik) : null;
     try {
       const r = editId
-        ? await updatePaket({ id: editId, temaId, mesin, judul, areaSkill: AREA[mesin], usiaMin, usiaMax, targetDetik: target, butir })
-        : await buatPaket({ temaId, mesin, judul, areaSkill: AREA[mesin], usiaMin, usiaMax, targetDetik: target, butir });
+        ? await updatePaket({ id: editId, temaId, mesin, judul, areaSkill: AREA[mesin], usiaMin, usiaMax, kategoriUsiaId: kategoriId, targetDetik: target, butir })
+        : await buatPaket({ temaId, mesin, judul, areaSkill: AREA[mesin], usiaMin, usiaMax, kategoriUsiaId: kategoriId, targetDetik: target, butir });
       if (!r.ok) { setErr(r.error ?? 'Gagal menyimpan.'); return; }
       location.reload();
     } catch (e) { setErr(e instanceof Error ? e.message : 'Gagal menyimpan. Cek koneksi & coba lagi.'); }
@@ -174,6 +176,11 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
   function muatUntukEdit(p: Paket) {
     setErr(''); setEditId(p.id); setMesin(p.mesin); setJudul(p.judul);
     setUsiaMin(p.usia_min); setUsiaMax(p.usia_max); setTargetDetik(p.target_detik ? String(p.target_detik) : '');
+    // pilih kategori: dari id bila ada, else cocokkan range (game lama sebelum kategori)
+    const kat = p.kategori_usia_id
+      ? kategoriOpsi.find((k) => k.id === p.kategori_usia_id)
+      : kategoriOpsi.find((k) => k.usia_min === p.usia_min && k.usia_max === p.usia_max);
+    setKategoriId(kat?.id ?? '');
     if (p.mesin === 'tekan-sesuai') {
       const b = p.butir as DataTekan;
       setSoal((b.soal ?? []).map((x) => ({ tanya: x.tanya ?? '', benar: x.benar ?? '', pengecoh: x.salah?.length ? x.salah : ['', ''] })));
@@ -261,13 +268,19 @@ export default function PaketForm({ temaId, paketList = [] }: { temaId: string; 
         </select>
         <input className={s.inp} value={judul} onChange={(e) => setJudul(e.target.value)} placeholder="Judul game" style={{ flex: 1 }} />
       </div>
-      <div className={s.row} style={{ marginTop: 6, gap: 6, alignItems: 'center' }}>
-        <span className={s.muted} style={{ fontSize: 12 }}>Usia:</span>
-        <input className={s.inp} type="number" min={0} max={12} value={usiaMin} onChange={(e) => setUsiaMin(Number(e.target.value))} style={{ width: 64, marginBottom: 0 }} />
-        <span className={s.muted}>–</span>
-        <input className={s.inp} type="number" min={0} max={12} value={usiaMax} onChange={(e) => setUsiaMax(Number(e.target.value))} style={{ width: 64, marginBottom: 0 }} />
-        <span className={s.muted} style={{ fontSize: 11 }}>tahun (game koding: 4–6)</span>
+      <div className={s.row} style={{ marginTop: 6, gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span className={s.muted} style={{ fontSize: 12 }}>👶 Kategori usia:</span>
+        <select className={s.inp} value={kategoriId} onChange={(e) => {
+          const k = kategoriOpsi.find((x) => x.id === e.target.value);
+          setKategoriId(e.target.value);
+          if (k) { setUsiaMin(k.usia_min); setUsiaMax(k.usia_max); } // snapshot range utk filter umur
+        }} style={{ flex: 1, minWidth: 200, marginBottom: 0 }}>
+          <option value="">— pilih kategori —</option>
+          {kategoriOpsi.map((k) => <option key={k.id} value={k.id}>{k.nama} ({k.usia_min}–{k.usia_max} th)</option>)}
+        </select>
+        {kategoriId && <span className={s.muted} style={{ fontSize: 11 }}>usia {usiaMin}–{usiaMax} th</span>}
       </div>
+      {kategoriOpsi.length === 0 && <div className={s.muted} style={{ fontSize: 11, color: '#b3261e' }}>Belum ada kategori usia — tambah dulu di menu 👶 Kategori Usia.</div>}
       <div className={s.row} style={{ marginTop: 6, gap: 6, alignItems: 'center' }}>
         <span className={s.muted} style={{ fontSize: 12 }}>⚡ Target waktu:</span>
         <input className={s.inp} type="number" min={0} placeholder="detik" value={targetDetik} onChange={(e) => setTargetDetik(e.target.value)} style={{ width: 90, marginBottom: 0 }} />

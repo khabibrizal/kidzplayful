@@ -10,6 +10,7 @@ export const MENU_ADMIN: MenuAdmin[] = [
   { key: 'pesanan', href: '/admin/pesanan', label: '📦 Pesanan' },
   { key: 'kelas-bermain', href: '/admin/kelas-bermain', label: '🎈 Kelas Bermain' },
   { key: 'fokus-area', href: '/admin/fokus-area', label: '🧩 Fokus Area' },
+  { key: 'kategori-usia', href: '/admin/kategori-usia', label: '👶 Kategori Usia' },
   { key: 'artikel', href: '/admin/artikel', label: '📝 Artikel' },
   { key: 'video', href: '/admin/video', label: '📺 Video' },
   { key: 'langganan', href: '/admin/langganan', label: '💳 Langganan' },
