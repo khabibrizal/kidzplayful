@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { statusLangganan, bolehAkses } from '@/lib/domain/trial';
+import { umurTeks } from '@/lib/domain/anak';
 import { getPendaftaranSaya } from '@/lib/data/event';
 import { getEventTampilCached } from '@/lib/data/publik';
 import { getArtikelTerbitCached } from '@/lib/data/artikel';
@@ -84,7 +85,7 @@ export default async function PilihAnakPage() {
         <div key={a.id} className="kp-card">
           <a href={a.mode_default === 'ortu' ? `/ortu/${a.id}` : `/main/${a.id}`} style={{ display: 'flex', gap: 12, alignItems: 'center', textDecoration: 'none', color: 'inherit' }}>
             <span style={{ fontSize: 30 }}>{a.jenis_kelamin === 'laki-laki' ? '👦' : a.jenis_kelamin === 'perempuan' ? '👧' : '🧒'}</span>
-            <span><b>{a.nama}</b><br /><small style={{ color: 'var(--abu)' }}>mode {a.mode_default}</small></span>
+            <span><b>{a.nama}</b><br /><small style={{ color: 'var(--abu)' }}>{a.tanggal_lahir ? `${umurTeks(new Date(a.tanggal_lahir + 'T00:00:00Z'), new Date())} · ` : ''}mode {a.mode_default}</small></span>
           </a>
           <a href={`/pilih-game/${a.id}`} style={{ display: 'inline-block', marginTop: 8, fontSize: 12, color: 'var(--biru-d)' }}>🎯 Pilih game (orang tua)</a>
           <a href={`/anak/${a.id}`} style={{ display: 'inline-block', marginTop: 8, marginLeft: 12, fontSize: 12, color: 'var(--biru-d)' }}>⚙️ Kelola</a>
