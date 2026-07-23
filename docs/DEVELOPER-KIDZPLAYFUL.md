@@ -41,7 +41,7 @@ src/
     supabase/          # server.ts (SSR), client.ts (browser)
     api/               # helpers.ts (amplop JSON + auth Bearer untuk REST API)
     game/              # tipe & util mesin game
-supabase/migrations/   # skema DB (0001..0079), dijalankan manual di SQL Editor
+supabase/migrations/   # skema DB (0001..0080), dijalankan manual di SQL Editor
 docs/                  # dokumentasi (termasuk file ini)
 tools/md2pdf.py        # generator PDF dokumentasi
 ```
@@ -67,7 +67,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 - Halaman tidak menaruh selector mentah bila bisa lewat reader; beberapa halaman melakukan query inline sederhana.
 
 ### Deploy & migrasi
-- Migrasi dijalankan **manual** di Supabase SQL Editor (urut `0001..0079`), lalu diverifikasi via REST (`?select=col&limit=1` → 200).
+- Migrasi dijalankan **manual** di Supabase SQL Editor (urut `0001..0080`), lalu diverifikasi via REST (`?select=col&limit=1` → 200).
 - Commit: `git -c commit.gpgsign=false commit` + baris `Co-Authored-By`. Push ke `master` → Vercel auto-deploy.
 - Banyak reader dibungkus `try/catch` agar fitur aman dideploy sebelum migrasinya dijalankan (mengembalikan nilai default).
 
@@ -472,7 +472,7 @@ Penilaian perkembangan anak per event offline. **Parameter (Area + Indikator) di
   - 📖 **`sukukata`** (`SukuKataGame.tsx`, kognitif) — mode `susun` (gambar+suara → susun suku kata jadi kata) & `dengar` (fonik: dengar → pilih). Validasi: `sukuKata.join('')===kata`, susun ≥2 suku, dengar ≥1 pengecoh.
   - ✍️ **`jiplak`** (`JiplakGame.tsx`, motorik-halus) — tracing goresan karakter; jalur bawaan `lib/game/jiplak-path.ts` (`JALUR_KARAKTER` A–Z a–z 0–9, viewBox 100×140, `rapatkan()` utk deteksi progres); toleransi longgar, keluar-jalur ≤3 = rapi. Admin cukup ketik daftar karakter.
   - 🔢 **`hitung-benda`** (`HitungBendaGame.tsx`, kognitif) — mode `hitung` (tap benda satu-satu + TTS hitungan → pilih angka) & `banyak-mana` (bandingkan 2 kelompok). Validasi jumlah 1–10, banyak-mana wajib kelompok-2 & jumlah beda.
-- **Mesin MEMORY**: 🧠 **`ingatan`** (`IngatanGame.tsx`, kognitif; tanpa migrasi) — memory/concentration: kartu **tertutup**, buka 2 → cocok tetap terbuka, beda tertutup lagi (working memory; beda dari `cari-pasangan` yang kartunya selalu terlihat). Data `DataIngatan { pasangan: string[] }` — tiap entri jadi sepasang kartu (dek teracak, grid adaptif). Validasi 2–8 entri; form admin meng-reuse input aset `cari-pasangan`.
+- **Mesin MEMORY**: 🧠 **`ingatan`** (`IngatanGame.tsx`, kognitif; **butuh migrasi CHECK `0080_mesin_ingatan.sql`**) — memory/concentration: kartu **tertutup**, buka 2 → cocok tetap terbuka, beda tertutup lagi (working memory; beda dari `cari-pasangan` yang kartunya selalu terlihat). Data `DataIngatan { pasangan: string[] }` — tiap entri jadi sepasang kartu (dek teracak, grid adaptif). Deteksi pasangan by **id entri** (dua salinan berbagi id) + fallback nilai ternormalisasi (strip variation selector U+FE0E/FE0F) agar emoji tampak-sama-beda-kode tetap cocok. Validasi 2–8 entri; form admin meng-reuse input aset `cari-pasangan`.
 
 ### 🍎 Guru — `/guru`, `/guru/[eventId]` (isi Nilai tumbuh kembang), `/catatan/[eventId]`
 - **Guard**: `getGuruTerjamin()` (`guru.ts`).
@@ -599,7 +599,7 @@ Semua Route Handler (`app/api/**/route.ts`) mengembalikan amplop JSON seragam vi
 | `anak` | data anak (nama, `nama_panggilan` utk stiker, tgl lahir, jenis kelamin, mode, koin/streak) | 0001, 0024, 0042, 0071 |
 | `langganan` | status langganan/trial per user (trial_mulai, aktif_sampai, nominal) | 0001 |
 | `pembayaran_langganan` | riwayat pembayaran membership | 0052 |
-| `tema`, `paket_aset` | katalog game (tema + paket/butir aset); `tema.sampul` = emoji/URL gambar; `paket_aset.mesin` ber-CHECK (perluas tiap mesin baru), `kategori_usia_id` FK | 0001–0003, 0025–0037, 0060, 0074, 0079 |
+| `tema`, `paket_aset` | katalog game (tema + paket/butir aset); `tema.sampul` = emoji/URL gambar; `paket_aset.mesin` ber-CHECK (perluas tiap mesin baru), `kategori_usia_id` FK | 0001–0003, 0025–0037, 0060, 0074, 0079, 0080 |
 | `kategori_usia` | master rentang usia (nama, usia_min/max, urutan, aktif) → dropdown form Game & pengelompokan | 0079 |
 | `video` | video edukasi (kategori baby/toddler); `boleh_trial` | 0003, 0005, 0060 |
 | `kelas_bermain` | materi kelas bermain (+ worksheet, bahan; `tujuan`/`usia_*`/`fokus_area[]`/`peran_ortu`; aktivitas jsonb ber-key `catatan_ortu`); `boleh_trial` | 0009, 0013–0016, 0060, 0076, 0077 |

@@ -55,7 +55,7 @@ li { margin:3px 0; }
     supabase/          # server.ts (SSR), client.ts (browser)
     api/               # helpers.ts (amplop JSON + auth Bearer untuk REST API)
     game/              # tipe &amp; util mesin game
-supabase/migrations/   # skema DB (0001..0079), dijalankan manual di SQL Editor
+supabase/migrations/   # skema DB (0001..0080), dijalankan manual di SQL Editor
 docs/                  # dokumentasi (termasuk file ini)
 tools/md2pdf.py        # generator PDF dokumentasi
 </code></pre>
@@ -82,7 +82,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </ul>
 <h3 id="deploy-migrasi">Deploy &amp; migrasi</h3>
 <ul>
-<li>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor (urut <code>0001..0079</code>), lalu diverifikasi via REST (<code>?select=col&amp;limit=1</code> → 200).</li>
+<li>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor (urut <code>0001..0080</code>), lalu diverifikasi via REST (<code>?select=col&amp;limit=1</code> → 200).</li>
 <li>Commit: <code>git -c commit.gpgsign=false commit</code> + baris <code>Co-Authored-By</code>. Push ke <code>master</code> → Vercel auto-deploy.</li>
 <li>Banyak reader dibungkus <code>try/catch</code> agar fitur aman dideploy sebelum migrasinya dijalankan (mengembalikan nilai default).</li>
 </ul>
@@ -582,7 +582,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <li>📖 <strong><code>sukukata</code></strong> (<code>SukuKataGame.tsx</code>, kognitif) — mode <code>susun</code> (gambar+suara → susun suku kata jadi kata) &amp; <code>dengar</code> (fonik: dengar → pilih). Validasi: <code>sukuKata.join('')===kata</code>, susun ≥2 suku, dengar ≥1 pengecoh.</li>
 <li>✍️ <strong><code>jiplak</code></strong> (<code>JiplakGame.tsx</code>, motorik-halus) — tracing goresan karakter; jalur bawaan <code>lib/game/jiplak-path.ts</code> (<code>JALUR_KARAKTER</code> A–Z a–z 0–9, viewBox 100×140, <code>rapatkan()</code> utk deteksi progres); toleransi longgar, keluar-jalur ≤3 = rapi. Admin cukup ketik daftar karakter.</li>
 <li>🔢 <strong><code>hitung-benda</code></strong> (<code>HitungBendaGame.tsx</code>, kognitif) — mode <code>hitung</code> (tap benda satu-satu + TTS hitungan → pilih angka) &amp; <code>banyak-mana</code> (bandingkan 2 kelompok). Validasi jumlah 1–10, banyak-mana wajib kelompok-2 &amp; jumlah beda.</li>
-<li><strong>Mesin MEMORY</strong>: 🧠 <strong><code>ingatan</code></strong> (<code>IngatanGame.tsx</code>, kognitif; tanpa migrasi) — memory/concentration: kartu <strong>tertutup</strong>, buka 2 → cocok tetap terbuka, beda tertutup lagi (working memory; beda dari <code>cari-pasangan</code> yang kartunya selalu terlihat). Data <code>DataIngatan { pasangan: string[] }</code> — tiap entri jadi sepasang kartu (dek teracak, grid adaptif). Validasi 2–8 entri; form admin meng-reuse input aset <code>cari-pasangan</code>.</li>
+<li><strong>Mesin MEMORY</strong>: 🧠 <strong><code>ingatan</code></strong> (<code>IngatanGame.tsx</code>, kognitif; <strong>butuh migrasi CHECK <code>0080_mesin_ingatan.sql</code></strong>) — memory/concentration: kartu <strong>tertutup</strong>, buka 2 → cocok tetap terbuka, beda tertutup lagi (working memory; beda dari <code>cari-pasangan</code> yang kartunya selalu terlihat). Data <code>DataIngatan { pasangan: string[] }</code> — tiap entri jadi sepasang kartu (dek teracak, grid adaptif). Deteksi pasangan by <strong>id entri</strong> (dua salinan berbagi id) + fallback nilai ternormalisasi (strip variation selector U+FE0E/FE0F) agar emoji tampak-sama-beda-kode tetap cocok. Validasi 2–8 entri; form admin meng-reuse input aset <code>cari-pasangan</code>.</li>
 </ul>
 <h3 id="guru-guru-gurueventid-isi-nilai-tumbuh-kembang-catataneventid">🍎 Guru — <code>/guru</code>, <code>/guru/[eventId]</code> (isi Nilai tumbuh kembang), <code>/catatan/[eventId]</code></h3>
 <ul>
@@ -864,7 +864,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <tr>
 <td><code>tema</code>, <code>paket_aset</code></td>
 <td>katalog game (tema + paket/butir aset); <code>tema.sampul</code> = emoji/URL gambar; <code>paket_aset.mesin</code> ber-CHECK (perluas tiap mesin baru), <code>kategori_usia_id</code> FK</td>
-<td>0001–0003, 0025–0037, 0060, 0074, 0079</td>
+<td>0001–0003, 0025–0037, 0060, 0074, 0079, 0080</td>
 </tr>
 <tr>
 <td><code>kategori_usia</code></td>
