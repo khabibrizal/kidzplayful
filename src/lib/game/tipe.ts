@@ -10,8 +10,11 @@ export interface DataSeret { wadah: Wadah[]; benda: Benda[]; }
 
 export interface DataCocok { pasangan: string[]; }
 
-// Kartu Ingatan (memory/concentration): kartu tertutup, buka 2, yang sama tetap terbuka.
-export interface DataIngatan { pasangan: string[]; } // tiap entri → sepasang kartu
+// Kartu Ingatan (memory/concentration): kartu tertutup, buka 2, yang cocok tetap terbuka.
+// Tiap PASANGAN = 2 kartu yang saling cocok. `b` kosong → kartu ke-2 = `a` (1 gambar → sepasang).
+// Data lama tersimpan sebagai string[] (tiap string = self-pair) → tetap didukung.
+export interface PasanganIngatan { a: string; b?: string }
+export interface DataIngatan { pasangan: (PasanganIngatan | string)[] }
 
 export interface DataMewarnai {
   sumber?: 'template' | 'svg';         // default 'template'

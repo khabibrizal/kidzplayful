@@ -151,8 +151,8 @@ export function validasiButir(mesin: Mesin, butir: unknown): string {
   }
   if (mesin === 'ingatan') {
     const b = butir as DataIngatan;
-    const it = (b.pasangan ?? []).filter((x) => x && x.trim());
-    if (it.length < 2) return 'Butuh minimal 2 kartu (tiap entri jadi sepasang).';
+    const pairs = (b.pasangan ?? []).map((p) => (typeof p === 'string' ? { a: p } : p)).filter((p) => p.a && p.a.trim());
+    if (pairs.length < 2) return 'Butuh minimal 2 pasangan.';
     return '';
   }
   if (mesin === 'garis') {

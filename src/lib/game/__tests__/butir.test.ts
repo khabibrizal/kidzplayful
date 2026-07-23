@@ -24,11 +24,14 @@ describe('validasiButir', () => {
     expect(validasiButir('cari-pasangan', { pasangan: ['🐱', '🐶'] })).toBe('');
   });
 
-  it('ingatan (memory) butuh minimal 2 kartu, tanpa batas maksimal', () => {
-    expect(validasiButir('ingatan', { pasangan: ['🍎'] })).toMatch(/minimal 2/i);
-    expect(validasiButir('ingatan', { pasangan: ['🍎', '🍌', '🍇'] })).toBe('');
-    expect(validasiButir('ingatan', { pasangan: Array.from({ length: 20 }, (_, i) => `x${i}`) })).toBe('');
-    expect(butirDariForm('ingatan', { pasangan: ['🍎', '🍌'] })).toEqual({ pasangan: ['🍎', '🍌'] });
+  it('ingatan (memory) butuh minimal 2 pasangan; dukung {a,b} & data lama string[]', () => {
+    // pasangan eksplisit {a,b}
+    expect(validasiButir('ingatan', { pasangan: [{ a: '🍎' }] })).toMatch(/minimal 2/i);
+    expect(validasiButir('ingatan', { pasangan: [{ a: '🍎' }, { a: 'x', b: 'y' }] })).toBe('');
+    expect(validasiButir('ingatan', { pasangan: Array.from({ length: 20 }, (_, i) => ({ a: `x${i}` })) })).toBe('');
+    // backward-compat: data lama string[]
+    expect(validasiButir('ingatan', { pasangan: ['🍎', '🍌'] })).toBe('');
+    expect(butirDariForm('ingatan', { pasangan: [{ a: '🍎' }] })).toEqual({ pasangan: [{ a: '🍎' }] });
   });
 
   describe('hitung: operasi +, −, ×, ÷', () => {

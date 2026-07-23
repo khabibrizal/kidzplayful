@@ -17,16 +17,19 @@ function acak<T>(arr: T[]): T[] {
   return a;
 }
 
-// Samakan emoji yang tampak sama tapi beda kode (variation selector U+FE0E/U+FE0F).
-function norm(s: string): string {
-  return (s ?? '').normalize('NFC').replace(/[︎️]/g, '').trim();
+// Normalisasi ke daftar pasangan {a,b}. String (data lama) → self-pair (a=b).
+// b kosong → kartu ke-2 = a (1 gambar jadi sepasang).
+function normPasangan(raw: DataIngatan['pasangan']): { a: string; b: string }[] {
+  return (raw ?? [])
+    .map((p) => typeof p === 'string' ? { a: p, b: p } : { a: p.a ?? '', b: (p.b && p.b.trim()) ? p.b : (p.a ?? '') })
+    .filter((p) => p.a && p.a.trim());
 }
 
 export default function IngatanGame({ data, onSelesai }: { data: DataIngatan; onSelesai: (h: HasilSelesai) => void }) {
-  const item = data.pasangan.filter((x) => x && x.trim());
-  const total = item.length;
-  // dek = tiap entri dijadikan 2 kartu (berbagi id), lalu diacak sekali saat mount
-  const [kartu] = useState<Kartu[]>(() => acak(item.flatMap((aset, id) => [{ id, aset }, { id, aset }])));
+  const pasangan = normPasangan(data.pasangan);
+  const total = pasangan.length;
+  // dek = tiap pasangan → 2 kartu (kartu-1=a, kartu-2=b) berbagi id, lalu diacak sekali saat mount
+  const [kartu] = useState<Kartu[]>(() => acak(pasangan.flatMap((p, id) => [{ id, aset: p.a }, { id, aset: p.b }])));
   const [buka, setBuka] = useState<number[]>([]);   // indeks kartu yang sedang dibuka (maks 2)
   const [cocok, setCocok] = useState<number[]>([]); // indeks kartu yang sudah dipasangkan
   const [sibuk, setSibuk] = useState(false);        // kunci input saat menunggu kartu menutup kembali
@@ -34,9 +37,9 @@ export default function IngatanGame({ data, onSelesai }: { data: DataIngatan; on
 
   useEffect(() => { mulaiRef.current = Date.now(); }, []);
 
-  // dua kartu cocok bila dari entri sama (id) ATAU nilainya sama setelah dinormalisasi
+  // dua kartu cocok bila dari PASANGAN yang sama (id sama)
   function sepasang(a: number, b: number): boolean {
-    return kartu[a].id === kartu[b].id || norm(kartu[a].aset) === norm(kartu[b].aset);
+    return kartu[a].id === kartu[b].id;
   }
 
   // Klik HANYA menambah kartu ke `buka` (functional updater → bebas dari stale closure

@@ -1,7 +1,7 @@
 // src/app/admin/tema/[id]/PaketForm.tsx
 'use client';
 import { useState } from 'react';
-import type { Mesin, Paket, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode, DataUrutan, DataJalur, DataHitung, DataCocokkan, DataEjaKata, DataGaris, DataSukuKata, DataJiplak, DataHitungBenda } from '@/lib/game/tipe';
+import type { Mesin, Paket, DataTekan, DataSeret, DataCocok, DataMewarnai, DataDekode, DataUrutan, DataJalur, DataHitung, DataCocokkan, DataEjaKata, DataGaris, DataSukuKata, DataJiplak, DataHitungBenda, DataIngatan } from '@/lib/game/tipe';
 import { KARAKTER_TERSEDIA } from '@/lib/game/jiplak-path';
 import { buatPaket, updatePaket } from '@/lib/data/admin-konten';
 import { validasiButir } from '@/lib/game/butir';
@@ -40,6 +40,7 @@ export default function PaketForm({ temaId, paketList = [], kategoriOpsi = [] }:
   const [wadah, setWadah] = useState<Wadah[]>([{ kategori: '', label: '', emoji: '' }]);
   const [benda, setBenda] = useState<Benda[]>([{ emoji: '', kategori: '' }]);
   const [pasangan, setPasangan] = useState<string[]>(['', '']);
+  const [igPairs, setIgPairs] = useState<{ a: string; b: string }[]>([{ a: '', b: '' }, { a: '', b: '' }]); // Kartu Ingatan: 1 baris = 1 pasangan
   const [template, setTemplate] = useState<string>(TEMPLATE_OPSI[0]?.id ?? '');
   const [modeMew, setModeMew] = useState<'bebas' | 'sesuai'>('bebas');
   const [sumberMew, setSumberMew] = useState<'template' | 'svg'>('template');
@@ -154,6 +155,8 @@ export default function PaketForm({ temaId, paketList = [], kategoriOpsi = [] }:
           mode: x.mode,
         })),
       };
+    } else if (mesin === 'ingatan') {
+      butir = { pasangan: igPairs.filter((p) => p.a.trim()).map((p) => ({ a: p.a.trim(), b: p.b.trim() || undefined })) };
     } else {
       butir = { pasangan: pasangan.filter(Boolean) };
     }
@@ -188,9 +191,13 @@ export default function PaketForm({ temaId, paketList = [], kategoriOpsi = [] }:
       const b = p.butir as DataSeret;
       setWadah(b.wadah?.length ? b.wadah : [{ kategori: '', label: '', emoji: '' }]);
       setBenda(b.benda?.length ? b.benda : [{ emoji: '', kategori: '' }]);
-    } else if (p.mesin === 'cari-pasangan' || p.mesin === 'ingatan') {
+    } else if (p.mesin === 'cari-pasangan') {
       const b = p.butir as DataCocok;
       setPasangan(b.pasangan?.length ? b.pasangan : ['', '']);
+    } else if (p.mesin === 'ingatan') {
+      const b = p.butir as DataIngatan;
+      const pairs = (b.pasangan ?? []).map((x) => (typeof x === 'string' ? { a: x, b: '' } : { a: x.a ?? '', b: x.b ?? '' }));
+      setIgPairs(pairs.length ? pairs : [{ a: '', b: '' }, { a: '', b: '' }]);
     } else if (p.mesin === 'mewarnai') {
       const b = p.butir as DataMewarnai;
       if (b.sumber === 'svg') { setSumberMew('svg'); setSvgMarkup(b.svg ?? ''); setSvgMode(b.mode); setSvgTarget(b.target ?? {}); setSvgArea(((b.svg ?? '').match(/data-area/g) || []).length); }
@@ -335,15 +342,38 @@ export default function PaketForm({ temaId, paketList = [], kategoriOpsi = [] }:
         </div>
       )}
 
-      {(mesin === 'cari-pasangan' || mesin === 'ingatan') && (
+      {mesin === 'cari-pasangan' && (
         <div style={{ marginTop: 10 }}>
-          <div className={s.muted}>{mesin === 'ingatan' ? 'Kartu tertutup — anak buka 2 & cari yang sama. Tiap entri jadi sepasang (minimal 2, tanpa batas maksimal).' : 'Tiap entri jadi sepasang (emoji/gambar). Minimal 2.'}</div>
+          <div className={s.muted}>Tiap entri jadi sepasang (emoji/gambar). Minimal 2.</div>
           {pasangan.map((p, i) => (
             <div key={i} style={{ marginTop: 6 }}>
               <AsetInput value={p} onChange={(v) => setPasangan(pasangan.map((q, j) => j === i ? v : q))} />
             </div>
           ))}
           <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => setPasangan([...pasangan, ''])}>+ pasangan</button>
+        </div>
+      )}
+
+      {mesin === 'ingatan' && (
+        <div style={{ marginTop: 10 }}>
+          <div className={s.muted}>Kartu tertutup — anak buka 2 & cari yang cocok. <b>Tiap baris = 1 pasangan</b>: isi <b>Kartu 1 saja</b> (otomatis jadi 2 kartu sama), atau isi <b>Kartu 2</b> juga bila ingin memasangkan 2 gambar berbeda (mis. induk ↔ anak). Jangan upload gambar yang sama dua kali. Minimal 2 pasangan.</div>
+          {igPairs.map((p, i) => (
+            <div key={i} className={s.card} style={{ background: '#faf7ff', marginTop: 6 }}>
+              <div className={s.row}>
+                <b style={{ flex: 1 }}>Pasangan {i + 1}</b>
+                {igPairs.length > 1 && <button className={`${s.btnSm} ${s.danger}`} onClick={() => setIgPairs(igPairs.filter((_, j) => j !== i))} title="Hapus pasangan">✕</button>}
+              </div>
+              <div style={{ marginTop: 6 }}>
+                <div className={s.muted} style={{ fontSize: 11 }}>Kartu 1</div>
+                <AsetInput value={p.a} onChange={(v) => setIgPairs(igPairs.map((q, j) => j === i ? { ...q, a: v } : q))} />
+              </div>
+              <div style={{ marginTop: 6 }}>
+                <div className={s.muted} style={{ fontSize: 11 }}>Kartu 2 <span style={{ opacity: 0.7 }}>(kosongkan = sama dgn Kartu 1)</span></div>
+                <AsetInput value={p.b} onChange={(v) => setIgPairs(igPairs.map((q, j) => j === i ? { ...q, b: v } : q))} />
+              </div>
+            </div>
+          ))}
+          <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => setIgPairs([...igPairs, { a: '', b: '' }])}>+ pasangan</button>
         </div>
       )}
 
