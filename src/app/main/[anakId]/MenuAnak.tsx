@@ -8,9 +8,7 @@ import GameRunner from '@/components/game/GameRunner';
 import PinGate from '@/components/game/PinGate';
 import VideoPojok from '@/components/game/VideoPojok';
 import FavoritBtn from '@/components/FavoritBtn';
-import BeliBtn from '@/components/BeliBtn';
-import YoutubeEmbed from '@/components/YoutubeEmbed';
-import { youtubeId } from '@/lib/youtube';
+import KelasIsi from '@/components/KelasIsi';
 import { catatRiwayatKelas } from '@/lib/data/riwayat-actions';
 import { waktuHabis, kunciHari, sisaDetik } from '@/lib/domain/waktu';
 import Pewi from '@/components/ui/Pewi';
@@ -22,11 +20,11 @@ import s from './main.module.css';
 type Layar = 'menu' | 'kelas' | 'kelas-detail' | 'daftar' | 'pustaka' | 'video' | 'main' | 'istirahat';
 
 export default function MenuAnak({
-  anak, pustaka, pinTersimpan, video, paketAwal, kelasList, favIds, gamiAwal, batasi = false,
+  anak, pustaka, pinTersimpan, video, paketAwal, kelasList, favIds, gamiAwal, batasi = false, labelArea = {},
 }: {
   anak: { id: string; nama: string; koin: number; batas_menit: number };
   pustaka: TemaLengkap[]; pinTersimpan: string | null; video: Video[]; paketAwal?: string; kelasList: KelasBermain[]; favIds: string[];
-  gamiAwal: GamifikasiAnak; batasi?: boolean;
+  gamiAwal: GamifikasiAnak; batasi?: boolean; labelArea?: Record<string, string>;
 }) {
   const router = useRouter();
   const [kunciFitur, setKunciFitur] = useState<string | null>(null);
@@ -185,32 +183,7 @@ export default function MenuAnak({
         </div>
         <div style={{ flex: 1, overflow: 'auto', padding: '6px 2px' }}>
           <h2 style={{ marginBottom: 10 }}>{kelas.judul}</h2>
-          {kelas.bahan?.length > 0 && (
-            <div className="kp-card" style={{ marginBottom: 10, background: '#fff3d6' }}>
-              <b>🧺 Bahan</b>
-              <ul style={{ margin: '8px 0 0', paddingLeft: 18 }}>
-                {kelas.bahan.map((b, i) => (
-                  <li key={i} style={{ margin: '6px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ flex: 1 }}>{b.nama}</span>
-                    {(b.produk_id || b.link) && <BeliBtn nama={b.nama} link={b.link} produkId={b.produk_id} />}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {kelas.aktivitas?.map((a, ai) => (
-            <div key={ai} className="kp-card" style={{ marginBottom: 10 }}>
-              <b>🎯 {a.judul || `Aktivitas ${ai + 1}`}</b>
-              {a.cara_membuat && <p style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>🛠️ {a.cara_membuat}</p>}
-              {a.langkah?.length > 0 && (
-                <ol style={{ margin: '8px 0 0 18px', lineHeight: 1.7 }}>{a.langkah.map((l, i) => <li key={i}>{l}</li>)}</ol>
-              )}
-            </div>
-          ))}
-          {kelas.link_ide && youtubeId(kelas.link_ide) && <YoutubeEmbed id={youtubeId(kelas.link_ide)!} title={kelas.judul} />}
-          {kelas.link_ide && !youtubeId(kelas.link_ide) && <a className="kp-btn" style={{ display: 'inline-block', marginRight: 8 }} href={kelas.link_ide} target="_blank">Lihat ide ▶</a>}
-          {kelas.worksheet_url && <a className="kp-btn putih" style={{ display: 'inline-block' }} href={kelas.worksheet_url} target="_blank">📄 Worksheet</a>}
-          <Link className="kp-btn putih" style={{ display: 'inline-block', marginTop: 8 }} href={`/komunitas?topik=${encodeURIComponent(kelas.judul)}`}>💬 Bagikan pengalaman</Link>
+          <KelasIsi kelas={kelas} labelArea={labelArea} />
         </div>
       </div>
     );

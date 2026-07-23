@@ -7,6 +7,7 @@ import { umurTahun } from '@/lib/domain/anak';
 import { kategoriUsia } from '@/lib/domain/usia';
 import { getVideoByKategori } from '@/lib/data/video';
 import { getKelasAktifCached } from '@/lib/data/publik';
+import { getLabelFokusArea } from '@/lib/data/fokus-area';
 import { getFavoritIds } from '@/lib/data/favorit';
 import { getGamifikasiAnak } from '@/lib/data/gamifikasi';
 import { getStatusLangganan, dibatasiTrial } from '@/lib/data/langganan-status';
@@ -22,7 +23,7 @@ export default async function MainPage({ params, searchParams }: { params: Promi
   const { data: { user: u } } = await supabase.auth.getUser();
 
   // Ambil semua data sisanya paralel (+ status langganan untuk gating trial)
-  const [video0, pustaka0, kelasList0, favIds, { data: prof }, gami, status] = await Promise.all([
+  const [video0, pustaka0, kelasList0, favIds, { data: prof }, gami, status, labelArea] = await Promise.all([
     getVideoByKategori(kategoriUsia(umur)),
     getPustaka(),
     getKelasAktifCached(),
@@ -30,6 +31,7 @@ export default async function MainPage({ params, searchParams }: { params: Promi
     supabase.from('profiles').select('pin_ortu').eq('id', u!.id).single(),
     getGamifikasiAnak(anakId),
     getStatusLangganan(supabase, u!.id),
+    getLabelFokusArea(),
   ]);
 
   // gating trial: item tetap TAMPIL untuk user non-aktif, tapi yang tak ditandai
@@ -50,6 +52,7 @@ export default async function MainPage({ params, searchParams }: { params: Promi
       favIds={favIds}
       gamiAwal={gami}
       batasi={batasi}
+      labelArea={labelArea}
     />
     </>
   );
