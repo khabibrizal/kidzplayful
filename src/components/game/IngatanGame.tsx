@@ -39,23 +39,32 @@ export default function IngatanGame({ data, onSelesai }: { data: DataIngatan; on
     return kartu[a].id === kartu[b].id || norm(kartu[a].aset) === norm(kartu[b].aset);
   }
 
+  // Klik HANYA menambah kartu ke `buka` (functional updater → bebas dari stale closure
+  // saat anak menekan cepat / double-tap). Evaluasi pasangan dilakukan di useEffect.
   function klik(i: number) {
-    if (sibuk || buka.includes(i) || cocok.includes(i)) return;
-    const baru = [...buka, i];
-    setBuka(baru);
-    if (baru.length < 2) return;
-    const [a, b] = baru;
+    setBuka((prev) => (sibuk || prev.length >= 2 || prev.includes(i) || cocok.includes(i)) ? prev : [...prev, i]);
+  }
+
+  // Saat 2 kartu terbuka → nilai cocok/tidak (race-free).
+  useEffect(() => {
+    if (buka.length !== 2) return;
+    const [a, b] = buka;
     if (sepasang(a, b)) {
-      const ck = [...cocok, a, b];
-      setCocok(ck); setBuka([]);
-      if (ck.length >= kartu.length) {
-        setTimeout(() => onSelesai({ benar: total, total, durasiDetik: Math.round((Date.now() - mulaiRef.current) / 1000) }), 500);
-      }
+      setCocok((ck) => {
+        const nc = [...ck, a, b];
+        if (nc.length >= kartu.length) {
+          setTimeout(() => onSelesai({ benar: total, total, durasiDetik: Math.round((Date.now() - mulaiRef.current) / 1000) }), 500);
+        }
+        return nc;
+      });
+      setBuka([]);
     } else {
       setSibuk(true);
-      setTimeout(() => { setBuka([]); setSibuk(false); }, 900); // tutup lagi setelah jeda
+      const t = setTimeout(() => { setBuka([]); setSibuk(false); }, 900); // tutup lagi setelah jeda
+      return () => clearTimeout(t);
     }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buka]);
 
   const deck = kartu.length;
   const cols = deck <= 6 ? 2 : deck <= 12 ? 3 : deck <= 24 ? 4 : deck <= 40 ? 5 : 6; // grid menyesuaikan jumlah kartu
