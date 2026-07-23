@@ -99,11 +99,13 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [] }: { a
     try {
       if (editId) {
         const r = await updateKelas(editId, form);
-        setList(list.map((k) => (k.id === editId ? r : k)));
+        if (!r.ok || !r.kelas) { flash(r.error ?? 'Gagal menyimpan'); return; }
+        setList(list.map((k) => (k.id === editId ? r.kelas! : k)));
         flash('Tersimpan ✓');
       } else {
         const r = await buatKelas(form);
-        setList([r, ...list]);
+        if (!r.ok || !r.kelas) { flash(r.error ?? 'Gagal menyimpan'); return; }
+        setList([r.kelas, ...list]);
         flash('Kelas bermain ditambahkan ✓');
       }
       setForm(null); setEditId(null);

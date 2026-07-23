@@ -50,18 +50,28 @@ function row(i: KelasInput) {
     worksheet_url: i.worksheetUrl?.trim() || null,
   };
 }
-export async function buatKelas(i: KelasInput): Promise<KelasBermain> {
-  const s = await adminDb();
-  if (!i.judul.trim()) throw new Error('Judul wajib diisi.');
-  const { data, error } = await s.from('kelas_bermain').insert(row(i)).select(COLS).single();
-  if (error) throw new Error(error.message);
-  return data as unknown as KelasBermain;
+// buat/update MENGEMBALIKAN {ok,error,kelas} (bukan throw) agar pesan error DB
+// tidak diredaksi Next.js di production (pola sama dgn buatPaket/buatUser).
+export async function buatKelas(i: KelasInput): Promise<{ ok: boolean; error?: string; kelas?: KelasBermain }> {
+  try {
+    const s = await adminDb();
+    if (!i.judul.trim()) return { ok: false, error: 'Judul wajib diisi.' };
+    const { data, error } = await s.from('kelas_bermain').insert(row(i)).select(COLS).single();
+    if (error) return { ok: false, error: error.message };
+    return { ok: true, kelas: data as unknown as KelasBermain };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Gagal menyimpan.' };
+  }
 }
-export async function updateKelas(id: string, i: KelasInput): Promise<KelasBermain> {
-  const s = await adminDb();
-  const { data, error } = await s.from('kelas_bermain').update(row(i)).eq('id', id).select(COLS).single();
-  if (error) throw new Error(error.message);
-  return data as unknown as KelasBermain;
+export async function updateKelas(id: string, i: KelasInput): Promise<{ ok: boolean; error?: string; kelas?: KelasBermain }> {
+  try {
+    const s = await adminDb();
+    const { data, error } = await s.from('kelas_bermain').update(row(i)).eq('id', id).select(COLS).single();
+    if (error) return { ok: false, error: error.message };
+    return { ok: true, kelas: data as unknown as KelasBermain };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Gagal menyimpan.' };
+  }
 }
 export async function toggleStatusKelas(id: string, statusBaru: 'aktif' | 'nonaktif'): Promise<void> {
   const s = await adminDb();

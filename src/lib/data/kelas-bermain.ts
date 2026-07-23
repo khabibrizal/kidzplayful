@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import type { KelasBermain } from '@/lib/game/tipe';
-const COLS = 'id,judul,aktivitas,bahan,link_ide,worksheet_url,status,boleh_trial';
+const COLS = 'id,judul,tujuan,fokus_area,peran_ortu,usia_min,usia_max,aktivitas,bahan,link_ide,worksheet_url,status,boleh_trial';
 
 export async function getKelasAktif(): Promise<KelasBermain[]> {
   const s = await createClient();
