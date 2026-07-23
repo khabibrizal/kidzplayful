@@ -23,7 +23,12 @@ export default function KelasIsi({ kelas, labelArea = {}, bagikan = true }: {
       {adaInfo && (
         <div className="kp-card" style={{ marginBottom: 12, background: '#f7f5fc' }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)' }}>👶 Untuk usia {kelas.usia_min ?? 0}–{kelas.usia_max ?? 6} tahun</div>
-          {kelas.tujuan && <p style={{ margin: '6px 0 0', fontSize: 14 }}>🎯 <b>Tujuan:</b> {kelas.tujuan}</p>}
+          {kelas.tujuan && (
+            <div style={{ marginTop: 6 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)' }}>🎯 TUJUAN</div>
+              <p style={{ margin: '4px 0 0', fontSize: 14, whiteSpace: 'pre-wrap' }}>{kelas.tujuan}</p>
+            </div>
+          )}
           {(kelas.fokus_area?.length ?? 0) > 0 && (
             <div style={{ marginTop: 8 }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)' }}>🧩 FOKUS AREA PERKEMBANGAN</div>
