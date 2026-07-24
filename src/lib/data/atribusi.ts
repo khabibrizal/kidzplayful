@@ -33,6 +33,6 @@ export async function getAtribusiShare(hari = 30): Promise<AtribusiShare> {
 }
 
 export const LABEL_SALURAN: Record<string, string> = {
-  whatsapp: 'WhatsApp', facebook: 'Facebook', twitter: 'X (Twitter)', telegram: 'Telegram', salin: 'Salin link', native: 'HP (share sheet)',
+  whatsapp: 'WhatsApp', facebook: 'Facebook', twitter: 'X (Twitter)', telegram: 'Telegram', salin: 'Salin link', native: 'HP (share sheet)', story: 'Instagram Story',
 };
 export const LABEL_JENIS: Record<string, string> = { artikel: 'Artikel', kelas: 'Kelas Bermain', game: 'Game', lainnya: 'Lainnya' };
