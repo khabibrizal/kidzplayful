@@ -35,3 +35,20 @@ export const getKelasAktifCached = unstable_cache(
   },
   ['katalog-kelas'], { tags: ['katalog'], revalidate: 60 },
 );
+
+// —— Teaser publik (halaman /coba/*): metadata ringan, tanpa butir/materi penuh ——
+export async function getKelasPublik(id: string): Promise<{ id: string; judul: string; tujuan: string | null; usia_min: number; usia_max: number } | null> {
+  const { data } = await anon.from('kelas_bermain')
+    .select('id,judul,tujuan,usia_min,usia_max')
+    .eq('id', id).eq('status', 'aktif').maybeSingle();
+  return (data ?? null) as { id: string; judul: string; tujuan: string | null; usia_min: number; usia_max: number } | null;
+}
+
+export async function getTemaPublik(id: string): Promise<{ id: string; nama: string; sampul: string | null; game: string[] } | null> {
+  const [{ data: tema }, { data: paket }] = await Promise.all([
+    anon.from('tema').select('id,nama,sampul').eq('id', id).eq('status', 'disetujui').maybeSingle(),
+    anon.from('paket_aset').select('judul').eq('tema_id', id).eq('status', 'disetujui').order('urutan'),
+  ]);
+  if (!tema) return null;
+  return { id: tema.id as string, nama: tema.nama as string, sampul: (tema.sampul as string) ?? null, game: (paket ?? []).map((p) => p.judul as string) };
+}
