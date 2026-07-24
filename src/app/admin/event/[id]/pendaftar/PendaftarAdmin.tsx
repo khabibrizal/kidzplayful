@@ -105,23 +105,29 @@ export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = []
               : <span className={s.muted}>tanpa bukti</span>}
             <button className={s.btnSm} style={{ background: '#dff5e6', color: '#1c7a43' }} onClick={() => ubah(p, 'diterima')} disabled={busyId === p.id || p.status === 'diterima'}>Terima</button>
             <button className={`${s.btnSm} ${s.danger}`} onClick={() => ubah(p, 'ditolak')} disabled={busyId === p.id || p.status === 'ditolak'}>Tolak</button>
-            {eventsAktif.length > 0 && p.status !== 'ditolak' && (
+            {p.status !== 'ditolak' && (
               <button className={s.btnSm} style={{ background: '#fff3d6', color: '#b88600' }} onClick={() => setRsOpen(rsOpen === p.id ? null : p.id)} disabled={busyId === p.id}>🔁 Reschedule</button>
             )}
           </div>
 
           {rsOpen === p.id && (
             <div style={{ marginTop: 8, borderTop: '1px dashed #e6e0f2', paddingTop: 8 }}>
-              <div className={s.muted} style={{ fontSize: 12, marginBottom: 6 }}>Pindahkan ke event aktif lain (pembayaran ikut terbawa, absensi direset):</div>
-              <select className={s.inp} value={rsEvent[p.id] ?? ''} onChange={(e) => setRsEvent({ ...rsEvent, [p.id]: e.target.value })} style={{ width: '100%', marginBottom: 6 }}>
-                <option value="">— pilih event tujuan —</option>
-                {eventsAktif.map((e) => <option key={e.id} value={e.id}>{e.judul}{e.tanggal ? ` (${e.tanggal})` : ''}</option>)}
-              </select>
-              <textarea className={s.inp} rows={2} placeholder="Alasan reschedule (mis. anak sakit)" value={rsAlasan[p.id] ?? ''} onChange={(e) => setRsAlasan({ ...rsAlasan, [p.id]: e.target.value })} style={{ width: '100%', resize: 'vertical', marginBottom: 6 }} />
-              <div className={s.row} style={{ gap: 6 }}>
-                <button className={s.btn} onClick={() => reschedule(p)} disabled={busyId === p.id}>Pindahkan</button>
-                <button className={s.btnSm} style={{ background: '#eee' }} onClick={() => setRsOpen(null)} disabled={busyId === p.id}>Batal</button>
-              </div>
+              {eventsAktif.length === 0 ? (
+                <div className={s.muted} style={{ fontSize: 12 }}>Belum ada event lain berstatus <b>tampil</b> untuk tujuan reschedule. Buat/aktifkan event lain dulu di menu Event.</div>
+              ) : (
+                <>
+                  <div className={s.muted} style={{ fontSize: 12, marginBottom: 6 }}>Pindahkan ke event aktif lain (pembayaran ikut terbawa, absensi direset):</div>
+                  <select className={s.inp} value={rsEvent[p.id] ?? ''} onChange={(e) => setRsEvent({ ...rsEvent, [p.id]: e.target.value })} style={{ width: '100%', marginBottom: 6 }}>
+                    <option value="">— pilih event tujuan —</option>
+                    {eventsAktif.map((e) => <option key={e.id} value={e.id}>{e.judul}{e.tanggal ? ` (${e.tanggal})` : ''}</option>)}
+                  </select>
+                  <textarea className={s.inp} rows={2} placeholder="Alasan reschedule (mis. anak sakit)" value={rsAlasan[p.id] ?? ''} onChange={(e) => setRsAlasan({ ...rsAlasan, [p.id]: e.target.value })} style={{ width: '100%', resize: 'vertical', marginBottom: 6 }} />
+                  <div className={s.row} style={{ gap: 6 }}>
+                    <button className={s.btn} onClick={() => reschedule(p)} disabled={busyId === p.id}>Pindahkan</button>
+                    <button className={s.btnSm} style={{ background: '#eee' }} onClick={() => setRsOpen(null)} disabled={busyId === p.id}>Batal</button>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
