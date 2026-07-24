@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getTemaPublik } from '@/lib/data/publik';
 import TeaserPublik from '@/components/TeaserPublik';
+import TangkapRef from '@/components/TangkapRef';
 
 const BASE = 'https://www.kidzplayful.com';
 function isUrl(v?: string | null) { return !!v && /^(https?:\/\/|\/)/.test(v); }
@@ -26,14 +27,17 @@ export default async function TeaserTema({ params }: { params: Promise<{ id: str
   const t = await getTemaPublik(id);
   if (!t) notFound();
   return (
-    <TeaserPublik
-      label="GAME EDUKASI"
-      judul={t.nama}
-      gambar={isUrl(t.sampul) ? t.sampul : null}
-      deskripsi={<>
-        <div>🎮 {t.game.length} permainan edukatif</div>
-        {t.game.length > 0 && <p style={{ marginTop: 8 }}>{t.game.slice(0, 6).join(' · ')}</p>}
-      </>}
-    />
+    <>
+      <TangkapRef />
+      <TeaserPublik
+        label="GAME EDUKASI"
+        judul={t.nama}
+        gambar={isUrl(t.sampul) ? t.sampul : null}
+        deskripsi={<>
+          <div>🎮 {t.game.length} permainan edukatif</div>
+          {t.game.length > 0 && <p style={{ marginTop: 8 }}>{t.game.slice(0, 6).join(' · ')}</p>}
+        </>}
+      />
+    </>
   );
 }

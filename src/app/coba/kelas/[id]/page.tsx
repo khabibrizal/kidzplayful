@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getKelasPublik } from '@/lib/data/publik';
 import TeaserPublik from '@/components/TeaserPublik';
+import TangkapRef from '@/components/TangkapRef';
 
 const BASE = 'https://www.kidzplayful.com';
 
@@ -25,13 +26,16 @@ export default async function TeaserKelas({ params }: { params: Promise<{ id: st
   const k = await getKelasPublik(id);
   if (!k) notFound();
   return (
-    <TeaserPublik
-      label="KELAS BERMAIN"
-      judul={k.judul}
-      deskripsi={<>
-        <div>👶 Untuk usia {k.usia_min}–{k.usia_max} tahun</div>
-        {k.tujuan && <p style={{ marginTop: 8 }}>🎯 {k.tujuan}</p>}
-      </>}
-    />
+    <>
+      <TangkapRef />
+      <TeaserPublik
+        label="KELAS BERMAIN"
+        judul={k.judul}
+        deskripsi={<>
+          <div>👶 Untuk usia {k.usia_min}–{k.usia_max} tahun</div>
+          {k.tujuan && <p style={{ marginTop: 8 }}>🎯 {k.tujuan}</p>}
+        </>}
+      />
+    </>
   );
 }

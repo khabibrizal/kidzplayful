@@ -9,6 +9,7 @@ import ShareButton from '@/components/ShareButton';
 import { createClient } from '@/lib/supabase/server';
 import { getArtikelBySlugCached } from '@/lib/data/artikel';
 import TombolKembali from '@/components/TombolKembali';
+import TangkapRef from '@/components/TangkapRef';
 
 const BASE = 'https://www.kidzplayful.com';
 
@@ -64,6 +65,7 @@ export default async function ArtikelDetailPage({ params }: { params: Promise<{ 
 
   return (
     <>
+      <TangkapRef />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <main style={{ maxWidth: 720, margin: '0 auto', padding: '18px 20px 60px' }}>
         <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 }}>
