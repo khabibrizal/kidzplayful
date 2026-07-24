@@ -15,6 +15,7 @@ import { waktuHabis, kunciHari, sisaDetik } from '@/lib/domain/waktu';
 import Pewi from '@/components/ui/Pewi';
 import Logo from '@/components/Logo';
 import Terkunci from '@/components/Terkunci';
+import ShareButton from '@/components/ShareButton';
 import type { GamifikasiAnak } from '@/lib/data/gamifikasi';
 import s from './main.module.css';
 
@@ -234,6 +235,9 @@ export default function MenuAnak({
               <span className="emo">🎯</span><div>{p.judul}</div>
             </button>
           ))}
+        </div>
+        <div className="no-print" style={{ display: 'flex', justifyContent: 'center', margin: '8px 0' }}>
+          <ShareButton url={`/coba/tema/${temaTerpilih.tema.id}`} title={temaTerpilih.tema.nama} text={`Main game "${temaTerpilih.tema.nama}" di KidzPlayful`} label="Bagikan tema" />
         </div>
         <div className={s.foot}>Sisa waktu hari ini: {sisaMnt} menit</div>
       </div>
