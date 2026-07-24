@@ -41,7 +41,7 @@ src/
     supabase/          # server.ts (SSR), client.ts (browser)
     api/               # helpers.ts (amplop JSON + auth Bearer untuk REST API)
     game/              # tipe & util mesin game
-supabase/migrations/   # skema DB (0001..0081), dijalankan manual di SQL Editor
+supabase/migrations/   # skema DB (0001..0082), dijalankan manual di SQL Editor
 docs/                  # dokumentasi (termasuk file ini)
 tools/md2pdf.py        # generator PDF dokumentasi
 ```
@@ -67,7 +67,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 - Halaman tidak menaruh selector mentah bila bisa lewat reader; beberapa halaman melakukan query inline sederhana.
 
 ### Deploy & migrasi
-- Migrasi dijalankan **manual** di Supabase SQL Editor (urut `0001..0081`), lalu diverifikasi via REST (`?select=col&limit=1` → 200).
+- Migrasi dijalankan **manual** di Supabase SQL Editor (urut `0001..0082`), lalu diverifikasi via REST (`?select=col&limit=1` → 200).
 - Commit: `git -c commit.gpgsign=false commit` + baris `Co-Authored-By`. Push ke `master` → Vercel auto-deploy.
 - Banyak reader dibungkus `try/catch` agar fitur aman dideploy sebelum migrasinya dijalankan (mengembalikan nilai default).
 
@@ -154,6 +154,7 @@ Fitur share dari halaman detail agar orang non-login jadi aware & mendaftar.
 - **Halaman teaser PUBLIK** (tanpa login, punya OG/twitter metadata): **`/coba/kelas/[id]`** & **`/coba/tema/[id]`** (`app/coba/…`) → komponen bersama `components/TeaserPublik.tsx` (brand + gambar + judul + deskripsi ringkas + CTA "Coba Gratis" → `/daftar`). Reader anon `getKelasPublik(id)`/`getTemaPublik(id)` (`publik.ts`) — **hanya metadata ringan** (judul/tujuan/usia/daftar nama game), butir/materi penuh TIDAK ditampilkan (konten berbayar aman). `id` tak valid → `notFound()`.
 - **Penempatan tombol**: artikel `/artikel/[slug]` (share URL sendiri); kelas `/kelas/[id]` via `KelasIsi` prop `bagikanUrl` → `/coba/kelas/[id]`; tema di `MenuAnak` layar 'daftar' → `/coba/tema/[id]`.
 - **Endpoint**: `kelas_bermain`, `tema`, `paket_aset` (baca anon — `tema`/`paket_aset` via migrasi **0081**; `kelas_bermain` sudah anon sejak 0022).
+- **Atribusi share (UTM)**: `ShareButton` menyisipkan UTM via `lib/share.ts` `denganUtm(url,{medium,jenis})` (`jenis`= artikel/kelas/game). Komponen **`TangkapRef`** (di teaser & artikel) menangkap first-touch `?utm_source=share&utm_medium&utm_content` → `localStorage kp_ref` (30 hari; util `lib/ref.ts` `parseRef`/`bacaRef`/`hapusRef`, native share → saluran `native`). Saat `/daftar`, ref disimpan ke **`profiles.ref_sumber/ref_saluran/ref_jenis`** (migrasi **0082**). Dashboard: kartu **"🔗 Atribusi Share"** di `/admin/analitik` (`lib/data/atribusi.ts` `getAtribusiShare` — pendaftar 30 hari, share vs organik, per saluran & per jenis).
 
 ### 📺 Video — `/admin/video`
 - **File**: `admin/video/page.tsx` (query + hapus/toggle inline) → `VideoForm.tsx`.
