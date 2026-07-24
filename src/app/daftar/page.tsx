@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { bacaRef, hapusRef } from '@/lib/ref';
 import Logo from '@/components/Logo';
 
 export default function DaftarPage() {
@@ -24,9 +25,15 @@ export default function DaftarPage() {
     // Simpan nama & No WhatsApp ke profil (profil dibuat otomatis oleh trigger saat signUp).
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
+      const ref = bacaRef();
       await supabase.from('profiles')
-        .update({ nama_tampilan: nama.trim() || null, no_wa: noWa.trim() || null })
+        .update({
+          nama_tampilan: nama.trim() || null,
+          no_wa: noWa.trim() || null,
+          ...(ref ? { ref_sumber: 'share', ref_saluran: ref.saluran, ref_jenis: ref.jenis } : {}),
+        })
         .eq('id', user.id);
+      if (ref) hapusRef();
     }
     setLoading(false);
     router.push('/pilih-anak');
