@@ -11,3 +11,10 @@ export function tautanShare(target: ShareTarget, opts: { url: string; text?: str
     case 'telegram': return `https://t.me/share/url?url=${u}&text=${t}`;
   }
 }
+
+// Tambah parameter UTM share ke sebuah URL (murni). jenis: 'artikel'|'kelas'|'game'.
+export function denganUtm(url: string, opts: { medium: string; jenis: string }): string {
+  const sep = url.includes('?') ? '&' : '?';
+  const q = `utm_source=share&utm_medium=${encodeURIComponent(opts.medium)}&utm_content=${encodeURIComponent(opts.jenis)}`;
+  return `${url}${sep}${q}`;
+}
