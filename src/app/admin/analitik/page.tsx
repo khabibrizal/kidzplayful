@@ -1,6 +1,7 @@
 // src/app/admin/analitik/page.tsx — analitik user aktif & aktivitas (data dari Supabase)
 import { createClient } from '@/lib/supabase/server';
 import { getAktivitasRingkas, labelFitur } from '@/lib/data/aktivitas';
+import { getAtribusiShare, LABEL_SALURAN, LABEL_JENIS } from '@/lib/data/atribusi';
 import s from '../admin.module.css';
 
 function jam(iso: string) {
@@ -36,6 +37,8 @@ export default async function AnalitikPage() {
     getAktivitasRingkas(),
     db.from('aktivitas').select('ortu_id,dibuat_at').gte('dibuat_at', d30),
   ]);
+
+  const atrib = await getAtribusiShare(30);
 
   const anakOrtu = new Map<string, string>((anak.data ?? []).map((a) => [a.id as string, a.ortu_id as string]));
   const nama = new Map<string, string>((profs.data ?? []).map((p) => [p.id as string, (p.nama_tampilan as string | null)?.trim() || 'Orang Tua']));
@@ -95,6 +98,28 @@ export default async function AnalitikPage() {
         <Kartu b={cPost} l="Postingan" />
         <Kartu b={cKom} l="Komentar" />
       </div>
+
+      <div className={s.section} style={{ marginTop: 16 }}>🔗 Atribusi Share (pendaftar 30 hari)</div>
+      <div className={s.row} style={{ gap: 10, flexWrap: 'wrap' }}>
+        <Kartu b={atrib.totalShare} l="Pendaftar dari share" />
+        <Kartu b={atrib.totalOrganik} l="Pendaftar organik" />
+      </div>
+      {atrib.totalShare > 0 && (
+        <div className={s.row} style={{ gap: 10, flexWrap: 'wrap', marginTop: 10 }}>
+          <div className={s.card} style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontWeight: 700, marginBottom: 6 }}>Per saluran</div>
+            {Object.entries(atrib.perSaluran).sort((a, b) => b[1] - a[1]).map(([k, n]) => (
+              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}><span>{LABEL_SALURAN[k] ?? k}</span><b>{n}</b></div>
+            ))}
+          </div>
+          <div className={s.card} style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontWeight: 700, marginBottom: 6 }}>Per jenis konten</div>
+            {Object.entries(atrib.perJenis).sort((a, b) => b[1] - a[1]).map(([k, n]) => (
+              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}><span>{LABEL_JENIS[k] ?? k}</span><b>{n}</b></div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className={s.section} style={{ marginTop: 16 }}>Sedang aktif hari ini (buka menu apa)</div>
       {akt.perUser.length === 0
