@@ -45,7 +45,7 @@ export default async function ModeOrtu({ params }: { params: Promise<{ anakId: s
         ) : (
         <div key={k.id} className="kp-card" style={{ marginBottom: 12 }}>
           <b>🎈 {k.judul}</b>
-          <KelasIsi kelas={k} labelArea={labelArea} />
+          <KelasIsi kelas={k} labelArea={labelArea} bagikanUrl={`/coba/kelas/${k.id}`} />
         </div>
         )
       ))}

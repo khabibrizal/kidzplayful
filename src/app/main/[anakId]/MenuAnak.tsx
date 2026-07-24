@@ -185,7 +185,7 @@ export default function MenuAnak({
         </div>
         <div style={{ flex: 1, overflow: 'auto', padding: '6px 2px' }}>
           <h2 style={{ marginBottom: 10 }}>{kelas.judul}</h2>
-          <KelasIsi kelas={kelas} labelArea={labelArea} />
+          <KelasIsi kelas={kelas} labelArea={labelArea} bagikanUrl={`/coba/kelas/${kelas.id}`} />
         </div>
       </div>
     );
