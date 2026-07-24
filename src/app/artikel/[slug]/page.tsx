@@ -86,7 +86,7 @@ export default async function ArtikelDetailPage({ params }: { params: Promise<{ 
           {a.ringkasan && <p style={{ fontSize: 17, color: 'var(--tinta)', lineHeight: 1.6, marginBottom: 20, fontWeight: 600 }}>{a.ringkasan}</p>}
           <ArtikelBody isi={a.isi} />
           <div style={{ marginTop: 20, display: 'flex', justifyContent: 'center' }}>
-            <ShareButton url={`${BASE}/artikel/${a.slug}`} title={a.judul} text={a.ringkasan || a.judul} label="Bagikan artikel" />
+            <ShareButton url={`${BASE}/artikel/${a.slug}`} title={a.judul} text={a.ringkasan || a.judul} jenis="artikel" label="Bagikan artikel" />
           </div>
         </article>
 

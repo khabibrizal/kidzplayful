@@ -237,7 +237,7 @@ export default function MenuAnak({
           ))}
         </div>
         <div className="no-print" style={{ display: 'flex', justifyContent: 'center', margin: '8px 0' }}>
-          <ShareButton url={`/coba/tema/${temaTerpilih.tema.id}`} title={temaTerpilih.tema.nama} text={`Main game "${temaTerpilih.tema.nama}" di KidzPlayful`} label="Bagikan tema" />
+          <ShareButton url={`/coba/tema/${temaTerpilih.tema.id}`} title={temaTerpilih.tema.nama} text={`Main game "${temaTerpilih.tema.nama}" di KidzPlayful`} jenis="game" label="Bagikan tema" />
         </div>
         <div className={s.foot}>Sisa waktu hari ini: {sisaMnt} menit</div>
       </div>

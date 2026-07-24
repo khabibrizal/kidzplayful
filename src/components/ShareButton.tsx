@@ -1,11 +1,11 @@
 // src/components/ShareButton.tsx — tombol Bagikan: Web Share API + fallback menu sosmed.
 'use client';
 import { useState } from 'react';
-import { tautanShare, type ShareTarget } from '@/lib/share';
+import { tautanShare, denganUtm, type ShareTarget } from '@/lib/share';
 
 // url boleh relatif ('/coba/tema/x') atau absolut; diselesaikan ke absolut saat diklik.
-export default function ShareButton({ url, title, text, label = 'Bagikan', kelas = 'kp-btn putih' }: {
-  url: string; title: string; text?: string; label?: string; kelas?: string;
+export default function ShareButton({ url, title, text, jenis, label = 'Bagikan', kelas = 'kp-btn putih' }: {
+  url: string; title: string; text?: string; jenis: 'artikel' | 'kelas' | 'game'; label?: string; kelas?: string;
 }) {
   const [buka, setBuka] = useState(false);
   const [toast, setToast] = useState('');
@@ -17,23 +17,24 @@ export default function ShareButton({ url, title, text, label = 'Bagikan', kelas
     return url;
   }
 
+  function urlShare(medium: string): string { return denganUtm(absolut(), { medium, jenis }); }
+
   async function klik() {
-    const u = absolut();
     const nav = typeof navigator !== 'undefined' ? navigator : undefined;
     if (nav && typeof nav.share === 'function') {
-      try { await nav.share({ title, text, url: u }); return; }
+      try { await nav.share({ title, text, url: urlShare('native') }); return; }
       catch { /* user batal / tak didukung → buka fallback */ }
     }
     setBuka((v) => !v);
   }
 
   function bagikanKe(target: ShareTarget) {
-    window.open(tautanShare(target, { url: absolut(), text: text ?? title }), '_blank', 'noopener,noreferrer');
+    window.open(tautanShare(target, { url: urlShare(target), text: text ?? title }), '_blank', 'noopener,noreferrer');
     setBuka(false);
   }
 
   async function salin() {
-    try { await navigator.clipboard.writeText(absolut()); flash('Link disalin ✓'); }
+    try { await navigator.clipboard.writeText(urlShare('salin')); flash('Link disalin ✓'); }
     catch { flash('Gagal menyalin'); }
     setBuka(false);
   }
