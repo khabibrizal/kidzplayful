@@ -5,6 +5,7 @@ import type { KelasBermain } from '@/lib/game/tipe';
 import BeliBtn from './BeliBtn';
 import YoutubeEmbed from './YoutubeEmbed';
 import { youtubeId } from '@/lib/youtube';
+import ShareButton from '@/components/ShareButton';
 
 const LABEL_FALLBACK: Record<string, string> = {
   'motorik-halus': '✋ Motorik Halus', 'motorik-kasar': '🏃 Motorik Kasar', kognitif: '🧠 Kognitif',
@@ -12,8 +13,8 @@ const LABEL_FALLBACK: Record<string, string> = {
   kemandirian: '🌟 Kemandirian', kreativitas: '🎨 Kreativitas',
 };
 
-export default function KelasIsi({ kelas, labelArea = {}, bagikan = true }: {
-  kelas: KelasBermain; labelArea?: Record<string, string>; bagikan?: boolean;
+export default function KelasIsi({ kelas, labelArea = {}, bagikan = true, bagikanUrl }: {
+  kelas: KelasBermain; labelArea?: Record<string, string>; bagikan?: boolean; bagikanUrl?: string;
 }) {
   const LABEL = { ...LABEL_FALLBACK, ...labelArea };
   const adaInfo = !!(kelas.tujuan || (kelas.fokus_area?.length ?? 0) > 0 || kelas.peran_ortu || kelas.usia_min != null);
@@ -94,6 +95,7 @@ export default function KelasIsi({ kelas, labelArea = {}, bagikan = true }: {
       <div className="no-print" style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {kelas.link_ide && !youtubeId(kelas.link_ide) && <a className="kp-btn" style={{ display: 'inline-block' }} href={kelas.link_ide} target="_blank">Lihat ide ▶</a>}
         {kelas.worksheet_url && <a className="kp-btn putih" style={{ display: 'inline-block' }} href={kelas.worksheet_url} target="_blank">📄 Worksheet</a>}
+        {bagikanUrl && <ShareButton url={bagikanUrl} title={kelas.judul} text={`Materi kelas bermain "${kelas.judul}" di KidzPlayful`} label="Bagikan" />}
         {bagikan && <Link className="kp-btn putih" style={{ display: 'inline-block' }} href={`/komunitas?topik=${encodeURIComponent(kelas.judul)}`}>💬 Bagikan pengalaman</Link>}
       </div>
     </>

@@ -38,7 +38,7 @@ export default async function KelasDetailPage({ params }: { params: Promise<{ id
         <TombolKembali fallback="/pilih-anak" style={{ color: 'var(--abu)', fontSize: 13 }} />
       </div>
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 24, margin: '10px 0 6px' }}>🎈 {kelas.judul}</h1>
-      <KelasIsi kelas={kelas} labelArea={labelMaster} />
+      <KelasIsi kelas={kelas} labelArea={labelMaster} bagikanUrl={`/coba/kelas/${kelas.id}`} />
     </main>
   );
 }
