@@ -22,7 +22,7 @@ li { margin:3px 0; }
 <blockquote>
 <p>Panduan teknis untuk developer baru. Menjelaskan <strong>per halaman/menu</strong>: file apa yang menanganinya, function/reader/server-action apa yang dipakai, dan <strong>endpoint backend</strong> (tabel Supabase / RPC / storage / auth) yang disentuh. Termasuk <strong>REST API internal</strong> (untuk aplikasi mobile) dan infrastruktur.</p>
 </blockquote>
-<p>Terakhir diperbarui: 2026-07-23.</p>
+<p>Terakhir diperbarui: 2026-07-24.</p>
 <hr />
 <h2 id="1-ringkasan-stack">1. Ringkasan &amp; Stack</h2>
 <ul>
@@ -55,7 +55,7 @@ li { margin:3px 0; }
     supabase/          # server.ts (SSR), client.ts (browser)
     api/               # helpers.ts (amplop JSON + auth Bearer untuk REST API)
     game/              # tipe &amp; util mesin game
-supabase/migrations/   # skema DB (0001..0080), dijalankan manual di SQL Editor
+supabase/migrations/   # skema DB (0001..0081), dijalankan manual di SQL Editor
 docs/                  # dokumentasi (termasuk file ini)
 tools/md2pdf.py        # generator PDF dokumentasi
 </code></pre>
@@ -82,7 +82,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </ul>
 <h3 id="deploy-migrasi">Deploy &amp; migrasi</h3>
 <ul>
-<li>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor (urut <code>0001..0080</code>), lalu diverifikasi via REST (<code>?select=col&amp;limit=1</code> → 200).</li>
+<li>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor (urut <code>0001..0081</code>), lalu diverifikasi via REST (<code>?select=col&amp;limit=1</code> → 200).</li>
 <li>Commit: <code>git -c commit.gpgsign=false commit</code> + baris <code>Co-Authored-By</code>. Push ke <code>master</code> → Vercel auto-deploy.</li>
 <li>Banyak reader dibungkus <code>try/catch</code> agar fitur aman dideploy sebelum migrasinya dijalankan (mengembalikan nilai default).</li>
 </ul>
@@ -169,6 +169,12 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <li><strong>Server action</strong>: <code>buatArtikel</code>, <code>simpanArtikel</code>, <code>hapusArtikel</code> (<code>artikel-admin.ts</code>).</li>
 <li><strong>Endpoint</strong>: <code>artikel</code>; <code>storage.from('aset')</code> (folder <code>artikel/</code>). Util <code>@/lib/slug</code>.</li>
 </ul>
+<h3 id="bagikan-konten-ke-sosial-media">🔗 Bagikan Konten ke Sosial Media</h3>
+<p>Fitur share dari halaman detail agar orang non-login jadi aware &amp; mendaftar.
+- <strong>Komponen <code>components/ShareButton.tsx</code></strong> (client): pakai <code>navigator.share</code> (share sheet HP) + fallback popover WhatsApp/Facebook/X/Telegram/Salin link (toast). URL relatif diselesaikan ke absolut via <code>location.origin</code>. Util murni <code>lib/share.ts</code> (<code>tautanShare(target,{url,text})</code>, teruji vitest).
+- <strong>Halaman teaser PUBLIK</strong> (tanpa login, punya OG/twitter metadata): <strong><code>/coba/kelas/[id]</code></strong> &amp; <strong><code>/coba/tema/[id]</code></strong> (<code>app/coba/…</code>) → komponen bersama <code>components/TeaserPublik.tsx</code> (brand + gambar + judul + deskripsi ringkas + CTA "Coba Gratis" → <code>/daftar</code>). Reader anon <code>getKelasPublik(id)</code>/<code>getTemaPublik(id)</code> (<code>publik.ts</code>) — <strong>hanya metadata ringan</strong> (judul/tujuan/usia/daftar nama game), butir/materi penuh TIDAK ditampilkan (konten berbayar aman). <code>id</code> tak valid → <code>notFound()</code>.
+- <strong>Penempatan tombol</strong>: artikel <code>/artikel/[slug]</code> (share URL sendiri); kelas <code>/kelas/[id]</code> via <code>KelasIsi</code> prop <code>bagikanUrl</code> → <code>/coba/kelas/[id]</code>; tema di <code>MenuAnak</code> layar 'daftar' → <code>/coba/tema/[id]</code>.
+- <strong>Endpoint</strong>: <code>kelas_bermain</code>, <code>tema</code>, <code>paket_aset</code> (baca anon — <code>tema</code>/<code>paket_aset</code> via migrasi <strong>0081</strong>; <code>kelas_bermain</code> sudah anon sejak 0022).</p>
 <h3 id="video-adminvideo">📺 Video — <code>/admin/video</code></h3>
 <ul>
 <li><strong>File</strong>: <code>admin/video/page.tsx</code> (query + hapus/toggle inline) → <code>VideoForm.tsx</code>.</li>
@@ -864,8 +870,8 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </tr>
 <tr>
 <td><code>tema</code>, <code>paket_aset</code></td>
-<td>katalog game (tema + paket/butir aset); <code>tema.sampul</code> = emoji/URL gambar; <code>paket_aset.mesin</code> ber-CHECK (perluas tiap mesin baru), <code>kategori_usia_id</code> FK</td>
-<td>0001–0003, 0025–0037, 0060, 0074, 0079, 0080</td>
+<td>katalog game (tema + paket/butir aset); <code>tema.sampul</code> = emoji/URL gambar; <code>paket_aset.mesin</code> ber-CHECK (perluas tiap mesin baru), <code>kategori_usia_id</code> FK; baca anon utk teaser publik (0081)</td>
+<td>0001–0003, 0025–0037, 0060, 0074, 0079, 0080, 0081</td>
 </tr>
 <tr>
 <td><code>kategori_usia</code></td>

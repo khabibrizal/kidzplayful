@@ -2,7 +2,7 @@
 
 > Panduan teknis untuk developer baru. Menjelaskan **per halaman/menu**: file apa yang menanganinya, function/reader/server-action apa yang dipakai, dan **endpoint backend** (tabel Supabase / RPC / storage / auth) yang disentuh. Termasuk **REST API internal** (untuk aplikasi mobile) dan infrastruktur.
 
-Terakhir diperbarui: 2026-07-23.
+Terakhir diperbarui: 2026-07-24.
 
 ---
 
@@ -41,7 +41,7 @@ src/
     supabase/          # server.ts (SSR), client.ts (browser)
     api/               # helpers.ts (amplop JSON + auth Bearer untuk REST API)
     game/              # tipe & util mesin game
-supabase/migrations/   # skema DB (0001..0080), dijalankan manual di SQL Editor
+supabase/migrations/   # skema DB (0001..0081), dijalankan manual di SQL Editor
 docs/                  # dokumentasi (termasuk file ini)
 tools/md2pdf.py        # generator PDF dokumentasi
 ```
@@ -67,7 +67,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 - Halaman tidak menaruh selector mentah bila bisa lewat reader; beberapa halaman melakukan query inline sederhana.
 
 ### Deploy & migrasi
-- Migrasi dijalankan **manual** di Supabase SQL Editor (urut `0001..0080`), lalu diverifikasi via REST (`?select=col&limit=1` → 200).
+- Migrasi dijalankan **manual** di Supabase SQL Editor (urut `0001..0081`), lalu diverifikasi via REST (`?select=col&limit=1` → 200).
 - Commit: `git -c commit.gpgsign=false commit` + baris `Co-Authored-By`. Push ke `master` → Vercel auto-deploy.
 - Banyak reader dibungkus `try/catch` agar fitur aman dideploy sebelum migrasinya dijalankan (mengembalikan nilai default).
 
@@ -147,6 +147,13 @@ Master data pilihan chips Fokus Area Perkembangan (dipakai form Kelas Bermain & 
 - **Fungsi data**: `getArtikelSemua()`, `getArtikelById(id)` (`artikel.ts`).
 - **Server action**: `buatArtikel`, `simpanArtikel`, `hapusArtikel` (`artikel-admin.ts`).
 - **Endpoint**: `artikel`; `storage.from('aset')` (folder `artikel/`). Util `@/lib/slug`.
+
+### 🔗 Bagikan Konten ke Sosial Media
+Fitur share dari halaman detail agar orang non-login jadi aware & mendaftar.
+- **Komponen `components/ShareButton.tsx`** (client): pakai `navigator.share` (share sheet HP) + fallback popover WhatsApp/Facebook/X/Telegram/Salin link (toast). URL relatif diselesaikan ke absolut via `location.origin`. Util murni `lib/share.ts` (`tautanShare(target,{url,text})`, teruji vitest).
+- **Halaman teaser PUBLIK** (tanpa login, punya OG/twitter metadata): **`/coba/kelas/[id]`** & **`/coba/tema/[id]`** (`app/coba/…`) → komponen bersama `components/TeaserPublik.tsx` (brand + gambar + judul + deskripsi ringkas + CTA "Coba Gratis" → `/daftar`). Reader anon `getKelasPublik(id)`/`getTemaPublik(id)` (`publik.ts`) — **hanya metadata ringan** (judul/tujuan/usia/daftar nama game), butir/materi penuh TIDAK ditampilkan (konten berbayar aman). `id` tak valid → `notFound()`.
+- **Penempatan tombol**: artikel `/artikel/[slug]` (share URL sendiri); kelas `/kelas/[id]` via `KelasIsi` prop `bagikanUrl` → `/coba/kelas/[id]`; tema di `MenuAnak` layar 'daftar' → `/coba/tema/[id]`.
+- **Endpoint**: `kelas_bermain`, `tema`, `paket_aset` (baca anon — `tema`/`paket_aset` via migrasi **0081**; `kelas_bermain` sudah anon sejak 0022).
 
 ### 📺 Video — `/admin/video`
 - **File**: `admin/video/page.tsx` (query + hapus/toggle inline) → `VideoForm.tsx`.
@@ -600,7 +607,7 @@ Semua Route Handler (`app/api/**/route.ts`) mengembalikan amplop JSON seragam vi
 | `anak` | data anak (nama, `nama_panggilan` utk stiker, tgl lahir, jenis kelamin, mode, koin/streak) | 0001, 0024, 0042, 0071 |
 | `langganan` | status langganan/trial per user (trial_mulai, aktif_sampai, nominal) | 0001 |
 | `pembayaran_langganan` | riwayat pembayaran membership | 0052 |
-| `tema`, `paket_aset` | katalog game (tema + paket/butir aset); `tema.sampul` = emoji/URL gambar; `paket_aset.mesin` ber-CHECK (perluas tiap mesin baru), `kategori_usia_id` FK | 0001–0003, 0025–0037, 0060, 0074, 0079, 0080 |
+| `tema`, `paket_aset` | katalog game (tema + paket/butir aset); `tema.sampul` = emoji/URL gambar; `paket_aset.mesin` ber-CHECK (perluas tiap mesin baru), `kategori_usia_id` FK; baca anon utk teaser publik (0081) | 0001–0003, 0025–0037, 0060, 0074, 0079, 0080, 0081 |
 | `kategori_usia` | master rentang usia (nama, usia_min/max, urutan, aktif) → dropdown form Game & pengelompokan | 0079 |
 | `video` | video edukasi (kategori baby/toddler); `boleh_trial` | 0003, 0005, 0060 |
 | `kelas_bermain` | materi kelas bermain (+ worksheet, bahan; `tujuan`/`usia_*`/`fokus_area[]`/`peran_ortu`; aktivitas jsonb ber-key `catatan_ortu`); `boleh_trial` | 0009, 0013–0016, 0060, 0076, 0077 |
