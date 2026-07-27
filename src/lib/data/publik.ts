@@ -10,7 +10,7 @@ const anon = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEX
 
 const E = 'id,judul,lokasi,tanggal,jam_mulai,jam_selesai,deskripsi,gambar_url,harga_per_anak,diskon_langganan_persen,status';
 const P = 'id,nama,deskripsi,kategori,harga,diskon_trial_persen,diskon_langganan_persen,berat_gram,stok,terjual,gambar_url,status';
-const K = 'id,judul,tujuan,fokus_area,peran_ortu,usia_min,usia_max,aktivitas,bahan,link_ide,worksheet_url,status,boleh_trial';
+const K = 'id,judul,sampul_url,tujuan,fokus_area,peran_ortu,usia_min,usia_max,aktivitas,bahan,link_ide,worksheet_url,status,boleh_trial';
 
 export const getEventTampilCached = unstable_cache(
   async (): Promise<EventKelas[]> => {
@@ -37,11 +37,11 @@ export const getKelasAktifCached = unstable_cache(
 );
 
 // —— Teaser publik (halaman /coba/*): metadata ringan, tanpa butir/materi penuh ——
-export async function getKelasPublik(id: string): Promise<{ id: string; judul: string; tujuan: string | null; usia_min: number; usia_max: number } | null> {
+export async function getKelasPublik(id: string): Promise<{ id: string; judul: string; tujuan: string | null; usia_min: number; usia_max: number; sampul_url: string | null } | null> {
   const { data } = await anon.from('kelas_bermain')
-    .select('id,judul,tujuan,usia_min,usia_max')
+    .select('id,judul,tujuan,usia_min,usia_max,sampul_url')
     .eq('id', id).eq('status', 'aktif').maybeSingle();
-  return (data ?? null) as { id: string; judul: string; tujuan: string | null; usia_min: number; usia_max: number } | null;
+  return (data ?? null) as { id: string; judul: string; tujuan: string | null; usia_min: number; usia_max: number; sampul_url: string | null } | null;
 }
 
 export async function getTemaPublik(id: string): Promise<{ id: string; nama: string; sampul: string | null; game: string[] } | null> {

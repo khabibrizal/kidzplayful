@@ -8,6 +8,7 @@ export interface AktivitasInput { judul: string; caraMembuat: string; langkah: s
 export interface KelasInput {
   judul: string;
   tujuan: string;
+  sampulUrl: string;
   fokusArea: string[];
   peranOrtu: string;
   usiaMin: number;
@@ -17,7 +18,7 @@ export interface KelasInput {
   linkIde: string;
   worksheetUrl: string | null;
 }
-const COLS = 'id,judul,tujuan,fokus_area,peran_ortu,usia_min,usia_max,aktivitas,bahan,link_ide,worksheet_url,status';
+const COLS = 'id,judul,sampul_url,tujuan,fokus_area,peran_ortu,usia_min,usia_max,aktivitas,bahan,link_ide,worksheet_url,status';
 
 async function adminDb() {
   const s = await createClient();
@@ -30,6 +31,7 @@ async function adminDb() {
 function row(i: KelasInput) {
   return {
     judul: i.judul.trim() || 'Tanpa judul',
+    sampul_url: i.sampulUrl.trim() || null,
     tujuan: i.tujuan.trim() || null,
     fokus_area: (i.fokusArea ?? []).filter(Boolean),
     peran_ortu: i.peranOrtu.trim() || null,

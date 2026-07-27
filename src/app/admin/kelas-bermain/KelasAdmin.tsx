@@ -4,11 +4,13 @@ import { useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { buatKelas, updateKelas, toggleStatusKelas, hapusKelas, setBolehTrialKelas, type KelasInput } from '@/lib/data/kelas-bermain-actions';
 import type { KelasBermain } from '@/lib/game/tipe';
+import { kompresGambar } from '@/lib/img';
 import s from '../admin.module.css';
 
 const KOSONG: KelasInput = {
   judul: '',
   tujuan: '',
+  sampulUrl: '',
   fokusArea: [],
   peranOrtu: '',
   usiaMin: 0,
@@ -28,6 +30,7 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [] }: { a
   const [busyId, setBusyId] = useState<string | null>(null);
   const [toast, setToast] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+  const coverRef = useRef<HTMLInputElement>(null);
 
   function flash(msg: string) { setToast(msg); setTimeout(() => setToast(''), 2200); }
   const tampil = list.filter((k) => k.judul.toLowerCase().includes(q.toLowerCase()));
@@ -37,6 +40,7 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [] }: { a
     setEditId(k.id);
     setForm({
       judul: k.judul,
+      sampulUrl: k.sampul_url ?? '',
       tujuan: k.tujuan ?? '',
       fokusArea: k.fokus_area ?? [],
       peranOrtu: k.peran_ortu ?? '',
@@ -90,6 +94,21 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [] }: { a
       flash('Worksheet terunggah ✓');
     } catch (e2) { flash(e2 instanceof Error ? e2.message : 'Gagal unggah'); }
     finally { setLoading(false); if (fileRef.current) fileRef.current.value = ''; }
+  }
+
+  async function unggahCover(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]; if (!file || !form) return;
+    setLoading(true);
+    try {
+      const sb = createClient();
+      const { blob, ext } = await kompresGambar(file, { maksDim: 1280, kualitas: 0.82 });
+      const path = `kelas/${Date.now()}-${Math.floor(performance.now())}.${ext}`;
+      const { error } = await sb.storage.from('aset').upload(path, blob, { upsert: false, contentType: blob.type || undefined });
+      if (error) throw error;
+      setForm({ ...form, sampulUrl: sb.storage.from('aset').getPublicUrl(path).data.publicUrl });
+      flash('Cover terunggah ✓');
+    } catch (e2) { flash(e2 instanceof Error ? e2.message : 'Gagal unggah'); }
+    finally { setLoading(false); if (coverRef.current) coverRef.current.value = ''; }
   }
 
   async function simpan() {
@@ -147,6 +166,19 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [] }: { a
           <b>{editId ? 'Edit' : 'Tambah'} Kelas Bermain</b>
 
           <input className={s.inp} placeholder="Judul kelas" value={form.judul} onChange={(e) => setForm({ ...form, judul: e.target.value })} style={{ width: '100%', marginTop: 8 }} />
+
+          <div className={s.row} style={{ gap: 8, alignItems: 'center', marginTop: 8 }}>
+            <button type="button" className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)' }} onClick={() => coverRef.current?.click()} disabled={loading}>{loading ? '...' : '⬆ Gambar Cover'}</button>
+            {form.sampulUrl && (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={form.sampulUrl} alt="" style={{ width: 56, height: 40, objectFit: 'cover', borderRadius: 8 }} />
+                <button type="button" className={s.btnSm} style={{ background: '#eee' }} onClick={() => setForm({ ...form, sampulUrl: '' })}>Hapus</button>
+              </>
+            )}
+            <span className={s.muted} style={{ fontSize: 11 }}>untuk share Story & teaser</span>
+            <input ref={coverRef} type="file" accept="image/*" hidden onChange={unggahCover} />
+          </div>
 
           {/* TUJUAN + USIA */}
           <textarea className={s.inp} placeholder="🎯 Tujuan kelas bermain ini (mis. melatih motorik halus & mengenal warna) — tampil ke orang tua" rows={2} value={form.tujuan} onChange={(e) => setForm({ ...form, tujuan: e.target.value })} style={{ width: '100%', resize: 'vertical' }} />

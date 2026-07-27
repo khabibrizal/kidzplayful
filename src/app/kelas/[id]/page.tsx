@@ -10,7 +10,7 @@ import Terkunci from '@/components/Terkunci';
 import TombolKembali from '@/components/TombolKembali';
 import { getLabelFokusArea } from '@/lib/data/fokus-area';
 
-const COLS = 'id,judul,tujuan,fokus_area,peran_ortu,usia_min,usia_max,aktivitas,bahan,link_ide,worksheet_url,status,boleh_trial';
+const COLS = 'id,judul,sampul_url,tujuan,fokus_area,peran_ortu,usia_min,usia_max,aktivitas,bahan,link_ide,worksheet_url,status,boleh_trial';
 
 export default async function KelasDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
