@@ -2,6 +2,7 @@
 'use client';
 import { useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { kompresGambar } from '@/lib/img';
 import { buatProduk, updateProduk, hapusProduk, type ProdukInput } from '@/lib/data/admin-store-actions';
 import type { Produk } from '@/lib/game/tipe';
 import { formatRupiah } from '@/lib/format';
@@ -36,9 +37,9 @@ export default function ProdukAdmin({ awal }: { awal: Produk[] }) {
     setLoading(true);
     try {
       const sb = createClient();
-      const ext = file.name.split('.').pop() || 'jpg';
+      const { blob, ext } = await kompresGambar(file, { maksDim: 1280, kualitas: 0.82 });
       const path = `produk/${Date.now()}-${Math.floor(performance.now())}.${ext}`;
-      const { error } = await sb.storage.from('aset').upload(path, file, { upsert: false });
+      const { error } = await sb.storage.from('aset').upload(path, blob, { upsert: false, contentType: blob.type || undefined });
       if (error) throw error;
       setForm({ ...form, gambarUrl: sb.storage.from('aset').getPublicUrl(path).data.publicUrl });
       flash('Gambar terunggah ✓');

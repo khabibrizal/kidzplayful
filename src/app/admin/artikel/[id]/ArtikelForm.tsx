@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import { kompresGambar } from '@/lib/img';
 import { simpanArtikel, hapusArtikel } from '@/lib/data/artikel-admin';
 import { slugify } from '@/lib/slug';
 import type { Artikel } from '@/lib/data/artikel';
@@ -29,9 +30,9 @@ export default function ArtikelForm({ artikel }: { artikel: Artikel }) {
     setNaik(true); setMsg('');
     try {
       const supabase = createClient();
-      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+      const { blob, ext } = await kompresGambar(file, { maksDim: 1280, kualitas: 0.82 });
       const path = `artikel/${Date.now()}-${Math.floor(performance.now())}.${ext}`;
-      const { error } = await supabase.storage.from('aset').upload(path, file, { upsert: false });
+      const { error } = await supabase.storage.from('aset').upload(path, blob, { upsert: false, contentType: blob.type || undefined });
       if (error) throw error;
       setSampul(supabase.storage.from('aset').getPublicUrl(path).data.publicUrl);
     } catch (e) { setMsg(e instanceof Error ? e.message : 'Gagal unggah'); }

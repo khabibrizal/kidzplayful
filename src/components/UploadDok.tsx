@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { kompresGambar } from '@/lib/img';
 import { simpanDokumen } from '@/lib/data/sponsor-actions';
 
 export default function UploadDok({ dealId, field, label, urlAda }: {
@@ -19,9 +20,9 @@ export default function UploadDok({ dealId, field, label, urlAda }: {
     setErr(''); setNaik(true);
     try {
       const sb = createClient();
-      const ext = (file.name.split('.').pop() || 'pdf').toLowerCase();
+      const { blob, ext } = await kompresGambar(file, { maksDim: 1280, kualitas: 0.8 });
       const path = `dok-sponsor/${Date.now()}-${Math.floor(performance.now())}.${ext}`;
-      const { error } = await sb.storage.from('aset').upload(path, file, { upsert: false, contentType: file.type || undefined });
+      const { error } = await sb.storage.from('aset').upload(path, blob, { upsert: false, contentType: blob.type || undefined });
       if (error) throw error;
       const url = sb.storage.from('aset').getPublicUrl(path).data.publicUrl;
       await simpanDokumen(dealId, field, url);

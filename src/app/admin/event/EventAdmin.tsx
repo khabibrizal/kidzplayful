@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import { kompresGambar } from '@/lib/img';
 import { buatEvent, updateEvent, toggleStatusEvent, hapusEvent, simpanBerkasSertifikat, type EventInput } from '@/lib/data/admin-event-actions';
 import { generateSertifikatEvent } from '@/lib/data/admin-sertifikat-actions';
 import DownloadPesertaBtn from './DownloadPesertaBtn';
@@ -39,9 +40,9 @@ export default function EventAdmin({ awal, counts }: { awal: EventKelas[]; count
     setLoading(true);
     try {
       const sb = createClient();
-      const ext = file.name.split('.').pop() || 'jpg';
-      const path = `event/${Date.now()}-${Math.floor(performance.now())}.${ext}`;
-      const { error } = await sb.storage.from('aset').upload(path, file, { upsert: false });
+      const komp = await kompresGambar(file, { maksDim: 1280, kualitas: 0.82 });
+      const path = `event/${Date.now()}-${Math.floor(performance.now())}.${komp.ext}`;
+      const { error } = await sb.storage.from('aset').upload(path, komp.blob, { upsert: false, contentType: komp.blob.type || undefined });
       if (error) throw error;
       setForm({ ...form, gambarUrl: sb.storage.from('aset').getPublicUrl(path).data.publicUrl });
       flash('Gambar terunggah ✓');
