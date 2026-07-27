@@ -55,7 +55,7 @@ li { margin:3px 0; }
     supabase/          # server.ts (SSR), client.ts (browser)
     api/               # helpers.ts (amplop JSON + auth Bearer untuk REST API)
     game/              # tipe &amp; util mesin game
-supabase/migrations/   # skema DB (0001..0082), dijalankan manual di SQL Editor
+supabase/migrations/   # skema DB (0001..0083), dijalankan manual di SQL Editor
 docs/                  # dokumentasi (termasuk file ini)
 tools/md2pdf.py        # generator PDF dokumentasi
 </code></pre>
@@ -82,7 +82,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </ul>
 <h3 id="deploy-migrasi">Deploy &amp; migrasi</h3>
 <ul>
-<li>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor (urut <code>0001..0082</code>), lalu diverifikasi via REST (<code>?select=col&amp;limit=1</code> → 200).</li>
+<li>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor (urut <code>0001..0083</code>), lalu diverifikasi via REST (<code>?select=col&amp;limit=1</code> → 200).</li>
 <li>Commit: <code>git -c commit.gpgsign=false commit</code> + baris <code>Co-Authored-By</code>. Push ke <code>master</code> → Vercel auto-deploy.</li>
 <li>Banyak reader dibungkus <code>try/catch</code> agar fitur aman dideploy sebelum migrasinya dijalankan (mengembalikan nilai default).</li>
 </ul>
@@ -151,6 +151,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <li><strong>Fungsi data</strong>: <code>getKelasSemua()</code> (<code>kelas-bermain.ts</code>), <code>getProdukSemua()</code> (<code>admin-store.ts</code>), <code>getFokusAreaAktif()</code> (<code>fokus-area.ts</code> → chips form).</li>
 <li><strong>Server action</strong>: <code>buatKelas</code>, <code>updateKelas</code>, <code>toggleStatusKelas</code>, <code>hapusKelas</code>, <strong><code>setBolehTrialKelas</code></strong> (toggle Trial ✓/✗) (<code>kelas-bermain-actions.ts</code>).</li>
 <li><strong>Field per kelas</strong> (kolom tabel, 0076–0077): <strong>🎯 <code>tujuan</code></strong>, <strong>👶 <code>usia_min</code>/<code>usia_max</code></strong>, <strong>🧩 <code>fokus_area</code> text[]</strong> (chips multi-pilih; daftar area dari <strong>master <code>fokus_area</code></strong>, lihat di bawah), <strong>🤝 <code>peran_ortu</code></strong>. Tampil di detail user <code>/kelas/[id]</code> sebagai kartu info (label badge juga dari master, fallback bawaan).</li>
+<li><strong>🖼️ <code>sampul_url</code> (cover, 0083)</strong>: upload gambar cover di form admin (kompres 1280/0.82 → <code>aset/kelas/</code>). Dipakai di: <strong>banner atas detail</strong> (<code>KelasIsi</code>), <strong>kartu Share IG Story</strong> (prop <code>gambar</code> ShareButton), dan <strong>teaser</strong> <code>/coba/kelas/[id]</code> (gambar + OG image). Opsional — tanpa cover memakai kartu brand/OG default.</li>
 <li><strong>Field per AKTIVITAS</strong> (key bernama di jsonb <code>aktivitas</code> — keputusan owner: tetap jsonb, 1 kelas = N aktivitas): <code>judul</code>, <code>cara_membuat</code>, <code>langkah[]</code>, <strong><code>catatan_ortu</code></strong>. Tampilan user memakai subjudul <strong>🛠️ CARA MEMBUAT</strong>, <strong>🎲 CARA BERMAIN</strong> (langkah), <strong>💡 CATATAN UNTUK ORANG TUA</strong> (kartu kuning); teks Tujuan/Peran/Catatan <code>pre-wrap</code> (baris &amp; penomoran admin dipertahankan).</li>
 <li><strong>Tampilan user KONSISTEN</strong>: komponen bersama <strong><code>components/KelasIsi.tsx</code></strong> merender isi materi (kartu info + bahan + aktivitas ber-subjudul + media) → dipakai di <strong>detail <code>/kelas/[id]</code></strong>, <strong>Mode Anak</strong> (<code>MenuAnak</code>), <strong>Mode Ortu</strong> (<code>/ortu/[anakId]</code>) supaya identik dgn admin. Label fokus area via <code>getLabelFokusArea()</code> (fallback bawaan). Card daftar admin kini ringkas: judul + range usia (+ badge status/trial).</li>
 <li><strong>Endpoint</strong>: <code>kelas_bermain</code> (+<code>boleh_trial</code>/<code>tujuan</code>/<code>fokus_area</code>/<code>peran_ortu</code>/<code>usia_*</code>), <code>produk</code>, <code>fokus_area</code>; <code>storage.from('aset')</code> (folder <code>worksheet/</code>).</li>
@@ -888,8 +889,8 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </tr>
 <tr>
 <td><code>kelas_bermain</code></td>
-<td>materi kelas bermain (+ worksheet, bahan; <code>tujuan</code>/<code>usia_*</code>/<code>fokus_area[]</code>/<code>peran_ortu</code>; aktivitas jsonb ber-key <code>catatan_ortu</code>); <code>boleh_trial</code></td>
-<td>0009, 0013–0016, 0060, 0076, 0077</td>
+<td>materi kelas bermain (+ worksheet, bahan; <strong><code>sampul_url</code> cover</strong> (share Story/teaser/detail); <code>tujuan</code>/<code>usia_*</code>/<code>fokus_area[]</code>/<code>peran_ortu</code>; aktivitas jsonb ber-key <code>catatan_ortu</code>); <code>boleh_trial</code></td>
+<td>0009, 0013–0016, 0060, 0076, 0077, 0083</td>
 </tr>
 <tr>
 <td><code>fokus_area</code></td>
