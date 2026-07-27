@@ -21,6 +21,10 @@ export default function KelasIsi({ kelas, labelArea = {}, bagikan = true, bagika
 
   return (
     <>
+      {kelas.sampul_url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={kelas.sampul_url} alt="" loading="lazy" decoding="async" style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: 16, marginBottom: 12, display: 'block' }} />
+      )}
       {adaInfo && (
         <div className="kp-card" style={{ marginBottom: 12, background: '#f7f5fc' }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)' }}>👶 Untuk usia {kelas.usia_min ?? 0}–{kelas.usia_max ?? 6} tahun</div>
@@ -95,7 +99,7 @@ export default function KelasIsi({ kelas, labelArea = {}, bagikan = true, bagika
       <div className="no-print" style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {kelas.link_ide && !youtubeId(kelas.link_ide) && <a className="kp-btn" style={{ display: 'inline-block' }} href={kelas.link_ide} target="_blank">Lihat ide ▶</a>}
         {kelas.worksheet_url && <a className="kp-btn putih" style={{ display: 'inline-block' }} href={kelas.worksheet_url} target="_blank">📄 Worksheet</a>}
-        {bagikanUrl && <ShareButton url={bagikanUrl} title={kelas.judul} text={`Materi kelas bermain "${kelas.judul}" di KidzPlayful`} jenis="kelas" label="Bagikan" />}
+        {bagikanUrl && <ShareButton url={bagikanUrl} title={kelas.judul} text={`Materi kelas bermain "${kelas.judul}" di KidzPlayful`} jenis="kelas" gambar={kelas.sampul_url ?? undefined} label="Bagikan" />}
         {bagikan && <Link className="kp-btn putih" style={{ display: 'inline-block' }} href={`/komunitas?topik=${encodeURIComponent(kelas.judul)}`}>💬 Bagikan pengalaman</Link>}
       </div>
     </>
