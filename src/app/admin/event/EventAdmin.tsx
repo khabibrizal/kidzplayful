@@ -190,9 +190,9 @@ function PanelSertifikat({ e, flash, onSaved }: {
     setBusy(true);
     try {
       const sb = createClient();
-      const ext = file.name.split('.').pop() || 'jpg';
-      const path = `event/sertifikat-${Date.now()}-${Math.floor(performance.now())}.${ext}`;
-      const { error } = await sb.storage.from('aset').upload(path, file, { upsert: false });
+      const komp = await kompresGambar(file, { maksDim: 2000, kualitas: 0.9 }); // ringan — jaga kualitas cetak
+      const path = `event/sertifikat-${Date.now()}-${Math.floor(performance.now())}.${komp.ext}`;
+      const { error } = await sb.storage.from('aset').upload(path, komp.blob, { upsert: false, contentType: komp.blob.type || undefined });
       if (error) throw error;
       const url = sb.storage.from('aset').getPublicUrl(path).data.publicUrl;
       await simpanBerkasSertifikat(e.id, { sertifikatBgUrl: url });
@@ -218,9 +218,9 @@ function PanelSertifikat({ e, flash, onSaved }: {
     setBusy(true);
     try {
       const sb = createClient();
-      const ext = file.name.split('.').pop() || 'jpg';
-      const path = `event/stiker-${Date.now()}-${Math.floor(performance.now())}.${ext}`;
-      const { error } = await sb.storage.from('aset').upload(path, file, { upsert: false });
+      const komp = await kompresGambar(file, { maksDim: 2000, kualitas: 0.9 }); // ringan — jaga kualitas cetak
+      const path = `event/stiker-${Date.now()}-${Math.floor(performance.now())}.${komp.ext}`;
+      const { error } = await sb.storage.from('aset').upload(path, komp.blob, { upsert: false, contentType: komp.blob.type || undefined });
       if (error) throw error;
       const url = sb.storage.from('aset').getPublicUrl(path).data.publicUrl;
       await simpanBerkasSertifikat(e.id, { stikerBgUrl: url });
