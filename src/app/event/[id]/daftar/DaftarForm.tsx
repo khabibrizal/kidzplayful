@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { kompresGambar } from '@/lib/img';
 import { daftarEvent } from '@/lib/data/event-actions';
 import TombolKembali from '@/components/TombolKembali';
 import type { EventKelas } from '@/lib/game/tipe';
@@ -50,9 +51,9 @@ export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor, b
     setLoading(true); setErr('');
     try {
       const sb = createClient();
-      const ext = file.name.split('.').pop() || 'jpg';
+      const { blob, ext } = await kompresGambar(file, { maksDim: 1280, kualitas: 0.8 });
       const path = `bukti/${Date.now()}-${Math.floor(performance.now())}.${ext}`;
-      const { error } = await sb.storage.from('aset').upload(path, file, { upsert: false });
+      const { error } = await sb.storage.from('aset').upload(path, blob, { upsert: false, contentType: blob.type || undefined });
       if (error) throw error;
       setBuktiUrl(sb.storage.from('aset').getPublicUrl(path).data.publicUrl);
     } catch (e2) { setErr(e2 instanceof Error ? e2.message : 'Gagal unggah'); }

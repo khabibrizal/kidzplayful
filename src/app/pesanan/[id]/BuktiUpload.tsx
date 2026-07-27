@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { kompresGambar } from '@/lib/img';
 import { uploadBuktiPesanan } from '@/lib/data/pesanan-actions';
 
 export default function BuktiUpload({ pesananId }: { pesananId: string }) {
@@ -16,9 +17,9 @@ export default function BuktiUpload({ pesananId }: { pesananId: string }) {
     setLoading(true); setErr('');
     try {
       const sb = createClient();
-      const ext = file.name.split('.').pop() || 'jpg';
+      const { blob, ext } = await kompresGambar(file, { maksDim: 1280, kualitas: 0.8 });
       const path = `bukti/${Date.now()}-${Math.floor(performance.now())}.${ext}`;
-      const { error } = await sb.storage.from('aset').upload(path, file, { upsert: false });
+      const { error } = await sb.storage.from('aset').upload(path, blob, { upsert: false, contentType: blob.type || undefined });
       if (error) throw error;
       const url = sb.storage.from('aset').getPublicUrl(path).data.publicUrl;
       await uploadBuktiPesanan(pesananId, url);
