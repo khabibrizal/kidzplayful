@@ -8,6 +8,7 @@ export const MENU_ADMIN: MenuAdmin[] = [
   { key: 'event', href: '/admin/event', label: '🗓️ Event' },
   { key: 'produk', href: '/admin/produk', label: '🛍️ Produk' },
   { key: 'pesanan', href: '/admin/pesanan', label: '📦 Pesanan' },
+  { key: 'voucher', href: '/admin/voucher', label: '🎟️ Voucher' },
   { key: 'kelas-bermain', href: '/admin/kelas-bermain', label: '🎈 Kelas Bermain' },
   { key: 'fokus-area', href: '/admin/fokus-area', label: '🧩 Fokus Area' },
   { key: 'kategori-usia', href: '/admin/kategori-usia', label: '👶 Kategori Usia' },
