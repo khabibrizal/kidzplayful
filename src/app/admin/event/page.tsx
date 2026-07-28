@@ -1,9 +1,8 @@
 // src/app/admin/event/page.tsx
-import { getEventSemua, getJumlahPendaftar } from '@/lib/data/admin-event';
+import { getEventSemua, getJumlahPendaftar, getJumlahMenunggu } from '@/lib/data/admin-event';
 import EventAdmin from './EventAdmin';
 
 export default async function AdminEventPage() {
-  const events = await getEventSemua();
-  const counts = await getJumlahPendaftar();
-  return <EventAdmin awal={events} counts={counts} />;
+  const [events, counts, menunggu] = await Promise.all([getEventSemua(), getJumlahPendaftar(), getJumlahMenunggu()]);
+  return <EventAdmin awal={events} counts={counts} menunggu={menunggu} />;
 }

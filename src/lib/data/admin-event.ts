@@ -25,6 +25,15 @@ export async function getJumlahPendaftar(): Promise<Record<string, number>> {
   return map;
 }
 
+/** Jumlah pendaftar BARU (status 'menunggu', belum diproses) per event — untuk bubble notifikasi. */
+export async function getJumlahMenunggu(): Promise<Record<string, number>> {
+  const s = await createClient();
+  const { data } = await s.from('pendaftaran_event').select('event_id').eq('status', 'menunggu');
+  const map: Record<string, number> = {};
+  for (const r of data ?? []) map[r.event_id as string] = (map[r.event_id as string] ?? 0) + 1;
+  return map;
+}
+
 /** Peta anak_id → sertifikat_id untuk satu event (admin boleh baca semua via RLS). */
 export async function getSertifikatMapByEvent(eventId: string): Promise<Record<string, string>> {
   const s = await createClient();

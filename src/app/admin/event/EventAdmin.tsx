@@ -13,7 +13,7 @@ import s from '../admin.module.css';
 
 const KOSONG: EventInput = { judul: '', lokasi: '', tanggal: '', jamMulai: '', jamSelesai: '', deskripsi: '', gambarUrl: null, hargaPerAnak: 0, hargaPendamping: 0, diskonLanggananPersen: 0, babyTanggal: '', babyJamMulai: '', babyJamSelesai: '', toddlerTanggal: '', toddlerJamMulai: '', toddlerJamSelesai: '' };
 
-export default function EventAdmin({ awal, counts }: { awal: EventKelas[]; counts: Record<string, number> }) {
+export default function EventAdmin({ awal, counts, menunggu = {} }: { awal: EventKelas[]; counts: Record<string, number>; menunggu?: Record<string, number> }) {
   const [list, setList] = useState<EventKelas[]>(awal);
   const [form, setForm] = useState<EventInput | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
@@ -140,14 +140,20 @@ export default function EventAdmin({ awal, counts }: { awal: EventKelas[]; count
 
       <div className={s.section}>Event ({list.length})</div>
       {list.map((e) => (
-        <div key={e.id} className={s.card} style={{ opacity: e.status === 'arsip' ? 0.55 : 1 }}>
+        <div key={e.id} className={s.card} style={{ opacity: e.status === 'arsip' ? 0.55 : 1, position: 'relative' }}>
+          {(menunggu[e.id] ?? 0) > 0 && (
+            <span title={`${menunggu[e.id]} pendaftar baru belum diproses`} style={{ position: 'absolute', top: -8, right: -8, minWidth: 22, height: 22, padding: '0 6px', borderRadius: 99, background: '#e53935', color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,.25)', zIndex: 2 }}>{menunggu[e.id]}</span>
+          )}
           <div className={s.row}>
             <span style={{ flex: 1 }}><b>{e.judul}</b> {e.status === 'arsip' && <span className={`${s.tag} ${s.tagDraf}`}>arsip</span>}
               <br /><small className={s.muted}>{e.tanggal ?? '-'} · {formatRupiah(e.harga_per_anak)}/anak</small>
             </span>
           </div>
-          <div className={s.row} style={{ marginTop: 8, flexWrap: 'wrap' }}>
+          <div className={s.row} style={{ marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <Link href={`/admin/event/${e.id}/pendaftar`} className={s.btnSm} style={{ background: '#dff5e6', color: '#1c7a43' }}>👥 Pendaftar ({counts[e.id] ?? 0})</Link>
+            {(menunggu[e.id] ?? 0) > 0 && (
+              <span style={{ background: '#ffe3e0', color: '#c62828', fontWeight: 800, fontSize: 12, borderRadius: 99, padding: '4px 10px' }}>🔴 {menunggu[e.id]} baru</span>
+            )}
             <DownloadPesertaBtn eventId={e.id} judul={e.judul} />
             <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)' }} onClick={() => bukaEdit(e)} disabled={busyId === e.id}>Edit</button>
             <button className={s.btnSm} style={{ background: '#fff3d6', color: '#b88600' }} onClick={() => toggle(e)} disabled={busyId === e.id}>{busyId === e.id ? '...' : (e.status === 'tampil' ? 'Arsipkan' : 'Tampilkan')}</button>
