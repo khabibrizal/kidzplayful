@@ -55,7 +55,7 @@ li { margin:3px 0; }
     supabase/          # server.ts (SSR), client.ts (browser)
     api/               # helpers.ts (amplop JSON + auth Bearer untuk REST API)
     game/              # tipe &amp; util mesin game
-supabase/migrations/   # skema DB (0001..0084), dijalankan manual di SQL Editor
+supabase/migrations/   # skema DB (0001..0085), dijalankan manual di SQL Editor
 docs/                  # dokumentasi (termasuk file ini)
 tools/md2pdf.py        # generator PDF dokumentasi
 </code></pre>
@@ -82,7 +82,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </ul>
 <h3 id="deploy-migrasi">Deploy &amp; migrasi</h3>
 <ul>
-<li>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor (urut <code>0001..0084</code>), lalu diverifikasi via REST (<code>?select=col&amp;limit=1</code> → 200).</li>
+<li>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor (urut <code>0001..0085</code>), lalu diverifikasi via REST (<code>?select=col&amp;limit=1</code> → 200).</li>
 <li>Commit: <code>git -c commit.gpgsign=false commit</code> + baris <code>Co-Authored-By</code>. Push ke <code>master</code> → Vercel auto-deploy.</li>
 <li>Banyak reader dibungkus <code>try/catch</code> agar fitur aman dideploy sebelum migrasinya dijalankan (mengembalikan nilai default).</li>
 </ul>
@@ -290,9 +290,10 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <h3 id="reminder-event-adminreminder">📣 Reminder Event — <code>/admin/reminder</code></h3>
 <ul>
 <li><strong>File</strong>: <code>admin/reminder/page.tsx</code> → <code>ReminderAdmin.tsx</code>. Util <code>formatTanggal</code>, <code>linkWa</code>.</li>
-<li><strong>Fungsi data</strong>: <code>getReminderPendaftaran()</code> (<code>admin-reminder.ts</code>) — pendaftaran "diterima" + event + ortu (no_wa).</li>
-<li><strong>Server action</strong>: <code>tandaiReminder(pendaftaranId, terkirim)</code> (<code>admin-reminder-actions.ts</code>).</li>
-<li><strong>Endpoint</strong>: <code>pendaftaran_event</code> (+ embed <code>event</code>, <code>ortu</code>).</li>
+<li><strong>Fungsi data</strong>: <code>getReminderPendaftaran()</code> (<code>admin-reminder.ts</code>) — pendaftaran "diterima" + event (+<code>pesan_reminder</code>) + <code>kelas</code> + ortu (no_wa).</li>
+<li><strong>Server action</strong>: <code>tandaiReminder(pendaftaranId, terkirim)</code>, <strong><code>simpanPesanReminder(eventId, pesan)</code></strong> (<code>admin-reminder-actions.ts</code>).</li>
+<li><strong>Pesan WA manual per event (0085)</strong>: kolom <strong><code>event.pesan_reminder</code></strong> — textarea + Simpan per event di halaman reminder. Pesan WA disusun util murni <strong><code>domain/reminder.ts susunPesanReminder</code></strong> (teruji): sapaan nama ortu → teks pengingat menyebut judul → detail (📅 judul, 🗓️ tanggal+jam, 📍 lokasi, 🧒 nama anak, 🏷️ kelas bila baby/toddler) → pesan manual → tanda tangan. Baris opsional dilewati bila datanya kosong.</li>
+<li><strong>Endpoint</strong>: <code>pendaftaran_event</code> (+ embed <code>event</code> incl <code>pesan_reminder</code>, <code>ortu</code>; kolom <code>kelas</code>), <code>event</code> (update <code>pesan_reminder</code>).</li>
 </ul>
 <h3 id="master-kategori-usia-adminkategori-usia">👶 Master Kategori Usia — <code>/admin/kategori-usia</code></h3>
 <p>Master data rentang usia (dipakai dropdown di form Game). Game dikelompokkan per kategori.
