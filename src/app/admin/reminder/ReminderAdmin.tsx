@@ -1,24 +1,34 @@
 // src/app/admin/reminder/ReminderAdmin.tsx
 'use client';
 import { useState } from 'react';
-import { tandaiReminder } from '@/lib/data/admin-reminder-actions';
+import { tandaiReminder, simpanPesanReminder } from '@/lib/data/admin-reminder-actions';
+import { susunPesanReminder } from '@/lib/domain/reminder';
 import type { ReminderRow } from '@/lib/data/admin-reminder';
 import { formatTanggal, linkWa } from '@/lib/format';
 import s from '../admin.module.css';
-
-function pesanReminder(nama: string | null, ev: NonNullable<ReminderRow['event']>) {
-  const tgl = ev.tanggal ? formatTanggal(ev.tanggal) : 'besok';
-  const jam = ev.jam_mulai ? `, pukul ${ev.jam_mulai}${ev.jam_selesai ? `-${ev.jam_selesai}` : ''} WIB` : '';
-  const lok = ev.lokasi ? ` di ${ev.lokasi}` : '';
-  return `Halo Kak ${nama ?? ''} 👋 Pengingat: besok ${tgl} ada *${ev.judul}*${lok}${jam}. Mohon hadir tepat waktu ya. Sampai jumpa! — KidzPlayful`;
-}
 
 export default function ReminderAdmin({ rows, todayStr, besokStr }: { rows: ReminderRow[]; todayStr: string; besokStr: string }) {
   const [list, setList] = useState<ReminderRow[]>(rows);
   const [q, setQ] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [toast, setToast] = useState('');
+  const [pesan, setPesan] = useState<Record<string, string>>(() => Object.fromEntries(rows.filter((r) => r.event).map((r) => [r.event!.id, r.event!.pesan_reminder ?? ''])));
+  const [simpanBusy, setSimpanBusy] = useState<string | null>(null);
   function flash(m: string) { setToast(m); setTimeout(() => setToast(''), 2000); }
+
+  function pesanWa(r: ReminderRow, ev: NonNullable<ReminderRow['event']>, pesanManual: string): string {
+    return susunPesanReminder({
+      nama: r.nama, judul: ev.judul, tanggal: ev.tanggal, tanggalFmt: ev.tanggal ? formatTanggal(ev.tanggal) : undefined,
+      jamMulai: ev.jam_mulai, jamSelesai: ev.jam_selesai, lokasi: ev.lokasi, anakNama: r.anak_nama, kelas: r.kelas, pesanManual,
+    });
+  }
+
+  async function simpanPesan(eventId: string) {
+    setSimpanBusy(eventId);
+    const r = await simpanPesanReminder(eventId, pesan[eventId] ?? '');
+    setSimpanBusy(null);
+    flash(r.ok ? 'Pesan tersimpan ✓' : (r.error ?? 'Gagal'));
+  }
 
   async function toggle(r: ReminderRow) {
     setBusy(r.id);
@@ -49,8 +59,13 @@ export default function ReminderAdmin({ rows, todayStr, besokStr }: { rows: Remi
               <span style={{ flex: 1 }}><b>🎈 {ev.judul}</b></span>
               <span className={s.tag} style={{ background: besok ? '#efe7fb' : '#eee', color: besok ? 'var(--lavender-d)' : 'var(--abu)' }}>{label}</span>
             </div>
+            <div style={{ marginTop: 8 }}>
+              <div className={s.muted} style={{ fontSize: 12, marginBottom: 4 }}>✍️ Pesan reminder (opsional) — detail event & nama anak otomatis ditambahkan</div>
+              <textarea className={s.inp} rows={2} placeholder="mis. Bawa baju ganti & botol minum ya 🙏" value={pesan[ev.id] ?? ''} onChange={(e) => setPesan((p) => ({ ...p, [ev.id]: e.target.value }))} style={{ width: '100%', resize: 'vertical' }} />
+              <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)' }} onClick={() => simpanPesan(ev.id)} disabled={simpanBusy === ev.id}>{simpanBusy === ev.id ? '...' : '💾 Simpan pesan'}</button>
+            </div>
             {peserta.map((r) => {
-              const href = linkWa(r.no_wa, pesanReminder(r.nama, ev));
+              const href = linkWa(r.no_wa, pesanWa(r, ev, pesan[ev.id] ?? ''));
               return (
                 <div key={r.id} className={s.row} style={{ marginTop: 8, flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
                   <span style={{ flex: 1, minWidth: 140 }}>
