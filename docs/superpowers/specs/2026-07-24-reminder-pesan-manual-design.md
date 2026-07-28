@@ -10,7 +10,7 @@ Di `/admin/reminder`, admin dapat menulis **pesan WA manual per event** (tiap ev
 ```
 Halo Kak {nama ortu} 👋
 
-Terimakasih sudah mendaftar di event kami kak, jangan lupa untuk hadir ya
+Terimakasih sudah mendaftar di {judul event}, jangan lupa untuk hadir ya, berikut detail informasinya,
 
 📅 *{judul event}*
 🗓️ {tanggal}, pukul {jam_mulai}-{jam_selesai} WIB
@@ -24,7 +24,7 @@ Terimakasih sudah mendaftar di event kami kak, jangan lupa untuk hadir ya
 ```
 Aturan baris:
 - **Sapaan** `Halo Kak {nama}` (nama ortu; bila kosong → `Halo Kak 👋`).
-- **Teks pengingat** (tetap): `Terimakasih sudah mendaftar di event kami kak, jangan lupa untuk hadir ya`.
+- **Teks pengingat** (tetap, menyebut judul): `Terimakasih sudah mendaftar di {judul event}, jangan lupa untuk hadir ya, berikut detail informasinya,`.
 - **📅 judul** selalu ada.
 - **🗓️ tanggal** bila ada; sisipkan `, pukul {jam_mulai}[-{jam_selesai}] WIB` bila `jam_mulai` ada.
 - **📍 lokasi** hanya bila ada.
