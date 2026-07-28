@@ -64,7 +64,7 @@ export async function daftarEvent(eventId: string, anakIds: string[], buktiUrl: 
     potonganVoucher = rv.potongan ?? 0; vId = voucherId;
   }
   const total = Math.max(0, subtotal - potonganVoucher);
-  const { data: baruRow, error } = await s.from('pendaftaran_event').insert({
+  const barisPendaftaran = {
     event_id: eventId,
     ortu_id: user.id,
     anak_ids: baru.map((a) => a.id),
@@ -77,10 +77,16 @@ export async function daftarEvent(eventId: string, anakIds: string[], buktiUrl: 
     bukti_url: buktiUrl,
     kelas: kelasFinal,
     kelas_jadwal: kelasJadwal,
-  }).select('id').single();
-  if (error) return { ok: false, error: error.message };
-  if (vId && baruRow) {
-    await s.from('voucher_redeem').insert({ voucher_id: vId, ortu_id: user.id, ref_tipe: 'pendaftaran', ref_id: baruRow.id, potongan: potonganVoucher });
+  };
+  if (vId) {
+    // butuh id pendaftaran untuk catat voucher_redeem
+    const { data: baruRow, error } = await s.from('pendaftaran_event').insert(barisPendaftaran).select('id').single();
+    if (error) return { ok: false, error: error.message };
+    if (baruRow) await s.from('voucher_redeem').insert({ voucher_id: vId, ortu_id: user.id, ref_tipe: 'pendaftaran', ref_id: baruRow.id, potongan: potonganVoucher });
+  } else {
+    // jalur tanpa voucher: insert polos (perilaku lama yang terbukti jalan)
+    const { error } = await s.from('pendaftaran_event').insert(barisPendaftaran);
+    if (error) return { ok: false, error: error.message };
   }
   revalidatePath('/event');
   revalidatePath('/pilih-anak');
