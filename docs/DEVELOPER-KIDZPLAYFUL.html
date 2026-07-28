@@ -55,7 +55,7 @@ li { margin:3px 0; }
     supabase/          # server.ts (SSR), client.ts (browser)
     api/               # helpers.ts (amplop JSON + auth Bearer untuk REST API)
     game/              # tipe &amp; util mesin game
-supabase/migrations/   # skema DB (0001..0083), dijalankan manual di SQL Editor
+supabase/migrations/   # skema DB (0001..0084), dijalankan manual di SQL Editor
 docs/                  # dokumentasi (termasuk file ini)
 tools/md2pdf.py        # generator PDF dokumentasi
 </code></pre>
@@ -82,7 +82,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </ul>
 <h3 id="deploy-migrasi">Deploy &amp; migrasi</h3>
 <ul>
-<li>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor (urut <code>0001..0083</code>), lalu diverifikasi via REST (<code>?select=col&amp;limit=1</code> → 200).</li>
+<li>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor (urut <code>0001..0084</code>), lalu diverifikasi via REST (<code>?select=col&amp;limit=1</code> → 200).</li>
 <li>Commit: <code>git -c commit.gpgsign=false commit</code> + baris <code>Co-Authored-By</code>. Push ke <code>master</code> → Vercel auto-deploy.</li>
 <li>Banyak reader dibungkus <code>try/catch</code> agar fitur aman dideploy sebelum migrasinya dijalankan (mengembalikan nilai default).</li>
 </ul>
@@ -138,6 +138,15 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <li><strong>Server action</strong>: <code>buatProduk</code>, <code>updateProduk</code>, <code>hapusProduk</code> (<code>admin-store-actions.ts</code>).</li>
 <li><strong>Endpoint</strong>: <code>produk</code>; <code>storage.from('aset')</code> (folder <code>produk/</code>).</li>
 </ul>
+<h3 id="voucher-adminvoucher">🎟️ Voucher — <code>/admin/voucher</code></h3>
+<p>Master voucher diskon + redeem saat transaksi (event/produk), tercatat net di laporan (migrasi <strong>0084</strong>).
+- <strong>File</strong>: <code>admin/voucher/page.tsx</code> → <code>VoucherAdmin.tsx</code>.
+- <strong>Data</strong>: <code>getVoucherSemua()</code> + helper <code>nilaiVoucherByKode/ById(s,...)</code> (<code>data/voucher.ts</code>, cek kuota total &amp; per-user); logika murni <code>domain/voucher.ts</code> (<code>hitungPotongan</code> nominal/persen, <code>validasiVoucher</code> aktif/tanggal/jenis; <strong>teruji vitest</strong>).
+- <strong>Server action</strong> (<code>voucher-actions.ts</code>, <code>{ok,error}</code>): <code>buatVoucher</code>/<code>updateVoucher</code>/<code>setAktifVoucher</code>/<code>hapusVoucher</code>; <strong><code>cekVoucher(kode, jenis, subtotal)</code></strong> dipanggil dari form transaksi (Terapkan).
+- <strong>Master</strong>: <code>kode</code> (unik, UPPERCASE), <code>tipe</code> nominal|persen + <code>nilai</code>, <code>berlaku_event</code>/<code>berlaku_produk</code> (jenis transaksi), <code>kuota_total</code> &amp; <code>kuota_per_user</code> (null=∞), <code>berlaku_dari</code>/<code>berlaku_sampai</code>, <code>aktif</code>.
+- <strong>Redeem</strong>: <code>daftarEvent(..., voucherId)</code> &amp; <code>checkout({..., voucherId})</code> → re-validasi server, <code>potongan</code> mengurangi <code>total</code>/<code>subtotal</code>, simpan <code>voucher_id</code>+<code>potongan_voucher</code> di <code>pendaftaran_event</code>/<code>pesanan</code>, insert <code>voucher_redeem</code> (<code>ref_tipe</code>,<code>ref_id</code> unik → <strong>1 voucher/transaksi</strong>). Kuota <strong>dilepas</strong> (hapus <code>voucher_redeem</code>) saat pendaftaran <strong>ditolak</strong> / pesanan <strong>dibatalkan</strong>.
+- <strong>Laporan</strong>: ledger memakai nilai NET (event <code>total</code>; store <code>subtotal - potongan_voucher</code> di <code>verifikasiPesanan</code>) → pendapatan mencerminkan potongan; <code>getTransaksiDetail</code> menampilkan "🎟️ Voucher <kode> −Rp X". Diskon langganan diterapkan dulu, voucher menumpuk di atasnya.
+- <strong>Endpoint</strong>: <code>voucher</code>, <code>voucher_redeem</code>, <code>pendaftaran_event</code>(+<code>voucher_id</code>/<code>potongan_voucher</code>), <code>pesanan</code>(+idem), <code>transaksi_keuangan</code>.</p>
 <h3 id="pesanan-adminpesanan">📦 Pesanan — <code>/admin/pesanan</code></h3>
 <ul>
 <li><strong>File</strong>: <code>admin/pesanan/page.tsx</code> (+ <code>Pager.tsx</code>) → <code>PesananAdmin.tsx</code>.</li>
@@ -961,6 +970,11 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <td><code>transaksi_keuangan</code></td>
 <td>ledger keuangan (single source of truth)</td>
 <td>0052</td>
+</tr>
+<tr>
+<td><code>voucher</code>, <code>voucher_redeem</code></td>
+<td>master voucher diskon (kode, nominal/persen, jenis event/produk, kuota total &amp; per-user, masa berlaku) + catatan redeem (1/transaksi, lepas saat tolak/batal); kolom <code>voucher_id</code>/<code>potongan_voucher</code> di <code>pendaftaran_event</code>/<code>pesanan</code></td>
+<td>0084</td>
 </tr>
 <tr>
 <td><code>aset</code></td>

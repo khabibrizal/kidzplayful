@@ -41,7 +41,7 @@ src/
     supabase/          # server.ts (SSR), client.ts (browser)
     api/               # helpers.ts (amplop JSON + auth Bearer untuk REST API)
     game/              # tipe & util mesin game
-supabase/migrations/   # skema DB (0001..0083), dijalankan manual di SQL Editor
+supabase/migrations/   # skema DB (0001..0084), dijalankan manual di SQL Editor
 docs/                  # dokumentasi (termasuk file ini)
 tools/md2pdf.py        # generator PDF dokumentasi
 ```
@@ -67,7 +67,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 - Halaman tidak menaruh selector mentah bila bisa lewat reader; beberapa halaman melakukan query inline sederhana.
 
 ### Deploy & migrasi
-- Migrasi dijalankan **manual** di Supabase SQL Editor (urut `0001..0083`), lalu diverifikasi via REST (`?select=col&limit=1` → 200).
+- Migrasi dijalankan **manual** di Supabase SQL Editor (urut `0001..0084`), lalu diverifikasi via REST (`?select=col&limit=1` → 200).
 - Commit: `git -c commit.gpgsign=false commit` + baris `Co-Authored-By`. Push ke `master` → Vercel auto-deploy.
 - Banyak reader dibungkus `try/catch` agar fitur aman dideploy sebelum migrasinya dijalankan (mengembalikan nilai default).
 
@@ -118,6 +118,16 @@ Pembungkus: `admin/layout.tsx` (guard `getAksesAdmin`, kirim `allowed`+`isSuperu
 - **Fungsi data**: `getProdukSemua()` (`admin-store.ts`).
 - **Server action**: `buatProduk`, `updateProduk`, `hapusProduk` (`admin-store-actions.ts`).
 - **Endpoint**: `produk`; `storage.from('aset')` (folder `produk/`).
+
+### 🎟️ Voucher — `/admin/voucher`
+Master voucher diskon + redeem saat transaksi (event/produk), tercatat net di laporan (migrasi **0084**).
+- **File**: `admin/voucher/page.tsx` → `VoucherAdmin.tsx`.
+- **Data**: `getVoucherSemua()` + helper `nilaiVoucherByKode/ById(s,...)` (`data/voucher.ts`, cek kuota total & per-user); logika murni `domain/voucher.ts` (`hitungPotongan` nominal/persen, `validasiVoucher` aktif/tanggal/jenis; **teruji vitest**).
+- **Server action** (`voucher-actions.ts`, `{ok,error}`): `buatVoucher`/`updateVoucher`/`setAktifVoucher`/`hapusVoucher`; **`cekVoucher(kode, jenis, subtotal)`** dipanggil dari form transaksi (Terapkan).
+- **Master**: `kode` (unik, UPPERCASE), `tipe` nominal|persen + `nilai`, `berlaku_event`/`berlaku_produk` (jenis transaksi), `kuota_total` & `kuota_per_user` (null=∞), `berlaku_dari`/`berlaku_sampai`, `aktif`.
+- **Redeem**: `daftarEvent(..., voucherId)` & `checkout({..., voucherId})` → re-validasi server, `potongan` mengurangi `total`/`subtotal`, simpan `voucher_id`+`potongan_voucher` di `pendaftaran_event`/`pesanan`, insert `voucher_redeem` (`ref_tipe`,`ref_id` unik → **1 voucher/transaksi**). Kuota **dilepas** (hapus `voucher_redeem`) saat pendaftaran **ditolak** / pesanan **dibatalkan**.
+- **Laporan**: ledger memakai nilai NET (event `total`; store `subtotal - potongan_voucher` di `verifikasiPesanan`) → pendapatan mencerminkan potongan; `getTransaksiDetail` menampilkan "🎟️ Voucher <kode> −Rp X". Diskon langganan diterapkan dulu, voucher menumpuk di atasnya.
+- **Endpoint**: `voucher`, `voucher_redeem`, `pendaftaran_event`(+`voucher_id`/`potongan_voucher`), `pesanan`(+idem), `transaksi_keuangan`.
 
 ### 📦 Pesanan — `/admin/pesanan`
 - **File**: `admin/pesanan/page.tsx` (+ `Pager.tsx`) → `PesananAdmin.tsx`.
@@ -629,6 +639,7 @@ Semua Route Handler (`app/api/**/route.ts`) mengembalikan amplop JSON seragam vi
 | `aktivitas` | log buka menu/fitur (analitik, DAU/MAU) | 0046 |
 | `feedback` | masukan/survey NPS | 0047, 0048 |
 | `transaksi_keuangan` | ledger keuangan (single source of truth) | 0052 |
+| `voucher`, `voucher_redeem` | master voucher diskon (kode, nominal/persen, jenis event/produk, kuota total & per-user, masa berlaku) + catatan redeem (1/transaksi, lepas saat tolak/batal); kolom `voucher_id`/`potongan_voucher` di `pendaftaran_event`/`pesanan` | 0084 |
 | `aset` | aset perusahaan (keuangan) | 0052 |
 | `kategori_aset`, `kategori_pengeluaran` | master kategori | 0053, 0055 |
 | `anggaran` | budget per bulan & kategori | 0054 |
