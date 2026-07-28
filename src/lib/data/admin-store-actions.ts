@@ -126,11 +126,11 @@ export async function setOngkir(pesananId: string, ongkir: number): Promise<void
 export async function verifikasiPesanan(pesananId: string): Promise<void> {
   const s = await adminDb();
   await potongStokPesanan(s, pesananId); // idempoten: stok-- & terjual++ (cek error di dalam)
-  const { data: pes } = await s.from('pesanan').select('subtotal').eq('id', pesananId).single();
+  const { data: pes } = await s.from('pesanan').select('subtotal,potongan_voucher').eq('id', pesananId).single();
   const { error } = await s.from('pesanan').update({ status: 'diproses', diverifikasi_pada: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', pesananId);
   if (error) throw new Error(error.message);
   // catat pemasukan (basis kas): revenue store = subtotal (ongkir bukan pendapatan)
-  await catatLedger(s, { arah: 'masuk', kategori: 'store', jumlah: pes?.subtotal ?? 0, ref_tipe: 'pesanan', ref_id: pesananId, keterangan: `Pesanan #${pesananId.slice(0, 8)}`, metode: 'transfer' });
+  await catatLedger(s, { arah: 'masuk', kategori: 'store', jumlah: Math.max(0, (pes?.subtotal ?? 0) - (pes?.potongan_voucher ?? 0)), ref_tipe: 'pesanan', ref_id: pesananId, keterangan: `Pesanan #${pesananId.slice(0, 8)}`, metode: 'transfer' });
 }
 
 export async function setResi(pesananId: string, noResi: string): Promise<void> {
@@ -147,6 +147,7 @@ export async function ubahStatusPesanan(pesananId: string, status: StatusPesanan
   if (error) throw new Error(error.message);
   if (status === 'batal') {
     await hapusLedgerRef(s, 'pesanan', pesananId); // batalkan pemasukan bila sudah tercatat
+    await s.from('voucher_redeem').delete().eq('ref_tipe', 'pesanan').eq('ref_id', pesananId);
     await pulihkanStokPesanan(s, pesananId);       // kembalikan stok bila sudah terpotong
   }
 }

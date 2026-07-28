@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getJumlahKeranjang } from './keranjang';
 import { getStatusLangganan } from './langganan-status';
 import { hargaProdukUntuk } from '@/lib/domain/harga';
+import { nilaiVoucherById } from './voucher';
 
 /** Untuk badge keranjang di bottom nav (dipanggil dari Client). */
 export async function jumlahKeranjang(): Promise<number> {
@@ -46,7 +47,7 @@ export async function hapusKeranjang(produkId: string): Promise<void> {
 }
 
 /** Buat pesanan dari isi keranjang. Mengembalikan id pesanan. */
-export async function checkout(input: { penerima: string; noHp: string; alamat: string; catatan?: string }): Promise<string> {
+export async function checkout(input: { penerima: string; noHp: string; alamat: string; catatan?: string; voucherId?: string | null }): Promise<string> {
   const { s, user } = await userDb();
   if (!input.penerima.trim() || !input.noHp.trim() || !input.alamat.trim()) throw new Error('Lengkapi nama penerima, no HP, dan alamat.');
 
@@ -64,6 +65,13 @@ export async function checkout(input: { penerima: string; noHp: string; alamat: 
   const status = await getStatusLangganan(s, user.id);
   const hargaItem = (p: typeof list[number]['p']) => hargaProdukUntuk(p, status);
   const subtotal = list.reduce((a, it) => a + hargaItem(it.p) * it.qty, 0);
+
+  let potonganVoucher = 0; let vId: string | null = null;
+  if (input.voucherId) {
+    const rv = await nilaiVoucherById(s, input.voucherId, 'produk', subtotal, user.id);
+    if (!rv.ok) throw new Error(rv.error ?? 'Voucher tidak valid.');
+    potonganVoucher = rv.potongan ?? 0; vId = input.voucherId;
+  }
 
   // Anti pesanan dobel: bila sudah ada pesanan IDENTIK berstatus 'menunggu_ongkir'
   // yang dibuat < 10 menit lalu (mis. user submit lagi karena mengira gagal),
@@ -90,7 +98,8 @@ export async function checkout(input: { penerima: string; noHp: string; alamat: 
 
   const { data: pesanan, error: e1 } = await s.from('pesanan').insert({
     ortu_id: user.id, status: 'menunggu_ongkir',
-    subtotal, ongkir: 0, total: subtotal,
+    subtotal, ongkir: 0, total: Math.max(0, subtotal - potonganVoucher),
+    voucher_id: vId, potongan_voucher: potonganVoucher,
     penerima: input.penerima.trim(), no_hp: input.noHp.trim(), alamat: input.alamat.trim(),
     catatan: input.catatan?.trim() || null,
   }).select('id').single();
@@ -100,6 +109,8 @@ export async function checkout(input: { penerima: string; noHp: string; alamat: 
     list.map((it) => ({ pesanan_id: pesanan.id, produk_id: it.p.id, nama: it.p.nama, harga: hargaItem(it.p), qty: it.qty })),
   );
   if (e2) throw new Error(e2.message);
+
+  if (vId) await s.from('voucher_redeem').insert({ voucher_id: vId, ortu_id: user.id, ref_tipe: 'pesanan', ref_id: pesanan.id, potongan: potonganVoucher });
 
   await s.from('keranjang_item').delete().eq('ortu_id', user.id);
   revalidatePath('/keranjang'); revalidatePath('/pesanan');

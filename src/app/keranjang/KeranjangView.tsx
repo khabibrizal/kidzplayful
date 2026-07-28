@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { setQtyKeranjang, hapusKeranjang, checkout } from '@/lib/data/keranjang-actions';
+import { cekVoucher } from '@/lib/data/voucher-actions';
 import type { KeranjangItem } from '@/lib/game/tipe';
 import { formatRupiah } from '@/lib/format';
 import { hargaProdukUntuk } from '@/lib/domain/harga';
@@ -19,7 +20,20 @@ export default function KeranjangView({ awal, profil, status = 'kadaluarsa' }: {
   const [catatan, setCatatan] = useState('');
   const [err, setErr] = useState('');
   const [pending, start] = useTransition();
+  const [kodeVoucher, setKodeVoucher] = useState('');
+  const [voucher, setVoucher] = useState<{ id: string; kode: string; potongan: number } | null>(null);
+  const [vMsg, setVMsg] = useState('');
   const subtotal = items.reduce((a, it) => a + hb(it.produk) * it.qty, 0);
+  const totalSetelahVoucher = Math.max(0, subtotal - (voucher?.potongan ?? 0));
+
+  async function terapkanVoucher() {
+    setVMsg('');
+    if (!kodeVoucher.trim()) { setVMsg('Masukkan kode voucher.'); return; }
+    const r = await cekVoucher(kodeVoucher, 'produk', subtotal);
+    if (!r.ok || !r.voucher_id) { setVoucher(null); setVMsg(r.error ?? 'Voucher tidak valid.'); return; }
+    setVoucher({ id: r.voucher_id, kode: r.kode ?? kodeVoucher.toUpperCase(), potongan: r.potongan ?? 0 });
+    setVMsg(`Voucher ${r.kode} diterapkan −${formatRupiah(r.potongan ?? 0)}`);
+  }
 
   function ubahQty(produkId: string, qty: number) {
     const it = items.find((x) => x.produk_id === produkId);
@@ -41,7 +55,7 @@ export default function KeranjangView({ awal, profil, status = 'kadaluarsa' }: {
     }
     start(async () => {
       try {
-        const id = await checkout({ penerima, noHp, alamat, catatan });
+        const id = await checkout({ penerima, noHp, alamat, catatan, voucherId: voucher?.id ?? null });
         window.dispatchEvent(new Event('keranjang:update'));
         router.push(`/pesanan/${id}`);
         router.refresh(); // pastikan detail & daftar pesanan tampil versi terbaru (bukan cache)
@@ -81,9 +95,19 @@ export default function KeranjangView({ awal, profil, status = 'kadaluarsa' }: {
       ))}
 
       <div className="kp-card" style={{ marginTop: 4 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>🎟️ Punya kode voucher?</div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <input className="kp-input" placeholder="Kode voucher" value={kodeVoucher} onChange={(e) => { setKodeVoucher(e.target.value.toUpperCase()); setVoucher(null); }} style={{ flex: 1, marginBottom: 0 }} />
+          <button type="button" className="kp-btn putih" onClick={terapkanVoucher}>Terapkan</button>
+        </div>
+        {vMsg && <div style={{ fontSize: 12, color: voucher ? 'var(--mint-d)' : '#c0392b', marginTop: 4 }}>{vMsg}</div>}
+      </div>
+
+      <div className="kp-card" style={{ marginTop: 4 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, margin: '4px 0' }}><span>Subtotal ({items.length} barang)</span><b>{formatRupiah(subtotal)}</b></div>
+        {voucher && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, margin: '4px 0', color: 'var(--mint-d)' }}><span>🎟️ {voucher.kode}</span><span>−{formatRupiah(voucher.potongan)}</span></div>}
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, margin: '4px 0', color: 'var(--abu)' }}><span>Ongkir</span><span style={{ fontSize: 12 }}>dihitung admin</span></div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: 16, borderTop: '1px dashed #e2dbf0', paddingTop: 8, marginTop: 8 }}><span>Total</span><span>{formatRupiah(subtotal)} +</span></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: 16, borderTop: '1px dashed #e2dbf0', paddingTop: 8, marginTop: 8 }}><span>Total</span><span>{formatRupiah(totalSetelahVoucher)} +</span></div>
       </div>
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '16px 0 6px' }}>ALAMAT PENGIRIMAN</div>
