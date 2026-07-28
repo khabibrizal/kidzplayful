@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { getStatusLangganan } from './langganan-status';
 import { hargaEventUntuk } from '@/lib/domain/harga';
+import { nilaiVoucherById } from './voucher';
 import { formatTanggal } from '@/lib/format';
 
 function jadwalTeks(tgl: string | null, jm: string | null, js: string | null): string | null {
@@ -14,7 +15,7 @@ function jadwalTeks(tgl: string | null, jm: string | null, js: string | null): s
 }
 
 // Mengembalikan {ok,error} (bukan throw) agar pesan validasi tampil jelas di production.
-export async function daftarEvent(eventId: string, anakIds: string[], buktiUrl: string | null, kelas: string | null = null, jumlahPendamping: number = 0): Promise<{ ok: boolean; error?: string }> {
+export async function daftarEvent(eventId: string, anakIds: string[], buktiUrl: string | null, kelas: string | null = null, jumlahPendamping: number = 0, voucherId: string | null = null): Promise<{ ok: boolean; error?: string }> {
   const s = await createClient();
   const { data: { user } } = await s.auth.getUser();
   if (!user) return { ok: false, error: 'Tidak terautentikasi' };
@@ -54,9 +55,16 @@ export async function daftarEvent(eventId: string, anakIds: string[], buktiUrl: 
 
   const status = await getStatusLangganan(s, user.id);
   const nPendamping = Math.max(0, Math.floor(jumlahPendamping || 0));
-  const total = hargaEventUntuk({ harga_per_anak: ev.harga_per_anak ?? 0, diskon_langganan_persen: ev.diskon_langganan_persen ?? null }, status) * baru.length
+  const subtotal = hargaEventUntuk({ harga_per_anak: ev.harga_per_anak ?? 0, diskon_langganan_persen: ev.diskon_langganan_persen ?? null }, status) * baru.length
     + nPendamping * (ev.harga_pendamping ?? 0);
-  const { error } = await s.from('pendaftaran_event').insert({
+  let potonganVoucher = 0; let vId: string | null = null;
+  if (voucherId) {
+    const rv = await nilaiVoucherById(s, voucherId, 'event', subtotal, user.id);
+    if (!rv.ok) return { ok: false, error: rv.error };
+    potonganVoucher = rv.potongan ?? 0; vId = voucherId;
+  }
+  const total = Math.max(0, subtotal - potonganVoucher);
+  const { data: baruRow, error } = await s.from('pendaftaran_event').insert({
     event_id: eventId,
     ortu_id: user.id,
     anak_ids: baru.map((a) => a.id),
@@ -64,11 +72,16 @@ export async function daftarEvent(eventId: string, anakIds: string[], buktiUrl: 
     jumlah_anak: baru.length,
     jumlah_pendamping: nPendamping,
     total,
+    voucher_id: vId,
+    potongan_voucher: potonganVoucher,
     bukti_url: buktiUrl,
     kelas: kelasFinal,
     kelas_jadwal: kelasJadwal,
-  });
+  }).select('id').single();
   if (error) return { ok: false, error: error.message };
+  if (vId && baruRow) {
+    await s.from('voucher_redeem').insert({ voucher_id: vId, ortu_id: user.id, ref_tipe: 'pendaftaran', ref_id: baruRow.id, potongan: potonganVoucher });
+  }
   revalidatePath('/event');
   revalidatePath('/pilih-anak');
   return { ok: true };

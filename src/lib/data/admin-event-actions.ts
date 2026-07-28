@@ -175,6 +175,7 @@ export async function setStatusPendaftaran(id: string, statusBaru: 'menunggu' | 
       .eq('id', id);
     if (error) throw new Error(error.message);
     if (statusBaru === 'ditolak') await hapusLedgerRef(s, 'pendaftaran', id); // batalkan pemasukan bila sudah tercatat
+    if (statusBaru === 'ditolak') await s.from('voucher_redeem').delete().eq('ref_tipe', 'pendaftaran').eq('ref_id', id);
   }
 }
 

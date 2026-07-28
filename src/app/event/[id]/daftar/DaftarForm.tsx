@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { kompresGambar } from '@/lib/img';
 import { daftarEvent } from '@/lib/data/event-actions';
+import { cekVoucher } from '@/lib/data/voucher-actions';
 import TombolKembali from '@/components/TombolKembali';
 import type { EventKelas } from '@/lib/game/tipe';
 import { formatTanggal, formatRupiah, linkWa } from '@/lib/format';
@@ -20,6 +21,9 @@ export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor, b
   const [submitting, setSubmitting] = useState(false);
   const [sukses, setSukses] = useState(false);
   const [err, setErr] = useState('');
+  const [kodeVoucher, setKodeVoucher] = useState('');
+  const [voucher, setVoucher] = useState<{ id: string; kode: string; potongan: number } | null>(null);
+  const [vMsg, setVMsg] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const hargaAnak = hargaEventUntuk(ev, status);
@@ -27,7 +31,8 @@ export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor, b
   const adaDiskon = hargaAnak < ev.harga_per_anak;
   const hargaPendamping = ev.harga_pendamping ?? 0;
   const totalPendamping = hargaPendamping * pendamping;
-  const total = hargaAnak * pilih.size + totalPendamping;
+  const totalSblmVoucher = hargaAnak * pilih.size + totalPendamping;
+  const total = Math.max(0, totalSblmVoucher - (voucher?.potongan ?? 0));
 
   // Opsi kelas (Baby/Toddler) bila event dikonfigurasi terpisah
   const fmtJadwal = (tgl?: string | null, jm?: string | null, js?: string | null) =>
@@ -60,13 +65,23 @@ export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor, b
     finally { setLoading(false); if (fileRef.current) fileRef.current.value = ''; }
   }
 
+  async function terapkanVoucher() {
+    setVMsg('');
+    if (!kodeVoucher.trim()) { setVMsg('Masukkan kode voucher.'); return; }
+    const sub = hargaAnak * pilih.size + totalPendamping;
+    const r = await cekVoucher(kodeVoucher, 'event', sub);
+    if (!r.ok || !r.voucher_id) { setVoucher(null); setVMsg(r.error ?? 'Voucher tidak valid.'); return; }
+    setVoucher({ id: r.voucher_id, kode: r.kode ?? kodeVoucher.toUpperCase(), potongan: r.potongan ?? 0 });
+    setVMsg(`Voucher ${r.kode} diterapkan −${formatRupiah(r.potongan ?? 0)}`);
+  }
+
   async function kirim() {
     if (pilih.size === 0) { setErr('Pilih minimal 1 anak dulu — pendamping tidak bisa didaftarkan tanpa anak.'); return; }
     if (kelasOpsi.length > 0 && !kelas) { setErr('Pilih kelas dulu.'); return; }
     if (ev.harga_per_anak > 0 && !buktiUrl) { setErr('Unggah bukti pembayaran dulu.'); return; }
     setSubmitting(true); setErr('');
     try {
-      const r = await daftarEvent(ev.id, [...pilih], buktiUrl, kelasOpsi.length > 0 ? kelas : null, pendamping);
+      const r = await daftarEvent(ev.id, [...pilih], buktiUrl, kelasOpsi.length > 0 ? kelas : null, pendamping, voucher?.id ?? null);
       if (!r.ok) { setErr(r.error ?? 'Gagal mendaftar'); setSubmitting(false); return; }
       setSukses(true); // tampilkan invoice + tombol konfirmasi WA
     } catch (e) {
@@ -177,6 +192,16 @@ export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor, b
           <input ref={fileRef} type="file" accept="image/*" hidden onChange={unggah} />
         </div>
       )}
+
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>🎟️ Punya kode voucher?</div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <input className="kp-input" placeholder="Kode voucher" value={kodeVoucher} onChange={(e) => { setKodeVoucher(e.target.value.toUpperCase()); setVoucher(null); }} style={{ flex: 1 }} />
+          <button type="button" className="kp-btn putih" onClick={terapkanVoucher}>Terapkan</button>
+        </div>
+        {vMsg && <div style={{ fontSize: 12, color: voucher ? 'var(--mint-d)' : '#c0392b', marginTop: 4 }}>{vMsg}</div>}
+        {voucher && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginTop: 6 }}><span>🎟️ {voucher.kode}</span><span>−{formatRupiah(voucher.potongan)}</span></div>}
+      </div>
 
       {err && <div className="kp-error" style={{ marginBottom: 10 }}>{err}</div>}
       <button className="kp-btn" onClick={kirim} disabled={submitting || pilih.size === 0} style={{ width: '100%', opacity: pilih.size === 0 ? 0.55 : 1 }}>
