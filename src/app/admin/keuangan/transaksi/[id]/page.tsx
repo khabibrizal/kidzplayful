@@ -78,6 +78,7 @@ export default async function DetailTransaksi({ params }: { params: Promise<{ id
             <div style={{ marginTop: 8 }}>
               <Baris k="Subtotal" v={formatRupiah(d.pesanan.subtotal)} />
               <Baris k="Ongkir" v={formatRupiah(d.pesanan.ongkir) + ' (bukan pendapatan)'} />
+              {(d.pesanan.potongan_voucher ?? 0) > 0 && <Baris k="Voucher" v={<span style={{ color: '#1c7a43' }}>🎟️ {d.pesanan.voucher_kode ?? '—'} −{formatRupiah(d.pesanan.potongan_voucher ?? 0)}</span>} />}
               <Baris k="Total bayar" v={<b>{formatRupiah(d.pesanan.total)}</b>} />
               <Baris k="Status" v={d.pesanan.status} />
               <Baris k="Penerima" v={d.pesanan.penerima || '—'} />
@@ -103,6 +104,7 @@ export default async function DetailTransaksi({ params }: { params: Promise<{ id
             {d.event.lokasi && <Baris k="Lokasi" v={d.event.lokasi} />}
             <Baris k="Anak" v={d.event.anak.join(', ') || '—'} />
             <Baris k="Jumlah anak" v={String(d.event.jumlah_anak)} />
+            {(d.event.potongan_voucher ?? 0) > 0 && <Baris k="Voucher" v={<span style={{ color: '#1c7a43' }}>🎟️ {d.event.voucher_kode ?? '—'} −{formatRupiah(d.event.potongan_voucher ?? 0)}</span>} />}
             <Baris k="Total bayar" v={<b>{formatRupiah(d.event.total)}</b>} />
             <Baris k="Status" v={d.event.status} />
             {d.event.bukti_url && <Baris k="Bukti bayar" v={<a href={d.event.bukti_url} target="_blank" style={{ color: 'var(--biru-d)' }}>🧾 Lihat bukti</a>} />}

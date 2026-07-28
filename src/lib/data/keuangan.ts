@@ -143,8 +143,8 @@ export interface TransaksiDetail {
   trx: Trx & { created_at?: string };
   jenis: 'pesanan' | 'pendaftaran' | 'langganan' | 'aset' | 'sponsorship' | 'lainnya';
   pembeli?: { email?: string | null; nama?: string | null; no_wa?: string | null } | null;
-  pesanan?: { status: string; subtotal: number; ongkir: number; total: number; penerima: string | null; no_hp: string | null; alamat: string | null; no_resi: string | null; catatan: string | null; bukti_url: string | null; created_at: string; items: { nama: string; harga: number; qty: number }[] } | null;
-  event?: { judul: string; tanggal: string | null; lokasi: string | null; anak: string[]; jumlah_anak: number; total: number; status: string; bukti_url: string | null; created_at: string } | null;
+  pesanan?: { status: string; subtotal: number; ongkir: number; total: number; penerima: string | null; no_hp: string | null; alamat: string | null; no_resi: string | null; catatan: string | null; bukti_url: string | null; created_at: string; items: { nama: string; harga: number; qty: number }[]; potongan_voucher?: number; voucher_kode?: string | null } | null;
+  event?: { judul: string; tanggal: string | null; lokasi: string | null; anak: string[]; jumlah_anak: number; total: number; status: string; bukti_url: string | null; created_at: string; potongan_voucher?: number; voucher_kode?: string | null } | null;
   langganan?: { nominal: number; metode: string | null; periode_mulai: string | null; periode_sampai: string | null; dibayar_pada: string }[] | null;
   aset?: { id: string; nama: string; kategori: string | null; harga_beli: number; tanggal_beli: string | null; lokasi: string | null; invoice_url: string | null; catatan: string | null } | null;
   sponsorship?: { id: string; nama_event: string | null; jenis: string; nilai: number; status: string; no_invoice: string | null; sponsor: string | null; pic: string | null } | null;
@@ -164,22 +164,24 @@ export async function getTransaksiDetail(id: string): Promise<TransaksiDetail | 
     if (t.ref_tipe === 'pesanan' && t.ref_id) {
       out.jenis = 'pesanan';
       const { data: p } = await s.from('pesanan')
-        .select('ortu_id,status,subtotal,ongkir,total,penerima,no_hp,alamat,no_resi,catatan,bukti_url,created_at,item:item_pesanan(nama,harga,qty)')
+        .select('ortu_id,status,subtotal,ongkir,total,penerima,no_hp,alamat,no_resi,catatan,bukti_url,created_at,potongan_voucher,voucher:voucher_id(kode),item:item_pesanan(nama,harga,qty)')
         .eq('id', t.ref_id).maybeSingle();
       if (p) {
-        const pp = p as unknown as { ortu_id: string; status: string; subtotal: number; ongkir: number; total: number; penerima: string | null; no_hp: string | null; alamat: string | null; no_resi: string | null; catatan: string | null; bukti_url: string | null; created_at: string; item: { nama: string; harga: number; qty: number }[] };
-        out.pesanan = { status: pp.status, subtotal: pp.subtotal, ongkir: pp.ongkir, total: pp.total, penerima: pp.penerima, no_hp: pp.no_hp, alamat: pp.alamat, no_resi: pp.no_resi, catatan: pp.catatan, bukti_url: pp.bukti_url, created_at: pp.created_at, items: pp.item ?? [] };
+        const pp = p as unknown as { ortu_id: string; status: string; subtotal: number; ongkir: number; total: number; penerima: string | null; no_hp: string | null; alamat: string | null; no_resi: string | null; catatan: string | null; bukti_url: string | null; created_at: string; potongan_voucher: number | null; voucher: { kode: string } | { kode: string }[] | null; item: { nama: string; harga: number; qty: number }[] };
+        const vp = Array.isArray(pp.voucher) ? pp.voucher[0] : pp.voucher;
+        out.pesanan = { status: pp.status, subtotal: pp.subtotal, ongkir: pp.ongkir, total: pp.total, penerima: pp.penerima, no_hp: pp.no_hp, alamat: pp.alamat, no_resi: pp.no_resi, catatan: pp.catatan, bukti_url: pp.bukti_url, created_at: pp.created_at, items: pp.item ?? [], potongan_voucher: pp.potongan_voucher ?? 0, voucher_kode: vp?.kode ?? null };
         out.pembeli = await ambilPembeli(s, pp.ortu_id);
       }
     } else if (t.ref_tipe === 'pendaftaran' && t.ref_id) {
       out.jenis = 'pendaftaran';
       const { data: p } = await s.from('pendaftaran_event')
-        .select('ortu_id,anak_nama,jumlah_anak,total,status,bukti_url,created_at,event:event_id(judul,tanggal,lokasi)')
+        .select('ortu_id,anak_nama,jumlah_anak,total,status,bukti_url,created_at,potongan_voucher,event:event_id(judul,tanggal,lokasi),voucher:voucher_id(kode)')
         .eq('id', t.ref_id).maybeSingle();
       if (p) {
-        const pp = p as unknown as { ortu_id: string; anak_nama: string[]; jumlah_anak: number; total: number; status: string; bukti_url: string | null; created_at: string; event: { judul: string; tanggal: string | null; lokasi: string | null } | { judul: string; tanggal: string | null; lokasi: string | null }[] | null };
+        const pp = p as unknown as { ortu_id: string; anak_nama: string[]; jumlah_anak: number; total: number; status: string; bukti_url: string | null; created_at: string; potongan_voucher: number | null; event: { judul: string; tanggal: string | null; lokasi: string | null } | { judul: string; tanggal: string | null; lokasi: string | null }[] | null; voucher: { kode: string } | { kode: string }[] | null };
         const ev = Array.isArray(pp.event) ? pp.event[0] : pp.event;
-        out.event = { judul: ev?.judul ?? '(event terhapus)', tanggal: ev?.tanggal ?? null, lokasi: ev?.lokasi ?? null, anak: pp.anak_nama ?? [], jumlah_anak: pp.jumlah_anak, total: pp.total, status: pp.status, bukti_url: pp.bukti_url, created_at: pp.created_at };
+        const vp = Array.isArray(pp.voucher) ? pp.voucher[0] : pp.voucher;
+        out.event = { judul: ev?.judul ?? '(event terhapus)', tanggal: ev?.tanggal ?? null, lokasi: ev?.lokasi ?? null, anak: pp.anak_nama ?? [], jumlah_anak: pp.jumlah_anak, total: pp.total, status: pp.status, bukti_url: pp.bukti_url, created_at: pp.created_at, potongan_voucher: pp.potongan_voucher ?? 0, voucher_kode: vp?.kode ?? null };
         out.pembeli = await ambilPembeli(s, pp.ortu_id);
       }
     } else if (t.ref_tipe === 'langganan' && t.ref_id) {
