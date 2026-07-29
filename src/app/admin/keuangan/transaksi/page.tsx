@@ -1,22 +1,25 @@
 // src/app/admin/keuangan/transaksi/page.tsx — Ledger + Cash Flow + filter rentang tanggal & kategori
 import Link from 'next/link';
 import { getLedger, getKategoriPengeluaran, LABEL_KATEGORI, KATEGORI_MASUK } from '@/lib/data/keuangan';
+import { getEventSemua } from '@/lib/data/admin-event';
 import { tanggalWIB } from '@/lib/domain/gamifikasi';
 import { formatRupiah } from '@/lib/format';
 import KeuanganNav from '../KeuanganNav';
 import s from '../../admin.module.css';
 
-export default async function TransaksiPage({ searchParams }: { searchParams: Promise<{ from?: string; to?: string; arah?: string; kategori?: string }> }) {
+export default async function TransaksiPage({ searchParams }: { searchParams: Promise<{ from?: string; to?: string; arah?: string; kategori?: string; event?: string }> }) {
   const sp = await searchParams;
   const today = tanggalWIB();
   const from = /^\d{4}-\d{2}-\d{2}$/.test(sp.from ?? '') ? sp.from! : today.slice(0, 8) + '01';
   const to = /^\d{4}-\d{2}-\d{2}$/.test(sp.to ?? '') ? sp.to! : today;
   const arah = sp.arah === 'masuk' || sp.arah === 'keluar' ? sp.arah : '';
   const kategori = sp.kategori ?? '';
+  const eventId = sp.event ?? '';
 
-  const [rows, katKeluar] = await Promise.all([
-    getLedger({ from, to, arah: arah || undefined, kategori: kategori || undefined, limit: 2000 }),
+  const [rows, katKeluar, events] = await Promise.all([
+    getLedger({ from, to, arah: arah || undefined, kategori: kategori || undefined, eventId: eventId || undefined, limit: 2000 }),
     getKategoriPengeluaran(),
+    getEventSemua(),
   ]);
   const masuk = rows.filter((r) => r.arah === 'masuk').reduce((a, r) => a + r.jumlah, 0);
   const keluar = rows.filter((r) => r.arah === 'keluar').reduce((a, r) => a + r.jumlah, 0);
@@ -45,6 +48,10 @@ export default async function TransaksiPage({ searchParams }: { searchParams: Pr
             <option value="">Semua kategori</option>
             <optgroup label="Masuk">{KATEGORI_MASUK.map((k) => <option key={k} value={k}>{LABEL_KATEGORI[k] ?? k}</option>)}</optgroup>
             <optgroup label="Keluar">{katKeluar.map((k) => <option key={k.id} value={k.kode}>{k.nama}</option>)}</optgroup>
+          </select>
+          <select className={s.inp} name="event" defaultValue={eventId} style={{ flex: 1, minWidth: 160 }} title="Filter pemasukan per event">
+            <option value="">Semua event</option>
+            {events.map((e) => <option key={e.id} value={e.id}>🎈 {e.judul}{e.tanggal ? ` (${e.tanggal})` : ''}</option>)}
           </select>
           <button className={s.btn} type="submit">Cari</button>
         </div>

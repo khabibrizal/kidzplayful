@@ -79,14 +79,22 @@ export async function getDashboardKeuangan(): Promise<DashboardKeuangan> {
 }
 
 /** Daftar transaksi (untuk halaman Ledger & Cash Flow), filter periode & arah/kategori. */
-export async function getLedger(opts?: { from?: string; to?: string; arah?: string; kategori?: string; limit?: number }): Promise<Trx[]> {
+export async function getLedger(opts?: { from?: string; to?: string; arah?: string; kategori?: string; eventId?: string; limit?: number }): Promise<Trx[]> {
   try {
     const s = await createClient();
+    // Filter per event: transaksi pendaftaran yang ref_id-nya milik event tsb.
+    let refIds: string[] | null = null;
+    if (opts?.eventId) {
+      const { data: pend } = await s.from('pendaftaran_event').select('id').eq('event_id', opts.eventId);
+      refIds = (pend ?? []).map((r) => r.id as string);
+      if (!refIds.length) return []; // event tak punya pendaftaran → tak ada transaksi
+    }
     let q = s.from('transaksi_keuangan').select('id,arah,kategori,jumlah,tanggal,metode,keterangan,lampiran_url,ref_tipe,ref_id').order('tanggal', { ascending: false }).order('created_at', { ascending: false });
     if (opts?.from) q = q.gte('tanggal', opts.from);
     if (opts?.to) q = q.lte('tanggal', opts.to);
     if (opts?.arah) q = q.eq('arah', opts.arah);
     if (opts?.kategori) q = q.eq('kategori', opts.kategori);
+    if (refIds) q = q.eq('ref_tipe', 'pendaftaran').in('ref_id', refIds);
     q = q.limit(opts?.limit ?? 500);
     const { data } = await q;
     return (data ?? []) as Trx[];
