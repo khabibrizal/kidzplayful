@@ -9,6 +9,7 @@ import UploadNota from '@/components/UploadNota';
 import InputRupiah from '@/components/InputRupiah';
 import KeuanganNav from '../KeuanganNav';
 import s from '../../admin.module.css';
+import BuktiLightbox from '@/components/BuktiLightbox';
 
 export default async function AsetPage() {
   const ym = tanggalWIB().slice(0, 7);
@@ -60,7 +61,7 @@ export default async function AsetPage() {
         <div key={a.id} className={s.card}>
           <div className={s.row}>
             <span style={{ flex: 1 }}><b>{a.nama}</b>{a.kategori ? ` · ${a.kategori}` : ''}
-              {a.invoice_url && <> · <a href={a.invoice_url} target="_blank" style={{ color: 'var(--biru-d)' }}>🧾 nota</a></>}
+              {a.invoice_url && <> · <BuktiLightbox url={a.invoice_url} label="🧾 nota" judul="Nota pembelian aset" variant="tautan" /></>}
               <br /><small className={s.muted}>{formatRupiah(a.harga_beli)}{a.tanggal_beli ? ` · ${a.tanggal_beli}` : ''}{a.lokasi ? ` · ${a.lokasi}` : ''}{a.umur_manfaat_bulan ? ` · ${a.umur_manfaat_bulan} bln` : ''}</small></span>
             <form action={aksiHapus}><input type="hidden" name="id" value={a.id} /><button className={`${s.btnSm} ${s.danger}`}>Hapus</button></form>
           </div>

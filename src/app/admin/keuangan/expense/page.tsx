@@ -10,6 +10,7 @@ import InputRupiah from '@/components/InputRupiah';
 import BudgetKategoriSelect from '@/components/BudgetKategoriSelect';
 import KeuanganNav from '../KeuanganNav';
 import s from '../../admin.module.css';
+import BuktiLightbox from '@/components/BuktiLightbox';
 
 export default async function ExpensePage() {
   const ym = tanggalWIB().slice(0, 7);
@@ -49,7 +50,7 @@ export default async function ExpensePage() {
         <div key={t.id} className={s.card}>
           <div className={s.row}>
             <span style={{ flex: 1 }}><b>{LABEL_KATEGORI[t.kategori] ?? t.kategori}</b> · <span style={{ color: '#c0392b', fontWeight: 700 }}>{formatRupiah(t.jumlah)}</span>
-              {t.lampiran_url && <> · <a href={t.lampiran_url} target="_blank" style={{ color: 'var(--biru-d)' }}>🧾 nota</a></>}
+              {t.lampiran_url && <> · <BuktiLightbox url={t.lampiran_url} label="🧾 nota" judul="Nota pengeluaran" variant="tautan" /></>}
               <br /><small className={s.muted}>{t.tanggal}{t.keterangan ? ` · ${t.keterangan}` : ''}{t.metode ? ` · ${t.metode}` : ''}</small></span>
             <form action={aksiHapus}><input type="hidden" name="id" value={t.id} /><button className={`${s.btnSm} ${s.danger}`}>Hapus</button></form>
           </div>

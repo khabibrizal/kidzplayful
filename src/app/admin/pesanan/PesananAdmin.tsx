@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { setOngkir, verifikasiPesanan, setResi, ubahStatusPesanan } from '@/lib/data/admin-store-actions';
 import type { Pesanan } from '@/lib/game/tipe';
+import BuktiLightbox from '@/components/BuktiLightbox';
 import { formatRupiah, STATUS_PESANAN } from '@/lib/format';
 import s from '../admin.module.css';
 
@@ -58,7 +59,7 @@ export default function PesananAdmin({ awal }: { awal: Pesanan[] }) {
             <div className={s.row} style={{ marginTop: 6 }}>
               <small>Subtotal {formatRupiah(o.subtotal)} · Ongkir {o.status === 'menunggu_ongkir' ? '-' : formatRupiah(o.ongkir)} · <b>Total {formatRupiah(o.total)}</b></small>
             </div>
-            {o.bukti_url && <div className={s.row} style={{ marginTop: 4 }}><a className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)' }} href={o.bukti_url} target="_blank">📎 Bukti bayar</a></div>}
+            {o.bukti_url && <div className={s.row} style={{ marginTop: 4 }}><BuktiLightbox url={o.bukti_url} /></div>}
 
             {/* aksi sesuai status — isi/koreksi ongkir selama belum dibayar */}
             {(o.status === 'menunggu_ongkir' || o.status === 'menunggu_bayar') && (

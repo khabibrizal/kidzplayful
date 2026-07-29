@@ -3,6 +3,7 @@
 'use client';
 import { useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import BuktiLightbox from './BuktiLightbox';
 
 function loadImage(file: File): Promise<HTMLImageElement> {
   return new Promise((res, rej) => {
@@ -49,10 +50,7 @@ export default function UploadNota({ name, label = '⬆ Upload foto nota', awal 
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
       <input type="hidden" name={name} value={url} />
-      {url && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <a href={url} target="_blank" rel="noopener noreferrer"><img src={url} alt="nota" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 8 }} /></a>
-      )}
+      {url && <BuktiLightbox url={url} variant="thumb" judul="Nota" />}
       <button type="button" onClick={() => ref.current?.click()} disabled={busy}
         style={{ border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 12, padding: '7px 12px', borderRadius: 999, background: '#efe7fb', color: 'var(--lavender-d)' }}>
         {busy ? 'Mengompres…' : (url ? '✓ Ganti nota' : label)}

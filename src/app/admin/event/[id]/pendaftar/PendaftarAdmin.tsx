@@ -5,6 +5,7 @@ import { setStatusPendaftaran, setKehadiran, reschedulePendaftaran } from '@/lib
 import type { PendaftaranEvent, BarisParam, BarisNilai } from '@/lib/game/tipe';
 import { formatRupiah } from '@/lib/format';
 import NilaiPerkembanganForm from '@/components/NilaiPerkembanganForm';
+import BuktiLightbox from '@/components/BuktiLightbox';
 import s from '../../../admin.module.css';
 
 const WARNA: Record<string, string> = { menunggu: '#b88600', diterima: '#1c7a43', ditolak: '#b3261e' };
@@ -29,7 +30,6 @@ export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = []
   const [rsOpen, setRsOpen] = useState<string | null>(null); // id pendaftaran yang form reschedule-nya terbuka
   const [rsEvent, setRsEvent] = useState<Record<string, string>>({});
   const [rsAlasan, setRsAlasan] = useState<Record<string, string>>({});
-  const [buktiUrl, setBuktiUrl] = useState<string | null>(null); // modal lihat bukti bayar
   function flash(m: string) { setToast(m); setTimeout(() => setToast(''), 2000); }
 
   async function reschedule(p: PendaftaranEvent) {
@@ -102,7 +102,7 @@ export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = []
           </div>
           <div className={s.row} style={{ marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             {p.bukti_url
-              ? <button type="button" className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)' }} onClick={() => setBuktiUrl(p.bukti_url)}>📎 Bukti bayar</button>
+              ? <BuktiLightbox url={p.bukti_url} />
               : <span className={s.muted}>tanpa bukti</span>}
             <button className={s.btnSm} style={{ background: '#dff5e6', color: '#1c7a43' }} onClick={() => ubah(p, 'diterima')} disabled={busyId === p.id || p.status === 'diterima'}>Terima</button>
             <button className={`${s.btnSm} ${s.danger}`} onClick={() => ubah(p, 'ditolak')} disabled={busyId === p.id || p.status === 'ditolak'}>Tolak</button>
@@ -203,20 +203,6 @@ export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = []
         );
       })}
       {toast && <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: '#2b2440', color: '#fff', padding: '10px 18px', borderRadius: 99, fontSize: 14, zIndex: 80 }}>{toast}</div>}
-
-      {buktiUrl && (
-        <div onClick={() => setBuktiUrl(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.75)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ position: 'relative', maxWidth: '92vw', maxHeight: '90vh', background: '#fff', borderRadius: 14, overflow: 'hidden', boxShadow: '0 10px 40px rgba(0,0,0,.4)' }}>
-            <button type="button" aria-label="Tutup" onClick={() => setBuktiUrl(null)} style={{ position: 'absolute', top: 8, right: 8, width: 34, height: 34, borderRadius: 99, border: 'none', background: 'rgba(0,0,0,.6)', color: '#fff', fontSize: 18, fontWeight: 700, cursor: 'pointer', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', padding: '10px 14px' }}>📎 Bukti pembayaran</div>
-            {/\.pdf($|\?)/i.test(buktiUrl)
-              ? <iframe src={buktiUrl} title="Bukti pembayaran" style={{ width: '90vw', maxWidth: 700, height: '80vh', border: 'none' }} />
-              /* eslint-disable-next-line @next/next/no-img-element */
-              : <img src={buktiUrl} alt="Bukti pembayaran" style={{ display: 'block', maxWidth: '92vw', maxHeight: '80vh', objectFit: 'contain' }} />}
-            <div style={{ padding: '8px 14px', textAlign: 'right' }}><a href={buktiUrl} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: 'var(--biru-d)' }}>Buka di tab baru ↗</a></div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

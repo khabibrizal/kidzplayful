@@ -6,6 +6,7 @@ import { labelMetode } from '@/lib/metode';
 import { formatRupiah } from '@/lib/format';
 import s from '../../../admin.module.css';
 import TombolKembali from '@/components/TombolKembali';
+import BuktiLightbox from '@/components/BuktiLightbox';
 
 function tgl(iso: string | null | undefined): string {
   if (!iso) return '—';
@@ -47,7 +48,7 @@ export default async function DetailTransaksi({ params }: { params: Promise<{ id
         <Baris k="Kategori" v={LABEL_KATEGORI[t.kategori] ?? t.kategori} />
         {t.metode && <Baris k="Metode" v={labelMetode(t.metode)} />}
         {t.keterangan && <Baris k="Keterangan" v={t.keterangan} />}
-        {t.lampiran_url && <Baris k="Lampiran" v={<a href={t.lampiran_url} target="_blank" style={{ color: 'var(--biru-d)' }}>🧾 Lihat nota</a>} />}
+        {t.lampiran_url && <Baris k="Lampiran" v={<BuktiLightbox url={t.lampiran_url} label="🧾 Lihat nota" judul="Nota / lampiran" variant="tautan" />} />}
         <Baris k="Dicatat" v={tgl(t.created_at)} />
       </div>
 
@@ -86,7 +87,7 @@ export default async function DetailTransaksi({ params }: { params: Promise<{ id
               <Baris k="Alamat" v={d.pesanan.alamat || '—'} />
               {d.pesanan.no_resi && <Baris k="No. Resi" v={d.pesanan.no_resi} />}
               {d.pesanan.catatan && <Baris k="Catatan" v={d.pesanan.catatan} />}
-              {d.pesanan.bukti_url && <Baris k="Bukti bayar" v={<a href={d.pesanan.bukti_url} target="_blank" style={{ color: 'var(--biru-d)' }}>🧾 Lihat bukti</a>} />}
+              {d.pesanan.bukti_url && <Baris k="Bukti bayar" v={<BuktiLightbox url={d.pesanan.bukti_url} label="🧾 Lihat bukti" variant="tautan" />} />}
               <Baris k="Dipesan" v={tgl(d.pesanan.created_at)} />
             </div>
             <Link href="/admin/store" className={s.btnSm} style={{ marginTop: 10, display: 'inline-block', background: '#efe7fb', color: 'var(--lavender-d)' }}>Buka di Kelola Store →</Link>
@@ -107,7 +108,7 @@ export default async function DetailTransaksi({ params }: { params: Promise<{ id
             {(d.event.potongan_voucher ?? 0) > 0 && <Baris k="Voucher" v={<span style={{ color: '#1c7a43' }}>🎟️ {d.event.voucher_kode ?? '—'} −{formatRupiah(d.event.potongan_voucher ?? 0)}</span>} />}
             <Baris k="Total bayar" v={<b>{formatRupiah(d.event.total)}</b>} />
             <Baris k="Status" v={d.event.status} />
-            {d.event.bukti_url && <Baris k="Bukti bayar" v={<a href={d.event.bukti_url} target="_blank" style={{ color: 'var(--biru-d)' }}>🧾 Lihat bukti</a>} />}
+            {d.event.bukti_url && <Baris k="Bukti bayar" v={<BuktiLightbox url={d.event.bukti_url} label="🧾 Lihat bukti" variant="tautan" />} />}
             <Baris k="Didaftar" v={tgl(d.event.created_at)} />
             <Link href="/admin/event" className={s.btnSm} style={{ marginTop: 10, display: 'inline-block', background: '#efe7fb', color: 'var(--lavender-d)' }}>Buka di Kelola Event →</Link>
           </div>
@@ -143,7 +144,7 @@ export default async function DetailTransaksi({ params }: { params: Promise<{ id
             {d.aset.tanggal_beli && <Baris k="Tgl beli" v={tglHari(d.aset.tanggal_beli)} />}
             {d.aset.lokasi && <Baris k="Lokasi" v={d.aset.lokasi} />}
             {d.aset.catatan && <Baris k="Catatan" v={d.aset.catatan} />}
-            {d.aset.invoice_url && <Baris k="Nota" v={<a href={d.aset.invoice_url} target="_blank" style={{ color: 'var(--biru-d)' }}>🧾 Lihat nota</a>} />}
+            {d.aset.invoice_url && <Baris k="Nota" v={<BuktiLightbox url={d.aset.invoice_url} label="🧾 Lihat nota" judul="Nota pembelian aset" variant="tautan" />} />}
             <Link href="/admin/keuangan/aset" className={s.btnSm} style={{ marginTop: 10, display: 'inline-block', background: '#efe7fb', color: 'var(--lavender-d)' }}>Buka di Aset →</Link>
           </div>
         </>

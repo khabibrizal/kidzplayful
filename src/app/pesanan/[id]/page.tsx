@@ -7,6 +7,7 @@ import { formatRupiah, STATUS_PESANAN, linkWa } from '@/lib/format';
 import { getPengaturanBayar, waUntuk } from '@/lib/data/pengaturan-bayar';
 import BuktiUpload from './BuktiUpload';
 import TombolKembali from '@/components/TombolKembali';
+import BuktiLightbox from '@/components/BuktiLightbox';
 
 export default async function PesananDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -68,7 +69,7 @@ export default async function PesananDetailPage({ params }: { params: Promise<{ 
 
       {o.status === 'dibayar' && (
         <div className="kp-card" style={{ background: '#d6e6ff' }}>
-          <p style={{ margin: 0 }}>Bukti diterima ✓ Menunggu verifikasi admin. {o.bukti_url && <a href={o.bukti_url} target="_blank" style={{ color: 'var(--biru-d)' }}>lihat bukti</a>}</p>
+          <p style={{ margin: 0 }}>Bukti diterima ✓ Menunggu verifikasi admin. {o.bukti_url && <BuktiLightbox url={o.bukti_url} label="lihat bukti" variant="tautan" />}</p>
           {waBayar && <a className="kp-btn mint" href={waBayar} target="_blank" style={{ display: 'inline-block', marginTop: 10 }}>💬 Konfirmasi pembayaran via WhatsApp</a>}
         </div>
       )}
