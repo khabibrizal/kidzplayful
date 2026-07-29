@@ -10,7 +10,7 @@ const STATUS: Record<string, { t: string; c: string; bg: string }> = {
   ditolak: { t: '❌ Pendaftaran ditolak', c: '#b3261e', bg: '#fde8e6' },
 };
 
-export default function EventCard({ ev, status, catatanHref, sisaAnak, peserta, alasanTolak }: { ev: EventKelas; status?: string; catatanHref?: string; sisaAnak?: number; peserta?: { nama: string; status: string }[]; alasanTolak?: string }) {
+export default function EventCard({ ev, status, catatanHref, sisaAnak, peserta, alasanTolak }: { ev: EventKelas; status?: string; catatanHref?: string; sisaAnak?: number; peserta?: { nama: string; status: string; alasan?: string }[]; alasanTolak?: string }) {
   const meta = status ? STATUS[status] : null;
   const adaSisa = typeof sisaAnak === 'number' && sisaAnak > 0;
   const adaPeserta = !!peserta && peserta.length > 0;
@@ -39,9 +39,14 @@ export default function EventCard({ ev, status, catatanHref, sisaAnak, peserta, 
             {peserta!.map((p, i) => {
               const pm = STATUS[p.status] ?? { t: p.status, c: 'var(--abu)', bg: '#eee' };
               return (
-                <div key={`${p.nama}-${i}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: '4px 0' }}>
-                  <span style={{ fontSize: 14 }}>🧒 {p.nama}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: pm.c, background: pm.bg, borderRadius: 99, padding: '2px 8px', whiteSpace: 'nowrap' }}>{pm.t}</span>
+                <div key={`${p.nama}-${i}`} style={{ padding: '4px 0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 14 }}>🧒 {p.nama}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: pm.c, background: pm.bg, borderRadius: 99, padding: '2px 8px', whiteSpace: 'nowrap' }}>{pm.t}</span>
+                  </div>
+                  {p.status === 'ditolak' && p.alasan && (
+                    <div style={{ fontSize: 11, color: '#b3261e', background: '#fde8e6', borderRadius: 8, padding: '4px 8px', marginTop: 3 }}>Alasan: {p.alasan}</div>
+                  )}
                 </div>
               );
             })}

@@ -42,7 +42,7 @@ export default async function PilihAnakPage() {
   // batas tanggal lahir: maksimal kemarin (WIB) — tidak boleh hari ini/masa depan
   const maksTgl = new Date(Date.now() + 7 * 3600 * 1000 - 86400000).toISOString().slice(0, 10);
   const sisaMap: Record<string, number> = {};
-  for (const ev of events) sisaMap[ev.id] = jumlahAnak - (peserta[ev.id]?.length ?? 0);
+  for (const ev of events) sisaMap[ev.id] = jumlahAnak - (peserta[ev.id]?.filter((p) => p.status !== 'ditolak').length ?? 0);
 
   const status = lang
     ? statusLangganan(

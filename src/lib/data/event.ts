@@ -42,8 +42,8 @@ export async function getEventDiikuti(): Promise<{ event: EventKelas; status: st
 export interface PendaftaranSaya {
   /** status pendaftaran terbaru per event (termasuk 'ditolak'). */
   statusMap: Record<string, string>;
-  /** anak terdaftar (bukan 'ditolak') per event + status masing-masing. */
-  pesertaMap: Record<string, { nama: string; status: string }[]>;
+  /** anak per event + status masing-masing (TERMASUK 'ditolak' beserta alasannya). */
+  pesertaMap: Record<string, { nama: string; status: string; alasan?: string }[]>;
   /** alasan penolakan terbaru per event (bila status terakhir 'ditolak'). */
   alasanMap: Record<string, string>;
 }
@@ -62,15 +62,21 @@ export async function getPendaftaranSaya(userId: string): Promise<PendaftaranSay
     .eq('ortu_id', userId)
     .order('created_at', { ascending: true });
   const statusMap: Record<string, string> = {};
-  const pesertaMap: Record<string, { nama: string; status: string }[]> = {};
   const alasanMap: Record<string, string> = {};
+  // per event → per nama anak: status terbaru menang (urut asc → entri belakangan menimpa)
+  const perEvent: Record<string, Map<string, { status: string; alasan?: string }>> = {};
   for (const r of data ?? []) {
     const key = r.event_id as string;
     statusMap[key] = r.status as string; // urut asc → status terbaru menang
-    if (r.status === 'ditolak') { if (r.alasan_tolak) alasanMap[key] = r.alasan_tolak as string; continue; }
-    delete alasanMap[key]; // status terbaru bukan ditolak → alasan lama tak relevan
-    if (!pesertaMap[key]) pesertaMap[key] = [];
-    for (const nama of (r.anak_nama as string[]) ?? []) pesertaMap[key].push({ nama, status: r.status as string });
+    if (r.status === 'ditolak') { if (r.alasan_tolak) alasanMap[key] = r.alasan_tolak as string; }
+    else delete alasanMap[key]; // status terbaru bukan ditolak → alasan event-level tak relevan
+    if (!perEvent[key]) perEvent[key] = new Map();
+    const alasan = r.status === 'ditolak' ? ((r.alasan_tolak as string) || undefined) : undefined;
+    for (const nama of (r.anak_nama as string[]) ?? []) perEvent[key].set(nama, { status: r.status as string, alasan });
+  }
+  const pesertaMap: Record<string, { nama: string; status: string; alasan?: string }[]> = {};
+  for (const [key, m] of Object.entries(perEvent)) {
+    pesertaMap[key] = [...m.entries()].map(([nama, v]) => ({ nama, status: v.status, alasan: v.alasan }));
   }
   return { statusMap, pesertaMap, alasanMap };
 }

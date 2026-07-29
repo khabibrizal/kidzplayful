@@ -5,7 +5,7 @@ import Link from 'next/link';
 import type { EventKelas } from '@/lib/game/tipe';
 import EventCard from './EventCard';
 
-export default function EventCarousel({ events, statusMap = {}, sisaMap = {}, pesertaMap = {}, alasanMap = {} }: { events: EventKelas[]; statusMap?: Record<string, string>; sisaMap?: Record<string, number>; pesertaMap?: Record<string, { nama: string; status: string }[]>; alasanMap?: Record<string, string> }) {
+export default function EventCarousel({ events, statusMap = {}, sisaMap = {}, pesertaMap = {}, alasanMap = {} }: { events: EventKelas[]; statusMap?: Record<string, string>; sisaMap?: Record<string, number>; pesertaMap?: Record<string, { nama: string; status: string; alasan?: string }[]>; alasanMap?: Record<string, string> }) {
   const ref = useRef<HTMLDivElement>(null);
   const [idx, setIdx] = useState(0);
   if (!events.length) return null;
