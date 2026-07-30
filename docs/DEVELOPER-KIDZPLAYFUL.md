@@ -620,6 +620,45 @@ Semua Route Handler (`app/api/**/route.ts`) mengembalikan amplop JSON seragam vi
 ### Environment
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` — wajib. **`SUPABASE_SERVICE_ROLE_KEY`** — opsional, server-only, hanya untuk fitur buat user (lihat §4 Buat User).
 
+### 🌱 Environment: Produksi vs Beta (RENCANA — belum aktif)
+
+Rancangan yang **sudah disetujui owner** untuk environment uji developer. Ditulis di sini sebagai rujukan; **kodenya belum dikerjakan** (lihat blok ⚠️ di bawah).
+
+| | **Produksi (live)** | **Beta (developer)** |
+|---|---|---|
+| URL | `www.kidzplayful.com` | `beta.kidzplayful.com` |
+| Branch Git | `master` | `beta` (permanen) |
+| Scope env Vercel | Production | **Preview** (branch `beta`) |
+| Proyek Supabase | proyek saat ini | **proyek kedua, terpisah** (DB & Auth sendiri) |
+| Data | data nyata pelanggan | data uji, bebas dihapus |
+| Akses | publik | dibatasi (Vercel **Deployment Protection**) |
+
+**Kenapa proyek Supabase terpisah** (bukan satu DB dua skema): Auth, Storage, dan RLS ikut terisolasi, jadi percobaan di beta tidak bisa menyentuh akun/bukti bayar pelanggan. Konsekuensinya migrasi harus dijalankan **dua kali** (beta dulu, lalu produksi).
+
+**Env var per scope** (nama key saja — nilainya diisi di dashboard Vercel, jangan pernah masuk repo):
+
+| Key | Production | Preview (beta) |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | URL proyek prod | URL proyek beta |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | anon key prod | anon key beta |
+| `SUPABASE_SERVICE_ROLE_KEY` | service role prod | service role beta |
+| `NEXT_PUBLIC_SITE_URL` | `https://www.kidzplayful.com` | `https://beta.kidzplayful.com` |
+
+**Langkah setup (sekali jalan):**
+1. **Supabase**: buat proyek kedua → SQL Editor → jalankan migrasi **`0001` s/d `0086` berurutan** (bucket `aset` + policy-nya ikut terbuat oleh `0007_storage_aset.sql`, tidak perlu dibuat manual).
+2. **Auth** proyek beta → *URL Configuration*: Site URL & Redirect URLs ke `https://beta.kidzplayful.com` (termasuk `/reset-sandi`), plus `http://localhost:3000` untuk dev.
+3. **Admin beta**: daftar akun biasa lewat UI beta, lalu di SQL Editor: `update public.profiles set is_admin = true, is_superuser = true where id = '<uuid>';` (peran tidak bisa diberikan dari UI karena trigger `cegah_self_admin`).
+4. **Vercel**: isi 4 env var di scope **Preview** → tambah domain `beta.kidzplayful.com` dengan *Git Branch* = `beta` → aktifkan **Deployment Protection** untuk Preview.
+5. **Git**: `git switch -c beta && git push -u origin beta` (branch permanen, jangan dihapus setelah merge).
+
+**Alur kerja:** `feature/*` → PR ke **`beta`** (uji di `beta.kidzplayful.com`) → setelah lolos, merge `beta` → **`master`** (live).
+**Aturan migrasi:** SQL dijalankan **di beta lebih dulu**, diverifikasi, baru di produksi. Migrasi tetap manual di kedua sisi.
+
+> ⚠️ **Prasyarat teknis yang BELUM dikerjakan** — tanpa ini beta jalan tapi belum sehat:
+> - **Base URL masih hardcode produksi di 9 titik**: `app/layout.tsx:14` (`metadataBase`) & `:34` (og `url`), `app/robots.ts:4`, `app/sitemap.ts:5`, `app/page.tsx:19`, `app/artikel/[slug]/page.tsx:14`, `app/coba/tema/[id]/page.tsx:8`, `app/coba/kelas/[id]/page.tsx:8`, `lib/profil.ts:8`. Akibatnya canonical/OG/sitemap di beta menunjuk ke domain live. Rencana: helper `src/lib/site.ts` (baca `NEXT_PUBLIC_SITE_URL`, fallback domain prod) lalu ganti ke-9 titik itu.
+> - **Beta akan ter-index Google**: `app/robots.ts` mengembalikan `allow: '/'` tanpa syarat. Rencana: flag `IS_LIVE` → beta balas `disallow: '/'`. Sementara: andalkan **Deployment Protection**.
+> - **Skrip `tools/*_check.mjs` menulis data uji ke DB PRODUKSI** (URL prod hardcode). Setelah beta ada, arahkan skrip ini ke beta.
+
 ---
 
 ## 11. Kamus tabel (data dictionary)

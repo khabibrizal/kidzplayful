@@ -59,6 +59,21 @@ Jangan pakai *secret key*. `NEXT_PUBLIC_*` harus ada **sebelum build** (juga di 
 5. Verifikasi: `tsc --noEmit` + `npm run build`; untuk fitur besar buat skrip `tools/<fitur>_check.mjs` (puppeteer) yang uji e2e di produksi lalu **bersihkan data uji**.
 6. Commit (Indonesian) + push → Vercel auto-deploy. Ingatkan user menjalankan migrasi bila ada.
 
+## Environment: produksi vs beta (RENCANA, belum aktif)
+
+Rancangan disetujui owner, **kode belum dikerjakan** — detail lengkap + daftar prasyarat di `docs/DEVELOPER-KIDZPLAYFUL.md` §10 "🌱 Environment: Produksi vs Beta".
+
+| | Produksi | Beta |
+|---|---|---|
+| URL | `www.kidzplayful.com` | `beta.kidzplayful.com` |
+| Branch | `master` | `beta` (permanen) |
+| Scope env Vercel | Production | Preview |
+| Supabase | proyek saat ini | **proyek kedua, terpisah** |
+
+- Alur: `feature/*` → `beta` (uji) → `master` (live).
+- **Migrasi dijalankan di beta DULU**, diverifikasi, baru di produksi (manual di kedua sisi).
+- Belum siap: base URL masih hardcode produksi di 9 titik, `robots.ts` `allow:'/'` tanpa syarat (beta bisa ter-index), `tools/*_check.mjs` masih menulis ke DB produksi.
+
 ## Catatan lingkungan
 
 - Shell user = **PowerShell**: `&&` TIDAK berlaku — pakai `;` atau baris terpisah.

@@ -859,6 +859,96 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <ul>
 <li><code>NEXT_PUBLIC_SUPABASE_URL</code>, <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> — wajib. <strong><code>SUPABASE_SERVICE_ROLE_KEY</code></strong> — opsional, server-only, hanya untuk fitur buat user (lihat §4 Buat User).</li>
 </ul>
+<h3 id="environment-produksi-vs-beta-rencana-belum-aktif">🌱 Environment: Produksi vs Beta (RENCANA — belum aktif)</h3>
+<p>Rancangan yang <strong>sudah disetujui owner</strong> untuk environment uji developer. Ditulis di sini sebagai rujukan; <strong>kodenya belum dikerjakan</strong> (lihat blok ⚠️ di bawah).</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><strong>Produksi (live)</strong></th>
+<th><strong>Beta (developer)</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>URL</td>
+<td><code>www.kidzplayful.com</code></td>
+<td><code>beta.kidzplayful.com</code></td>
+</tr>
+<tr>
+<td>Branch Git</td>
+<td><code>master</code></td>
+<td><code>beta</code> (permanen)</td>
+</tr>
+<tr>
+<td>Scope env Vercel</td>
+<td>Production</td>
+<td><strong>Preview</strong> (branch <code>beta</code>)</td>
+</tr>
+<tr>
+<td>Proyek Supabase</td>
+<td>proyek saat ini</td>
+<td><strong>proyek kedua, terpisah</strong> (DB &amp; Auth sendiri)</td>
+</tr>
+<tr>
+<td>Data</td>
+<td>data nyata pelanggan</td>
+<td>data uji, bebas dihapus</td>
+</tr>
+<tr>
+<td>Akses</td>
+<td>publik</td>
+<td>dibatasi (Vercel <strong>Deployment Protection</strong>)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Kenapa proyek Supabase terpisah</strong> (bukan satu DB dua skema): Auth, Storage, dan RLS ikut terisolasi, jadi percobaan di beta tidak bisa menyentuh akun/bukti bayar pelanggan. Konsekuensinya migrasi harus dijalankan <strong>dua kali</strong> (beta dulu, lalu produksi).</p>
+<p><strong>Env var per scope</strong> (nama key saja — nilainya diisi di dashboard Vercel, jangan pernah masuk repo):</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Production</th>
+<th>Preview (beta)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>NEXT_PUBLIC_SUPABASE_URL</code></td>
+<td>URL proyek prod</td>
+<td>URL proyek beta</td>
+</tr>
+<tr>
+<td><code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code></td>
+<td>anon key prod</td>
+<td>anon key beta</td>
+</tr>
+<tr>
+<td><code>SUPABASE_SERVICE_ROLE_KEY</code></td>
+<td>service role prod</td>
+<td>service role beta</td>
+</tr>
+<tr>
+<td><code>NEXT_PUBLIC_SITE_URL</code></td>
+<td><code>https://www.kidzplayful.com</code></td>
+<td><code>https://beta.kidzplayful.com</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Langkah setup (sekali jalan):</strong>
+1. <strong>Supabase</strong>: buat proyek kedua → SQL Editor → jalankan migrasi <strong><code>0001</code> s/d <code>0086</code> berurutan</strong> (bucket <code>aset</code> + policy-nya ikut terbuat oleh <code>0007_storage_aset.sql</code>, tidak perlu dibuat manual).
+2. <strong>Auth</strong> proyek beta → <em>URL Configuration</em>: Site URL &amp; Redirect URLs ke <code>https://beta.kidzplayful.com</code> (termasuk <code>/reset-sandi</code>), plus <code>http://localhost:3000</code> untuk dev.
+3. <strong>Admin beta</strong>: daftar akun biasa lewat UI beta, lalu di SQL Editor: <code>update public.profiles set is_admin = true, is_superuser = true where id = '&lt;uuid&gt;';</code> (peran tidak bisa diberikan dari UI karena trigger <code>cegah_self_admin</code>).
+4. <strong>Vercel</strong>: isi 4 env var di scope <strong>Preview</strong> → tambah domain <code>beta.kidzplayful.com</code> dengan <em>Git Branch</em> = <code>beta</code> → aktifkan <strong>Deployment Protection</strong> untuk Preview.
+5. <strong>Git</strong>: <code>git switch -c beta &amp;&amp; git push -u origin beta</code> (branch permanen, jangan dihapus setelah merge).</p>
+<p><strong>Alur kerja:</strong> <code>feature/*</code> → PR ke <strong><code>beta</code></strong> (uji di <code>beta.kidzplayful.com</code>) → setelah lolos, merge <code>beta</code> → <strong><code>master</code></strong> (live).
+<strong>Aturan migrasi:</strong> SQL dijalankan <strong>di beta lebih dulu</strong>, diverifikasi, baru di produksi. Migrasi tetap manual di kedua sisi.</p>
+<blockquote>
+<p>⚠️ <strong>Prasyarat teknis yang BELUM dikerjakan</strong> — tanpa ini beta jalan tapi belum sehat:
+- <strong>Base URL masih hardcode produksi di 9 titik</strong>: <code>app/layout.tsx:14</code> (<code>metadataBase</code>) &amp; <code>:34</code> (og <code>url</code>), <code>app/robots.ts:4</code>, <code>app/sitemap.ts:5</code>, <code>app/page.tsx:19</code>, <code>app/artikel/[slug]/page.tsx:14</code>, <code>app/coba/tema/[id]/page.tsx:8</code>, <code>app/coba/kelas/[id]/page.tsx:8</code>, <code>lib/profil.ts:8</code>. Akibatnya canonical/OG/sitemap di beta menunjuk ke domain live. Rencana: helper <code>src/lib/site.ts</code> (baca <code>NEXT_PUBLIC_SITE_URL</code>, fallback domain prod) lalu ganti ke-9 titik itu.
+- <strong>Beta akan ter-index Google</strong>: <code>app/robots.ts</code> mengembalikan <code>allow: '/'</code> tanpa syarat. Rencana: flag <code>IS_LIVE</code> → beta balas <code>disallow: '/'</code>. Sementara: andalkan <strong>Deployment Protection</strong>.
+- <strong>Skrip <code>tools/*_check.mjs</code> menulis data uji ke DB PRODUKSI</strong> (URL prod hardcode). Setelah beta ada, arahkan skrip ini ke beta.</p>
+</blockquote>
 <hr />
 <h2 id="11-kamus-tabel-data-dictionary">11. Kamus tabel (data dictionary)</h2>
 <table>
