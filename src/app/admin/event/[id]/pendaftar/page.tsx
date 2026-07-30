@@ -1,6 +1,7 @@
 // src/app/admin/event/[id]/pendaftar/page.tsx
 import { getEventAdmin, getPendaftaranByEvent, getSertifikatMapByEvent, getEventSemua } from '@/lib/data/admin-event';
 import { getPesertaEvent, getEventBerParameter } from '@/lib/data/guru';
+import { getKuotaEvent } from '@/lib/data/event';
 import { createClient } from '@/lib/supabase/server';
 import { umurTeks } from '@/lib/domain/anak';
 import type { BarisNilai } from '@/lib/game/tipe';
@@ -14,6 +15,7 @@ export default async function PendaftarPage({ params }: { params: Promise<{ id: 
     getEventAdmin(id), getPendaftaranByEvent(id), getSertifikatMapByEvent(id),
     getEventSemua(), getPesertaEvent(id), getEventBerParameter(id),
   ]);
+  const kuotaEvent = await getKuotaEvent(id);
   const eventsAktif = semua.filter((e) => e.status === 'tampil' && e.id !== id).map((e) => ({ id: e.id, judul: e.judul, tanggal: e.tanggal }));
   const paramEvent = ev?.indikator_perkembangan ?? [];
   // catatan per anak (penilaian + catatan) untuk form nilai admin
@@ -54,7 +56,7 @@ export default async function PendaftarPage({ params }: { params: Promise<{ id: 
       </details>
 
       <div className={s.section}>Pendaftar</div>
-      <PendaftarAdmin awal={list} sertMap={sertMap} eventsAktif={eventsAktif} params={paramEvent} catatanMap={catatanMap} umurMap={umurMap} ortuMap={ortuMap} kuota={{ baby: ev?.kuota_baby ?? null, toddler: ev?.kuota_toddler ?? null, gabungan: ev?.kuota_gabungan ?? null }}
+      <PendaftarAdmin awal={list} sertMap={sertMap} eventsAktif={eventsAktif} params={paramEvent} catatanMap={catatanMap} umurMap={umurMap} ortuMap={ortuMap} kuota={{ baby: kuotaEvent.baby, toddler: kuotaEvent.toddler, gabungan: kuotaEvent.gabungan }}
         waMap={waMap} judulEvent={ev?.judul ?? 'Event'}
         kelasTersedia={[
           ...((ev?.baby_jam_mulai || ev?.baby_tanggal) ? ['baby'] : []),

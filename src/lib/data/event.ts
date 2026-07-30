@@ -1,8 +1,9 @@
 // src/lib/data/event.ts — baca event (sisi user)
 import { createClient } from '@/lib/supabase/server';
 import type { EventKelas } from '@/lib/game/tipe';
+import { bacaKuotaEvent, type KuotaEvent } from './kuota-event';
 
-const COLS = 'id,judul,lokasi,tanggal,jam_mulai,jam_selesai,deskripsi,gambar_url,harga_per_anak,harga_pendamping,diskon_langganan_persen,status,baby_tanggal,baby_jam_mulai,baby_jam_selesai,toddler_tanggal,toddler_jam_mulai,toddler_jam_selesai,kuota_baby,kuota_toddler,kuota_gabungan';
+const COLS = 'id,judul,lokasi,tanggal,jam_mulai,jam_selesai,deskripsi,gambar_url,harga_per_anak,harga_pendamping,diskon_langganan_persen,status,baby_tanggal,baby_jam_mulai,baby_jam_selesai,toddler_tanggal,toddler_jam_mulai,toddler_jam_selesai';
 
 export async function getEventTampil(): Promise<EventKelas[]> {
   const s = await createClient();
@@ -89,6 +90,12 @@ export async function getKuotaTerpakai(eventId: string): Promise<Record<string, 
   if (error) { console.error('kuota_terpakai_event:', error.message); return out; }
   for (const r of (data ?? []) as { kelas: string; anak: number }[]) out[r.kelas] = Number(r.anak) || 0;
   return out;
+}
+
+/** Kuota event (toleran: kolom belum ada → semua null / tanpa batas). */
+export async function getKuotaEvent(eventId: string): Promise<KuotaEvent> {
+  const s = await createClient();
+  return bacaKuotaEvent(s, eventId);
 }
 
 /** Sisa kuota kelas tsb. null = tanpa batas. */

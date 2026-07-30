@@ -13,7 +13,7 @@ import type { EventKelas } from '@/lib/game/tipe';
 import { formatTanggal, formatRupiah, linkWa } from '@/lib/format';
 import { hargaEventUntuk, persenEventUntuk } from '@/lib/domain/harga';
 
-export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor, bankTeks, qrisUrl, terpakai = {} }: { ev: EventKelas; anak: { id: string; nama: string }[]; status?: string; waNomor?: string; bankTeks?: string; qrisUrl?: string; terpakai?: Record<string, number> }) {
+export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor, bankTeks, qrisUrl, terpakai = {}, kuota }: { ev: EventKelas; anak: { id: string; nama: string }[]; status?: string; waNomor?: string; bankTeks?: string; qrisUrl?: string; terpakai?: Record<string, number>; kuota?: { baby: number | null; toddler: number | null; gabungan: number | null } }) {
   const [pilih, setPilih] = useState<Set<string>>(new Set());
   const [pendamping, setPendamping] = useState(0);
   const [buktiUrl, setBuktiUrl] = useState<string | null>(null);
@@ -46,7 +46,7 @@ export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor, b
   // Sisa kuota kelas aktif (null = tanpa batas). Kuota dihitung per ANAK; 'ditolak' tak dihitung.
   const kelasAktif = kelasOpsi.length > 0 ? kelas : 'gabungan';
   const kuotaKelas = (k: string): number | null => {
-    const v = k === 'baby' ? ev.kuota_baby : k === 'toddler' ? ev.kuota_toddler : ev.kuota_gabungan;
+    const v = k === 'baby' ? kuota?.baby : k === 'toddler' ? kuota?.toddler : kuota?.gabungan;
     return v != null && v > 0 ? v : null;
   };
   const sisaKuotaKelas = (k: string): number | null => {

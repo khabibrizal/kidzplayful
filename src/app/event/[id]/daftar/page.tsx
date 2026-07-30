@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { getEvent, getKuotaTerpakai } from '@/lib/data/event';
+import { getEvent, getKuotaTerpakai, getKuotaEvent } from '@/lib/data/event';
 import { getStatusLangganan } from '@/lib/data/langganan-status';
 import { getPengaturanBayar, waUntuk } from '@/lib/data/pengaturan-bayar';
 import DaftarForm from './DaftarForm';
@@ -35,6 +35,6 @@ export default async function DaftarEventPage({ params }: { params: Promise<{ id
     );
   }
 
-  const [status, cfg, terpakai] = await Promise.all([getStatusLangganan(supabase, user.id), getPengaturanBayar(), getKuotaTerpakai(id)]);
-  return <DaftarForm ev={ev} anak={tersisa} status={status} waNomor={waUntuk(cfg, 'event')} bankTeks={cfg.bank_teks} qrisUrl={cfg.qris_url} terpakai={terpakai} />;
+  const [status, cfg, terpakai, kuota] = await Promise.all([getStatusLangganan(supabase, user.id), getPengaturanBayar(), getKuotaTerpakai(id), getKuotaEvent(id)]);
+  return <DaftarForm ev={ev} anak={tersisa} status={status} waNomor={waUntuk(cfg, 'event')} bankTeks={cfg.bank_teks} qrisUrl={cfg.qris_url} terpakai={terpakai} kuota={kuota} />;
 }

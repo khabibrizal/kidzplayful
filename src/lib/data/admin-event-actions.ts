@@ -6,6 +6,7 @@ import type { EventKelas, BarisParam } from '@/lib/game/tipe';
 import { catatLedger, hapusLedgerRef } from './ledger';
 import { umurTeks } from '@/lib/domain/anak';
 import { jadwalTeks } from '@/lib/domain/jadwal';
+import { bacaKuotaEvent, kuotaUntukKelas, kolomKuotaHilang } from './kuota-event';
 
 export interface BarisPesertaEkspor {
   kelas: string;          // 'Baby Class' | 'Toddler Class' | 'Gabungan'
@@ -81,7 +82,7 @@ export interface EventInput {
   // Kuota peserta (jumlah anak) per kelas — 0/kosong = tanpa batas
   kuotaBaby: number; kuotaToddler: number; kuotaGabungan: number;
 }
-const COLS = 'id,judul,lokasi,tanggal,jam_mulai,jam_selesai,deskripsi,gambar_url,harga_per_anak,harga_pendamping,diskon_langganan_persen,status,sertifikat_bg_url,dokumentasi_url,stiker_bg_url,baby_tanggal,baby_jam_mulai,baby_jam_selesai,toddler_tanggal,toddler_jam_mulai,toddler_jam_selesai,kuota_baby,kuota_toddler,kuota_gabungan';
+const COLS = 'id,judul,lokasi,tanggal,jam_mulai,jam_selesai,deskripsi,gambar_url,harga_per_anak,harga_pendamping,diskon_langganan_persen,status,sertifikat_bg_url,dokumentasi_url,stiker_bg_url,baby_tanggal,baby_jam_mulai,baby_jam_selesai,toddler_tanggal,toddler_jam_mulai,toddler_jam_selesai';
 
 async function adminDb() {
   const s = await createClient();
@@ -140,6 +141,12 @@ function row(i: EventInput) {
   };
 }
 
+/** Buang field kuota — dipakai bila kolomnya belum ada (migrasi 0086 belum jalan). */
+function rowTanpaKuota(r: ReturnType<typeof row>) {
+  const { kuota_baby: _b, kuota_toddler: _t, kuota_gabungan: _g, ...sisa } = r;
+  return sisa;
+}
+
 /** 0 / negatif / bukan angka → null (tanpa batas). */
 function kuotaAtauNull(n: number): number | null {
   const v = Math.floor(Number(n) || 0);
@@ -149,14 +156,24 @@ function kuotaAtauNull(n: number): number | null {
 export async function buatEvent(i: EventInput): Promise<EventKelas> {
   const s = await adminDb();
   if (!i.judul.trim()) throw new Error('Judul wajib diisi.');
-  const { data, error } = await s.from('event').insert(row(i)).select(COLS).single();
+  const isi = row(i);
+  let { data, error } = await s.from('event').insert(isi).select(COLS).single();
+  if (error && kolomKuotaHilang(error)) {
+    console.warn('Kolom kuota belum ada (jalankan migrasi 0086) — event disimpan tanpa kuota.');
+    ({ data, error } = await s.from('event').insert(rowTanpaKuota(isi)).select(COLS).single());
+  }
   if (error) throw new Error(error.message);
   revalidatePath('/pilih-anak'); revalidatePath('/event');
   return data as unknown as EventKelas;
 }
 export async function updateEvent(id: string, i: EventInput): Promise<EventKelas> {
   const s = await adminDb();
-  const { data, error } = await s.from('event').update(row(i)).eq('id', id).select(COLS).single();
+  const isi = row(i);
+  let { data, error } = await s.from('event').update(isi).eq('id', id).select(COLS).single();
+  if (error && kolomKuotaHilang(error)) {
+    console.warn('Kolom kuota belum ada (jalankan migrasi 0086) — event disimpan tanpa kuota.');
+    ({ data, error } = await s.from('event').update(rowTanpaKuota(isi)).eq('id', id).select(COLS).single());
+  }
   if (error) throw new Error(error.message);
   revalidatePath('/pilih-anak'); revalidatePath('/event');
   return data as unknown as EventKelas;
@@ -258,9 +275,10 @@ export async function pindahKelasPendaftaran(pendaftaranId: string, kelasBaru: '
     if (!p) return { ok: false, error: 'Pendaftaran tidak ditemukan.' };
     if (p.kelas === kelasBaru) return { ok: false, error: 'Pendaftaran sudah berada di kelas itu.' };
 
-    const { data: ev } = await s.from('event')
-      .select('tanggal,jam_mulai,jam_selesai,baby_tanggal,baby_jam_mulai,baby_jam_selesai,toddler_tanggal,toddler_jam_mulai,toddler_jam_selesai,kuota_baby,kuota_toddler,kuota_gabungan')
+    const { data: ev, error: evErr } = await s.from('event')
+      .select('tanggal,jam_mulai,jam_selesai,baby_tanggal,baby_jam_mulai,baby_jam_selesai,toddler_tanggal,toddler_jam_mulai,toddler_jam_selesai')
       .eq('id', p.event_id as string).maybeSingle();
+    if (evErr) return { ok: false, error: `Gagal membaca event: ${evErr.message}` };
     if (!ev) return { ok: false, error: 'Event tidak ditemukan.' };
 
     // kelas tujuan harus ditawarkan event ini
@@ -270,7 +288,7 @@ export async function pindahKelasPendaftaran(pendaftaranId: string, kelasBaru: '
     if (kelasBaru === 'toddler' && !adaToddler) return { ok: false, error: 'Event ini tidak punya Toddler Class.' };
 
     // kuota kelas tujuan (jumlah ANAK; 'ditolak' tak dihitung). Baris ini masih di kelas lama → tak ikut terhitung.
-    const kuotaTujuan = kelasBaru === 'baby' ? ev.kuota_baby : kelasBaru === 'toddler' ? ev.kuota_toddler : ev.kuota_gabungan;
+    const kuotaTujuan = kuotaUntukKelas(await bacaKuotaEvent(s, p.event_id as string), kelasBaru);
     const nAnak = (p.jumlah_anak as number) ?? ((p.anak_ids as string[])?.length ?? 0);
     if (kuotaTujuan != null && kuotaTujuan > 0 && p.status !== 'ditolak') {
       const { data: rows } = await s.from('pendaftaran_event')

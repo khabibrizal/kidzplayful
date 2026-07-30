@@ -1,19 +1,31 @@
 // src/lib/data/admin-event.ts — baca event & pendaftaran untuk admin (dipanggil dari halaman admin terjamin)
 import { createClient } from '@/lib/supabase/server';
 import type { EventKelas, PendaftaranEvent } from '@/lib/game/tipe';
+import { KUOTA_COLS, kolomKuotaHilang } from './kuota-event';
 
 const COLS = 'id,judul,lokasi,tanggal,jam_mulai,jam_selesai,deskripsi,gambar_url,harga_per_anak,harga_pendamping,diskon_langganan_persen,status,sertifikat_bg_url,dokumentasi_url,stiker_bg_url,indikator_perkembangan,baby_tanggal,baby_jam_mulai,baby_jam_selesai,toddler_tanggal,toddler_jam_mulai,toddler_jam_selesai';
 
+// Kolom kuota (migrasi 0086) mungkin belum ada → coba dgn kuota, bila ditolak ulangi tanpa kuota.
+const COLS_KUOTA = `${COLS},${KUOTA_COLS}`;
+
 export async function getEventSemua(): Promise<EventKelas[]> {
   const s = await createClient();
-  const { data } = await s.from('event').select(COLS).order('tanggal', { ascending: false });
-  return (data ?? []) as unknown as EventKelas[];
+  const coba = await s.from('event').select(COLS_KUOTA).order('tanggal', { ascending: false });
+  const hasil: { data: unknown; error: { message: string } | null } = coba.error && kolomKuotaHilang(coba.error)
+    ? await s.from('event').select(COLS).order('tanggal', { ascending: false })
+    : coba;
+  if (hasil.error) console.error('getEventSemua:', hasil.error.message);
+  return (hasil.data ?? []) as unknown as EventKelas[];
 }
 
 export async function getEventAdmin(id: string): Promise<EventKelas | null> {
   const s = await createClient();
-  const { data } = await s.from('event').select(COLS).eq('id', id).maybeSingle();
-  return (data as unknown as EventKelas) ?? null;
+  const coba = await s.from('event').select(COLS_KUOTA).eq('id', id).maybeSingle();
+  const hasil: { data: unknown; error: { message: string } | null } = coba.error && kolomKuotaHilang(coba.error)
+    ? await s.from('event').select(COLS).eq('id', id).maybeSingle()
+    : coba;
+  if (hasil.error) console.error('getEventAdmin:', hasil.error.message);
+  return (hasil.data as unknown as EventKelas) ?? null;
 }
 
 /** Jumlah pendaftar per event (untuk badge di daftar admin). Pendaftaran DITOLAK tidak dihitung. */
