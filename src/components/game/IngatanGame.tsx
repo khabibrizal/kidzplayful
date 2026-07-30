@@ -2,9 +2,13 @@
 // Kartu mulai TERTUTUP. Anak buka 2 kartu; bila sepasang → tetap terbuka, bila beda → tertutup lagi.
 // Melatih working memory. Selesai saat semua pasangan ketemu.
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { DataIngatan, HasilSelesai } from '@/lib/game/tipe';
+import { isUrlAset } from '@/lib/game/aset';
 import Aset from './Aset';
+
+const JEDA_TUTUP_MS = 1800;  // lama kartu yang TIDAK cocok tetap terlihat (anak kecil butuh waktu mengingat)
+const BATAS_PRELOAD_MS = 5000; // bila jaringan lambat, jangan tahan anak menunggu lebih dari ini
 
 type Kartu = { id: number; aset: string }; // id = indeks entri asal → dua salinan berbagi id yg sama
 
@@ -35,7 +39,40 @@ export default function IngatanGame({ data, onSelesai }: { data: DataIngatan; on
   const [sibuk, setSibuk] = useState(false);        // kunci input saat menunggu kartu menutup kembali
   const mulaiRef = useRef(0);
 
-  useEffect(() => { mulaiRef.current = Date.now(); }, []);
+  // --- Pramuat gambar SEBELUM bermain -------------------------------------
+  // Tanpa ini, unduhan gambar baru mulai saat kartu dibalik → kartu pertama terasa
+  // lama terbuka, dan kartu kedua "hilang" sebelum sempat tampil karena timer tutup
+  // sudah berjalan. Semua gambar diunduh + di-decode dulu, baru kartu boleh dibuka.
+  const urls = useMemo(() => Array.from(new Set(kartu.map((k) => k.aset).filter(isUrlAset))), [kartu]);
+  const [dimuat, setDimuat] = useState(0);
+  const [siap, setSiap] = useState(() => urls.length === 0); // tanpa gambar (emoji) → langsung main
+
+  // durasi dihitung sejak kartu SIAP dibuka — waktu pramuat bukan waktu bermain anak
+  useEffect(() => { if (siap) mulaiRef.current = Date.now(); }, [siap]);
+
+  useEffect(() => {
+    if (!urls.length) return;
+    let batal = false;
+    let sisa = urls.length;
+    const satu = () => {
+      if (batal) return;
+      setDimuat((n) => n + 1);
+      if (--sisa <= 0) setSiap(true);
+    };
+    const imgs = urls.map((u) => {
+      const im = new window.Image();
+      im.onload = () => { (im.decode ? im.decode() : Promise.resolve()).catch(() => {}).then(satu); };
+      im.onerror = satu; // gambar rusak jangan menggantung permainan
+      im.src = u;
+      return im;
+    });
+    const t = setTimeout(() => { if (!batal) setSiap(true); }, BATAS_PRELOAD_MS);
+    return () => {
+      batal = true;
+      clearTimeout(t);
+      imgs.forEach((im) => { im.onload = null; im.onerror = null; });
+    };
+  }, [urls]);
 
   // dua kartu cocok bila dari PASANGAN yang sama (id sama)
   function sepasang(a: number, b: number): boolean {
@@ -45,7 +82,12 @@ export default function IngatanGame({ data, onSelesai }: { data: DataIngatan; on
   // Klik HANYA menambah kartu ke `buka` (functional updater → bebas dari stale closure
   // saat anak menekan cepat / double-tap). Evaluasi pasangan dilakukan di useEffect.
   function klik(i: number) {
-    setBuka((prev) => (sibuk || prev.length >= 2 || prev.includes(i) || cocok.includes(i)) ? prev : [...prev, i]);
+    if (!siap || cocok.includes(i)) return;
+    // Sedang menunggu pasangan-tak-cocok menutup: anak yang sudah siap boleh langsung
+    // lanjut — kartu lama ditutup seketika dan kartu baru dibuka (cleanup useEffect
+    // membatalkan timer tutup). Jadi jeda 1,8 detik jadi BATAS ATAS, bukan penantian wajib.
+    if (sibuk) { setBuka([i]); setSibuk(false); return; }
+    setBuka((prev) => (prev.length >= 2 || prev.includes(i)) ? prev : [...prev, i]);
   }
 
   // Saat 2 kartu terbuka → nilai cocok/tidak (race-free).
@@ -63,7 +105,7 @@ export default function IngatanGame({ data, onSelesai }: { data: DataIngatan; on
       setBuka([]);
     } else {
       setSibuk(true);
-      const t = setTimeout(() => { setBuka([]); setSibuk(false); }, 900); // tutup lagi setelah jeda
+      const t = setTimeout(() => { setBuka([]); setSibuk(false); }, JEDA_TUTUP_MS); // tutup lagi setelah jeda
       return () => clearTimeout(t);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -74,19 +116,22 @@ export default function IngatanGame({ data, onSelesai }: { data: DataIngatan; on
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-      <div style={{ background: '#fff', borderRadius: 22, padding: 14, textAlign: 'center', fontWeight: 800, boxShadow: '0 4px 0 #e6def5' }}>🧠 Buka 2 kartu, cari yang sama!</div>
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 12, alignContent: 'center', padding: 14 }}>
+      <div style={{ background: '#fff', borderRadius: 22, padding: 14, textAlign: 'center', fontWeight: 800, boxShadow: '0 4px 0 #e6def5' }}>
+        {siap ? '🧠 Buka 2 kartu, cari yang sama!' : `⏳ Menyiapkan kartu… ${dimuat}/${urls.length}`}
+      </div>
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 12, alignContent: 'center', padding: 14,
+        opacity: siap ? 1 : 0.55, transition: 'opacity .2s' }}>
         {kartu.map((k, i) => {
           const lock = cocok.includes(i);
           const terbuka = lock || buka.includes(i);
           return (
-            <button key={i} onClick={() => klik(i)} disabled={lock}
-              style={{ aspectRatio: '1', border: 'none', borderRadius: 20, cursor: lock ? 'default' : 'pointer',
+            <button key={i} onClick={() => klik(i)} disabled={lock || !siap}
+              style={{ aspectRatio: '1', border: 'none', borderRadius: 20, cursor: lock || !siap ? 'default' : 'pointer',
                 background: lock ? '#dff7ec' : terbuka ? '#fff' : '#a892e6',
                 boxShadow: lock ? '0 5px 0 var(--mint-d)' : '0 5px 0 #e6def5',
                 outline: lock ? '3px solid var(--mint-d)' : 'none',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background .15s' }}>
-              {terbuka ? <Aset value={k.aset} size={42} /> : <span style={{ fontSize: 34, color: '#fff' }}>❓</span>}
+              {terbuka ? <Aset value={k.aset} size={42} segera /> : <span style={{ fontSize: 34, color: '#fff' }}>❓</span>}
             </button>
           );
         })}
