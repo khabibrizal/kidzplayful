@@ -23,13 +23,14 @@ export default async function PendaftarPage({ params }: { params: Promise<{ id: 
   // Umur tiap anak yang mendaftar (per hari ini). Admin bisa baca `anak` via RLS boleh_lihat_laporan_anak.
   const umurMap: Record<string, string> = {};
   const ortuMap: Record<string, string> = {}; // ortu_id -> nama orang tua
+  const waMap: Record<string, string> = {};    // ortu_id -> no WhatsApp
   const anakIds = [...new Set(list.flatMap((p) => p.anak_ids ?? []))];
   const ortuIds = [...new Set(list.map((p) => p.ortu_id).filter(Boolean))];
   if (anakIds.length || ortuIds.length) {
     const supabase = await createClient();
     const [{ data: anakRows }, { data: ortuRows }] = await Promise.all([
       anakIds.length ? supabase.from('anak').select('id,tanggal_lahir').in('id', anakIds) : Promise.resolve({ data: [] as { id: string; tanggal_lahir: string | null }[] }),
-      ortuIds.length ? supabase.from('profiles').select('id,nama_tampilan,email').in('id', ortuIds) : Promise.resolve({ data: [] as { id: string; nama_tampilan: string | null; email: string | null }[] }),
+      ortuIds.length ? supabase.from('profiles').select('id,nama_tampilan,email,no_wa').in('id', ortuIds) : Promise.resolve({ data: [] as { id: string; nama_tampilan: string | null; email: string | null; no_wa: string | null }[] }),
     ]);
     const now = new Date();
     for (const a of anakRows ?? []) {
@@ -37,6 +38,8 @@ export default async function PendaftarPage({ params }: { params: Promise<{ id: 
     }
     for (const o of ortuRows ?? []) {
       ortuMap[o.id as string] = (o.nama_tampilan as string)?.trim() || (o.email as string)?.split('@')[0] || '—';
+      const wa = (o as { no_wa?: string | null }).no_wa;
+      if (wa) waMap[o.id as string] = wa;
     }
   }
 
@@ -51,7 +54,12 @@ export default async function PendaftarPage({ params }: { params: Promise<{ id: 
       </details>
 
       <div className={s.section}>Pendaftar</div>
-      <PendaftarAdmin awal={list} sertMap={sertMap} eventsAktif={eventsAktif} params={paramEvent} catatanMap={catatanMap} umurMap={umurMap} ortuMap={ortuMap} kuota={{ baby: ev?.kuota_baby ?? null, toddler: ev?.kuota_toddler ?? null, gabungan: ev?.kuota_gabungan ?? null }} />
+      <PendaftarAdmin awal={list} sertMap={sertMap} eventsAktif={eventsAktif} params={paramEvent} catatanMap={catatanMap} umurMap={umurMap} ortuMap={ortuMap} kuota={{ baby: ev?.kuota_baby ?? null, toddler: ev?.kuota_toddler ?? null, gabungan: ev?.kuota_gabungan ?? null }}
+        waMap={waMap} judulEvent={ev?.judul ?? 'Event'}
+        kelasTersedia={[
+          ...((ev?.baby_jam_mulai || ev?.baby_tanggal) ? ['baby'] : []),
+          ...((ev?.toddler_jam_mulai || ev?.toddler_tanggal) ? ['toddler'] : []),
+        ]} />
     </div>
   );
 }

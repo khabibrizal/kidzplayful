@@ -1,9 +1,9 @@
 // src/app/admin/event/[id]/pendaftar/PendaftarAdmin.tsx
 'use client';
 import { useState } from 'react';
-import { setStatusPendaftaran, setKehadiran, reschedulePendaftaran } from '@/lib/data/admin-event-actions';
+import { setStatusPendaftaran, setKehadiran, reschedulePendaftaran, pindahKelasPendaftaran } from '@/lib/data/admin-event-actions';
 import type { PendaftaranEvent, BarisParam, BarisNilai } from '@/lib/game/tipe';
-import { formatRupiah } from '@/lib/format';
+import { formatRupiah, linkWa } from '@/lib/format';
 import NilaiPerkembanganForm from '@/components/NilaiPerkembanganForm';
 import BuktiLightbox from '@/components/BuktiLightbox';
 import s from '../../../admin.module.css';
@@ -17,12 +17,15 @@ function waktuDaftar(iso?: string | null): string {
 
 type EventOpsi = { id: string; judul: string; tanggal: string | null };
 
-export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = [], catatanMap = {}, umurMap = {}, ortuMap = {}, kuota = {} }: {
+export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = [], catatanMap = {}, umurMap = {}, ortuMap = {}, kuota = {}, waMap = {}, judulEvent = 'Event', kelasTersedia = [] }: {
   awal: PendaftaranEvent[]; sertMap: Record<string, string>; eventsAktif: EventOpsi[];
   params?: BarisParam[]; catatanMap?: Record<string, { penilaian: BarisNilai[]; catatan: string | null }>;
   umurMap?: Record<string, string>;
   ortuMap?: Record<string, string>;
   kuota?: Record<string, number | null>;
+  waMap?: Record<string, string>;
+  judulEvent?: string;
+  kelasTersedia?: string[];
 }) {
   const [list, setList] = useState<PendaftaranEvent[]>(awal);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -31,6 +34,8 @@ export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = []
   const [rsOpen, setRsOpen] = useState<string | null>(null); // id pendaftaran yang form reschedule-nya terbuka
   const [rsEvent, setRsEvent] = useState<Record<string, string>>({});
   const [rsAlasan, setRsAlasan] = useState<Record<string, string>>({});
+  const [pkOpen, setPkOpen] = useState<string | null>(null);   // id pendaftaran yg panel pindah-kelas terbuka
+  const [pkTarget, setPkTarget] = useState<Record<string, string>>({});
   function flash(m: string) { setToast(m); setTimeout(() => setToast(''), 2000); }
 
   async function reschedule(p: PendaftaranEvent) {
@@ -44,6 +49,38 @@ export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = []
       setList((l) => l.filter((x) => x.id !== p.id)); // pindah ke event lain → hilang dari daftar event ini
       setRsOpen(null);
       flash('Reschedule berhasil ✓');
+    } catch (e) { flash(e instanceof Error ? e.message : 'Gagal'); }
+    finally { setBusyId(null); }
+  }
+
+  const LABEL_KELAS: Record<string, string> = { baby: '👶 Baby Class', toddler: '🧒 Toddler Class', gabungan: 'Gabungan' };
+
+  /** Pesan WA konfirmasi ke ortu sebelum pindah kelas. */
+  function waKonfirmasi(p: PendaftaranEvent): string | null {
+    const anak = (p.anak_nama ?? []).join(', ') || 'ananda';
+    const kelasKini = LABEL_KELAS[p.kelas ?? 'gabungan'] ?? (p.kelas ?? '-');
+    const pesan = `Halo Kak ${ortuMap[p.ortu_id] ?? ''} 👋
+
+Terkait pendaftaran *${judulEvent}* untuk ${anak} (saat ini ${kelasKini}), kami ingin konfirmasi: apakah bersedia dipindahkan ke kelas lain sesuai ketersediaan jadwal/kuota?
+
+Mohon balas ya, terima kasih 🙏
+— KidzPlayful`;
+    return linkWa(waMap[p.ortu_id], pesan);
+  }
+
+  async function pindahKelas(p: PendaftaranEvent) {
+    const target = pkTarget[p.id];
+    if (!target) { flash('Pilih kelas tujuan.'); return; }
+    if (!confirm(`Pindahkan ${(p.anak_nama ?? []).join(', ') || 'pendaftar ini'} ke ${LABEL_KELAS[target] ?? target}?
+
+Pastikan sudah konfirmasi ke orang tua (tombol 💬 WA).`)) return;
+    setBusyId(p.id);
+    try {
+      const r = await pindahKelasPendaftaran(p.id, target as 'baby' | 'toddler' | 'gabungan');
+      if (!r.ok) { flash(r.error ?? 'Gagal memindahkan kelas'); return; }
+      setList((l) => l.map((x) => (x.id === p.id ? { ...x, kelas: r.kelas ?? target, kelas_jadwal: r.kelasJadwal ?? x.kelas_jadwal } : x)));
+      setPkOpen(null);
+      flash('Kelas dipindahkan ✓');
     } catch (e) { flash(e instanceof Error ? e.message : 'Gagal'); }
     finally { setBusyId(null); }
   }
@@ -107,10 +144,52 @@ export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = []
               : <span className={s.muted}>tanpa bukti</span>}
             <button className={s.btnSm} style={{ background: '#dff5e6', color: '#1c7a43' }} onClick={() => ubah(p, 'diterima')} disabled={busyId === p.id || p.status === 'diterima'}>Terima</button>
             <button className={`${s.btnSm} ${s.danger}`} onClick={() => ubah(p, 'ditolak')} disabled={busyId === p.id || p.status === 'ditolak'}>Tolak</button>
+            {waKonfirmasi(p)
+              ? <a className={s.btnSm} style={{ background: '#dff5e6', color: '#1c7a43' }} href={waKonfirmasi(p)!} target="_blank" rel="noreferrer" title="Konfirmasi ke orang tua via WhatsApp">💬 WA</a>
+              : <span className={s.muted} style={{ fontSize: 11 }}>no WA belum ada</span>}
+            {p.status !== 'ditolak' && kelasTersedia.length > 0 && (
+              <button className={s.btnSm} style={{ background: '#e7f0fb', color: '#1b5fa8' }} onClick={() => setPkOpen(pkOpen === p.id ? null : p.id)} disabled={busyId === p.id} title="Pindah kategori kelas dalam event ini">🔀 Pindah kelas</button>
+            )}
             {p.status !== 'ditolak' && (
               <button className={s.btnSm} style={{ background: '#fff3d6', color: '#b88600' }} onClick={() => setRsOpen(rsOpen === p.id ? null : p.id)} disabled={busyId === p.id}>🔁 Reschedule</button>
             )}
           </div>
+
+          {pkOpen === p.id && (() => {
+            const nAnak = p.jumlah_anak ?? (p.anak_nama?.length ?? 0);
+            const terpakaiKelas = (k: string) => list
+              .filter((x) => x.status !== 'ditolak' && ((x.kelas === 'baby' || x.kelas === 'toddler') ? x.kelas : 'gabungan') === k && x.id !== p.id)
+              .reduce((n, x) => n + (x.jumlah_anak ?? (x.anak_nama?.length ?? 0)), 0);
+            const opsi = kelasTersedia.filter((k) => k !== (p.kelas ?? 'gabungan'));
+            return (
+              <div style={{ marginTop: 8, borderTop: '1px dashed #e6e0f2', paddingTop: 8 }}>
+                <div className={s.muted} style={{ fontSize: 12, marginBottom: 6 }}>
+                  Pindah kategori kelas dalam event ini (jadwal kelas ikut diperbarui). <b>Konfirmasi dulu ke orang tua</b> lewat tombol 💬 WA ya.
+                </div>
+                {opsi.length === 0 ? (
+                  <div className={s.muted} style={{ fontSize: 12 }}>Tidak ada kelas tujuan lain di event ini.</div>
+                ) : (
+                  <>
+                    <select className={s.inp} value={pkTarget[p.id] ?? ''} onChange={(e) => setPkTarget({ ...pkTarget, [p.id]: e.target.value })} style={{ width: '100%', marginBottom: 6 }}>
+                      <option value="">— pilih kelas tujuan —</option>
+                      {opsi.map((k) => {
+                        const kv = kuota[k];
+                        const sisa = kv != null && kv > 0 ? Math.max(0, kv - terpakaiKelas(k)) : null;
+                        const cukup = sisa === null || sisa >= nAnak;
+                        return <option key={k} value={k} disabled={!cukup}>
+                          {LABEL_KELAS[k] ?? k}{sisa !== null ? ` · sisa ${sisa} anak${cukup ? '' : ' (tidak cukup)'}` : ''}
+                        </option>;
+                      })}
+                    </select>
+                    <div className={s.row} style={{ gap: 6 }}>
+                      <button className={s.btn} onClick={() => pindahKelas(p)} disabled={busyId === p.id}>Pindahkan</button>
+                      <button className={s.btnSm} style={{ background: '#eee' }} onClick={() => setPkOpen(null)} disabled={busyId === p.id}>Batal</button>
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })()}
 
           {rsOpen === p.id && (
             <div style={{ marginTop: 8, borderTop: '1px dashed #e6e0f2', paddingTop: 8 }}>

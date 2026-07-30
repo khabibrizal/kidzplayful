@@ -6,14 +6,7 @@ import { getStatusLangganan } from './langganan-status';
 import { getKuotaTerpakai } from './event';
 import { hargaEventUntuk } from '@/lib/domain/harga';
 import { nilaiVoucherById } from './voucher';
-import { formatTanggal } from '@/lib/format';
-
-function jadwalTeks(tgl: string | null, jm: string | null, js: string | null): string | null {
-  const t = tgl ? formatTanggal(tgl) : '';
-  const jam = jm || js ? `${jm ?? ''}${js ? `-${js}` : ''} WIB` : '';
-  const gab = [t, jam].filter(Boolean).join(' · ');
-  return gab || null;
-}
+import { jadwalTeks } from '@/lib/domain/jadwal';
 
 // Mengembalikan {ok,error} (bukan throw) agar pesan validasi tampil jelas di production.
 export async function daftarEvent(eventId: string, anakIds: string[], buktiUrl: string | null, kelas: string | null = null, jumlahPendamping: number = 0, voucherId: string | null = null): Promise<{ ok: boolean; error?: string }> {

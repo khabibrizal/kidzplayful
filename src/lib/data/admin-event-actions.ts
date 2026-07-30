@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import type { EventKelas, BarisParam } from '@/lib/game/tipe';
 import { catatLedger, hapusLedgerRef } from './ledger';
 import { umurTeks } from '@/lib/domain/anak';
+import { jadwalTeks } from '@/lib/domain/jadwal';
 
 export interface BarisPesertaEkspor {
   kelas: string;          // 'Baby Class' | 'Toddler Class' | 'Gabungan'
@@ -241,4 +242,65 @@ export async function simpanBerkasSertifikat(
   const { error } = await s.from('event').update(upd).eq('id', eventId);
   if (error) throw new Error(error.message);
   revalidatePath('/pilih-anak'); revalidatePath('/event');
+}
+
+/**
+ * Pindahkan KATEGORI KELAS sebuah pendaftaran (mis. Baby → Toddler) di event yang SAMA.
+ * Admin diharapkan sudah konfirmasi ke orang tua lebih dulu (tombol WA di kartu pendaftar).
+ * Kuota kelas tujuan tetap ditegakkan; snapshot `kelas_jadwal` ikut diperbarui.
+ */
+export async function pindahKelasPendaftaran(pendaftaranId: string, kelasBaru: 'baby' | 'toddler' | 'gabungan'): Promise<{ ok: boolean; error?: string; kelas?: string; kelasJadwal?: string | null }> {
+  try {
+    const s = await adminDb();
+    const { data: p } = await s.from('pendaftaran_event')
+      .select('id,event_id,kelas,status,jumlah_anak,anak_ids')
+      .eq('id', pendaftaranId).maybeSingle();
+    if (!p) return { ok: false, error: 'Pendaftaran tidak ditemukan.' };
+    if (p.kelas === kelasBaru) return { ok: false, error: 'Pendaftaran sudah berada di kelas itu.' };
+
+    const { data: ev } = await s.from('event')
+      .select('tanggal,jam_mulai,jam_selesai,baby_tanggal,baby_jam_mulai,baby_jam_selesai,toddler_tanggal,toddler_jam_mulai,toddler_jam_selesai,kuota_baby,kuota_toddler,kuota_gabungan')
+      .eq('id', p.event_id as string).maybeSingle();
+    if (!ev) return { ok: false, error: 'Event tidak ditemukan.' };
+
+    // kelas tujuan harus ditawarkan event ini
+    const adaBaby = !!(ev.baby_jam_mulai || ev.baby_tanggal);
+    const adaToddler = !!(ev.toddler_jam_mulai || ev.toddler_tanggal);
+    if (kelasBaru === 'baby' && !adaBaby) return { ok: false, error: 'Event ini tidak punya Baby Class.' };
+    if (kelasBaru === 'toddler' && !adaToddler) return { ok: false, error: 'Event ini tidak punya Toddler Class.' };
+
+    // kuota kelas tujuan (jumlah ANAK; 'ditolak' tak dihitung). Baris ini masih di kelas lama → tak ikut terhitung.
+    const kuotaTujuan = kelasBaru === 'baby' ? ev.kuota_baby : kelasBaru === 'toddler' ? ev.kuota_toddler : ev.kuota_gabungan;
+    const nAnak = (p.jumlah_anak as number) ?? ((p.anak_ids as string[])?.length ?? 0);
+    if (kuotaTujuan != null && kuotaTujuan > 0 && p.status !== 'ditolak') {
+      const { data: rows } = await s.from('pendaftaran_event')
+        .select('kelas,jumlah_anak,anak_ids,status')
+        .eq('event_id', p.event_id as string).neq('status', 'ditolak');
+      let terpakai = 0;
+      for (const r of rows ?? []) {
+        const k = (r.kelas === 'baby' || r.kelas === 'toddler') ? r.kelas : 'gabungan';
+        if (k !== kelasBaru) continue;
+        terpakai += (r.jumlah_anak as number) ?? ((r.anak_ids as string[])?.length ?? 0);
+      }
+      const sisa = Math.max(0, kuotaTujuan - terpakai);
+      if (sisa < nAnak) return { ok: false, error: `Kuota kelas tujuan tidak cukup (sisa ${sisa} anak, dibutuhkan ${nAnak}).` };
+    }
+
+    const kelasJadwal = kelasBaru === 'baby'
+      ? jadwalTeks(ev.baby_tanggal ?? ev.tanggal, ev.baby_jam_mulai, ev.baby_jam_selesai)
+      : kelasBaru === 'toddler'
+        ? jadwalTeks(ev.toddler_tanggal ?? ev.tanggal, ev.toddler_jam_mulai, ev.toddler_jam_selesai)
+        : jadwalTeks(ev.tanggal, ev.jam_mulai, ev.jam_selesai);
+
+    const { error } = await s.from('pendaftaran_event')
+      .update({ kelas: kelasBaru, kelas_jadwal: kelasJadwal })
+      .eq('id', pendaftaranId);
+    if (error) return { ok: false, error: error.message };
+    revalidatePath(`/admin/event/${p.event_id}/pendaftar`);
+    revalidatePath('/event');
+    revalidatePath('/pilih-anak');
+    return { ok: true, kelas: kelasBaru, kelasJadwal };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Gagal memindahkan kelas.' };
+  }
 }
