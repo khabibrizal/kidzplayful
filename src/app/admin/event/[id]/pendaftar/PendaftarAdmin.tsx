@@ -36,6 +36,7 @@ export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = []
   const [rsAlasan, setRsAlasan] = useState<Record<string, string>>({});
   const [pkOpen, setPkOpen] = useState<string | null>(null);   // id pendaftaran yg panel pindah-kelas terbuka
   const [pkTarget, setPkTarget] = useState<Record<string, string>>({});
+  const [tutup, setTutup] = useState<Record<string, boolean>>({}); // grup kelas yang DITUTUP admin
   function flash(m: string) { setToast(m); setTimeout(() => setToast(''), 2000); }
 
   async function reschedule(p: PendaftaranEvent) {
@@ -265,6 +266,11 @@ Pastikan sudah konfirmasi ke orang tua (tombol 💬 WA).`)) return;
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
         <input className={s.inp} placeholder="🔎 Cari nama anak / orang tua…" value={cari} onChange={(e) => setCari(e.target.value)} style={{ flex: 1, minWidth: 160, marginBottom: 0 }} />
+        <button type="button" className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)' }}
+          onClick={() => setTutup(Object.values(tutup).some(Boolean) ? {} : { baby: true, toddler: true, gabungan: true })}
+          title="Buka / tutup semua kelas">
+          {Object.values(tutup).some(Boolean) ? '⊞ Buka semua' : '⊟ Tutup semua'}
+        </button>
         <span className={s.tag} style={{ background: '#dff5e6', color: '#1c7a43' }}>✅ {totalHadir} anak hadir</span>
       </div>
       {tampil.length === 0 && <p className={s.muted}>Tidak ada pendaftar yang cocok.</p>}
@@ -275,20 +281,29 @@ Pastikan sudah konfirmasi ke orang tua (tombol 💬 WA).`)) return;
         if (!items.length) return null;
         // peserta dihitung TANPA pendaftaran yang ditolak
         const jml = items.filter((p) => p.status !== 'ditolak').reduce((n, p) => n + (p.jumlah_anak ?? (p.anak_nama?.length ?? 0)), 0);
+        // Saat MENCARI, grup dipaksa terbuka agar hasil pencarian selalu terlihat
+        // walau admin sebelumnya menutup kelas itu.
+        const terbuka = !!q || !tutup[g.key];
+        const kv = kuota[g.key === 'baby' || g.key === 'toddler' ? g.key : 'gabungan'];
+        const sisa = kv != null && kv > 0 ? Math.max(0, kv - jml) : null;
         return (
           <div key={g.key}>
-            <div className={s.section}>
-              {g.label} · {jml} peserta
-              {(() => {
-                const kv = kuota[g.key === 'baby' || g.key === 'toddler' ? g.key : 'gabungan'];
-                if (kv == null || kv <= 0) return null;
-                const sisa = Math.max(0, kv - jml);
-                return <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 700, color: sisa <= 0 ? '#b3261e' : 'var(--mint-d)' }}>
-                  {sisa <= 0 ? `• kuota PENUH (${jml}/${kv})` : `• sisa ${sisa} dari kuota ${kv}`}
-                </span>;
-              })()}
-            </div>
-            {items.map(kartu)}
+            <button type="button" onClick={() => setTutup({ ...tutup, [g.key]: !tutup[g.key] })}
+              aria-expanded={terbuka}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', background: '#f3f0fb', borderRadius: 12, padding: '10px 14px', margin: '14px 0 8px', fontFamily: 'inherit' }}>
+              <span style={{ fontSize: 13, color: 'var(--lavender-d)', fontWeight: 800 }}>{terbuka ? '▾' : '▸'}</span>
+              <span style={{ flex: 1, fontWeight: 800, fontSize: 14 }}>{g.label}</span>
+              <span className={s.muted} style={{ fontSize: 12 }}>{jml} peserta</span>
+              {sisa !== null && (
+                <span style={{ fontSize: 12, fontWeight: 700, color: sisa <= 0 ? '#b3261e' : 'var(--mint-d)' }}>
+                  {sisa <= 0 ? `kuota PENUH (${jml}/${kv})` : `sisa ${sisa}/${kv}`}
+                </span>
+              )}
+              {!!q && <span style={{ fontSize: 11, fontWeight: 700, color: '#1b5fa8', background: '#e7f0fb', borderRadius: 99, padding: '2px 8px' }}>{items.length} hasil</span>}
+            </button>
+            {terbuka
+              ? items.map(kartu)
+              : <div className={s.muted} style={{ fontSize: 12, margin: '0 0 8px 14px' }}>{items.length} pendaftar disembunyikan — klik untuk membuka.</div>}
           </div>
         );
       })}
