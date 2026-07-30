@@ -44,7 +44,8 @@ Jangan pakai *secret key*. `NEXT_PUBLIC_*` harus ada **sebelum build** (juga di 
 
 ## Database & migrasi
 
-- Migrasi SQL di `supabase/migrations/0001..0021`, **dijalankan MANUAL berurutan** di **Supabase SQL Editor** (tidak ada CLI migrate). Saat menambah skema: buat file `00NN_*.sql` baru, lalu minta user menjalankannya.
+- Migrasi SQL di `supabase/migrations/0001..0086`, **dijalankan MANUAL berurutan** di **Supabase SQL Editor** (tidak ada CLI migrate). Saat menambah skema: buat file `00NN_*.sql` baru, lalu minta user menjalankannya.
+- **WAJIB — kolom baru harus TOLERAN sampai migrasinya dijalankan.** Karena kode ter-deploy lebih dulu daripada migrasi manual, JANGAN memasukkan kolom baru ke `select`/`insert` di alur kritis (daftar/katalog, pendaftaran, simpan data). Query akan gagal `42703` dan mematikan fitur yang tadinya jalan. Pola yang benar (contoh: `lib/data/kuota-event.ts`): baca kolom baru lewat **query terpisah** yang mengembalikan nilai default bila gagal, dan pada write **retry tanpa kolom baru** bila error kolom-hilang. Fitur baru menyala otomatis setelah migrasi dijalankan.
 - Tabel utama: `profiles`, `anak`, `langganan`, `tema`, `paket_aset` (`butir` jsonb = isi game), `hasil_main`, `video`, `kelas_bermain` (`bahan`/`aktivitas` jsonb), `favorit`, `riwayat_kelas`, `event`, `pendaftaran_event`, `produk`, `keranjang_item`, `pesanan`, `item_pesanan`, `catatan_perkembangan`.
 - **Storage** bucket `aset` (publik baca): tulis admin (folder `produk/`, `event/`, `worksheet/`), user hanya folder `bukti/` (bukti bayar).
 
