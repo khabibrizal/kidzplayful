@@ -11,7 +11,7 @@ import type { EventKelas } from '@/lib/game/tipe';
 import { formatRupiah } from '@/lib/format';
 import s from '../admin.module.css';
 
-const KOSONG: EventInput = { judul: '', lokasi: '', tanggal: '', jamMulai: '', jamSelesai: '', deskripsi: '', gambarUrl: null, hargaPerAnak: 0, hargaPendamping: 0, diskonLanggananPersen: 0, babyTanggal: '', babyJamMulai: '', babyJamSelesai: '', toddlerTanggal: '', toddlerJamMulai: '', toddlerJamSelesai: '' };
+const KOSONG: EventInput = { judul: '', lokasi: '', tanggal: '', jamMulai: '', jamSelesai: '', deskripsi: '', gambarUrl: null, hargaPerAnak: 0, hargaPendamping: 0, diskonLanggananPersen: 0, babyTanggal: '', babyJamMulai: '', babyJamSelesai: '', toddlerTanggal: '', toddlerJamMulai: '', toddlerJamSelesai: '', kuotaBaby: 0, kuotaToddler: 0, kuotaGabungan: 0 };
 
 export default function EventAdmin({ awal, counts, menunggu = {} }: { awal: EventKelas[]; counts: Record<string, number>; menunggu?: Record<string, number> }) {
   const [list, setList] = useState<EventKelas[]>(awal);
@@ -32,6 +32,7 @@ export default function EventAdmin({ awal, counts, menunggu = {} }: { awal: Even
       deskripsi: e.deskripsi ?? '', gambarUrl: e.gambar_url, hargaPerAnak: e.harga_per_anak, hargaPendamping: e.harga_pendamping ?? 0, diskonLanggananPersen: e.diskon_langganan_persen ?? 0,
       babyTanggal: e.baby_tanggal ?? '', babyJamMulai: e.baby_jam_mulai ?? '', babyJamSelesai: e.baby_jam_selesai ?? '',
       toddlerTanggal: e.toddler_tanggal ?? '', toddlerJamMulai: e.toddler_jam_mulai ?? '', toddlerJamSelesai: e.toddler_jam_selesai ?? '',
+      kuotaBaby: e.kuota_baby ?? 0, kuotaToddler: e.kuota_toddler ?? 0, kuotaGabungan: e.kuota_gabungan ?? 0,
     });
   }
 
@@ -111,6 +112,10 @@ export default function EventAdmin({ awal, counts, menunggu = {} }: { awal: Even
               <input className={s.inp} placeholder="Jam mulai" value={form.babyJamMulai} onChange={(e) => setForm({ ...form, babyJamMulai: e.target.value })} style={{ flex: 1, minWidth: 90, marginBottom: 0 }} />
               <input className={s.inp} placeholder="Jam selesai" value={form.babyJamSelesai} onChange={(e) => setForm({ ...form, babyJamSelesai: e.target.value })} style={{ flex: 1, minWidth: 90, marginBottom: 0 }} />
             </div>
+            <div className={s.row} style={{ gap: 6, marginTop: 6, alignItems: 'center' }}>
+              <span className={s.muted} style={{ fontSize: 12 }}>Kuota anak:</span>
+              <input className={s.inp} type="number" min={0} placeholder="0 = tanpa batas" value={form.kuotaBaby || ''} onChange={(e) => setForm({ ...form, kuotaBaby: Number(e.target.value) })} style={{ width: 140, marginBottom: 0 }} />
+            </div>
           </div>
           <div style={{ border: '1px solid #eee', borderRadius: 10, padding: 8, marginTop: 6 }}>
             <div style={{ fontSize: 13, fontWeight: 700 }}>🧒 Toddler Class</div>
@@ -119,8 +124,17 @@ export default function EventAdmin({ awal, counts, menunggu = {} }: { awal: Even
               <input className={s.inp} placeholder="Jam mulai" value={form.toddlerJamMulai} onChange={(e) => setForm({ ...form, toddlerJamMulai: e.target.value })} style={{ flex: 1, minWidth: 90, marginBottom: 0 }} />
               <input className={s.inp} placeholder="Jam selesai" value={form.toddlerJamSelesai} onChange={(e) => setForm({ ...form, toddlerJamSelesai: e.target.value })} style={{ flex: 1, minWidth: 90, marginBottom: 0 }} />
             </div>
+            <div className={s.row} style={{ gap: 6, marginTop: 6, alignItems: 'center' }}>
+              <span className={s.muted} style={{ fontSize: 12 }}>Kuota anak:</span>
+              <input className={s.inp} type="number" min={0} placeholder="0 = tanpa batas" value={form.kuotaToddler || ''} onChange={(e) => setForm({ ...form, kuotaToddler: Number(e.target.value) })} style={{ width: 140, marginBottom: 0 }} />
+            </div>
           </div>
           <input className={s.inp} type="number" min={0} placeholder="Harga per anak (Rp)" value={form.hargaPerAnak || ''} onChange={(e) => setForm({ ...form, hargaPerAnak: Number(e.target.value) })} style={{ width: '100%', marginTop: 6 }} />
+          <div className={s.row} style={{ gap: 6, marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span className={s.muted} style={{ fontSize: 12 }}>👥 Kuota anak (event gabungan):</span>
+            <input className={s.inp} type="number" min={0} placeholder="0 = tanpa batas" value={form.kuotaGabungan || ''} onChange={(e) => setForm({ ...form, kuotaGabungan: Number(e.target.value) })} style={{ width: 140, marginBottom: 0 }} />
+            <span className={s.muted} style={{ fontSize: 11 }}>dipakai bila event TIDAK dibagi Baby/Toddler</span>
+          </div>
           <input className={s.inp} type="number" min={0} placeholder="Harga tambah pendamping (Rp) — opsional" value={form.hargaPendamping || ''} onChange={(e) => setForm({ ...form, hargaPendamping: Number(e.target.value) })} style={{ width: '100%', marginTop: 6 }} />
           <div className={s.muted} style={{ fontSize: 11, marginTop: 2 }}>Biaya per 1 pendamping. Kosongkan/0 = tanpa opsi pendamping.</div>
           <input className={s.inp} type="number" min={0} max={100} placeholder="Diskon Berlangganan (%) — opsional" value={form.diskonLanggananPersen || ''} onChange={(e) => setForm({ ...form, diskonLanggananPersen: Number(e.target.value) })} style={{ width: '100%', marginTop: 6 }} />

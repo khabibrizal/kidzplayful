@@ -51,7 +51,7 @@ export default async function PendaftarPage({ params }: { params: Promise<{ id: 
       </details>
 
       <div className={s.section}>Pendaftar</div>
-      <PendaftarAdmin awal={list} sertMap={sertMap} eventsAktif={eventsAktif} params={paramEvent} catatanMap={catatanMap} umurMap={umurMap} ortuMap={ortuMap} />
+      <PendaftarAdmin awal={list} sertMap={sertMap} eventsAktif={eventsAktif} params={paramEvent} catatanMap={catatanMap} umurMap={umurMap} ortuMap={ortuMap} kuota={{ baby: ev?.kuota_baby ?? null, toddler: ev?.kuota_toddler ?? null, gabungan: ev?.kuota_gabungan ?? null }} />
     </div>
   );
 }

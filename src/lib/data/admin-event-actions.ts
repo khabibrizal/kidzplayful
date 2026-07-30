@@ -77,8 +77,10 @@ export interface EventInput {
   // Kelas terpisah (opsional). Kosongkan bila event gabungan.
   babyTanggal: string; babyJamMulai: string; babyJamSelesai: string;
   toddlerTanggal: string; toddlerJamMulai: string; toddlerJamSelesai: string;
+  // Kuota peserta (jumlah anak) per kelas — 0/kosong = tanpa batas
+  kuotaBaby: number; kuotaToddler: number; kuotaGabungan: number;
 }
-const COLS = 'id,judul,lokasi,tanggal,jam_mulai,jam_selesai,deskripsi,gambar_url,harga_per_anak,harga_pendamping,diskon_langganan_persen,status,sertifikat_bg_url,dokumentasi_url,stiker_bg_url,baby_tanggal,baby_jam_mulai,baby_jam_selesai,toddler_tanggal,toddler_jam_mulai,toddler_jam_selesai';
+const COLS = 'id,judul,lokasi,tanggal,jam_mulai,jam_selesai,deskripsi,gambar_url,harga_per_anak,harga_pendamping,diskon_langganan_persen,status,sertifikat_bg_url,dokumentasi_url,stiker_bg_url,baby_tanggal,baby_jam_mulai,baby_jam_selesai,toddler_tanggal,toddler_jam_mulai,toddler_jam_selesai,kuota_baby,kuota_toddler,kuota_gabungan';
 
 async function adminDb() {
   const s = await createClient();
@@ -131,7 +133,16 @@ function row(i: EventInput) {
     toddler_tanggal: i.toddlerTanggal || null,
     toddler_jam_mulai: i.toddlerJamMulai?.trim() || null,
     toddler_jam_selesai: i.toddlerJamSelesai?.trim() || null,
+    kuota_baby: kuotaAtauNull(i.kuotaBaby),
+    kuota_toddler: kuotaAtauNull(i.kuotaToddler),
+    kuota_gabungan: kuotaAtauNull(i.kuotaGabungan),
   };
+}
+
+/** 0 / negatif / bukan angka → null (tanpa batas). */
+function kuotaAtauNull(n: number): number | null {
+  const v = Math.floor(Number(n) || 0);
+  return v > 0 ? v : null;
 }
 
 export async function buatEvent(i: EventInput): Promise<EventKelas> {

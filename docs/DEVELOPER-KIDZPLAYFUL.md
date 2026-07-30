@@ -41,7 +41,7 @@ src/
     supabase/          # server.ts (SSR), client.ts (browser)
     api/               # helpers.ts (amplop JSON + auth Bearer untuk REST API)
     game/              # tipe & util mesin game
-supabase/migrations/   # skema DB (0001..0085), dijalankan manual di SQL Editor
+supabase/migrations/   # skema DB (0001..0086), dijalankan manual di SQL Editor
 docs/                  # dokumentasi (termasuk file ini)
 tools/md2pdf.py        # generator PDF dokumentasi
 ```
@@ -67,7 +67,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 - Halaman tidak menaruh selector mentah bila bisa lewat reader; beberapa halaman melakukan query inline sederhana.
 
 ### Deploy & migrasi
-- Migrasi dijalankan **manual** di Supabase SQL Editor (urut `0001..0085`), lalu diverifikasi via REST (`?select=col&limit=1` → 200).
+- Migrasi dijalankan **manual** di Supabase SQL Editor (urut `0001..0086`), lalu diverifikasi via REST (`?select=col&limit=1` → 200).
 - Commit: `git -c commit.gpgsign=false commit` + baris `Co-Authored-By`. Push ke `master` → Vercel auto-deploy.
 - Banyak reader dibungkus `try/catch` agar fitur aman dideploy sebelum migrasinya dijalankan (mengembalikan nilai default).
 
@@ -99,6 +99,9 @@ Pembungkus: `admin/layout.tsx` (guard `getAksesAdmin`, kirim `allowed`+`isSuperu
 - **Fungsi data**: `getEventSemua()`, `getJumlahPendaftar()` (`admin-event.ts`).
 - **Server action**: `buatEvent`, `updateEvent`, `toggleStatusEvent`, `hapusEvent`, `simpanBerkasSertifikat` (`admin-event-actions.ts`); `generateSertifikatEvent` (`admin-sertifikat-actions.ts`).
 - **Kelas terpisah**: form Add/Edit punya bagian **Baby Class** & **Toddler Class** (tgl + jam mulai/selesai per kelas; `EventInput.baby*/toddler*` → kolom `event.baby_*`/`toddler_*`). Kosong = event gabungan (pakai tgl/jam utama).
+- **Kuota peserta per kelas (0086)**: kolom `event.kuota_baby` / `kuota_toddler` / `kuota_gabungan` (**null/0 = tanpa batas**), diisi di form Add/Edit (input "Kuota anak" di section Baby & Toddler + "Kuota anak (event gabungan)"). Kuota dihitung dalam **jumlah ANAK**; pendaftaran **`ditolak` tidak dihitung** (kuota kembali saat admin menolak), sedangkan `menunggu` **tetap memakai** kuota agar tak over-booking. Halaman **Pendaftar** menampilkan `sisa N dari kuota X` / `kuota PENUH (n/X)` di header tiap grup kelas.
+- **Perhitungan kuota terpakai**: RPC **`kuota_terpakai_event(p_event_id)`** (`security definer`, granted ke `authenticated, anon`) mengembalikan `{kelas, anak}` per kelas — diperlukan karena RLS `pendaftaran_event` hanya mengizinkan ortu membaca barisnya sendiri, sementara sisa kuota butuh agregat semua pendaftar (yang dikembalikan hanya ANGKA, tanpa data pribadi). Reader TS: `getKuotaTerpakai(eventId)` + helper `sisaKuota(kuota, terpakai)` di `lib/data/event.ts`.
+- **Penegakan**: `daftarEvent` menolak dengan pesan **"Mohon maaf, kuota sudah penuh. Terima kasih 🙏"** bila sisa 0, atau **"kuota tersisa hanya N anak"** bila anak yang dipilih melebihi sisa. Sisi user (`DaftarForm`): label sisa kuota per opsi kelas, banner merah bila penuh, dan tombol Daftar dinonaktifkan.
 - **Harga tambah pendamping**: `EventInput.hargaPendamping` → `event.harga_pendamping` (per-event; 0 = tanpa opsi pendamping).
 - **⬇ Download Peserta**: tombol per card event (`DownloadPesertaBtn.tsx`) → server action `getPesertaEkspor(eventId)` (`admin-event-actions.ts`) → CSV BOM UTF-8, **hanya pendaftaran ber-status `diterima`**, **dikelompokkan per kelas** (Baby/Toddler/Gabungan), kolom: No, Nama Panggilan, Nama Lengkap, Tgl Lahir (Umur), Nama Orang Tua, Pendamping, Waktu Daftar (WIB).
 - **Badge 👥 Pendaftar (n)**: `getJumlahPendaftar()` **tidak menghitung** pendaftaran `ditolak`.
@@ -630,7 +633,7 @@ Semua Route Handler (`app/api/**/route.ts`) mengembalikan amplop JSON seragam vi
 | `fokus_area` | master Fokus Area Perkembangan (`key` unik → dipakai `kelas_bermain.fokus_area`, label, urutan, aktif) | 0078 |
 | `favorit` | kelas favorit user | 0015 |
 | `postingan`, `komentar`, `suka`, `laporan` | komunitas + moderasi | 0010, 0011, 0028 |
-| `event`, `pendaftaran_event` | event + pendaftaran (status, bukti, kehadiran, reschedule, `alasan_tolak`; `indikator_perkembangan`; kelas terpisah `event.baby_*`/`toddler_*` + `pendaftaran_event.kelas`/`kelas_jadwal`; `event.harga_pendamping` + `pendaftaran_event.jumlah_pendamping`) | 0017, 0027, 0062, 0069, 0070, 0075 |
+| `event`, `pendaftaran_event` | event + pendaftaran (status, bukti, kehadiran, reschedule, `alasan_tolak`; `indikator_perkembangan`; kelas terpisah `event.baby_*`/`toddler_*` + `pendaftaran_event.kelas`/`kelas_jadwal`; `event.harga_pendamping` + `pendaftaran_event.jumlah_pendamping`; **kuota `event.kuota_baby`/`kuota_toddler`/`kuota_gabungan` + RPC `kuota_terpakai_event`**; `pesan_reminder`) | 0017, 0027, 0062, 0069, 0070, 0075, 0085, 0086 |
 | `catatan_perkembangan` | catatan tumbuh kembang per anak per event (`penilaian` array Area/Indikator/Nilai + `aspek` legacy) | 0020, 0062 |
 | `sertifikat` | e-sertifikat per anak/event | 0026, 0034 |
 | `produk`, `keranjang_item`, `pesanan`, `item_pesanan` | store (diskon persen, berat, `produk.terjual`, `pesanan.stok_terpotong`) | 0019, 0049, 0050, 0057 |

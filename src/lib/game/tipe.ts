@@ -196,6 +196,10 @@ export interface EventKelas {
   dokumentasi_url: string | null;   // link dokumentasi kegiatan
   stiker_bg_url: string | null;     // template stiker nama (opsional)
   indikator_perkembangan?: BarisParam[]; // parameter penilaian tumbuh kembang event ini
+  // Kuota peserta (jumlah ANAK) per kelas — null/0 = tanpa batas (0086)
+  kuota_baby?: number | null;
+  kuota_toddler?: number | null;
+  kuota_gabungan?: number | null;
   // Kelas terpisah (opsional). Bila jam/tgl kosong → kelas tidak ditawarkan (event gabungan).
   baby_tanggal?: string | null;
   baby_jam_mulai?: string | null;

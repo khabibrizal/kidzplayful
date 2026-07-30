@@ -13,7 +13,7 @@ import type { EventKelas } from '@/lib/game/tipe';
 import { formatTanggal, formatRupiah, linkWa } from '@/lib/format';
 import { hargaEventUntuk, persenEventUntuk } from '@/lib/domain/harga';
 
-export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor, bankTeks, qrisUrl }: { ev: EventKelas; anak: { id: string; nama: string }[]; status?: string; waNomor?: string; bankTeks?: string; qrisUrl?: string }) {
+export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor, bankTeks, qrisUrl, terpakai = {} }: { ev: EventKelas; anak: { id: string; nama: string }[]; status?: string; waNomor?: string; bankTeks?: string; qrisUrl?: string; terpakai?: Record<string, number> }) {
   const [pilih, setPilih] = useState<Set<string>>(new Set());
   const [pendamping, setPendamping] = useState(0);
   const [buktiUrl, setBuktiUrl] = useState<string | null>(null);
@@ -42,6 +42,20 @@ export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor, b
   if (ev.toddler_jam_mulai || ev.toddler_tanggal) kelasOpsi.push({ key: 'toddler', label: '🧒 Toddler Class', jadwal: fmtJadwal(ev.toddler_tanggal ?? ev.tanggal, ev.toddler_jam_mulai, ev.toddler_jam_selesai) });
   const [kelas, setKelas] = useState<string>(kelasOpsi[0]?.key ?? '');
   const kelasTerpilih = kelasOpsi.find((o) => o.key === kelas);
+
+  // Sisa kuota kelas aktif (null = tanpa batas). Kuota dihitung per ANAK; 'ditolak' tak dihitung.
+  const kelasAktif = kelasOpsi.length > 0 ? kelas : 'gabungan';
+  const kuotaKelas = (k: string): number | null => {
+    const v = k === 'baby' ? ev.kuota_baby : k === 'toddler' ? ev.kuota_toddler : ev.kuota_gabungan;
+    return v != null && v > 0 ? v : null;
+  };
+  const sisaKuotaKelas = (k: string): number | null => {
+    const kv = kuotaKelas(k);
+    return kv == null ? null : Math.max(0, kv - (terpakai[k] ?? 0));
+  };
+  const sisaAktif = sisaKuotaKelas(kelasAktif);
+  const penuh = sisaAktif !== null && sisaAktif <= 0;
+  const lebihKuota = sisaAktif !== null && pilih.size > sisaAktif;
 
   function toggle(id: string) {
     setPilih((prev) => {
@@ -77,6 +91,8 @@ export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor, b
 
   async function kirim() {
     if (pilih.size === 0) { setErr('Pilih minimal 1 anak dulu — pendamping tidak bisa didaftarkan tanpa anak.'); return; }
+    if (penuh) { setErr('Mohon maaf, kuota sudah penuh. Terima kasih 🙏'); return; }
+    if (lebihKuota) { setErr(`Mohon maaf, kuota tersisa hanya ${sisaAktif} anak. Kurangi jumlah anak yang didaftarkan ya 🙏`); return; }
     if (kelasOpsi.length > 0 && !kelas) { setErr('Pilih kelas dulu.'); return; }
     if (ev.harga_per_anak > 0 && !buktiUrl) { setErr('Unggah bukti pembayaran dulu.'); return; }
     setSubmitting(true); setErr('');
@@ -138,12 +154,26 @@ export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor, b
           {kelasOpsi.map((o) => (
             <label key={o.key} className="kp-card" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, cursor: 'pointer' }}>
               <input type="radio" name="kelas" checked={kelas === o.key} onChange={() => setKelas(o.key)} style={{ width: 18, height: 18 }} />
-              <span><b>{o.label}</b><br /><small style={{ color: 'var(--abu)' }}>🕐 {o.jadwal || 'jadwal menyusul'}</small></span>
+              <span style={{ flex: 1 }}><b>{o.label}</b><br /><small style={{ color: 'var(--abu)' }}>🕐 {o.jadwal || 'jadwal menyusul'}</small>
+                {sisaKuotaKelas(o.key) !== null && (
+                  <><br /><small style={{ color: sisaKuotaKelas(o.key)! <= 0 ? '#b3261e' : 'var(--mint-d)', fontWeight: 700 }}>
+                    {sisaKuotaKelas(o.key)! <= 0 ? '❌ Kuota penuh' : `👥 Sisa kuota ${sisaKuotaKelas(o.key)} anak`}
+                  </small></>
+                )}
+              </span>
             </label>
           ))}
         </div>
       )}
 
+      {penuh && (
+        <div className="kp-card" style={{ background: '#fde8e6', color: '#b3261e', marginBottom: 12, textAlign: 'center', fontWeight: 700 }}>
+          Mohon maaf, kuota sudah penuh. Terima kasih 🙏
+        </div>
+      )}
+      {!penuh && sisaAktif !== null && (
+        <div style={{ fontSize: 12, color: 'var(--abu)', marginBottom: 8 }}>👥 Sisa kuota{kelasTerpilih ? ` ${kelasTerpilih.label}` : ''}: <b style={{ color: 'var(--mint-d)' }}>{sisaAktif} anak</b></div>
+      )}
       <div style={{ fontWeight: 700, marginBottom: 6 }}>Pilih anak yang ikut: <span style={{ color: '#c0392b' }}>*</span></div>
       {anak.length === 0 && <p style={{ color: 'var(--abu)' }}>Belum ada profil anak. Tambahkan dulu di dashboard.</p>}
       {anak.map((a) => (
@@ -204,8 +234,8 @@ export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor, b
       </div>
 
       {err && <div className="kp-error" style={{ marginBottom: 10 }}>{err}</div>}
-      <button className="kp-btn" onClick={kirim} disabled={submitting || pilih.size === 0} style={{ width: '100%', opacity: pilih.size === 0 ? 0.55 : 1 }}>
-        {submitting ? 'Mengirim…' : pilih.size === 0 ? 'Pilih anak dulu untuk mendaftar' : 'Daftar Sekarang'}
+      <button className="kp-btn" onClick={kirim} disabled={submitting || pilih.size === 0 || penuh || lebihKuota} style={{ width: '100%', opacity: (pilih.size === 0 || penuh || lebihKuota) ? 0.55 : 1 }}>
+        {submitting ? 'Mengirim…' : penuh ? 'Kuota sudah penuh' : lebihKuota ? `Sisa kuota hanya ${sisaAktif} anak` : pilih.size === 0 ? 'Pilih anak dulu untuk mendaftar' : 'Daftar Sekarang'}
       </button>
       {pilih.size === 0 && <p style={{ color: 'var(--abu)', fontSize: 12, textAlign: 'center', marginTop: 6 }}>Centang minimal 1 anak — pendamping hanya pelengkap, tidak bisa didaftarkan sendiri.</p>}
     </main>

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { getStatusLangganan } from './langganan-status';
+import { getKuotaTerpakai } from './event';
 import { hargaEventUntuk } from '@/lib/domain/harga';
 import { nilaiVoucherById } from './voucher';
 import { formatTanggal } from '@/lib/format';
@@ -22,7 +23,7 @@ export async function daftarEvent(eventId: string, anakIds: string[], buktiUrl: 
   if (!anakIds.length) return { ok: false, error: 'Pilih minimal 1 anak dulu — pendamping tidak bisa didaftarkan tanpa anak.' };
 
   const { data: ev } = await s.from('event')
-    .select('harga_per_anak,harga_pendamping,diskon_langganan_persen,status,tanggal,jam_mulai,jam_selesai,baby_tanggal,baby_jam_mulai,baby_jam_selesai,toddler_tanggal,toddler_jam_mulai,toddler_jam_selesai')
+    .select('harga_per_anak,harga_pendamping,diskon_langganan_persen,status,tanggal,jam_mulai,jam_selesai,baby_tanggal,baby_jam_mulai,baby_jam_selesai,toddler_tanggal,toddler_jam_mulai,toddler_jam_selesai,kuota_baby,kuota_toddler,kuota_gabungan')
     .eq('id', eventId).maybeSingle();
   if (!ev || ev.status !== 'tampil') return { ok: false, error: 'Event tidak tersedia.' };
 
@@ -52,6 +53,15 @@ export async function daftarEvent(eventId: string, anakIds: string[], buktiUrl: 
   for (const r of pend ?? []) if (r.status !== 'ditolak') for (const x of (r.anak_ids as string[]) ?? []) sudah.add(x);
   const baru = valid.filter((a) => !sudah.has(a.id));
   if (!baru.length) return { ok: false, error: 'Semua anak yang dipilih sudah terdaftar di event ini.' };
+
+  // Kuota per kelas (jumlah ANAK; pendaftaran 'ditolak' tidak dihitung). null/0 = tanpa batas.
+  const kuotaKelas = kelasFinal === 'baby' ? ev.kuota_baby : kelasFinal === 'toddler' ? ev.kuota_toddler : ev.kuota_gabungan;
+  if (kuotaKelas != null && kuotaKelas > 0) {
+    const terpakai = await getKuotaTerpakai(eventId);
+    const sisa = Math.max(0, kuotaKelas - (terpakai[kelasFinal] ?? 0));
+    if (sisa <= 0) return { ok: false, error: 'Mohon maaf, kuota sudah penuh. Terima kasih 🙏' };
+    if (baru.length > sisa) return { ok: false, error: `Mohon maaf, kuota tersisa hanya ${sisa} anak. Kurangi jumlah anak yang didaftarkan ya 🙏` };
+  }
 
   const status = await getStatusLangganan(s, user.id);
   const nPendamping = Math.max(0, Math.floor(jumlahPendamping || 0));

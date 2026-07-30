@@ -55,7 +55,7 @@ li { margin:3px 0; }
     supabase/          # server.ts (SSR), client.ts (browser)
     api/               # helpers.ts (amplop JSON + auth Bearer untuk REST API)
     game/              # tipe &amp; util mesin game
-supabase/migrations/   # skema DB (0001..0085), dijalankan manual di SQL Editor
+supabase/migrations/   # skema DB (0001..0086), dijalankan manual di SQL Editor
 docs/                  # dokumentasi (termasuk file ini)
 tools/md2pdf.py        # generator PDF dokumentasi
 </code></pre>
@@ -82,7 +82,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </ul>
 <h3 id="deploy-migrasi">Deploy &amp; migrasi</h3>
 <ul>
-<li>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor (urut <code>0001..0085</code>), lalu diverifikasi via REST (<code>?select=col&amp;limit=1</code> → 200).</li>
+<li>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor (urut <code>0001..0086</code>), lalu diverifikasi via REST (<code>?select=col&amp;limit=1</code> → 200).</li>
 <li>Commit: <code>git -c commit.gpgsign=false commit</code> + baris <code>Co-Authored-By</code>. Push ke <code>master</code> → Vercel auto-deploy.</li>
 <li>Banyak reader dibungkus <code>try/catch</code> agar fitur aman dideploy sebelum migrasinya dijalankan (mengembalikan nilai default).</li>
 </ul>
@@ -116,6 +116,9 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <li><strong>Fungsi data</strong>: <code>getEventSemua()</code>, <code>getJumlahPendaftar()</code> (<code>admin-event.ts</code>).</li>
 <li><strong>Server action</strong>: <code>buatEvent</code>, <code>updateEvent</code>, <code>toggleStatusEvent</code>, <code>hapusEvent</code>, <code>simpanBerkasSertifikat</code> (<code>admin-event-actions.ts</code>); <code>generateSertifikatEvent</code> (<code>admin-sertifikat-actions.ts</code>).</li>
 <li><strong>Kelas terpisah</strong>: form Add/Edit punya bagian <strong>Baby Class</strong> &amp; <strong>Toddler Class</strong> (tgl + jam mulai/selesai per kelas; <code>EventInput.baby*/toddler*</code> → kolom <code>event.baby_*</code>/<code>toddler_*</code>). Kosong = event gabungan (pakai tgl/jam utama).</li>
+<li><strong>Kuota peserta per kelas (0086)</strong>: kolom <code>event.kuota_baby</code> / <code>kuota_toddler</code> / <code>kuota_gabungan</code> (<strong>null/0 = tanpa batas</strong>), diisi di form Add/Edit (input "Kuota anak" di section Baby &amp; Toddler + "Kuota anak (event gabungan)"). Kuota dihitung dalam <strong>jumlah ANAK</strong>; pendaftaran <strong><code>ditolak</code> tidak dihitung</strong> (kuota kembali saat admin menolak), sedangkan <code>menunggu</code> <strong>tetap memakai</strong> kuota agar tak over-booking. Halaman <strong>Pendaftar</strong> menampilkan <code>sisa N dari kuota X</code> / <code>kuota PENUH (n/X)</code> di header tiap grup kelas.</li>
+<li><strong>Perhitungan kuota terpakai</strong>: RPC <strong><code>kuota_terpakai_event(p_event_id)</code></strong> (<code>security definer</code>, granted ke <code>authenticated, anon</code>) mengembalikan <code>{kelas, anak}</code> per kelas — diperlukan karena RLS <code>pendaftaran_event</code> hanya mengizinkan ortu membaca barisnya sendiri, sementara sisa kuota butuh agregat semua pendaftar (yang dikembalikan hanya ANGKA, tanpa data pribadi). Reader TS: <code>getKuotaTerpakai(eventId)</code> + helper <code>sisaKuota(kuota, terpakai)</code> di <code>lib/data/event.ts</code>.</li>
+<li><strong>Penegakan</strong>: <code>daftarEvent</code> menolak dengan pesan <strong>"Mohon maaf, kuota sudah penuh. Terima kasih 🙏"</strong> bila sisa 0, atau <strong>"kuota tersisa hanya N anak"</strong> bila anak yang dipilih melebihi sisa. Sisi user (<code>DaftarForm</code>): label sisa kuota per opsi kelas, banner merah bila penuh, dan tombol Daftar dinonaktifkan.</li>
 <li><strong>Harga tambah pendamping</strong>: <code>EventInput.hargaPendamping</code> → <code>event.harga_pendamping</code> (per-event; 0 = tanpa opsi pendamping).</li>
 <li><strong>⬇ Download Peserta</strong>: tombol per card event (<code>DownloadPesertaBtn.tsx</code>) → server action <code>getPesertaEkspor(eventId)</code> (<code>admin-event-actions.ts</code>) → CSV BOM UTF-8, <strong>hanya pendaftaran ber-status <code>diterima</code></strong>, <strong>dikelompokkan per kelas</strong> (Baby/Toddler/Gabungan), kolom: No, Nama Panggilan, Nama Lengkap, Tgl Lahir (Umur), Nama Orang Tua, Pendamping, Waktu Daftar (WIB).</li>
 <li><strong>Badge 👥 Pendaftar (n)</strong>: <code>getJumlahPendaftar()</code> <strong>tidak menghitung</strong> pendaftaran <code>ditolak</code>.</li>
@@ -920,8 +923,8 @@ tools/md2pdf.py        # generator PDF dokumentasi
 </tr>
 <tr>
 <td><code>event</code>, <code>pendaftaran_event</code></td>
-<td>event + pendaftaran (status, bukti, kehadiran, reschedule, <code>alasan_tolak</code>; <code>indikator_perkembangan</code>; kelas terpisah <code>event.baby_*</code>/<code>toddler_*</code> + <code>pendaftaran_event.kelas</code>/<code>kelas_jadwal</code>; <code>event.harga_pendamping</code> + <code>pendaftaran_event.jumlah_pendamping</code>)</td>
-<td>0017, 0027, 0062, 0069, 0070, 0075</td>
+<td>event + pendaftaran (status, bukti, kehadiran, reschedule, <code>alasan_tolak</code>; <code>indikator_perkembangan</code>; kelas terpisah <code>event.baby_*</code>/<code>toddler_*</code> + <code>pendaftaran_event.kelas</code>/<code>kelas_jadwal</code>; <code>event.harga_pendamping</code> + <code>pendaftaran_event.jumlah_pendamping</code>; <strong>kuota <code>event.kuota_baby</code>/<code>kuota_toddler</code>/<code>kuota_gabungan</code> + RPC <code>kuota_terpakai_event</code></strong>; <code>pesan_reminder</code>)</td>
+<td>0017, 0027, 0062, 0069, 0070, 0075, 0085, 0086</td>
 </tr>
 <tr>
 <td><code>catatan_perkembangan</code></td>

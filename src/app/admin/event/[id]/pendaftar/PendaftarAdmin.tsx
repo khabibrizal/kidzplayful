@@ -17,11 +17,12 @@ function waktuDaftar(iso?: string | null): string {
 
 type EventOpsi = { id: string; judul: string; tanggal: string | null };
 
-export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = [], catatanMap = {}, umurMap = {}, ortuMap = {} }: {
+export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = [], catatanMap = {}, umurMap = {}, ortuMap = {}, kuota = {} }: {
   awal: PendaftaranEvent[]; sertMap: Record<string, string>; eventsAktif: EventOpsi[];
   params?: BarisParam[]; catatanMap?: Record<string, { penilaian: BarisNilai[]; catatan: string | null }>;
   umurMap?: Record<string, string>;
   ortuMap?: Record<string, string>;
+  kuota?: Record<string, number | null>;
 }) {
   const [list, setList] = useState<PendaftaranEvent[]>(awal);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -197,7 +198,17 @@ export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = []
         const jml = items.filter((p) => p.status !== 'ditolak').reduce((n, p) => n + (p.jumlah_anak ?? (p.anak_nama?.length ?? 0)), 0);
         return (
           <div key={g.key}>
-            <div className={s.section}>{g.label} · {jml} peserta</div>
+            <div className={s.section}>
+              {g.label} · {jml} peserta
+              {(() => {
+                const kv = kuota[g.key === 'baby' || g.key === 'toddler' ? g.key : 'gabungan'];
+                if (kv == null || kv <= 0) return null;
+                const sisa = Math.max(0, kv - jml);
+                return <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 700, color: sisa <= 0 ? '#b3261e' : 'var(--mint-d)' }}>
+                  {sisa <= 0 ? `• kuota PENUH (${jml}/${kv})` : `• sisa ${sisa} dari kuota ${kv}`}
+                </span>;
+              })()}
+            </div>
             {items.map(kartu)}
           </div>
         );

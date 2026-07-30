@@ -2,7 +2,7 @@
 import { createClient } from '@/lib/supabase/server';
 import type { EventKelas } from '@/lib/game/tipe';
 
-const COLS = 'id,judul,lokasi,tanggal,jam_mulai,jam_selesai,deskripsi,gambar_url,harga_per_anak,harga_pendamping,diskon_langganan_persen,status,baby_tanggal,baby_jam_mulai,baby_jam_selesai,toddler_tanggal,toddler_jam_mulai,toddler_jam_selesai';
+const COLS = 'id,judul,lokasi,tanggal,jam_mulai,jam_selesai,deskripsi,gambar_url,harga_per_anak,harga_pendamping,diskon_langganan_persen,status,baby_tanggal,baby_jam_mulai,baby_jam_selesai,toddler_tanggal,toddler_jam_mulai,toddler_jam_selesai,kuota_baby,kuota_toddler,kuota_gabungan';
 
 export async function getEventTampil(): Promise<EventKelas[]> {
   const s = await createClient();
@@ -79,4 +79,20 @@ export async function getPendaftaranSaya(userId: string): Promise<PendaftaranSay
     pesertaMap[key] = [...m.entries()].map(([nama, v]) => ({ nama, status: v.status, alasan: v.alasan }));
   }
   return { statusMap, pesertaMap, alasanMap };
+}
+
+/** Kuota terpakai (jumlah ANAK, tanpa yang ditolak) per kelas: { baby, toddler, gabungan }. */
+export async function getKuotaTerpakai(eventId: string): Promise<Record<string, number>> {
+  const s = await createClient();
+  const out: Record<string, number> = { baby: 0, toddler: 0, gabungan: 0 };
+  const { data, error } = await s.rpc('kuota_terpakai_event', { p_event_id: eventId });
+  if (error) { console.error('kuota_terpakai_event:', error.message); return out; }
+  for (const r of (data ?? []) as { kelas: string; anak: number }[]) out[r.kelas] = Number(r.anak) || 0;
+  return out;
+}
+
+/** Sisa kuota kelas tsb. null = tanpa batas. */
+export function sisaKuota(kuota: number | null | undefined, terpakai: number): number | null {
+  if (kuota == null || kuota <= 0) return null;
+  return Math.max(0, kuota - terpakai);
 }
