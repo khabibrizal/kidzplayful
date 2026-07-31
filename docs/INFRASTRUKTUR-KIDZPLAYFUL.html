@@ -1,0 +1,3850 @@
+<!DOCTYPE html><html lang="id"><head><meta charset="utf-8">
+<title>Dokumentasi KidzPlayful</title><style>
+@page { size: A4; margin: 15mm 14mm; }
+* { box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; color:#222; line-height:1.55; font-size:11pt; }
+h1 { font-size:20pt; color:#5a2ca0; border-bottom:3px solid #efe7fb; padding-bottom:6px; }
+h2 { font-size:14pt; color:#3a78d6; margin-top:20px; border-bottom:1px solid #eee; padding-bottom:3px; page-break-after:avoid; }
+h3 { font-size:12pt; color:#2ba8a3; margin-top:14px; page-break-after:avoid; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:9.5pt; page-break-inside:avoid; }
+th,td { border:1px solid #ddd; padding:5px 8px; text-align:left; vertical-align:top; }
+th { background:#f4f0fb; color:#444; }
+code { background:#f3f3f7; padding:1px 5px; border-radius:4px; font-size:9pt; color:#a13; font-family:'Consolas','Courier New',monospace; }
+pre { background:#f7f7fb; border:1px solid #e6e6ee; border-radius:8px; padding:10px 12px; overflow:auto; font-size:8pt; line-height:1.35; page-break-inside:avoid; white-space:pre-wrap; font-family:'Consolas','Courier New',monospace; }
+pre code { background:none; color:#333; padding:0; font-family:'Consolas','Courier New',monospace; }
+blockquote { border-left:4px solid #ffc93c; background:#fffdf3; margin:10px 0; padding:6px 14px; color:#665; }
+hr { border:none; border-top:1px solid #e2e2ea; margin:16px 0; }
+a { color:#3a78d6; text-decoration:none; }
+ul,ol { margin:8px 0 8px 6px; padding-left:20px; }
+li { margin:3px 0; }
+</style></head>
+<body><h1 id="infrastruktur-kidzplayful-rencana-penataan-skala">INFRASTRUKTUR KIDZPLAYFUL — Rencana Penataan &amp; Skala</h1>
+<blockquote>
+<p>Dokumen perencanaan infrastruktur dari sudut pandang DevOps. Menjawab satu pertanyaan: <strong>apa yang akan lemot atau tumbang saat pengguna aktif membanyak, dan apa yang harus dikerjakan lebih dulu.</strong></p>
+<p><strong>Disusun:</strong> 31 Juli 2026 · <strong>Basis audit:</strong> commit <code>13d6e17</code>, migrasi <code>0001</code>–<code>0086</code> · <strong>Keputusan arah:</strong> tetap di <strong>Vercel + Supabase</strong> (managed, di-scale up) — bukan pindah ke VPS/GCP.
+<strong>Dokumen pendamping:</strong> <a href="RUNBOOK-OPERASIONAL.md"><code>RUNBOOK-OPERASIONAL.md</code></a> (prosedur saat kejadian) · <a href="DEVELOPER-KIDZPLAYFUL.md"><code>DEVELOPER-KIDZPLAYFUL.md</code></a> (arsitektur aplikasi).</p>
+</blockquote>
+<hr />
+<h2 id="0-ringkasan-eksekutif">0. Ringkasan eksekutif</h2>
+<p>Audit ini menemukan sesuatu yang perlu disampaikan terang-terangan: <strong>masalah terbesar platform ini bukan kapasitas server.</strong> Vercel dan Supabase akan bertahan lebih lama dari yang diduga. Yang berisiko adalah <strong>pola di dalam aplikasi</strong> — dan tiga di antaranya <strong>sudah merugikan hari ini</strong>, tanpa menunggu pengguna bertambah satu orang pun.</p>
+<h3 id="01-tiga-hal-yang-sudah-berlaku-sekarang-bukan-risiko-masa-depan">0.1 Tiga hal yang sudah berlaku SEKARANG (bukan risiko masa depan)</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Temuan</th>
+<th>Kondisi nyata</th>
+<th>Tindakan</th>
+<th>Bab</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1</strong></td>
+<td><strong>Kredensial admin produksi ada di repo publik</strong></td>
+<td>56 kemunculan email + kata sandi <code>admin@kidzplayful.app</code> di 23 skrip <code>tools/*.mjs</code>. Repo publik (syarat Vercel Hobby) → sudah terindeks pencarian kode GitHub. Siapa pun yang menemukannya bisa masuk <code>/admin</code> dan membaca <code>transaksi_keuangan</code>, <code>pendaftaran_event</code>, dan data anak.</td>
+<td><strong>Rotasi kata sandi hari ini.</strong> Menghapus file tidak cukup — riwayat git tetap menyimpannya.</td>
+<td><a href="#c5-membereskan-tools--ini-insiden-keamanan-aktif">C.5</a></td>
+</tr>
+<tr>
+<td><strong>2</strong></td>
+<td><strong>Angka keuangan &amp; analitik bisa salah tanpa peringatan</strong></td>
+<td><code>keuangan.ts:28</code>, <code>kpi.ts:52-54</code>, dan <code>admin/analitik/page.tsx:29-39</code> menarik tabel penuh <strong>tanpa <code>.limit()</code></strong> lalu menjumlahkan di JavaScript. PostgREST memotong hasil di <strong>1.000 baris secara diam-diam</strong> — tidak ada error, tidak ada peringatan. Begitu <code>transaksi_keuangan</code> atau <code>profiles</code> melewati 1.000 baris, dashboard menampilkan angka yang salah dengan tenang.</td>
+<td>Cek jumlah baris hari ini (<a href="#d3-agregasi-pindah-ke-sql--memperbaiki-bug-angka-salah">D.3.a</a>). Lalu pindahkan agregasi ke SQL.</td>
+<td><a href="#d3-agregasi-pindah-ke-sql--memperbaiki-bug-angka-salah">D.3</a></td>
+</tr>
+<tr>
+<td><strong>3</strong></td>
+<td><strong>Bukti bayar &amp; nota keuangan terbuka untuk publik</strong></td>
+<td>Bucket <code>aset</code> dideklarasikan <code>public = true</code> dengan policy baca terbuka (<code>0007_storage_aset.sql:2-9</code>). Folder <code>bukti/</code> (bukti transfer orang tua: nama &amp; nomor rekening) dan <code>nota/</code> (nota keuangan internal) berada di URL permanen yang bisa dibuka <strong>tanpa login</strong>. URL absolutnya tersimpan di DB lalu mengalir ke tangkapan layar, log, dan riwayat browser.</td>
+<td>Pindahkan ke bucket privat + signed URL.</td>
+<td><a href="#f3-memindahkan-bukti--nota-ke-bucket-privat--signed-url">F.3</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="02-dua-hal-yang-baru-menyakitkan-saat-tumbuh">0.2 Dua hal yang baru menyakitkan saat tumbuh</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Temuan</th>
+<th>Kapan pecah</th>
+<th>Bab</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>4</strong></td>
+<td><strong>Tidak ada backup sama sekali.</strong> Supabase Free tidak menyediakan backup otomatis, dan repo ini tidak punya prosedur <code>pg_dump</code>, tidak punya uji restore, tidak punya dokumentasi DR. Sementara itu 86 migrasi dijalankan <strong>manual di SQL Editor produksi</strong> — satu <code>delete</code> tanpa <code>where</code> di sana bersifat permanen. Ditambah: backup DB Supabase <strong>tidak mencakup file Storage</strong>, jadi bukti bayar tidak ter-backup oleh apa pun.</td>
+<td>Kapan saja. Ini bukan fungsi dari jumlah pengguna, melainkan dari frekuensi tangan manusia di SQL Editor produksi — dan frekuensi itu tinggi.</td>
+<td><a href="#c1-strategi-backup">C.1</a></td>
+</tr>
+<tr>
+<td><strong>5</strong></td>
+<td><strong><code>catatHasilCore</code> membayar biaya yang tumbuh seumur akun.</strong> Setiap kali anak menyelesaikan satu game, <code>skor-core.ts:60</code> menarik <strong>seluruh riwayat <code>hasil_main</code> anak itu tanpa <code>.limit()</code></strong> untuk menghitung lencana. Anak yang aktif 6 bulan ≈ 540 baris; ditarik ulang setiap sesi. Lebih buruk: begitu satu anak melewati 1.000 baris, hasilnya terpotong diam-diam dan <code>catch {}</code> menelan akibatnya → <strong>anak kehilangan lencana &amp; streak tanpa satu pun error</strong>.</td>
+<td>Sekitar <strong>2.000 pengguna aktif harian</strong> (T1) — dan memburuk sendiri walaupun jumlah pengguna tetap, karena yang tumbuh adalah riwayat per anak.</td>
+<td><a href="#t1--2000-dau">A.3 T1</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="03-satu-keputusan-bisnis-yang-menahan-segalanya">0.3 Satu keputusan bisnis yang menahan segalanya</h3>
+<p>Deploy saat ini berjalan di <strong>Vercel Hobby</strong>, dan Hobby <strong>melarang penggunaan komersial</strong>. Platform ini menjual membership, event, dan produk (<code>store</code>, <code>pesanan</code>, <code>transaksi_keuangan</code>, <code>voucher</code>) — jadi ini penggunaan komersial. Risikonya bukan tagihan, melainkan <strong>penonaktifan proyek tanpa masa tenggang</strong>.</p>
+<p>Naik ke <strong>Vercel Pro + Supabase Pro ≈ $45/bulan</strong> menyelesaikan tiga hal sekaligus: kepatuhan ToS, <strong>backup harian otomatis</strong> (menutup temuan #4), dan repo tidak perlu publik lagi — sehingga seluruh skema dan policy RLS tidak lagi terbuka untuk dibaca siapa pun. Ini item <strong>termurah dengan dampak tertinggi</strong> di seluruh dokumen ini.</p>
+<h3 id="04-kabar-baiknya">0.4 Kabar baiknya</h3>
+<p>Arsitektur dasarnya sehat dan beberapa keputusan sudah tepat sejak awal, jadi rekomendasi di dokumen ini <strong>melanjutkan arah yang sudah ada</strong>, bukan menggantinya:</p>
+<ul>
+<li><strong>Region sudah co-located</strong> — Vercel <code>bom1</code> (Mumbai) dengan Supabase <code>ap-south-1</code>. Ini pemangkas latensi terbesar dan sudah beres.</li>
+<li><strong>Semua fungsi helper RLS sudah <code>STABLE SECURITY DEFINER</code></strong> dan mencari <code>profiles</code> lewat primary key — pilihan yang benar; yang perlu diperbaiki hanya cara memanggilnya di policy (<a href="#d2-rls-angkat-evaluasi-ke-initplan">D.2</a>).</li>
+<li><strong><code>laporan_engagement()</code></strong> (<code>0040_laporan_rpc.sql</code>) sudah memindahkan agregasi ke SQL dengan guard <code>is_admin()</code> — persis pola yang akan direplikasi untuk keuangan &amp; analitik. Presedennya sudah ada di repo ini.</li>
+<li><strong><code>lib/data/kuota-event.ts</code></strong> sudah menerapkan pola akses toleran, lengkap dengan alasannya. Pola itu tetap dipakai, hanya perlu dibatasi perannya (<a href="#c4-urutan-rilis-hentikan-kode-mendahului-migrasi">C.4</a>).</li>
+<li><strong><code>publik.ts</code></strong> sudah memberi contoh <code>select</code> kolom ringan + <code>unstable_cache</code> bertag. Yang kurang hanya penerapannya ke jalur internal (<a href="#e2-pisahkan-query-ringan-dan-berat">E.2</a>).</li>
+<li><strong>Service role key terkurung rapi</strong> — satu titik pakai (<code>lib/supabase/admin.ts</code>), <code>import 'server-only'</code>, tanpa prefiks <code>NEXT_PUBLIC_</code>. Tidak ada jalur kebocoran ke klien.</li>
+<li>Dependency runtime hanya 6 paket. Tidak ada beban vendor yang perlu dibersihkan.</li>
+</ul>
+<h3 id="05-ringkasan-biaya-per-tahap">0.5 Ringkasan biaya per tahap</h3>
+<table>
+<thead>
+<tr>
+<th>Tahap</th>
+<th>Pengguna aktif harian</th>
+<th>Biaya/bulan tanpa optimasi</th>
+<th>Dengan optimasi di dokumen ini</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>T0</strong> (sekarang)</td>
+<td>&lt; 500</td>
+<td>~$0 (tapi melanggar ToS &amp; tanpa backup)</td>
+<td><strong>~$45</strong></td>
+</tr>
+<tr>
+<td><strong>T1</strong></td>
+<td>~2.000</td>
+<td>~$85</td>
+<td><strong>~$55–65</strong></td>
+</tr>
+<tr>
+<td><strong>T2</strong></td>
+<td>~10.000</td>
+<td>~$270</td>
+<td><strong>~$120–150</strong></td>
+</tr>
+<tr>
+<td><strong>T3</strong></td>
+<td>50.000+</td>
+<td>~$1.900–2.100</td>
+<td><strong>~$700–900</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Selisih T2 dan T3 itulah nilai ekonomi dari pekerjaan di <a href="#5-bab-d--lapisan-data-index-rls-agregasi">Bab D</a>, <a href="#6-bab-e--pengiriman-ke-hp-bundle-payload-caching">E</a>, dan <a href="#7-bab-f--storage-egress--kontrol-biaya">F</a>: pada T3 optimasi menghemat lebih dari <strong>$1.000/bulan</strong>, jauh melampaui biaya kerjanya.</p>
+<hr />
+<h2 id="1-peta-kondisi-sekarang">1. Peta kondisi sekarang</h2>
+<h3 id="11-bentuk-sistem">1.1 Bentuk sistem</h3>
+<pre><code>                        📱 HP orang tua &amp; anak  ·  📲 aplikasi mobile
+                                     │
+      ┌──────────────────────────────┴───────────────────────────────┐
+      │            VERCEL — region bom1 (Mumbai), plan Hobby         │
+      │                                                              │
+      │  src/proxy.ts (middleware)                                   │
+      │    └─ auth.getUser() SETIAP request non-API/non-static        │
+      │       + 2 query DB tambahan untuk /admin/*                   │
+      │                                                              │
+      │  84 halaman App Router  ·  9 static  ·  ~75 SSR              │
+      │  Server Actions (160 revalidatePath, 5 unstable_cache)       │
+      │  19 route /api/**  ·  Bearer  ·  TANPA rate limit            │
+      └──────────────────────────────┬───────────────────────────────┘
+                                     │
+      ┌──────────────────────────────┴───────────────────────────────┐
+      │              SUPABASE — ap-south-1, plan Free                │
+      │                                                              │
+      │  Auth  ·  Postgres + RLS (~45 index, 86 migrasi MANUAL)      │
+      │  Storage bucket &quot;aset&quot;  →  PUBLIK, termasuk bukti/ &amp; nota/   │
+      │  Backup: TIDAK ADA                                           │
+      └──────────────────────────────────────────────────────────────┘
+
+      Aset gambar diambil HP langsung dari Storage lewat &lt;img&gt; mentah
+      (tanpa perantara CDN Vercel, tanpa cacheControl panjang).
+
+      Tidak ada: server aplikasi terpisah · Redis · queue · cron ·
+                 CDN di depan Storage · environment staging aktif ·
+                 error tracking · health check · alert.
+</code></pre>
+<p>Tidak ada server aplikasi terpisah, tidak ada Redis, tidak ada queue, tidak ada cron, tidak ada CDN di depan Storage, dan tidak ada environment staging yang aktif. "Backend" = Server Components (baca) + Server Actions (tulis) + RLS.</p>
+<h3 id="12-fakta-terverifikasi-yang-menjadi-dasar-seluruh-rekomendasi">1.2 Fakta terverifikasi yang menjadi dasar seluruh rekomendasi</h3>
+<p>Setiap angka di bawah berasal dari pembacaan kode, bukan perkiraan.</p>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Kondisi</th>
+<th>Rujukan</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Rendering</strong></td>
+<td><strong>0</strong> direktif <code>dynamic</code>/<code>revalidate</code>/<code>generateStaticParams</code> di seluruh repo. Hanya 9 halaman ter-prerender; ~75 dari 84 halaman efektif SSR karena memanggil <code>cookies()</code>.</td>
+<td><code>.next/prerender-manifest.json</code>, <code>lib/supabase/server.ts:6</code></td>
+</tr>
+<tr>
+<td><strong>Caching</strong></td>
+<td>Hanya <strong>5</strong> <code>unstable_cache</code> (katalog 60 s, artikel 300 s) melawan <strong>160</strong> <code>revalidatePath</code> di 30 file — invalidasi jauh lebih agresif daripada caching-nya.</td>
+<td><code>lib/data/publik.ts:20,28,36</code>, <code>artikel.ts:70,80</code></td>
+</tr>
+<tr>
+<td><strong>Middleware</strong></td>
+<td><code>auth.getUser()</code> = 1 perjalanan jaringan ke Supabase Auth <strong>setiap</strong> request non-API/non-static. Matcher tidak mengecualikan <code>.css</code>, <code>.js</code>, <code>.woff2</code>, <code>sitemap.xml</code>, <code>robots.txt</code>, <code>_next/data</code>. Untuk <code>/admin/*</code> ditambah 2 query DB.</td>
+<td><code>src/proxy.ts:26,31,33,53</code></td>
+</tr>
+<tr>
+<td><strong>Halaman terberat</strong></td>
+<td><code>/main/[anakId]</code> ≈ <strong>19–20 perjalanan DB</strong> per render, <strong>3 di antaranya <code>auth.getUser()</code></strong>. <code>/admin/event/[id]/pendaftar</code> ≈ 13. <code>/admin/keuangan/laporan</code> memicu <strong>3× full scan identik</strong> pada satu render.</td>
+<td><code>app/main/[anakId]/page.tsx:26-56</code>, <code>lib/data/keuangan.ts:107-126</code></td>
+</tr>
+<tr>
+<td><strong>Index</strong></td>
+<td><code>event</code>, <code>produk</code>, <code>tema</code>, <code>aset</code> <strong>tidak punya index apa pun selain primary key</strong> — padahal <code>status</code> + <code>tanggal</code>/<code>created_at</code> difilter di belasan tempat. <code>pendaftaran_event(status)</code> global memakai index <code>(event_id,status)</code> yang leading column-nya salah.</td>
+<td><code>supabase/migrations/0017,0019,0002,0039</code></td>
+</tr>
+<tr>
+<td><strong>RLS</strong></td>
+<td>Fungsi helper sudah <code>STABLE</code> ✅, tapi <strong>tidak satu pun</strong> policy membungkusnya dalam sub-select → dievaluasi <strong>per baris</strong>. <code>hasil_main</code> punya <strong>3 policy SELECT permissive yang di-OR</strong>, salah satunya <code>exists(... anak ...)</code> per baris.</td>
+<td><code>0002:51</code>, <code>0006:8</code>, <code>0066:27</code></td>
+</tr>
+<tr>
+<td><strong>Payload jsonb</strong></td>
+<td><code>paket_aset.butir</code> (isi game: markup SVG, palette, grid) ikut terkirim untuk <strong>semua</strong> paket semua tema — termasuk ke <code>/pilih-game</code> yang hanya menampilkan judul &amp; emoji. <code>kelas_bermain.aktivitas</code>+<code>bahan</code> ikut di daftar favorit/riwayat yang juga hanya butuh judul.</td>
+<td><code>lib/data/pustaka.ts:23</code>, <code>favorit.ts:6</code>, <code>riwayat-kelas.ts:5</code></td>
+</tr>
+<tr>
+<td><strong>Bundle klien</strong></td>
+<td>98 komponen <code>'use client'</code>. <strong>15 mesin game di-import statis</strong> dalam satu berkas, dipilih lewat rantai <code>if/else</code> saat runtime → semuanya masuk chunk rute <code>/main/[anakId]</code> walau anak memainkan satu game. <code>dynamic()</code>/<code>lazy()</code> = <strong>0 pemakaian</strong>.</td>
+<td><code>components/game/GameRunner.tsx:5-20,72-86</code></td>
+</tr>
+<tr>
+<td><strong>Gambar</strong></td>
+<td>Hanya 7 berkas memakai <code>next/image</code>; <strong>12 <code>&lt;img&gt;</code> mentah</strong> di 11 berkas, termasuk <code>Aset.tsx</code> (jalur terpanas) → egress langsung dari Supabase tanpa perantara. <code>cacheControl</code> tidak pernah diset saat unggah.</td>
+<td><code>components/game/Aset.tsx:10</code>, 12 titik <code>.storage.from(</code></td>
+</tr>
+<tr>
+<td><strong>Tabel tumbuh cepat</strong></td>
+<td><code>aktivitas</code> = <strong>1 insert per page view</strong> di 9 halaman (dengan 3 index yang ikut diperbarui tiap insert). <code>hasil_main</code> = 1 baris/sesi game. <code>riwayat_kelas</code> = upsert <strong>di jalur render GET</strong>. <code>transaksi_keuangan</code> tumbuh monoton tanpa arsip, tapi di-full-scan oleh 8 halaman.</td>
+<td><code>components/RekamAktivitas.tsx:11</code>, <code>app/kelas/[id]/page.tsx:33</code></td>
+</tr>
+<tr>
+<td><strong>API</strong></td>
+<td>19 route, auth Bearer (1 perjalanan <code>auth.getUser()</code> per request). <strong>0 pemakaian <code>.limit()</code>/<code>.range()</code></strong> di seluruh <code>src/app/api/</code> → bergantung batas diam-diam 1.000 baris. <strong>Rate limiting nihil</strong>, termasuk <code>/api/auth/login</code> &amp; <code>/register</code> yang publik.</td>
+<td><code>lib/api/helpers.ts:26-40</code></td>
+</tr>
+<tr>
+<td><strong>Observability</strong></td>
+<td>Hanya <code>@vercel/analytics</code>. Tanpa Sentry, tanpa <code>instrumentation.ts</code>, tanpa health-check, tanpa alert. <code>app/error.tsx</code> <strong>sengaja tidak memakai</strong> objek error → error hilang. <code>ledger.ts:35,41</code> membungkus semua tulis keuangan dengan <code>try{}catch{}</code> <strong>kosong</strong>.</td>
+<td><code>app/error.tsx:2</code>, <code>lib/data/ledger.ts:21-41</code></td>
+</tr>
+<tr>
+<td><strong>CI/CD</strong></td>
+<td>Satu workflow (<code>tsc</code> → vitest → build). Tanpa job deploy, <strong>tanpa migrasi otomatis</strong>, tanpa E2E, tanpa audit dependency, tanpa Dependabot. Branch protection masih berstatus saran.</td>
+<td><code>.github/workflows/ci.yml</code></td>
+</tr>
+<tr>
+<td><strong>Migrasi</strong></td>
+<td>86 berkas dijalankan manual, <strong>tanpa tabel pelacak</strong>. 13 <code>create table</code> dan 8 <code>create index</code> tanpa <code>if not exists</code>; ~160 <code>create policy</code> sementara hanya 31 berkas memakai <code>drop policy if exists</code>.</td>
+<td><code>supabase/migrations/</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="13-satu-kesimpulan-yang-paling-penting-dari-tabel-di-atas">1.3 Satu kesimpulan yang paling penting dari tabel di atas</h3>
+<blockquote>
+<p><strong>Hari ini tidak ada cara terpercaya untuk membangun ulang produksi dari repo ini.</strong> Menjalankan <code>0001</code>→<code>0086</code> pada database yang sudah terisi sebagian pasti gagal di tengah dan berhenti pada keadaan separuh jalan. Artinya <strong>backup database Anda saat ini lebih bernilai daripada repo Anda</strong> — padahal backup itu belum ada. Membalik keadaan ini adalah inti <a href="#4-bab-c--backup-dr--disiplin-rilismigrasi">Bab C</a>.</p>
+</blockquote>
+<hr />
+<h2 id="2-bab-a-model-kapasitas-bertingkat">2. Bab A — Model kapasitas bertingkat</h2>
+<h3 id="a0-catatan-pemakaian-angka">A.0 Catatan pemakaian angka</h3>
+<p>Semua harga &amp; kuota di bawah adalah <strong>pengetahuan per pertengahan 2026</strong> dan ditandai 🔍 bila <strong>wajib diverifikasi ulang</strong> di halaman pricing sebelum dipakai untuk keputusan anggaran (Vercel &amp; Supabase mengubah kuota/harga beberapa kali per tahun).</p>
+<h3 id="a1-asumsi-beban-dasar-semua-hitungan">A.1 Asumsi beban (dasar semua hitungan)</h3>
+<p>Ditulis eksplisit supaya bisa dikoreksi kalau data Vercel Analytics nyata berbeda.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Nilai</th>
+<th>Dasar</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 DAU</td>
+<td>1 akun ortu aktif hari itu</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Anak per ortu</td>
+<td>1,2</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Page view / DAU / hari</td>
+<td>12</td>
+<td>1,5 sesi × 8 halaman</td>
+</tr>
+<tr>
+<td>Sesi game / DAU / hari</td>
+<td>3</td>
+<td>tiap sesi memanggil <code>catatHasilCore</code></td>
+</tr>
+<tr>
+<td>Round-trip DB rata-rata / page view</td>
+<td><strong>8</strong></td>
+<td>terukur: <code>/main/[anakId]</code> = 19–20, <code>/pilih-anak</code> ≈ 4, halaman publik 1–3</td>
+</tr>
+<tr>
+<td>Round-trip DB / sesi game</td>
+<td><strong>13</strong></td>
+<td><code>src/lib/data/skor-core.ts</code> (5 tahap berurutan)</td>
+</tr>
+<tr>
+<td>Insert <code>aktivitas</code> / DAU / hari</td>
+<td>4</td>
+<td>9 halaman ber-<code>RekamAktivitas</code></td>
+</tr>
+<tr>
+<td>Payload aset Supabase efektif / PV</td>
+<td>0,4 MB</td>
+<td><code>&lt;img&gt;</code> mentah, tanpa <code>next/image</code></td>
+</tr>
+<tr>
+<td>Payload HTML+JS / PV</td>
+<td>0,3 MB</td>
+<td>75 halaman SSR</td>
+</tr>
+<tr>
+<td>Konsentrasi puncak</td>
+<td>40% trafik dalam 3 jam</td>
+<td>jam sore/malam anak</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Bukti hitungan 19–20 round-trip pada <code>/main/[anakId]</code></strong> (rantai nyata, bukan asumsi):
+<code>proxy.ts</code> <code>auth.getUser()</code> (1) → <code>getAnakTerjamin</code>: <code>auth.getUser()</code> (2) + <code>anak</code> (3) + <code>langganan</code> (4) → <code>createClient</code> + <code>auth.getUser()</code> (5) → paralel: <code>getVideoByKategori</code> (6), <code>getPustaka</code> = <code>tema</code>+<code>paket_aset</code>+<code>video</code> (7–9), <code>getKelasAktifCached</code> (10, cached 60s), <code>getFavoritIds</code> (11–12), <code>profiles.pin_ortu</code> (13), <code>getGamifikasiAnak</code> = 5 query (14–18), <code>getStatusLangganan</code> (19), <code>getLabelFokusArea</code> (20).
+→ <strong>3 kali <code>auth.getUser()</code> untuk satu render halaman.</strong></p>
+<h3 id="a2-tabel-beban-unit-per-1000-dau">A.2 Tabel beban unit (per 1.000 DAU)</h3>
+<table>
+<thead>
+<tr>
+<th>Metrik</th>
+<th>/ hari</th>
+<th>/ bulan (30 hari)</th>
+<th>Puncak (rata 3 jam sibuk)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Page view</td>
+<td>12.000</td>
+<td>360.000</td>
+<td>1,1 PV/detik</td>
+</tr>
+<tr>
+<td>Request Vercel total (PV + aset + Server Action + API)</td>
+<td>~45.000</td>
+<td>1,35 juta</td>
+<td>~4 req/detik</td>
+</tr>
+<tr>
+<td>Function invocation (non-static)</td>
+<td>~15.000</td>
+<td>450.000</td>
+<td>~1,4 /detik</td>
+</tr>
+<tr>
+<td>Hit Supabase Auth (<code>auth.getUser</code>)</td>
+<td>~14.400</td>
+<td>432.000</td>
+<td>~1,3 /detik</td>
+</tr>
+<tr>
+<td><strong>Query DB total</strong></td>
+<td>~140.000</td>
+<td><strong>4,2 juta</strong></td>
+<td><strong>~13 query/detik</strong></td>
+</tr>
+<tr>
+<td>Insert <code>aktivitas</code></td>
+<td>4.000</td>
+<td>120.000</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Insert <code>hasil_main</code></td>
+<td>3.600</td>
+<td>108.000</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Egress Supabase Storage</td>
+<td>4,8 GB</td>
+<td><strong>144 GB</strong></td>
+<td>—</td>
+</tr>
+<tr>
+<td>Vercel Fast Data Transfer</td>
+<td>3,6 GB</td>
+<td>108 GB</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p>Rincian 140.000 query/hari: <code>12.000 PV × 8</code> = 96.000 + <code>3.000 sesi × 13</code> = 39.000 + <code>aktivitas</code> 4.000 + <code>riwayat_kelas</code> upsert ~1.000.</p>
+<h3 id="a3-empat-tier">A.3 Empat tier</h3>
+<h4 id="t0-sekarang-500-dau">T0 — SEKARANG (&lt; 500 DAU)</h4>
+<p><strong>Beban (0,5× unit):</strong> 6.000 PV/hari · 70.000 query/hari (2,1 jt/bln) · 225k invocation/bln · <strong>egress Supabase ~72 GB/bln</strong> · FDT ~54 GB/bln · puncak ~7 query/detik.</p>
+<p><strong>Plan &amp; biaya:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Sekarang</th>
+<th>Seharusnya</th>
+<th>USD/bln</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Vercel</td>
+<td>Hobby</td>
+<td><strong>Pro</strong> (wajib, lihat failure mode)</td>
+<td>20 🔍</td>
+</tr>
+<tr>
+<td>Supabase</td>
+<td>Free</td>
+<td><strong>Pro</strong> (Micro tercakup credit $10)</td>
+<td>25 🔍</td>
+</tr>
+<tr>
+<td>Egress Supabase</td>
+<td>—</td>
+<td>72 GB vs 250 GB termasuk</td>
+<td>0</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td>~$0</td>
+<td></td>
+<td><strong>~$45</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Batas plan yang relevan (🔍 semua):</strong></p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Vercel Hobby</th>
+<th>Vercel Pro</th>
+<th>Supabase Free</th>
+<th>Supabase Pro</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Fast Data Transfer</td>
+<td>100 GB</td>
+<td>1 TB (over ~$0,15/GB)</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Function compute</td>
+<td>100 GB-jam</td>
+<td>1.000 GB-jam (over ~$0,18/GB-jam)</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Edge requests</td>
+<td>1 juta</td>
+<td>10 juta (over ~$2/juta)</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>maxDuration default</td>
+<td>~10 s</td>
+<td>~10 s (bisa dinaikkan s.d. 300 s)</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Cron</td>
+<td>2, hanya harian</td>
+<td>40, jadwal bebas</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Ukuran DB</td>
+<td>—</td>
+<td>—</td>
+<td>500 MB</td>
+<td>8 GB termasuk</td>
+</tr>
+<tr>
+<td>Egress</td>
+<td>—</td>
+<td>—</td>
+<td><strong>5 GB</strong></td>
+<td>250 GB (over ~$0,09/GB)</td>
+</tr>
+<tr>
+<td>Storage file</td>
+<td>—</td>
+<td>—</td>
+<td>1 GB</td>
+<td>100 GB</td>
+</tr>
+<tr>
+<td>MAU Auth</td>
+<td>—</td>
+<td>—</td>
+<td>50.000</td>
+<td>100.000</td>
+</tr>
+<tr>
+<td>Backup</td>
+<td>—</td>
+<td>—</td>
+<td><strong>TIDAK ADA</strong></td>
+<td>daily, retensi 7 hari</td>
+</tr>
+<tr>
+<td>PITR</td>
+<td>—</td>
+<td>—</td>
+<td>tidak</td>
+<td>add-on ~$100/bln</td>
+</tr>
+<tr>
+<td>Pause otomatis</td>
+<td>—</td>
+<td>—</td>
+<td>setelah 7 hari idle</td>
+<td>tidak</td>
+</tr>
+<tr>
+<td>Koneksi (Micro/Small)</td>
+<td>—</td>
+<td>—</td>
+<td>~60 direct / 200 pooler</td>
+<td>200→400 pooler</td>
+</tr>
+<tr>
+<td>Penggunaan komersial</td>
+<td><strong>DILARANG (ToS)</strong></td>
+<td>boleh</td>
+<td>boleh</td>
+<td>boleh</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Catatan arsitektur penting:</strong> aplikasi memakai <code>supabase-js</code> → PostgREST via HTTPS, <strong>bukan koneksi Postgres langsung</strong>. Jadi metrik "connections" di dashboard bukan bottleneck utama; yang mengikat adalah <strong>CPU Supabase + Disk IO budget + saturasi worker PostgREST</strong>. Koneksi langsung hanya relevan untuk <code>pg_dump</code> dan migrasi.</p>
+</blockquote>
+<p><strong>Pekerjaan yang HARUS selesai di T0 (sebelum promosi apa pun):</strong></p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Pekerjaan</th>
+<th>Effort</th>
+<th>Prioritas</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Rotasi password <code>admin@kidzplayful.app</code> + audit jejak masuk</td>
+<td>1 jam</td>
+<td><strong>P0</strong></td>
+</tr>
+<tr>
+<td>2</td>
+<td>Kredensial <code>tools/</code> → env var + guard anti-produksi</td>
+<td>3 jam</td>
+<td><strong>P0</strong></td>
+</tr>
+<tr>
+<td>3</td>
+<td>Rate limit <code>/api/auth/login</code> &amp; <code>/register</code></td>
+<td>2 jam</td>
+<td><strong>P0</strong></td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>file_size_limit</code> + <code>allowed_mime_types</code> di bucket <code>aset</code></td>
+<td>15 menit</td>
+<td><strong>P0</strong></td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>.limit()</code>/<code>.range()</code> di 19 route handler</td>
+<td>4–6 jam</td>
+<td><strong>P0</strong></td>
+</tr>
+<tr>
+<td>6</td>
+<td>Sentry + <code>instrumentation.ts</code> + <code>error.tsx</code> melaporkan</td>
+<td>3 jam</td>
+<td><strong>P0</strong></td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>/api/health</code> + <code>/api/health/db</code> + uptime monitor</td>
+<td>2 jam</td>
+<td><strong>P0</strong></td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>schema_migrations</code> + <code>0000_baseline.sql</code> + runner</td>
+<td>6 jam</td>
+<td><strong>P0</strong></td>
+</tr>
+<tr>
+<td>9</td>
+<td><code>pg_dump</code> script + uji restore pertama</td>
+<td>4 jam</td>
+<td><strong>P0</strong></td>
+</tr>
+<tr>
+<td>10</td>
+<td><code>ledger.ts</code> anti-telan + tabel <code>ledger_gagal</code></td>
+<td>4 jam</td>
+<td><strong>P0</strong></td>
+</tr>
+<tr>
+<td>11</td>
+<td>Pisah bucket <code>privat</code> untuk <code>bukti/</code> &amp; <code>nota/</code> (lihat F.3)</td>
+<td>1–1,5 hari</td>
+<td><strong>P0</strong> (≤ 2 minggu)</td>
+</tr>
+<tr>
+<td>12</td>
+<td>Branch protection <code>master</code></td>
+<td>15 menit</td>
+<td><strong>P0</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Yang PECAH lebih dulu bila tidak dikerjakan — di T0, hari ini:</strong></p>
+<ol>
+<li><strong>Kredensial admin produksi di repo publik.</strong> 56 kemunculan di 23 skrip, sudah terindeks GitHub code search. Siapa pun bisa login <code>/admin</code> sekarang → akses <code>transaksi_keuangan</code>, <code>pendaftaran_event</code>, data anak. Ini <strong>bukan risiko masa depan, ini kondisi saat ini.</strong></li>
+<li><strong>Bukti bayar ortu &amp; nota keuangan di URL publik permanen.</strong> <code>0007_storage_aset.sql</code>: <code>create policy "aset baca publik" ... for select using (bucket_id = 'aset')</code> + <code>public = true</code> → <code>/storage/v1/object/public/aset/bukti/&lt;Date.now()&gt;.jpg</code> bisa dibrute (nama berbasis timestamp = ruang tebakan kecil). Data pribadi keluarga + bukti transfer bank.</li>
+<li><strong>Egress Supabase Free 5 GB vs kebutuhan ~72 GB/bln.</strong> Sudah pecah pada 500 DAU. Gejalanya bukan error jelas, tapi <strong>throttling / project restriction</strong> — game tampak "gambar tidak muncul".</li>
+<li><strong>Nol backup + 86 migrasi manual di SQL Editor produksi.</strong> Satu <code>delete</code>/<code>drop</code> salah tanpa <code>where</code> = kehilangan permanen. Frekuensi tangan owner di SQL Editor produksi tinggi (86 file dijalankan manual) → probabilitas kejadian tidak kecil.</li>
+<li><strong>Vercel Hobby melarang penggunaan komersial.</strong> Ada <code>store</code>, <code>pesanan</code>, <code>transaksi_keuangan</code>, <code>voucher</code> → ini komersial. Risiko suspensi mendadak tanpa masa tenggang.</li>
+<li><strong>PostgREST 1000 baris tanpa <code>.limit()</code>.</strong> Sudah aktif sekarang bila ada tabel &gt; 1000 baris: laporan keuangan/aktivitas <strong>terpotong silent</strong> → angka di dashboard investor salah tanpa satu pun error.</li>
+</ol>
+<hr />
+<h4 id="t1-2000-dau">T1 — ~2.000 DAU</h4>
+<p><strong>Beban (2× unit):</strong> 24.000 PV/hari · <strong>280.000 query/hari (8,4 jt/bln)</strong> · 900k invocation/bln · egress ~288 GB/bln · FDT ~216 GB/bln · puncak ~2,2 PV/detik → <strong>~26 query/detik</strong>.</p>
+<p><strong>Pemicu naik ke T1</strong> (naik bila <strong>salah satu</strong> terpenuhi 7 hari berturut-turut):</p>
+<table>
+<thead>
+<tr>
+<th>Metrik</th>
+<th>Ambang</th>
+<th>Di mana dilihat</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>p95 TTFB <code>/main/[anakId]</code></td>
+<td>&gt; 1.500 ms</td>
+<td>Vercel → Observability → per-route p95</td>
+</tr>
+<tr>
+<td>CPU Supabase rata-rata harian</td>
+<td>&gt; 40%</td>
+<td>Supabase → Reports → Database</td>
+</tr>
+<tr>
+<td>CPU spike &gt; 80%</td>
+<td>&gt; 5 menit/hari</td>
+<td>idem</td>
+</tr>
+<tr>
+<td><strong>Disk IO budget tersisa</strong></td>
+<td>&lt; 80%</td>
+<td>Supabase → Reports → Database → Disk IO</td>
+</tr>
+<tr>
+<td>Ukuran DB</td>
+<td>&gt; 400 MB (limit Free 500 MB)</td>
+<td>Supabase → Settings → Usage</td>
+</tr>
+<tr>
+<td>Egress Supabase</td>
+<td>&gt; 4 GB/bln (Free) atau &gt; 200 GB (Pro)</td>
+<td>Supabase → Usage</td>
+</tr>
+<tr>
+<td>Function invocation Vercel</td>
+<td>&gt; 700k/bln</td>
+<td>Vercel → Usage</td>
+</tr>
+<tr>
+<td>Vercel GB-jam</td>
+<td>&gt; 80/bln (limit Hobby 100)</td>
+<td>Vercel → Usage</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Plan &amp; biaya T1:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>USD/bln</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Vercel Pro</td>
+<td>20 🔍</td>
+</tr>
+<tr>
+<td>Supabase Pro</td>
+<td>25 🔍</td>
+</tr>
+<tr>
+<td>Compute <strong>Small</strong> (2 GB RAM) — net setelah credit $10</td>
+<td>+5…15 🔍</td>
+</tr>
+<tr>
+<td>Egress 288 GB → 38 GB over × $0,09</td>
+<td>3,4</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td><strong>~$55–65</strong> (tanpa optimasi egress bisa $85)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Pekerjaan yang HARUS selesai SEBELUM masuk T1:</strong></p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Pekerjaan</th>
+<th>Dampak</th>
+<th>Effort</th>
+<th>Prasyarat</th>
+<th>Prio</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong><code>catatHasilCore</code> berhenti menarik seluruh <code>hasil_main</code></strong> → kolom agregat di <code>anak</code> (<code>total_selesai</code>, <code>mesin_mask</code>, <code>ada_bintang3</code>) atau satu RPC <code>catat_hasil_main()</code> SECURITY DEFINER; 13 op → 1–2</td>
+<td>Hilangkan pertumbuhan biaya seumur akun</td>
+<td>1–2 hari</td>
+<td>migrasi + backfill</td>
+<td><strong>P1 (blocker T1)</strong></td>
+</tr>
+<tr>
+<td>2a</td>
+<td><code>proxy.ts</code>: matcher kecualikan <code>.css/.js/.woff2/sitemap.xml/robots.txt/_next/data</code></td>
+<td>Hentikan invocation + <code>auth.getUser()</code> untuk sub-resource</td>
+<td>15 menit</td>
+<td>—</td>
+<td><strong>P0</strong></td>
+</tr>
+<tr>
+<td>2b</td>
+<td><code>auth.getUser()</code> → <code>auth.getClaims()</code> (verifikasi tanda tangan <strong>lokal</strong>, bukan membaca token tanpa verifikasi — lihat §9 butir 4)</td>
+<td>−1 round-trip Auth per PV (−432k/bln per 1.000 DAU) + −50…150 ms TTFB</td>
+<td>3–4 jam</td>
+<td><strong>Asymmetric JWT signing keys aktif</strong> 🔍</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Hilangkan <code>auth.getUser()</code> ganda di <code>/main</code> (pakai 1× lalu teruskan <code>user</code>)</td>
+<td>−2 dari 20 round-trip</td>
+<td>2 jam</td>
+<td>—</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>aktivitas</code>: sampling (1:5) atau batch per sesi; turunkan 3 index → 1 komposit</td>
+<td>Kurangi write amplification 3×</td>
+<td>3 jam</td>
+<td>—</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>riwayat_kelas</code> upsert keluar dari jalur GET → Server Action fire-and-forget dari client</td>
+<td>Hilangkan WRITE saat prefetch/crawler</td>
+<td>2 jam</td>
+<td>—</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>ChatKonsultasi.tsx:66</code>: polling 3 s → <code>?after=&lt;id&gt;</code> + <code>.limit(50)</code>, interval 5 s + backoff saat tab tidak fokus</td>
+<td>20 req/menit/ortu × N</td>
+<td>3 jam</td>
+<td>—</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>Aset game: <code>cacheControl</code> setahun + preset 256 px</strong> (BUKAN <code>next/image</code> — lihat E.4 &amp; §9)</td>
+<td>Egress Supabase turun ~20×</td>
+<td>1,5 jam</td>
+<td>—</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Strategi cache: <code>revalidate</code> eksplisit + perluas <code>unstable_cache</code>; ganti sebagian dari <strong>160 <code>revalidatePath</code></strong> ke tag</td>
+<td>Turunkan SSR &amp; query/PV</td>
+<td>2–3 hari</td>
+<td>—</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>9</td>
+<td><code>vercel.json</code>: <code>functions.maxDuration</code> per grup route</td>
+<td>Query lari kencang gagal cepat, bukan bakar GB-jam</td>
+<td>30 menit</td>
+<td>Pro</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Load test k6 pada <code>/main/[anakId]</code> + <code>POST /api/hasil-main</code></td>
+<td>Validasi angka tabel A.2</td>
+<td>1 hari</td>
+<td>staging/beta</td>
+<td>P1</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Yang PECAH lebih dulu di T1 bila tidak dikerjakan:</strong></p>
+<ol>
+<li><strong><code>catatHasilCore</code> — ini yang pertama tumbang.</strong> <code>supabase.from('hasil_main').select('mesin,bintang,tanggal,tema_id,paket_id').eq('anak_id', ...)</code> <strong>tanpa limit</strong>. Anak aktif 6 bulan = 3 sesi × 180 hari ≈ <strong>540 baris</strong>. Pada 2.000 DAU = 6.000 sesi/hari → <strong>3,2 juta baris/hari ditarik hanya untuk menghitung lencana</strong>. Konsekuensi ganda: (a) CPU + Disk IO Supabase, (b) begitu satu anak melewati <strong>1000 baris</strong>, PostgREST memotong silent → <code>evaluasiLencana</code> salah hitung dan <code>catch{}</code> di baris 118 menelan semuanya → <strong>anak kehilangan lencana &amp; streak tanpa error apa pun</strong>. Biaya per sesi tumbuh seumur akun; artinya masalah ini memburuk walaupun DAU tetap.</li>
+<li><strong><code>/api/auth/login</code> &amp; <code>/register</code> tanpa rate limit</strong> + password admin publik. Pada 2.000 DAU, satu bot 50 req/detik = 4,3 juta percobaan/hari: menghabiskan kuota Auth Supabase, memicu throttle yang <strong>mengunci login ortu asli</strong>, dan membakar function invocation Vercel.</li>
+<li><strong>Batas 1000 baris di 19 route API.</strong> Pada T1 <code>produk</code>, <code>event</code>, <code>pesanan</code>, <code>transaksi_keuangan</code> melewati 1000 → aplikasi mobile Flutter menerima data terpotong, halaman keuangan menampilkan total yang salah. <strong>Tidak ada error, tidak ada alert.</strong></li>
+<li><strong>75 halaman SSR tanpa <code>revalidate</code>.</strong> 900k invocation/bln × durasi rata-rata melar karena p95 DB naik → GB-jam Vercel mendaki lebih cepat dari trafik.</li>
+<li><strong><code>aktivitas</code> 120k insert/bln per 1.000 DAU = 240k/bln di T1</strong> dengan 3 index yang di-update tiap insert, di jalur PAGE VIEW, fire-and-forget → kegagalan tak terlihat, tapi biaya IO-nya tetap dibayar.</li>
+</ol>
+<hr />
+<h4 id="t2-10000-dau">T2 — ~10.000 DAU</h4>
+<p><strong>Beban (10× unit):</strong> 120.000 PV/hari · <strong>1,4 juta query/hari (42 jt/bln)</strong> · 4,5 jt invocation/bln · egress Supabase ~1,44 TB/bln · FDT ~1,08 TB/bln · puncak ~11 PV/detik → <strong>~90 query/detik</strong>.</p>
+<p><strong>Pemicu naik ke T2:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Metrik</th>
+<th>Ambang</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CPU Supabase p95 (di Small)</td>
+<td>&gt; 60%</td>
+</tr>
+<tr>
+<td>Egress Supabase</td>
+<td>&gt; 200 GB/bln (menuju 250 GB termasuk)</td>
+</tr>
+<tr>
+<td>Ukuran DB</td>
+<td>&gt; 6 GB (dari 8 GB termasuk)</td>
+</tr>
+<tr>
+<td>p95 TTFB seluruh site</td>
+<td>&gt; 1.000 ms</td>
+</tr>
+<tr>
+<td>Pooler connection utilization</td>
+<td>&gt; 60%</td>
+</tr>
+<tr>
+<td>Error rate (Sentry / Vercel)</td>
+<td>&gt; 1% request</td>
+</tr>
+<tr>
+<td>Vercel FDT</td>
+<td>&gt; 800 GB/bln</td>
+</tr>
+<tr>
+<td>Vercel GB-jam</td>
+<td>&gt; 800/bln</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Plan &amp; biaya T2 (dua skenario — argumen kuat untuk mengerjakan optimasi T1 dulu):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Tanpa optimasi</th>
+<th>Dengan optimasi Bab E + F</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Vercel Pro</td>
+<td>20</td>
+<td>20</td>
+</tr>
+<tr>
+<td>Observability Plus</td>
+<td>10</td>
+<td>10</td>
+</tr>
+<tr>
+<td>FDT over 1 TB</td>
+<td>~$12</td>
+<td>~$0</td>
+</tr>
+<tr>
+<td>Fluid compute GB-jam over</td>
+<td>~$45</td>
+<td>~$0</td>
+</tr>
+<tr>
+<td>Supabase Pro</td>
+<td>25</td>
+<td>25</td>
+</tr>
+<tr>
+<td>Compute <strong>Medium</strong> (4 GB) net</td>
+<td>+50 🔍</td>
+<td>+50 🔍</td>
+</tr>
+<tr>
+<td>Egress Supabase over 250 GB</td>
+<td><strong>~$107</strong></td>
+<td>~$16</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td><strong>~$270/bln</strong></td>
+<td><strong>~$120–150/bln</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Pekerjaan wajib sebelum T2:</strong></p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Pekerjaan</th>
+<th>Effort</th>
+<th>Prio</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Arsip/partisi bulanan <code>aktivitas</code> + <code>hasil_main</code> (cron Vercel + tabel <code>*_arsip</code>)</td>
+<td>2–3 hari</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>transaksi_keuangan</code>: tabel rollup/materialized view bulanan di atas RPC dari D.3 (RPC-nya sendiri sudah P0, bukan P2)</td>
+<td>1 hari</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Rate limit terdistribusi (Vercel Firewall atau Upstash)</td>
+<td>1 hari</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>4</td>
+<td>CDN (Cloudflare gratis) di depan Supabase Storage / pindahkan aset statis game ke <code>public/</code> Vercel</td>
+<td>1 hari</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Aktifkan <strong>PITR</strong> (~$100/bln 🔍)</td>
+<td>1 jam</td>
+<td>P2</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Environment <strong>beta/staging identik</strong> + uji migrasi di sana lebih dulu</td>
+<td>1 hari</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Read replica untuk halaman laporan/investor (butuh compute ≥ Small 🔍)</td>
+<td>1 hari</td>
+<td>P2</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Yang pecah di T2:</strong> halaman admin keuangan <strong>timeout</strong> (8 halaman full-scan <code>transaksi_keuangan</code> yang tumbuh monoton tanpa arsip, dengan <code>maxDuration</code> default ~10 s); <code>aktivitas</code> ≈ 1,2 juta baris/bulan membuat halaman analitik tak bisa dibuka; biaya egress naik ke ~$107/bln hanya karena aset tanpa cache panjang dan berukuran 3-4× lebih besar dari yang pernah terlihat; ChatKonsultasi polling 3 s × ratusan ortu jadi sumber trafik konstan terbesar.</p>
+<hr />
+<h4 id="t3-50000-dau">T3 — 50.000+ DAU</h4>
+<p><strong>Beban (50× unit):</strong> 600.000 PV/hari · <strong>7 juta query/hari (210 jt/bln)</strong> · 22,5 jt invocation/bln · egress ~7,2 TB/bln · FDT ~5,4 TB/bln · puncak ~55 PV/detik → <strong>~450 query/detik</strong>.</p>
+<p><strong>Pemicu:</strong> CPU &gt; 70% di Medium · insert <code>hasil_main</code> &gt; 50/detik · <code>aktivitas</code> &gt; 50 juta baris · egress &gt; 2 TB/bln · p95 write <code>POST /api/hasil-main</code> &gt; 800 ms.</p>
+<p><strong>Biaya:</strong> tanpa optimasi <strong>~$1.900–2.100/bln</strong> (FDT over ~$660, compute over ~$270, egress Supabase ~$625, XL compute, PITR, read replica). Dengan CDN + cache agresif + partisi: <strong>~$700–900/bln</strong>. Pada level ini masuk akal negosiasi Vercel Team/Enterprise dan Supabase komitmen tahunan 🔍.</p>
+<p><strong>Wajib sebelum T3:</strong> partisi tabel deklaratif (<code>hasil_main</code>, <code>aktivitas</code> per bulan); <strong>queue</strong> (tabel job + Vercel Cron, atau QStash) untuk gamifikasi/notifikasi keluar dari jalur request; read replica untuk semua baca laporan; staging identik + smoke test otomatis; RPO ≤ 5 menit. <strong>Yang pecah tanpa itu:</strong> satu primary Postgres jadi titik tunggal untuk 450 query/detik campur write-heavy → lock contention di <code>anak.koin</code> update (setiap sesi game meng-update baris <code>anak</code> yang sama untuk anak yang sama; dengan 3 sesi/hari tak bermasalah, tapi jalur <code>update anak set koin</code> + <code>upsert lencana_anak</code> dalam satu <code>Promise.all</code> tanpa transaksi = <strong>race koin</strong> yang di T3 pasti muncul).</p>
+<hr />
+<h2 id="3-bab-b-ketersediaan-observability">3. Bab B — Ketersediaan &amp; observability</h2>
+<h3 id="b1-health-check-dua-lapis-jangan-satu-endpoint-gemuk">B.1 Health-check: dua lapis (jangan satu endpoint gemuk)</h3>
+<p><strong>Prinsip:</strong> endpoint yang dipanggil tiap menit oleh monitor <strong>tidak boleh menyentuh DB</strong>; endpoint yang menyentuh DB <strong>harus dilindungi</strong> agar tidak jadi amplifier serangan.</p>
+<p><strong>Yang DICEK:</strong> proses hidup, commit SHA, region, satu <code>HEAD count</code> ke tabel 1-baris (<code>pengaturan_menu</code>), versi migrasi terpasang.
+<strong>Yang TIDAK BOLEH dicek:</strong> <code>auth.getUser()</code> (round-trip Auth = vektor beban ke kuota Auth), <code>storage.list()</code>, RPC <code>laporan_engagement()</code>, tabel besar (<code>transaksi_keuangan</code>/<code>hasil_main</code>/<code>aktivitas</code>), dan <strong>tidak boleh ada satu pun operasi TULIS</strong> (jangan sekali-kali memanggil <code>catatAktivitas</code> di sini).</p>
+<h4 id="artefak-srcappapihealthroutets">Artefak: <code>src/app/api/health/route.ts</code></h4>
+<pre><code class="language-ts">// src/app/api/health/route.ts — LIVENESS. Wajib murah: tanpa DB, tanpa Auth, tanpa Storage.
+// Dipanggil uptime monitor tiap 60 detik. Aman dipublikasikan.
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+export async function GET() {
+  return Response.json(
+    {
+      ok: true,
+      layanan: 'kidzplayful-web',
+      commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? 'lokal',
+      env: process.env.VERCEL_ENV ?? 'development',
+      region: process.env.VERCEL_REGION ?? 'lokal',
+      waktu: new Date().toISOString(),
+    },
+    { status: 200, headers: { 'cache-control': 'no-store' } },
+  );
+}
+</code></pre>
+<h4 id="artefak-srcappapihealthdbroutets">Artefak: <code>src/app/api/health/db/route.ts</code></h4>
+<pre><code class="language-ts">// src/app/api/health/db/route.ts — READINESS. Dilindungi header rahasia (balas 404 bila salah,
+// bukan 401, supaya tidak mengumumkan keberadaannya). Dipanggil monitor tiap 5 menit.
+//
+// DICEK      : (1) DB terjangkau via HEAD count tabel 1-baris, (2) versi skema &gt;= yang dibutuhkan kode.
+// TIDAK DICEK: auth.getUser(), storage, RPC laporan, tabel besar. TIDAK ADA operasi tulis.
+import { createClient } from '@supabase/supabase-js';
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+export const maxDuration = 10;
+
+const BATAS_MS = 2000;
+const MIGRASI_MINIMAL = process.env.MIGRASI_MINIMAL ?? '0086';
+
+export async function GET(req: Request) {
+  if (req.headers.get('x-health-key') !== process.env.HEALTH_KEY) {
+    return new Response('Not Found', { status: 404 });
+  }
+
+  const s = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,       // perlu utk baca schema_migrations (RLS tertutup)
+    { auth: { persistSession: false } },
+  );
+
+  const t0 = Date.now();
+  const cek: Record&lt;string, unknown&gt; = {};
+  let sehat = true;
+
+  // (1) DB terjangkau — tabel konfigurasi 1 baris, HEAD saja (tanpa transfer data)
+  const db = (await Promise.race([
+    s.from('pengaturan_menu').select('id', { count: 'exact', head: true }).eq('id', 1),
+    new Promise((r) =&gt; setTimeout(() =&gt; r({ error: { message: `timeout &gt; ${BATAS_MS}ms` } }), BATAS_MS)),
+  ])) as { error?: { message: string } | null };
+  cek.db = db?.error ? { ok: false, pesan: db.error.message } : { ok: true };
+  if (db?.error) sehat = false;
+
+  // (2) Deteksi &quot;kode mendahului migrasi&quot; — insiden kuota_* tidak boleh terulang tanpa terdeteksi
+  const { data: mig } = await s
+    .from('schema_migrations').select('versi').order('versi', { ascending: false }).limit(1);
+  const versiDb = mig?.[0]?.versi ?? '0000';
+  const migrasiOk = versiDb &gt;= MIGRASI_MINIMAL;
+  cek.migrasi = { versi_db: versiDb, minimal_kode: MIGRASI_MINIMAL, ok: migrasiOk };
+  if (!migrasiOk) sehat = false;
+
+  return Response.json(
+    { ok: sehat, durasi_ms: Date.now() - t0, commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7), cek },
+    { status: sehat ? 200 : 503, headers: { 'cache-control': 'no-store' } },
+  );
+}
+</code></pre>
+<p><strong>Dampak:</strong> deteksi mati total &lt; 2 menit; deteksi race kode-vs-migrasi &lt; 5 menit (insiden <code>kuota_*</code> akan tertangkap otomatis). <strong>Effort 2 jam. Prasyarat:</strong> tabel <code>schema_migrations</code> (Bab C), env <code>HEALTH_KEY</code>. <strong>Prioritas P0.</strong></p>
+<h3 id="b2-error-tracking-perbandingan-singkat-keputusan">B.2 Error tracking: perbandingan singkat &amp; keputusan</h3>
+<table>
+<thead>
+<tr>
+<th>Opsi</th>
+<th>Free tier 🔍</th>
+<th>Plus</th>
+<th>Minus untuk kasus ini</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Sentry</strong></td>
+<td>5.000 error/bln, ~10k span, retensi 30 hari, 1 seat</td>
+<td>SDK Next.js 16 resmi (<code>instrumentation.ts</code> + <code>onRequestError</code>), menangkap Server Component / Server Action / Route Handler / proxy; source map otomatis; integrasi Vercel set env sendiri</td>
+<td>+30–40 KB bundle client; kuota free habis cepat kalau noise tak difilter</td>
+</tr>
+<tr>
+<td>Vercel Log Drain → Axiom</td>
+<td>~500 MB/bln</td>
+<td>Zero SDK, satu tempat dengan runtime log</td>
+<td>Bukan error tracker: tak ada grouping/dedup/stack-trace-aware; alert manual</td>
+</tr>
+<tr>
+<td>Highlight.io</td>
+<td>murah hati</td>
+<td>session replay bagus</td>
+<td>ekosistem lebih kecil, dokumen Next 16 tertinggal</td>
+</tr>
+<tr>
+<td>GlitchTip (self-host)</td>
+<td>gratis</td>
+<td>API-compatible Sentry</td>
+<td>butuh server + backup → menambah 1 sistem yang harus dijaga; <strong>anti-tujuan untuk tim 1 orang</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Keputusan: Sentry (Developer/free).</strong> Alasan spesifik: satu-satunya yang punya <code>onRequestError</code> sehingga error yang saat ini <strong>hilang total</strong> (<code>src/app/error.tsx</code> sengaja tidak memakai objek <code>error</code>) langsung terlaporkan tanpa mengubah 84 halaman satu-satu. Session Replay &amp; Profiling <strong>dimatikan</strong> di awal untuk menghemat kuota. <code>tracesSampleRate: 0.05</code>.</p>
+<h4 id="artefak-instrumentationts-root-proyek-sejajar-nextconfigts">Artefak: <code>instrumentation.ts</code> (root proyek, sejajar <code>next.config.ts</code>)</h4>
+<pre><code class="language-ts">// instrumentation.ts — dijalankan Next.js sebelum kode aplikasi, di semua runtime.
+import * as Sentry from '@sentry/nextjs';
+
+export async function register() {
+  if (process.env.NEXT_RUNTIME === 'nodejs') await import('./sentry.server.config');
+  if (process.env.NEXT_RUNTIME === 'edge') await import('./sentry.edge.config'); // src/proxy.ts
+}
+
+// Hook Next.js: menangkap error dari Server Component, Server Action, Route Handler, dan proxy.
+// Ini yang menggantikan &quot;error hilang&quot; di src/app/error.tsx.
+export const onRequestError = Sentry.captureRequestError;
+</code></pre>
+<h4 id="artefak-sentryserverconfigts">Artefak: <code>sentry.server.config.ts</code></h4>
+<pre><code class="language-ts">import * as Sentry from '@sentry/nextjs';
+
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  environment: process.env.VERCEL_ENV ?? 'development',
+  release: process.env.VERCEL_GIT_COMMIT_SHA,
+  tracesSampleRate: 0.05,        // hemat kuota free tier
+  profilesSampleRate: 0,
+  sendDefaultPii: false,         // WAJIB: aplikasi anak
+  ignoreErrors: ['NEXT_REDIRECT', 'NEXT_NOT_FOUND'], // redirect() bukan error
+  beforeSend(ev) {
+    delete ev.request?.cookies;                       // cookie Supabase = token sesi
+    if (ev.request?.headers) { delete ev.request.headers.cookie; delete ev.request.headers.authorization; }
+    return ev;
+  },
+});
+</code></pre>
+<h4 id="artefak-srcapperrortsx-perbaikan-minimal">Artefak: <code>src/app/error.tsx</code> (perbaikan minimal)</h4>
+<pre><code class="language-tsx">'use client';
+import { useEffect } from 'react';
+import * as Sentry from '@sentry/nextjs';
+
+export default function Error({ error, reset }: { error: Error &amp; { digest?: string }; reset: () =&gt; void }) {
+  useEffect(() =&gt; { Sentry.captureException(error); }, [error]);
+  return (
+    &lt;main /* ...gaya lama tetap... */&gt;
+      &lt;div style={{ fontSize: 60 }}&gt;😅&lt;/div&gt;
+      &lt;h1&gt;Yah, ada sedikit gangguan&lt;/h1&gt;
+      &lt;p&gt;Coba lagi sebentar ya.&lt;/p&gt;
+      &lt;button className=&quot;kp-btn&quot; onClick={reset}&gt;Coba lagi&lt;/button&gt;
+      {error.digest &amp;&amp; &lt;small style={{ opacity: .5 }}&gt;kode: {error.digest}&lt;/small&gt;}
+    &lt;/main&gt;
+  );
+}
+</code></pre>
+<p><strong>Dampak:</strong> dari 0% error terlihat → ~95% terlihat. <strong>Effort 3 jam</strong> (termasuk wizard <code>npx @sentry/wizard -i nextjs</code>). <strong>Prasyarat:</strong> akun Sentry, env <code>SENTRY_DSN</code> + <code>SENTRY_AUTH_TOKEN</code> (source map). <strong>P0.</strong></p>
+<h3 id="b3-logging-terstruktur-minimal-cocok-untuk-1-orang">B.3 Logging terstruktur minimal (cocok untuk 1 orang)</h3>
+<p>Aturan: <strong>satu util, satu baris JSON per event, tanpa dependensi.</strong> Vercel Runtime Logs mem-parse JSON otomatis; retensi lebih dari 1 jam butuh Log Drain (Pro) → arahkan ke Axiom free 🔍 hanya bila sudah terasa perlu (P2).</p>
+<h4 id="artefak-srclibobslogts">Artefak: <code>src/lib/obs/log.ts</code></h4>
+<pre><code class="language-ts">// src/lib/obs/log.ts — log terstruktur. SATU baris = SATU JSON.
+// ATURAN PRIVASI (wajib): DILARANG menulis nama anak, tanggal_lahir, email ortu, nomor WA,
+// URL bukti bayar. Pakai identitas ter-hash: ortu_hash / anak_hash.
+import { createHash } from 'node:crypto';
+
+type Level = 'info' | 'warn' | 'error';
+
+export function hashId(id?: string | null) {
+  return id ? createHash('sha256').update(id).digest('hex').slice(0, 12) : null;
+}
+
+export function log(level: Level, event: string, fields: Record&lt;string, unknown&gt; = {}) {
+  const baris = JSON.stringify({
+    ts: new Date().toISOString(),
+    level,
+    event,                                    // contoh: 'ledger.gagal', 'skor.catat', 'auth.rate_limit'
+    commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7),
+    env: process.env.VERCEL_ENV ?? 'dev',
+    ...fields,
+  });
+  if (level === 'error') console.error(baris);
+  else if (level === 'warn') console.warn(baris);
+  else console.log(baris);
+}
+</code></pre>
+<p><strong>Daftar event minimal yang wajib di-log (10 event, bukan 100):</strong>
+<code>auth.login_gagal</code> · <code>auth.rate_limit</code> · <code>ledger.gagal</code> · <code>skor.catat_fallback</code> (cabang <code>catch</code> di <code>skor-core.ts</code>) · <code>migrasi.tertinggal</code> · <code>db.error</code> · <code>storage.unggah_gagal</code> · <code>postgrest.terpotong</code> (saat hasil = tepat 1000 baris → tanda pemotongan silent) · <code>kuota.hampir_habis</code> · <code>cron.selesai</code>.</p>
+<blockquote>
+<p><code>postgrest.terpotong</code> adalah alat murah yang langsung mengubah kegagalan silent menjadi terlihat: bungkus reader panas dengan cek <code>if (data?.length === 1000) log('warn','postgrest.terpotong',{tabel})</code>. <strong>Effort 1 jam, dampak besar.</strong> P0.</p>
+</blockquote>
+<p><strong>Effort util + penyisipan 10 event: 4 jam. P0.</strong></p>
+<h3 id="b4-alert-yang-layak-membangunkan-orang-maksimal-6">B.4 Alert yang layak membangunkan orang (maksimal 6)</h3>
+<p>Pisahkan tegas <strong>PAGE</strong> (bunyi, WhatsApp/telepon) dari <strong>DIGEST</strong> (email harian, tidak membangunkan).</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Alert</th>
+<th>Ambang</th>
+<th>Kanal</th>
+<th>Mengapa layak (kait ke audit)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Situs mati</strong></td>
+<td><code>/api/health</code> gagal 2× berturut (interval 60 s)</td>
+<td>PAGE</td>
+<td>tak ada monitor sama sekali sekarang</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Kegagalan tulis keuangan</strong></td>
+<td><code>event=ledger.gagal</code> ≥ 1 kejadian</td>
+<td>PAGE</td>
+<td><code>ledger.ts</code> saat ini <code>catch {}</code> kosong → uang hilang dari catatan tanpa jejak</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Lonjakan error</strong></td>
+<td>error rate &gt; 2% request selama 5 menit <strong>ATAU</strong> &gt; 25 event error / 5 menit</td>
+<td>PAGE</td>
+<td>mayoritas kegagalan Supabase ditelan; tanpa ini, rilis rusak baru diketahui dari keluhan ortu</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Skema tertinggal dari kode</strong></td>
+<td><code>/api/health/db</code> balas 503 dengan <code>cek.migrasi.ok=false</code></td>
+<td>PAGE</td>
+<td>mengulang insiden <code>kuota_*</code> (daftar event kosong, user gagal daftar)</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Supabase kritis</strong></td>
+<td>CPU &gt; 85% selama 10 menit <strong>ATAU</strong> disk &gt; 85% <strong>ATAU</strong> Disk IO budget &lt; 20%</td>
+<td>PAGE</td>
+<td>Micro/Small punya IO burst budget yang bisa habis → seluruh DB melambat</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>Serangan auth</strong></td>
+<td>&gt; 100 <code>auth.login_gagal</code> / 5 menit dari 1 IP, atau &gt; 500 total / 5 menit</td>
+<td>PAGE</td>
+<td><code>/api/auth/*</code> tanpa rate limit <strong>dan</strong> password admin ada di repo publik</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Digest (email harian, TIDAK page):</strong> p95 TTFB per route, jumlah <code>postgrest.terpotong</code>, proyeksi egress &amp; GB-jam bulan ini, pertumbuhan ukuran DB &amp; bucket, jumlah baris <code>ledger_gagal</code> yang belum di-replay, jumlah <code>skor.catat_fallback</code>.</p>
+<h4 id="artefak-konfigurasi-alert-sentry-alerts-create-alert">Artefak: konfigurasi alert (Sentry — Alerts → Create Alert)</h4>
+<pre><code class="language-yaml"># Alert 2 — Kegagalan tulis keuangan (paling ketat, ambang 1)
+nama: &quot;P0 Keuangan: ledger gagal&quot;
+tipe: Issue Alert
+filter:
+  - &quot;message&quot; contains &quot;ledger.gagal&quot;      # atau tags: area = keuangan
+kondisi:
+  - &quot;Jumlah event&quot; &gt;= 1 dalam 1 menit
+aksi:
+  - Notifikasi: WhatsApp via webhook / email owner
+  - Prioritas: critical
+frekuensi_ulang: 5 menit
+
+# Alert 3 — Lonjakan error
+nama: &quot;P0 Lonjakan error produksi&quot;
+tipe: Metric Alert
+metrik: failure_rate()  # events dengan level error / total
+filter: environment:production
+kondisi:
+  - kritis: &quot;&gt; 2%&quot; selama 5 menit
+  - peringatan: &quot;&gt; 1%&quot; selama 10 menit
+aksi: kritis -&gt; WhatsApp; peringatan -&gt; email
+</code></pre>
+<pre><code class="language-yaml"># Alert 1 &amp; 4 — Better Stack / UptimeRobot (free tier 🔍)
+monitor_liveness:
+  url: https://www.kidzplayful.com/api/health
+  interval: 60s
+  gagal_setelah: 2 kali
+  wilayah: [Mumbai, Singapore]
+  eskalasi: WhatsApp + telepon setelah 3 menit
+monitor_readiness:
+  url: https://www.kidzplayful.com/api/health/db
+  header: { x-health-key: &quot;&lt;HEALTH_KEY&gt;&quot; }
+  interval: 300s
+  harapkan_status: 200
+  gagal_setelah: 2 kali
+</code></pre>
+<p><strong>Alert 5 (Supabase)</strong>: notifikasi bawaan Supabase terbatas 🔍 → paling andal adalah <strong>Vercel Cron harian</strong> memanggil Management API lalu kirim notifikasi:</p>
+<pre><code class="language-json">// vercel.json (versi target)
+{
+  &quot;$schema&quot;: &quot;https://openapi.vercel.sh/vercel.json&quot;,
+  &quot;regions&quot;: [&quot;bom1&quot;],
+  &quot;functions&quot;: {
+    &quot;src/app/api/**/route.ts&quot;: { &quot;maxDuration&quot;: 15 },
+    &quot;src/app/admin/keuangan/**&quot;: { &quot;maxDuration&quot;: 60 }
+  },
+  &quot;crons&quot;: [
+    { &quot;path&quot;: &quot;/api/cron/cek-kuota&quot;,        &quot;schedule&quot;: &quot;0 1 * * *&quot; },
+    { &quot;path&quot;: &quot;/api/cron/arsip-aktivitas&quot;,  &quot;schedule&quot;: &quot;30 18 * * *&quot; }
+  ]
+}
+</code></pre>
+<p>Route cron dilindungi <code>Authorization: Bearer ${CRON_SECRET}</code>. <strong>Cron sub-harian &amp; &gt; 2 cron butuh Vercel Pro</strong> 🔍.</p>
+<p><strong>Effort total B.4: 4 jam. Prasyarat:</strong> Sentry + health endpoint. <strong>P0</strong> (alert 1–4), <strong>P1</strong> (alert 5–6).</p>
+<h3 id="b5-rate-limiting-penempatan-tanpa-redis">B.5 Rate limiting: penempatan tanpa Redis</h3>
+<table>
+<thead>
+<tr>
+<th>Opsi</th>
+<th>Cara kerja</th>
+<th>Plus</th>
+<th>Minus</th>
+<th>Cocok untuk</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>A. Vercel Firewall (rate limit rule)</strong></td>
+<td>di edge, sebelum function</td>
+<td>tidak memakan invocation sama sekali; persisten lintas instance; bisa diubah tanpa deploy; bisa CAPTCHA/challenge</td>
+<td>butuh <strong>Pro</strong> 🔍; dikonfigurasi di dashboard (tidak versioned di git)</td>
+<td><code>/api/auth/*</code>, <code>/login</code>, <code>/register</code> — <strong>pilihan akhir</strong></td>
+</tr>
+<tr>
+<td><strong>B. In-memory di route (<code>Map</code> + sliding window)</strong></td>
+<td>per instance function</td>
+<td>gratis, 0 dependensi, 30 menit kerja</td>
+<td><strong>reset tiap cold start</strong>; tiap instance punya hitungan sendiri → serangan terdistribusi lolos; serverless bisa punya puluhan instance</td>
+<td>stop-gap hari ini + lapisan kedua permanen</td>
+</tr>
+<tr>
+<td><strong>C. Upstash Redis (<code>@upstash/ratelimit</code>)</strong></td>
+<td>KV global</td>
+<td>akurat lintas instance &amp; region; kuota per-user, bukan hanya per-IP; free ~10k command/hari 🔍</td>
+<td>+1 hop jaringan (~10–30 ms dari <code>bom1</code>, pilih region terdekat Mumbai); +1 vendor &amp; 1 lagi yang bisa mati</td>
+<td>T2, saat butuh kuota per-user (mis. <code>POST /api/hasil-main</code>)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Keputusan bertingkat:</strong>
+- <strong>Sekarang (P0, 2 jam):</strong> Opsi <strong>B</strong> di <code>/api/auth/login</code>, <code>/api/auth/register</code>, <code>/api/auth/refresh</code> — 5 percobaan/menit per IP + <strong>penundaan konstan 300 ms pada setiap balasan gagal</strong> (meredam brute force jauh lebih efektif daripada counter di lingkungan serverless) + log <code>auth.rate_limit</code>.
+- <strong>Saat naik Vercel Pro (P0, 1 jam):</strong> tambahkan Opsi <strong>A</strong> sebagai lapisan luar: 20 req/menit/IP ke <code>/api/auth/*</code>, 100 req/menit/IP global, challenge untuk ASN datacenter. <strong>Dokumentasikan rule-nya di dokumen ini</strong> karena tidak tersimpan di git.
+- <strong>T2 (P2, 1 hari):</strong> Opsi <strong>C</strong> untuk kuota per-user pada endpoint tulis (<code>/api/hasil-main</code>, <code>/api/pesanan</code>).</p>
+<p><strong>Trade-off khusus <code>/api/auth/*</code>:</strong> endpoint ini <strong>tidak</strong> lewat <code>proxy.ts</code> (matcher mengecualikan <code>api</code>), jadi rate limit <strong>harus</strong> dipasang di route handler-nya sendiri atau di lapisan edge Firewall — bukan di middleware. Ini sering salah diasumsikan; catat eksplisit di dokumen.</p>
+<h3 id="b6-pola-jangan-telan-error-pengganti-catch-kosong">B.6 Pola "jangan telan error" pengganti <code>catch {}</code> kosong</h3>
+<p>Tiga aturan, satu tabel outbox, satu helper.</p>
+<p><strong>Aturan 1 — kegagalan diam dilarang.</strong> Semua <code>const { data } = await supabase...</code> menjadi <code>const { data, error } = ...</code> dan <code>error</code> <strong>harus</strong> ditangani salah satu dari: (a) <code>throw</code>, (b) dilaporkan lewat <code>log('error', ...)</code> + Sentry, (c) <code>bolehGagal()</code> eksplisit dengan komentar alasan.</p>
+<p><strong>Aturan 2 — jalur keuangan tidak boleh punya jalan diam sama sekali.</strong> Kegagalan <code>transaksi_keuangan</code> masuk <strong>outbox</strong> yang bisa di-replay.</p>
+<p><strong>Aturan 3 — kegagalan boleh tidak memblok user, tapi TIDAK BOLEH tidak tercatat.</strong></p>
+<h4 id="artefak-tabel-outbox-bagian-dari-migrasi-0087">Artefak: tabel outbox (bagian dari migrasi <code>0087</code>)</h4>
+<pre><code class="language-sql">-- 0087_ledger_gagal.sql — outbox kegagalan tulis keuangan. Tanpa ini, catch{} kosong = uang hilang.
+create table if not exists public.ledger_gagal (
+  id          uuid primary key default gen_random_uuid(),
+  payload     jsonb       not null,
+  pesan       text        not null,
+  kode        text,
+  dibuat_at   timestamptz not null default now(),
+  diselesaikan_at timestamptz,
+  catatan     text
+);
+create index if not exists idx_ledger_gagal_belum
+  on public.ledger_gagal(dibuat_at desc) where diselesaikan_at is null;
+
+alter table public.ledger_gagal enable row level security;
+drop policy if exists &quot;admin kelola ledger_gagal&quot; on public.ledger_gagal;
+create policy &quot;admin kelola ledger_gagal&quot; on public.ledger_gagal
+  for all to authenticated using (public.is_admin()) with check (public.is_admin());
+
+insert into public.schema_migrations (versi, nama) values ('0087','ledger_gagal')
+  on conflict (versi) do nothing;
+</code></pre>
+<h4 id="artefak-srclibdataledgerts-versi-baru">Artefak: <code>src/lib/data/ledger.ts</code> versi baru</h4>
+<pre><code class="language-ts">// src/lib/data/ledger.ts — kegagalan keuangan TIDAK BOLEH silent.
+// Kontrak baru: fungsi mengembalikan { ok }. Pemanggil boleh memilih tidak menggagalkan
+// transaksi inti, tapi kegagalan SELALU (1) masuk outbox, (2) ter-log, (3) memicu alert P0.
+import * as Sentry from '@sentry/nextjs';
+import { log } from '@/lib/obs/log';
+import { createClient } from '@/lib/supabase/server';
+import { tanggalWIB } from '@/lib/domain/gamifikasi';
+
+type Supa = Awaited&lt;ReturnType&lt;typeof createClient&gt;&gt;;
+type Hasil = { ok: true } | { ok: false; pesan: string };
+
+export async function catatLedger(s: Supa, row: BarisLedger): Promise&lt;Hasil&gt; {
+  const baris = {
+    arah: row.arah,
+    kategori: row.kategori,
+    jumlah: Math.max(0, Math.floor(Number(row.jumlah) || 0)),
+    tanggal: row.tanggal ?? tanggalWIB(),
+    metode: row.metode ?? null,
+    keterangan: row.keterangan ?? null,
+    ref_tipe: row.ref_tipe ?? null,
+    ref_id: row.ref_id ?? null,
+    lampiran_url: row.lampiran_url ?? null,
+    pic: row.pic ?? null,
+    dibuat_oleh: row.dibuat_oleh ?? null,
+  };
+
+  const { error } = await s.from('transaksi_keuangan').insert(baris);
+  if (!error) return { ok: true };
+
+  // (1) OUTBOX — supaya baris keuangan bisa di-replay admin, bukan hilang
+  const { error: errOutbox } = await s
+    .from('ledger_gagal')
+    .insert({ payload: baris, pesan: error.message, kode: error.code ?? null });
+
+  // (2) LOG TERSTRUKTUR — inilah pengganti `catch {}` kosong
+  log('error', 'ledger.gagal', {
+    arah: baris.arah, kategori: baris.kategori, jumlah: baris.jumlah,
+    ref_tipe: baris.ref_tipe, ref_id: baris.ref_id,
+    kode: error.code, pesan: error.message,
+    outbox: errOutbox ? 'GAGAL_JUGA' : 'tersimpan',
+  });
+
+  // (3) ALERT P0
+  Sentry.captureException(new Error(`ledger.gagal: ${error.message}`), {
+    level: 'fatal',
+    tags: { area: 'keuangan', outbox: errOutbox ? 'gagal' : 'ok' },
+    extra: { ref_tipe: baris.ref_tipe, ref_id: baris.ref_id, jumlah: baris.jumlah },
+  });
+
+  // (4) Tidak throw: transaksi inti user tetap selesai. Tapi pemanggil TAHU dan bisa
+  //     menampilkan &quot;catatan keuangan tertunda&quot; di panel admin.
+  return { ok: false, pesan: error.message };
+}
+</code></pre>
+<p><strong>Catatan penting untuk dokumen:</strong> komentar asli di <code>ledger.ts</code> (<em>"agar transaksi inti tak rusak bila migrasi 0052 belum dijalankan"</em>) adalah <strong>gejala dari masalah Bab C</strong>, bukan alasan yang sah. Setelah pelacak migrasi + urutan rilis expand→migrate→contract berjalan, alasan itu hilang dan <code>try/catch</code> defensif ini boleh dipersempit.</p>
+<h4 id="artefak-helper-umum-srclibobswajibts">Artefak: helper umum <code>src/lib/obs/wajib.ts</code></h4>
+<pre><code class="language-ts">// src/lib/obs/wajib.ts — dua pintu keluar yang sah untuk error Supabase. Tidak ada pintu ketiga.
+import * as Sentry from '@sentry/nextjs';
+import { log } from '@/lib/obs/log';
+
+type Res&lt;T&gt; = { data: T | null; error: { message: string; code?: string } | null };
+
+/** Data WAJIB ada. Gagal = throw (ditangkap error.tsx + onRequestError). */
+export async function harus&lt;T&gt;(p: PromiseLike&lt;Res&lt;T&gt;&gt;, konteks: string): Promise&lt;T&gt; {
+  const { data, error } = await p;
+  if (error) { log('error', 'db.error', { konteks, kode: error.code, pesan: error.message }); throw new Error(`${konteks}: ${error.message}`); }
+  if (data === null) throw new Error(`${konteks}: data kosong`);
+  return data;
+}
+
+/** Data OPSIONAL. Gagal = TIDAK throw, TAPI tetap dilaporkan. Wajib sertakan `alasan`. */
+export async function bolehGagal&lt;T&gt;(p: PromiseLike&lt;Res&lt;T&gt;&gt;, konteks: string, alasan: string): Promise&lt;T | null&gt; {
+  const { data, error } = await p;
+  if (error) {
+    log('warn', 'db.gagal_lunak', { konteks, alasan, kode: error.code, pesan: error.message });
+    Sentry.captureMessage(`db.gagal_lunak: ${konteks}`, { level: 'warning', extra: { alasan, pesan: error.message } });
+    return null;
+  }
+  // Deteksi pemotongan silent PostgREST 1000 baris
+  if (Array.isArray(data) &amp;&amp; data.length === 1000) log('warn', 'postgrest.terpotong', { konteks });
+  return data;
+}
+</code></pre>
+<p><strong>Dampak:</strong> mengubah kelas kegagalan terbesar (silent) menjadi terlihat, tanpa refactor besar — cukup ganti pemanggilan di jalur kritis (<code>ledger.ts</code>, <code>skor-core.ts</code>, 19 route API, halaman keuangan). <strong>Effort:</strong> helper 2 jam + penerapan jalur kritis 1 hari. <strong>Prasyarat:</strong> Sentry. <strong>P0</strong> untuk <code>ledger.ts</code> + 19 route API; <strong>P1</strong> untuk sisanya.</p>
+<hr />
+<h2 id="4-bab-c-backup-dr-disiplin-rilismigrasi">4. Bab C — Backup, DR &amp; disiplin rilis/migrasi</h2>
+<h3 id="c1-strategi-backup">C.1 Strategi backup</h3>
+<h4 id="c1a-apa-yang-tersedia">C.1.a Apa yang tersedia</h4>
+<table>
+<thead>
+<tr>
+<th>Kapabilitas</th>
+<th>Supabase Free</th>
+<th>Supabase Pro 🔍</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Backup harian otomatis</td>
+<td><strong>tidak ada</strong></td>
+<td>ada, retensi 7 hari</td>
+</tr>
+<tr>
+<td>Unduh backup</td>
+<td>tidak</td>
+<td>ya (dashboard)</td>
+</tr>
+<tr>
+<td>PITR</td>
+<td>tidak</td>
+<td>add-on ~$100/bln (jendela 7 hari)</td>
+</tr>
+<tr>
+<td>Retensi log</td>
+<td>1 hari</td>
+<td>7 hari</td>
+</tr>
+<tr>
+<td><code>pg_dump</code> manual</td>
+<td>ya (jalur satu-satunya)</td>
+<td>ya</td>
+</tr>
+<tr>
+<td>Backup file Storage</td>
+<td><strong>tidak dicakup backup DB</strong></td>
+<td><strong>tidak dicakup backup DB</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Dua kesimpulan yang harus tertulis tebal di dokumen:</strong>
+1. <strong>Kondisi sekarang = nol backup.</strong> Satu perintah salah di SQL Editor (aktivitas rutin: 86 migrasi manual) = kehilangan permanen semua data ortu, anak, dan keuangan. Naik Supabase Pro adalah <strong>$25/bln untuk menghilangkan risiko kebangkrutan produk</strong> — item termurah dengan dampak tertinggi di seluruh dokumen ini.
+2. <strong>Backup DB Supabase TIDAK mencakup file di bucket <code>aset</code>.</strong> Bukti bayar ortu dan nota keuangan <strong>tidak</strong> ter-backup oleh apa pun sekarang. Butuh jalur backup Storage terpisah.</p>
+<h4 id="c1b-artefak-scriptsbackup-dbsh-dijalankan-owner">C.1.b Artefak: <code>scripts/backup-db.sh</code> (dijalankan owner)</h4>
+<pre><code class="language-bash">#!/usr/bin/env bash
+# scripts/backup-db.sh — backup mandiri KidzPlayful. Jalankan dari laptop owner tiap Jumat (~10 menit).
+#
+# Prasyarat:
+#   1) postgresql-client &gt;= versi server (pg_dump versi lama akan menolak).
+#   2) 7-Zip di PATH (enkripsi).
+#   3) File rahasia DI LUAR repo: ~/.kidzplayful-backup.env  (chmod 600)
+#        PGURI=&quot;postgresql://postgres.&lt;ref&gt;:&lt;pass&gt;@aws-0-ap-south-1.pooler.supabase.com:5432/postgres&quot;
+#        PASSPHRASE=&quot;...&quot;      # simpan di password manager, JANGAN di repo
+#   CATATAN: pakai port 5432 (session pooler / direct). Port 6543 (transaction pooler)
+#            TIDAK mendukung pg_dump. Koneksi direct kini IPv6-only — bila jaringan owner
+#            IPv4-only, gunakan hostname pooler seperti di atas, atau add-on IPv4 (~$4/bln 🔍).
+set -euo pipefail
+source ~/.kidzplayful-backup.env
+
+STAMP=$(date +%Y%m%d-%H%M)
+DIR=&quot;/d/backup-kidzplayful/$STAMP&quot;
+mkdir -p &quot;$DIR&quot;
+
+echo &quot;[1/5] schema public (struktur + data)&quot;
+pg_dump &quot;$PGURI&quot; --format=custom --no-owner --no-privileges \
+  --schema=public --file=&quot;$DIR/public.dump&quot;
+
+echo &quot;[2/5] schema auth (akun ortu — TANPA INI restore = semua user hilang)&quot;
+pg_dump &quot;$PGURI&quot; --format=custom --no-owner --no-privileges \
+  --schema=auth --file=&quot;$DIR/auth.dump&quot;
+
+echo &quot;[3/5] schema storage (metadata objek; file fisik lihat backup-storage)&quot;
+pg_dump &quot;$PGURI&quot; --format=custom --no-owner --no-privileges \
+  --schema=storage --file=&quot;$DIR/storage-meta.dump&quot;
+
+echo &quot;[4/5] manifest verifikasi (dipakai saat uji restore)&quot;
+psql &quot;$PGURI&quot; -Atc &quot;
+  select 'profiles='||(select count(*) from profiles)
+      ||' anak='||(select count(*) from anak)
+      ||' hasil_main='||(select count(*) from hasil_main)
+      ||' transaksi_keuangan='||(select count(*) from transaksi_keuangan)
+      ||' pendaftaran_event='||(select count(*) from pendaftaran_event)
+      ||' pesanan='||(select count(*) from pesanan)
+      ||' total_masuk='||(select coalesce(sum(jumlah),0) from transaksi_keuangan where arah='masuk')
+      ||' total_keluar='||(select coalesce(sum(jumlah),0) from transaksi_keuangan where arah='keluar')
+      ||' migrasi='||(select coalesce(max(versi),'-') from schema_migrations)
+&quot; &gt; &quot;$DIR/MANIFEST.txt&quot;
+cat &quot;$DIR/MANIFEST.txt&quot;
+
+echo &quot;[5/5] enkripsi (isi mengandung data pribadi anak &amp; bukti transfer)&quot;
+7z a -t7z -mhe=on -p&quot;$PASSPHRASE&quot; &quot;$DIR.7z&quot; &quot;$DIR&quot; &gt;/dev/null
+rm -rf &quot;$DIR&quot;
+echo &quot;SELESAI: $DIR.7z ($(du -h &quot;$DIR.7z&quot; | cut -f1))&quot;
+</code></pre>
+<h4 id="c1c-artefak-backup-storage-bucket-aset">C.1.c Artefak: backup Storage (bucket <code>aset</code>)</h4>
+<pre><code class="language-bash"># scripts/backup-storage.sh — bucket `aset` TIDAK tercakup backup DB Supabase.
+# Supabase Storage mendukung protokol S3 → pakai rclone (inkremental, murah).
+#   rclone config: tipe s3, provider Other,
+#   endpoint  = https://&lt;ref&gt;.supabase.co/storage/v1/s3
+#   region    = ap-south-1
+#   access_key/secret = S3 Access Keys dari Supabase Dashboard → Storage → S3
+set -euo pipefail
+rclone sync &quot;supabase:aset&quot; &quot;/d/backup-kidzplayful/aset&quot; \
+  --progress --transfers 8 --checksum \
+  --exclude &quot;uji/**&quot;                      # jangan backup sampah skrip tools/
+du -sh /d/backup-kidzplayful/aset
+</code></pre>
+<h4 id="c1d-di-mana-disimpan-3-2-1-versi-hemat-untuk-1-orang">C.1.d Di mana disimpan (3-2-1 versi hemat untuk 1 orang)</h4>
+<table>
+<thead>
+<tr>
+<th>Salinan</th>
+<th>Lokasi</th>
+<th>Frekuensi</th>
+<th>Catatan</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>D:\backup-kidzplayful\</code> (laptop owner)</td>
+<td>mingguan</td>
+<td>sumber utama, terenkripsi 7z AES-256</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Google Drive owner, folder <code>kidzplayful-backup</code></td>
+<td>mingguan, upload manual/rclone</td>
+<td><strong>hanya file <code>.7z</code> terenkripsi</strong></td>
+</tr>
+<tr>
+<td>3</td>
+<td>Disk eksternal / flashdisk</td>
+<td>bulanan</td>
+<td>offline, aman dari ransomware &amp; salah hapus akun</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Larangan tegas (tulis di dokumen):</strong> <code>.7z</code> backup <strong>TIDAK BOLEH</strong> masuk repo (publik!). Tambahkan ke <code>.gitignore</code>: <code>*.dump</code>, <code>*.7z</code>, <code>backup/</code>, <code>.kidzplayful-backup.env</code>. Passphrase hanya di password manager.</p>
+<p><strong>Retensi:</strong> mingguan 8 minggu, bulanan 12 bulan, tahunan permanen (data keuangan → kebutuhan pembukuan).</p>
+<h4 id="c1e-jadwal-uji-restore-backup-tanpa-uji-restore-tidak-ada-backup">C.1.e Jadwal uji restore — <strong>backup tanpa uji restore = tidak ada backup</strong></h4>
+<table>
+<thead>
+<tr>
+<th>Kapan</th>
+<th>Ruang lingkup</th>
+<th>Target</th>
+<th>Durasi</th>
+<th>Prio</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Sekali sekarang</strong></td>
+<td>restore penuh ke Postgres lokal (Docker)</td>
+<td>buktikan dump bisa dibaca</td>
+<td>2 jam</td>
+<td><strong>P0</strong></td>
+</tr>
+<tr>
+<td>Bulanan, Sabtu pertama</td>
+<td>restore penuh ke proyek Supabase kedua (<code>kidzplayful-restore-test</code>, Free)</td>
+<td>ukur RTO nyata</td>
+<td>1,5 jam</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>Kuartalan</td>
+<td>restore + jalankan app lokal terhubung ke DB hasil restore + smoke 5 alur</td>
+<td>buktikan <strong>aplikasi</strong> hidup, bukan hanya data</td>
+<td>3 jam</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>Setiap kali skema berubah besar</td>
+<td>restore dump terbaru + jalankan migrasi berikutnya</td>
+<td>buktikan urutan rilis</td>
+<td>1 jam</td>
+<td>P2</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Checklist verifikasi uji restore (WAJIB dicentang, catat waktunya):</strong>
+1. <code>pg_restore</code> selesai tanpa error fatal.
+2. Bandingkan output <code>MANIFEST.txt</code> dengan hasil query yang sama di DB restore → <strong>8 angka harus identik</strong>, termasuk <code>total_masuk</code> &amp; <code>total_keluar</code> <code>transaksi_keuangan</code>.
+3. <code>select max(versi) from schema_migrations</code> sama dengan manifest.
+4. Login 1 akun ortu uji berhasil (bukti <code>auth.users</code> + <code>profiles</code> ikut ter-restore).
+5. Buka <code>/pilih-anak</code>, <code>/main/&lt;anakId&gt;</code>, <code>/admin/keuangan</code> → tidak ada halaman error.
+6. Buka 1 URL <code>bukti/</code> dari backup Storage → file ada.
+7. <strong>Catat total menit dari mulai sampai poin 6 selesai. Angka itu = RTO nyata Anda.</strong> Tulis di tabel riwayat uji restore di dokumen ini.</p>
+<h3 id="c2-rpo-rto-realistis-per-tier">C.2 RPO / RTO realistis per tier</h3>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Backup aktif</th>
+<th><strong>RPO</strong> (kehilangan data maks.)</th>
+<th><strong>RTO</strong> (waktu pulih)</th>
+<th>Yang membuat angka ini realistis</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>T0 sekarang (Free, tanpa apa pun)</strong></td>
+<td>—</td>
+<td><strong>∞ (total)</strong></td>
+<td><strong>∞</strong></td>
+<td>tidak ada yang bisa dipulihkan</td>
+</tr>
+<tr>
+<td><strong>T0 target (Pro + dump mingguan)</strong></td>
+<td>daily 7 hari + dump mingguan</td>
+<td><strong>24 jam</strong></td>
+<td><strong>4–8 jam</strong></td>
+<td>1 orang, runbook belum terlatih, restore manual dari dashboard</td>
+</tr>
+<tr>
+<td><strong>T1</strong></td>
+<td>idem + runbook tertulis + uji restore bulanan</td>
+<td><strong>24 jam</strong></td>
+<td><strong>2–4 jam</strong></td>
+<td>RTO turun karena runbook sudah dilatih, bukan karena teknologi</td>
+</tr>
+<tr>
+<td><strong>T2</strong></td>
+<td>+ <strong>PITR</strong> (~$100/bln)</td>
+<td><strong>≤ 1 jam</strong></td>
+<td><strong>≤ 1 jam</strong></td>
+<td>PITR + staging identik untuk verifikasi cepat</td>
+</tr>
+<tr>
+<td><strong>T3</strong></td>
+<td>+ read replica + staging identik + smoke otomatis</td>
+<td><strong>≤ 5 menit</strong></td>
+<td><strong>≤ 30 menit</strong></td>
+<td>promosi replica + DNS/env switch</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Poin yang harus tegas:</strong> RTO turun bukan karena membeli fitur, tapi karena <strong>runbook yang sudah pernah dijalankan</strong>. Owner tunggal tanpa latihan restore = RTO realistis 8 jam walaupun ada PITR.</p>
+<h4 id="artefak-runbook-dr-ringkas-tempel-di-dokumen">Artefak: Runbook DR (ringkas, tempel di dokumen)</h4>
+<pre><code>RUNBOOK: DB PRODUKSI RUSAK / DATA TERHAPUS
+Prasyarat: akses dashboard Supabase, passphrase backup, laptop dengan psql.
+
+0. (2 menit) BEKUKAN KERUSAKAN
+   - Vercel → Project → Settings → Deployment Protection: aktifkan, atau
+     set env NEXT_PUBLIC_MODE_PEMELIHARAAN=1 lalu redeploy (mencegah tulis baru).
+   - Catat waktu insiden (UTC &amp; WIB). Ini menentukan titik PITR.
+
+1. (5 menit) TENTUKAN RUANG LINGKUP
+   - 1 tabel / beberapa baris  -&gt; Jalur A (restore selektif)
+   - seluruh DB                -&gt; Jalur B (restore penuh)
+   - file storage hilang       -&gt; Jalur C
+
+2A. JALUR A — selektif (30–60 menit)
+   - Restore dump terakhir ke Postgres lokal (Docker).
+   - Ekspor HANYA tabel/baris terdampak: pg_dump --table=&lt;t&gt; --data-only
+   - Import ke produksi di dalam transaksi; verifikasi count sebelum COMMIT.
+
+2B. JALUR B — penuh (2–6 jam)
+   - Pro tanpa PITR : Dashboard → Database → Backups → pilih tanggal → Restore.
+   - Pro + PITR     : Restore to point in time → 5 menit SEBELUM waktu insiden.
+   - Tanpa keduanya : buat proyek baru, pg_restore public+auth+storage-meta,
+                      update env Vercel (URL/anon/service key), redeploy.
+   - Jalankan checklist verifikasi C.1.e poin 2–6.
+
+2C. JALUR C — storage (30 menit)
+   - rclone copy /d/backup-kidzplayful/aset supabase:aset --immutable
+
+3. (10 menit) BUKA KEMBALI
+   - Nonaktifkan mode pemeliharaan. Pantau /api/health/db + Sentry 30 menit.
+
+4. (esok hari) POST-MORTEM
+   - Tulis di dokumen ini: penyebab, RPO nyata, RTO nyata, 1 perubahan pencegah.
+</code></pre>
+<h3 id="c3-pelacak-migrasi-pola-idempoten">C.3 Pelacak migrasi + pola idempoten</h3>
+<h4 id="c3a-masalah-yang-harus-diselesaikan-fakta">C.3.a Masalah yang harus diselesaikan (fakta)</h4>
+<p>86 file dijalankan manual, tanpa pelacak versi. 13 <code>create table</code> tanpa <code>if not exists</code> (7 file), 8 <code>create index</code> tanpa <code>if not exists</code>, ~160 <code>create policy</code> sementara hanya 31 file memakai <code>drop policy if exists</code>. Konsekuensi presisi: <strong>rerun 0001→0086 pada DB terisi sebagian pasti gagal di tengah dan berhenti pada state parsial</strong> — artinya <em>hari ini tidak ada cara terpercaya untuk membangun ulang produksi dari repo.</em> Itu berarti: <strong>backup DB Anda saat ini lebih bernilai daripada repo Anda</strong>, kondisi yang harus dibalik.</p>
+<h4 id="c3b-artefak-tabel-pelacak">C.3.b Artefak: tabel pelacak</h4>
+<pre><code class="language-sql">-- supabase/migrations/0000_baseline.sql
+-- Dijalankan SEKALI di produksi. Fungsi: (1) buat pelacak versi,
+-- (2) catat retroaktif 0001–0086 sebagai &quot;sudah jalan&quot; TANPA menjalankannya ulang.
+-- Ini pendekatan termurah: nol file lama yang perlu ditulis ulang.
+create table if not exists public.schema_migrations (
+  versi           text primary key,           -- '0001' … '0086' … '0087'
+  nama            text        not null,
+  checksum        text,                       -- sha256 isi file; mendeteksi file diubah setelah jalan
+  dijalankan_at   timestamptz not null default now(),
+  dijalankan_oleh text        not null default current_user,
+  durasi_ms       integer,
+  retroaktif      boolean     not null default false  -- true = dicatat, bukan dieksekusi
+);
+
+comment on table public.schema_migrations is
+  'Pelacak migrasi. Baris retroaktif=true dicatat pada 0000_baseline tanpa dieksekusi.';
+
+-- RLS aktif TANPA policy: hanya service_role / SQL Editor (postgres) yang bisa akses.
+alter table public.schema_migrations enable row level security;
+
+-- Catat 0001..0086 secara retroaktif.
+insert into public.schema_migrations (versi, nama, retroaktif)
+select lpad(g::text, 4, '0'), 'baseline-retroaktif', true
+from generate_series(1, 86) g
+on conflict (versi) do nothing;
+</code></pre>
+<blockquote>
+<p><strong>Kenapa <code>generate_series</code> dan bukan daftar 86 nama?</strong> Karena tujuan baseline hanya <strong>menghentikan runner menjalankan ulang</strong> file lama. Nama asli tetap ada di git. Kalau ingin nama yang benar, runner (<code>tools/migrate.mjs --baseline</code>) bisa membaca nama file dan <code>update</code> kolom <code>nama</code> + <code>checksum</code> sekali jalan (tambahan 15 menit).</p>
+</blockquote>
+<h4 id="c3c-artefak-template-file-migrasi-baru-wajib-mulai-0087">C.3.c Artefak: template file migrasi baru (wajib mulai <code>0087</code>)</h4>
+<pre><code class="language-sql">-- supabase/migrations/0087_&lt;nama&gt;.sql
+-- ATURAN WAJIB (berlaku sejak 0087):
+--   1) Semua DDL idempoten: create table/index/type IF NOT EXISTS.
+--   2) Setiap create policy DIDAHULUI drop policy if exists dengan nama identik.
+--   3) Kolom baru: nullable ATAU punya default. TIDAK BOLEH langsung NOT NULL.
+--   4) Berkas ini harus AMAN dijalankan dua kali berturut-turut.
+--   5) Baris terakhir mencatat diri ke schema_migrations.
+--   6) Bila memakai CREATE INDEX CONCURRENTLY, tambahkan penanda di baris 1:
+--        -- no-transaction
+--      (runner akan menjalankan file ini di luar transaksi)
+
+begin;
+
+alter table public.event add column if not exists kuota_pendamping integer;
+
+create index if not exists idx_event_kuota on public.event(kuota_pendamping)
+  where kuota_pendamping is not null;
+
+drop policy if exists &quot;baca event kuota&quot; on public.event;
+create policy &quot;baca event kuota&quot; on public.event
+  for select to authenticated using (true);
+
+insert into public.schema_migrations (versi, nama) values ('0087','event_kuota_pendamping')
+  on conflict (versi) do nothing;
+
+commit;
+</code></pre>
+<h4 id="c3d-artefak-runner-toolsmigratemjs-garis-besar-90-baris">C.3.d Artefak: runner <code>tools/migrate.mjs</code> (garis besar, ~90 baris)</h4>
+<pre><code class="language-js">// tools/migrate.mjs — jalankan hanya migrasi yang belum tercatat, SATU TRANSAKSI PER FILE.
+// Pakai: node tools/migrate.mjs --db-url &quot;$PGURI&quot; [--dry-run] [--sampai 0090]
+// Konsekuensi: state parsial tidak mungkin lagi (DDL Postgres transaksional).
+// - baca supabase/migrations/*.sql, urut nama file
+// - SELECT versi FROM schema_migrations  -&gt; set &quot;sudah&quot;
+// - untuk setiap file belum ada:
+//     * hitung sha256
+//     * jika baris 1 mengandung '-- no-transaction' -&gt; eksekusi apa adanya
+//       selain itu -&gt; BEGIN; &lt;isi&gt;; INSERT schema_migrations(versi,nama,checksum,durasi_ms); COMMIT;
+//     * gagal -&gt; ROLLBACK, cetak versi + pesan, EXIT 1 (jangan lanjut file berikutnya)
+// - untuk setiap file yang SUDAH tercatat tapi checksum beda -&gt; WARNING keras
+//   (&quot;file migrasi yang sudah jalan diubah — buat file baru, jangan edit yang lama&quot;)
+</code></pre>
+<p><strong>Verifikasi idempotensi di CI (ini yang mencegah kambuh) — job baru di <code>.github/workflows/ci.yml</code>:</strong></p>
+<pre><code class="language-yaml">  migrasi:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: postgres }
+        ports: ['5432:5432']
+        options: &gt;-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 20, cache: npm }
+      - run: npm ci
+      # Prasyarat: stub minimal utk objek Supabase (auth.users, storage.*, auth.uid()).
+      - name: Siapkan stub Supabase
+        run: psql &quot;$DB&quot; -f supabase/ci/stub-supabase.sql
+        env: { DB: 'postgresql://postgres:postgres@localhost:5432/postgres' }
+      - name: Migrasi dari NOL (harus sukses)
+        run: node tools/migrate.mjs --db-url &quot;$DB&quot;
+        env: { DB: 'postgresql://postgres:postgres@localhost:5432/postgres' }
+      - name: Migrasi DIULANG (harus no-op, bukan error)   # &lt;-- gerbang idempotensi
+        run: node tools/migrate.mjs --db-url &quot;$DB&quot;
+        env: { DB: 'postgresql://postgres:postgres@localhost:5432/postgres' }
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Pendekatan baseline</th>
+<th>Effort</th>
+<th>Plus</th>
+<th>Minus</th>
+<th>Putusan</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>A. <code>0000_baseline.sql</code> + tabel sendiri + <code>tools/migrate.mjs</code></strong></td>
+<td><strong>6–8 jam</strong></td>
+<td>tidak me-rename/menulis ulang satu pun dari 86 file; runner dikuasai penuh; checksum drift; kompatibel dengan nama <code>0001_init.sql</code></td>
+<td>menulis runner sendiri (~90 baris)</td>
+<td><strong>PILIH INI</strong></td>
+</tr>
+<tr>
+<td>B. Supabase CLI <code>db push</code> + <code>migration repair --status applied</code></td>
+<td>4 jam + rename</td>
+<td>runner gratis &amp; teruji, <code>supabase_migrations.schema_migrations</code> bawaan</td>
+<td><strong>CLI menuntut nama <code>&lt;timestamp&gt;_nama.sql</code></strong> → harus me-rename 86 file (riwayat git berisik, semua referensi dokumen ke "migrasi 0044/0052" jadi salah)</td>
+<td>cadangan</td>
+</tr>
+<tr>
+<td>C. Tulis ulang 86 file jadi idempoten</td>
+<td>2–3 hari</td>
+<td>repo bisa merekonstruksi DB sepenuhnya</td>
+<td>mahal, berisiko tinggi, nilai rendah (produksi sudah ada)</td>
+<td><strong>tolak</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Prasyarat A:</strong> <code>pg</code> (npm) atau <code>psql</code> di mesin owner; <code>PGURI</code> di file rahasia luar repo. <strong>Prioritas P0.</strong></p>
+<h3 id="c4-urutan-rilis-hentikan-kode-mendahului-migrasi">C.4 Urutan rilis: hentikan kode mendahului migrasi</h3>
+<h4 id="akar-masalah-fakta">Akar masalah (fakta)</h4>
+<p>Vercel auto-deploy tiap push <code>master</code>, sedangkan migrasi dijalankan manual <strong>setelahnya</strong> → <strong>jendela race struktural</strong>. Insiden nyata <code>kuota_*</code> adalah wujudnya. Mitigasi saat ini (konvensi "kolom baru harus toleran" + <code>try/catch</code>) menyembunyikan gejala, tidak menutup jendela — dan <strong><code>ledger.ts</code> adalah bukti biaya sampingannya</strong>: kegagalan keuangan ditelan karena takut migrasi <code>0052</code> belum jalan.</p>
+<h4 id="pola-wajib-expand-migrate-contract">Pola wajib: expand → migrate → contract</h4>
+<table>
+<thead>
+<tr>
+<th>Fase</th>
+<th>Tindakan</th>
+<th>Yang dilakukan</th>
+<th>Aturan</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1. EXPAND</strong></td>
+<td>migrasi <strong>saja</strong>, dijalankan DULU di produksi</td>
+<td>tambah kolom nullable/berdefault, tabel baru, index baru</td>
+<td><strong>Tidak ada</strong> perubahan kode di rilis ini. Selalu backward-compatible.</td>
+</tr>
+<tr>
+<td><strong>2. DEPLOY</strong></td>
+<td>kode yang <strong>menulis dan membaca</strong> kolom baru</td>
+<td>dipush setelah fase 1 terbukti (<code>/api/health/db</code> = 200, <code>MIGRASI_MINIMAL</code> naik)</td>
+<td>kode tetap toleran terhadap <code>null</code> (bukan terhadap <em>kolom tidak ada</em>)</td>
+</tr>
+<tr>
+<td><strong>3. BACKFILL</strong></td>
+<td>isi data lama</td>
+<td>batch (<code>limit</code>), via runner atau cron, idempoten</td>
+<td>jangan <code>update</code> satu tabel besar dalam satu perintah</td>
+</tr>
+<tr>
+<td><strong>4. CONTRACT</strong></td>
+<td>migrasi pengetat</td>
+<td><code>set not null</code>, <code>drop column</code> lama, hapus lapisan toleransi</td>
+<td><strong>minimal 1 rilis setelah fase 3</strong>, dan hanya bila fase 2–3 sudah stabil ≥ 1 minggu</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Mekanik penegakan, dari termurah:</strong></p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Langkah</th>
+<th>Effort</th>
+<th>Dampak</th>
+<th>Prio</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Aktifkan <strong>branch protection</strong> <code>master</code> (PR wajib, CI wajib hijau, linear history) — sekarang masih "saran" di docs</td>
+<td>15 menit</td>
+<td>tidak ada lagi push langsung ke produksi</td>
+<td><strong>P0</strong></td>
+</tr>
+<tr>
+<td>2</td>
+<td>Template PR dengan checklist: <em>"Migrasi mana yang dibutuhkan? Sudah dijalankan di produksi? Tempel output <code>tools/migrate.mjs</code>."</em></td>
+<td>30 menit</td>
+<td>memaksa urutan jadi eksplisit</td>
+<td><strong>P0</strong></td>
+</tr>
+<tr>
+<td>3</td>
+<td>Env <code>MIGRASI_MINIMAL</code> di Vercel + cek di <code>/api/health/db</code> (Bab B)</td>
+<td>sudah termasuk</td>
+<td><strong>deteksi</strong> race &lt; 5 menit dengan alert P0</td>
+<td><strong>P0</strong></td>
+</tr>
+<tr>
+<td>4</td>
+<td>Uji di <strong>proyek Supabase beta</strong> dulu (docs environment beta sudah ada)</td>
+<td>1 hari</td>
+<td>migrasi tidak pernah pertama kali menyentuh produksi</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Matikan Vercel Git auto-deploy production</strong>; deploy lewat GitHub Actions: <code>tsc → test → build → migrate → vercel deploy --prod</code></td>
+<td>3–4 jam</td>
+<td><strong>pencegahan</strong>, bukan deteksi: mustahil kode mendahului migrasi</td>
+<td><strong>P1</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Kapan "kolom toleran" TETAP dipakai</strong> (jangan dibuang, ubah perannya):
+- <strong>Ya</strong> — selama jendela fase 2 (kolom sudah ada tapi masih <code>null</code> untuk baris lama); untuk field opsional/kosmetik; untuk kompatibilitas app mobile Flutter yang versinya tertinggal di HP pengguna (<strong>alasan permanen dan sah</strong>, karena rilis app store tidak bisa dipaksa).
+- <strong>Tidak</strong> — sebagai satu-satunya pengaman race; di jalur keuangan (<code>ledger.ts</code>, <code>transaksi_keuangan</code>, <code>pesanan</code>) di mana kegagalan <strong>harus</strong> berbunyi; sebagai alasan <code>catch {}</code> kosong.</p>
+<h3 id="c5-membereskan-tools-ini-insiden-keamanan-aktif">C.5 Membereskan <code>tools/</code> — ini insiden keamanan aktif</h3>
+<h4 id="c5a-klasifikasi">C.5.a Klasifikasi</h4>
+<ul>
+<li><strong>Tingkat 1 — kebocoran kredensial (P0, jam ini):</strong> 56 kemunculan <code>admin@kidzplayful.app</code> + password di <strong>23 skrip</strong> di <strong>repo publik</strong>. Terkonfirmasi di <code>tools/admin_check.mjs</code> dkk. Asumsikan <strong>sudah bocor</strong> (GitHub code search mengindeks repo publik dalam hitungan menit).</li>
+<li><strong>Tingkat 2 — skrip menulis ke produksi (P0/P1):</strong> 10 skrip menarget URL produksi; <strong>11 skrip menunjuk <code>localhost</code> TAPI memakai Supabase PRODUKSI</strong> — kategori paling berbahaya karena <em>tampak</em> aman.</li>
+<li><strong>Tingkat 3 — sampah data uji (P1):</strong> produk uji, pendaftaran uji, file bukti terunggah ke bucket produksi.</li>
+</ul>
+<h4 id="c5b-langkah-berurutan">C.5.b Langkah, berurutan</h4>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Langkah</th>
+<th>Detail</th>
+<th>Effort</th>
+<th>Prasyarat</th>
+<th>Prio</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Rotasi password admin</strong></td>
+<td>Supabase → Auth → Users → <code>admin@kidzplayful.app</code> → set password baru (generator, ≥ 24 karakter) → simpan <strong>hanya</strong> di password manager</td>
+<td>15 menit</td>
+<td>—</td>
+<td><strong>P0</strong></td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Audit jejak penyalahgunaan</strong></td>
+<td><code>auth.users.last_sign_in_at</code> akun admin; <code>select * from aktivitas order by dibuat_at desc limit 200</code>; baris <code>transaksi_keuangan</code>/<code>pesanan</code>/<code>postingan</code> tak dikenal; <code>select name, created_at from storage.objects order by created_at desc limit 100</code> (file asing); <strong>dan</strong> <code>git log -p -S 'service_role'</code> — anon key aman dipublikasikan, <strong>service role TIDAK</strong></td>
+<td>1 jam</td>
+<td>—</td>
+<td><strong>P0</strong></td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Ganti identitas admin</strong></td>
+<td>buat akun admin baru dengan email tak mudah diduga (bukan pola <code>admin@&lt;domain&gt;</code>); turunkan akun lama jadi non-admin (jangan hapus — ada FK <code>dibuat_oleh</code>)</td>
+<td>30 menit</td>
+<td>1</td>
+<td><strong>P0</strong></td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Kredensial → env var</strong></td>
+<td>23 skrip membaca <code>process.env.KP_EMAIL</code>, <code>KP_PASSWORD</code>, <code>KP_BASE_URL</code>, <code>KP_SUPABASE_URL</code>; <strong>fail-fast</strong> bila kosong; nilai di <code>.env.tools.local</code> (gitignored). Buat <code>tools/_env.mjs</code> bersama agar tidak menyalin 23×</td>
+<td>2–3 jam</td>
+<td>1</td>
+<td><strong>P0</strong></td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Guard anti-produksi</strong></td>
+<td>di <code>tools/_env.mjs</code>: bila <code>KP_BASE_URL</code>/<code>KP_SUPABASE_URL</code> mengandung domain produksi → <code>process.exit(1)</code> kecuali <code>KP_ALLOW_PROD=1</code> diset eksplisit. <strong>Ini yang menutup 11 skrip "localhost tapi Supabase produksi".</strong></td>
+<td>1 jam</td>
+<td>4</td>
+<td><strong>P0</strong></td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>Akun uji khusus di beta</strong></td>
+<td><code>qa@kidzplayful.test</code> hanya di proyek Supabase beta; skrip default menunjuk beta</td>
+<td>3–4 jam</td>
+<td>environment beta</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>Bersihkan data uji produksi</strong></td>
+<td>skrip inventarisasi (nama berprefiks <code>[UJI]</code>, akun uji, objek <code>storage</code> dari skrip) → tinjau manual → hapus idempoten. Konvensi baru: semua data buatan skrip berprefiks <code>[UJI]</code>/<code>uji/</code> supaya bisa dihapus dengan aman</td>
+<td>2–3 jam</td>
+<td>6</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong>Gitleaks di CI + pre-commit</strong></td>
+<td>job <code>gitleaks</code> di <code>ci.yml</code> (gagalkan PR bila ada secret) + hook lokal</td>
+<td>1 jam</td>
+<td>—</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>9</td>
+<td><strong>Dependabot + <code>npm audit</code> di CI</strong></td>
+<td>belum ada sama sekali</td>
+<td>30 menit</td>
+<td>—</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>10</td>
+<td><strong>Riwayat git</strong></td>
+<td>password tetap ada di riwayat walau file diubah. <code>git filter-repo</code> + force-push <strong>mungkin</strong> (repo publik, tanpa kolaborator) tapi <strong>fork &amp; cache GitHub tetap menyimpan</strong> → <strong>rotasi (langkah 1) adalah satu-satunya mitigasi nyata</strong>; rewrite riwayat nilainya rendah</td>
+<td>2 jam</td>
+<td>1</td>
+<td><strong>P2 (opsional)</strong></td>
+</tr>
+<tr>
+<td>11</td>
+<td><strong>Aturan repo publik</strong></td>
+<td>tulis di <code>CLAUDE.md</code>: tidak ada kredensial apa pun di repo; semua <code>.env*</code> di <code>.gitignore</code>; service role hanya di Vercel env; anon key boleh publik karena dilindungi RLS</td>
+<td>30 menit</td>
+<td>—</td>
+<td>P1</td>
+</tr>
+</tbody>
+</table>
+<h4 id="c5c-perbaikan-storage-yang-menyertai-ikut-di-bab-ini-karena-satu-insiden-data">C.5.c Perbaikan Storage yang menyertai (ikut di bab ini karena satu insiden data)</h4>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Perbaikan</th>
+<th>Effort</th>
+<th>Prio</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>file_size_limit</code> + <code>allowed_mime_types</code> pada bucket + validasi ukuran di klien — <strong>detail &amp; prasyaratnya di F.1/F.2</strong> (jangan jalankan SQL-nya sebelum <code>src/lib/upload.ts</code> ter-deploy)</td>
+<td>1 jam</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Pisahkan bucket <code>privat</code> (public=false)</strong> untuk <code>bukti/</code> &amp; <code>nota/</code> — rancangan lengkap 3 fase + policy + <code>urlLampiran()</code> ada di <strong>F.3</strong>. Catatan: jangan kirim signed URL ke <code>next/image</code>.</td>
+<td>1–1,5 hari</td>
+<td><strong>P0</strong> (≤ 2 minggu)</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Hapus berkas lama saat mengganti, atau path ber-entitas + <code>upsert:true</code> — <strong>peringatan penting di F.4</strong>: aset game dirujuk dari dalam jsonb <code>paket_aset.butir</code>, jadi pembersih naif akan menghapus semuanya</td>
+<td>2 jam</td>
+<td>P1</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Sertakan bucket ke jalur backup (<code>scripts/backup-storage.sh</code>)</td>
+<td>1 jam</td>
+<td><strong>P0</strong></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="5-bab-d-lapisan-data-index-rls-agregasi">5. Bab D — Lapisan data: index, RLS, agregasi</h2>
+<p>Tiga pekerjaan di bab ini punya sifat berbeda dan <strong>jangan disamakan prioritasnya</strong>: index adalah kemenangan murah (menit), RLS adalah pekerjaan berisiko yang butuh uji per peran (setengah hari), dan agregasi SQL adalah <strong>koreksi kebenaran data</strong> — bukan optimasi.</p>
+<h3 id="d1-index-satu-migrasi-semua-yang-benar-benar-dibutuhkan">D.1 Index: satu migrasi, semua yang benar-benar dibutuhkan</h3>
+<p>Repo punya ~45 index, tapi satu-satunya migrasi khusus performa (<code>0039_perf_index.sql</code>) berhenti di era sebelum store &amp; keuangan ada. Sejak itu tabel <code>event</code>, <code>produk</code>, <code>tema</code>, dan <code>aset</code> tidak pernah mendapat index sama sekali.</p>
+<p><strong>Yang membuat ini lebih parah dari kelihatannya:</strong> kolom <code>status</code> pada <code>event</code>, <code>produk</code>, <code>kelas_bermain</code>, <code>tema</code>, <code>paket_aset</code>, dan <code>video</code> dipakai <strong>dua kali</strong> per query — sekali dari <code>.eq('status', …)</code> di kode, dan sekali lagi di dalam ekspresi <code>USING</code> policy RLS. Tanpa index, dua-duanya sequential scan.</p>
+<h4 id="artefak-supabasemigrations0087_perf_index_2sql">Artefak: <code>supabase/migrations/0087_perf_index_2.sql</code></h4>
+<pre><code class="language-sql">-- 0087_perf_index_2.sql — index untuk kolom yang sering difilter/diurutkan tapi belum ter-index.
+-- Idempoten: aman dijalankan berulang. Semua CREATE INDEX IF NOT EXISTS.
+--
+-- CATATAN OPERASIONAL: pada tabel besar, CREATE INDEX biasa mengambil lock tulis.
+-- Tabel di bawah masih kecil (&lt; puluhan ribu baris) sehingga aman dijalankan langsung.
+-- Bila suatu tabel sudah besar, jalankan baris itu sendirian dengan CONCURRENTLY
+-- DI LUAR transaksi (lihat template C.3.c penanda `-- no-transaction`).
+
+begin;
+
+-- ── event: TIDAK punya index apa pun selain PK ──────────────────────────────
+-- Melayani: event.ts:10, publik.ts:17, komunitas.ts:41, admin-event.ts:13, guru.ts:20
+--           (.eq('status','tampil') + .order('tanggal'))
+create index if not exists idx_event_status_tanggal
+  on public.event(status, tanggal desc);
+-- Melayani: policy RLS &quot;event baca peserta&quot; (0068:5-9) yang meng-exists ke pendaftaran_event
+--           — composite ini yang sebelumnya tidak ada, hanya dua index terpisah.
+create index if not exists idx_pendaftaran_event_event_ortu
+  on public.pendaftaran_event(event_id, ortu_id);
+
+-- ── pendaftaran_event: index lama (event_id,status) salah leading column ────
+-- Melayani: admin-event.ts:43 (.eq('status','menunggu') TANPA event_id) — badge notifikasi.
+-- Partial karena 'menunggu' adalah minoritas baris dan satu-satunya nilai yang di-query global.
+create index if not exists idx_pendaftaran_event_menunggu
+  on public.pendaftaran_event(created_at desc) where status = 'menunggu';
+-- Melayani: admin-reminder.ts:20 (.eq('status','diterima') global)
+create index if not exists idx_pendaftaran_event_diterima
+  on public.pendaftaran_event(event_id) where status = 'diterima';
+
+-- ── produk: TIDAK punya index apa pun selain PK ─────────────────────────────
+-- Melayani: store.ts:9, publik.ts:25, admin-store.ts:10, rekomendasi-item.ts:12
+create index if not exists idx_produk_status_created
+  on public.produk(status, created_at desc);
+
+-- ── tema: TIDAK punya index apa pun selain PK ──────────────────────────────
+-- Melayani: pustaka.ts:15, tema.ts:8, publik.ts:49, panduan.ts:8, admin/page.tsx:12
+create index if not exists idx_tema_status
+  on public.tema(status);
+-- Melayani: tema &quot;minggu ini&quot; — partial, karena hanya sedikit baris bernilai true
+create index if not exists idx_tema_minggu_ini
+  on public.tema(id) where is_minggu_ini = true;
+
+-- ── kelas_bermain: hanya ada (created_at desc) ─────────────────────────────
+-- Melayani: kelas-bermain.ts:7, publik.ts:33,41, komunitas.ts:40
+create index if not exists idx_kelas_status_created
+  on public.kelas_bermain(status, created_at desc);
+
+-- ── paket_aset &amp; video ─────────────────────────────────────────────────────
+-- Melayani: pustaka.ts:24, tema.ts:13, publik.ts:50 (+ policy RLS status)
+create index if not exists idx_paket_aset_status
+  on public.paket_aset(status);
+-- Melayani: video.ts:10-11 (.eq kategori + status + link_ok, .order('urutan'))
+create index if not exists idx_video_kategori_urutan
+  on public.video(kategori, urutan) where status = 'tampil' and link_ok is not false;
+
+-- ── hasil_main: tabel TERCEPAT tumbuh ──────────────────────────────────────
+-- Melayani: skor-core.ts:60 &amp; gamifikasi.ts:39 (riwayat satu anak, terurut waktu).
+-- Composite (anak_id, tanggal desc) menggantikan hasil_anak_idx(anak_id) yang tak menolong sort.
+create index if not exists idx_hasil_main_anak_tanggal
+  on public.hasil_main(anak_id, tanggal desc);
+-- Melayani: admin/analitik/page.tsx:31 (.gte('tanggal', 30 hari))
+create index if not exists idx_hasil_main_tanggal
+  on public.hasil_main(tanggal desc);
+
+-- ── pagination &amp; laporan ───────────────────────────────────────────────────
+-- Melayani: admin-store.ts:22 (.order + .range), pesanan.ts:11, analitik:33
+create index if not exists idx_pesanan_created
+  on public.pesanan(created_at desc);
+-- Melayani: atribusi.ts:16 (.gte), kpi.ts:164, admin/langganan:73 (.order + .range)
+create index if not exists idx_profiles_created
+  on public.profiles(created_at desc);
+-- Melayani: admin-anak.ts:28, konsultasi.ts:19, pilih-anak:29
+create index if not exists idx_anak_created
+  on public.anak(created_at desc);
+-- Melayani: admin/langganan/page.tsx:79-81 (.lte('aktif_sampai') + order) — deteksi kedaluwarsa
+create index if not exists idx_langganan_aktif_sampai
+  on public.langganan(aktif_sampai);
+-- Melayani: keuangan.ts:231 (.order('created_at'))
+create index if not exists idx_aset_created
+  on public.aset(created_at desc);
+
+-- ── kolom yang dipakai policy RLS tapi belum ter-index ─────────────────────
+-- Melayani: policy 0010:41 (postingan delete milik sendiri) + analitik:34
+create index if not exists idx_postingan_ortu
+  on public.postingan(ortu_id);
+-- Melayani: policy 0010:50 + analitik:35 (.gte created_at)
+create index if not exists idx_komentar_created
+  on public.komentar(created_at desc);
+-- Melayani: policy 0084:35 (voucher_redeem milik sendiri)
+create index if not exists idx_voucher_redeem_ortu
+  on public.voucher_redeem(ortu_id);
+-- Melayani: policy 0067:25 (rekomendasi_item milik sendiri / pemberi)
+create index if not exists idx_rekomendasi_item_ortu
+  on public.rekomendasi_item(ortu_id);
+-- Melayani: boleh_lihat_laporan_anak() (0066:14) — dipakai sebagai predikat RLS di 5 TABEL,
+--           jadi index ini menolong lima-limanya sekaligus. Paling berdampak di blok ini.
+create index if not exists idx_pendaftaran_konsultasi_anak
+  on public.pendaftaran_konsultasi(anak_id);
+
+-- Perencana query butuh statistik baru agar index di atas benar-benar dipakai.
+analyze public.event, public.produk, public.tema, public.kelas_bermain,
+        public.paket_aset, public.video, public.hasil_main, public.pendaftaran_event,
+        public.pesanan, public.profiles, public.anak, public.langganan;
+
+insert into public.schema_migrations (versi, nama) values ('0087','perf_index_2')
+  on conflict (versi) do nothing;
+
+commit;
+</code></pre>
+<h4 id="yang-sengaja-tidak-di-index">Yang sengaja TIDAK di-index</h4>
+<p>Setiap index memperlambat setiap <code>insert</code>/<code>update</code> pada tabelnya. Jadi menahan diri juga bagian dari pekerjaan:</p>
+<table>
+<thead>
+<tr>
+<th>Tabel/kolom</th>
+<th>Alasan tidak di-index</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>fokus_area(urutan)</code>, <code>kategori_usia(urutan)</code>, <code>voucher(created_at)</code>, <code>jadwal_psikolog(aktif)</code></td>
+<td>Tabel master, puluhan baris. Sequential scan atas 30 baris lebih cepat daripada lompat index.</td>
+</tr>
+<tr>
+<td><code>aktivitas</code> — <strong>jangan tambah</strong></td>
+<td>Tabel ini justru <strong>kelebihan</strong> index: sudah 3 buah, dan semuanya diperbarui pada <strong>setiap page view</strong>. Rekomendasinya berlawanan arah — turunkan menjadi satu composite <code>(ortu_id, dibuat_at desc)</code>, karena <code>(dibuat_at desc)</code> dan <code>(fitur)</code> bisa dilayani index composite itu atau memang jarang dipakai sendirian. Lihat <a href="#t1--2000-dau">A.3 T1</a> item 4.</td>
+</tr>
+<tr>
+<td><code>transaksi_keuangan(tanggal)</code></td>
+<td><strong>Sudah ada</strong> (<code>0052:26</code>). Masalah tabel ini bukan index, melainkan query tanpa <code>WHERE</code> sama sekali — diselesaikan di <a href="#d3-agregasi-pindah-ke-sql--memperbaiki-bug-angka-salah">D.3</a>, bukan dengan index.</td>
+</tr>
+<tr>
+<td>Kolom jsonb (<code>butir</code>, <code>aktivitas</code>, <code>indikator_perkembangan</code>)</td>
+<td>Tidak pernah difilter di dalam DB — hanya diambil lalu diproses di JavaScript. GIN index tidak akan terpakai. Solusinya berhenti mengambilnya (<a href="#e2-pisahkan-query-ringan-dan-berat">E.2</a>).</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Aspek</th>
+<th>Isi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Dampak</strong></td>
+<td>Menghilangkan sequential scan pada tabel yang dibaca di hampir setiap halaman. Pada data sekarang efeknya masih kecil (tabel kecil); nilainya adalah <strong>mencegah tebing</strong> — sequential scan biayanya tumbuh linear terhadap jumlah baris, sedangkan index tetap ~konstan.</td>
+</tr>
+<tr>
+<td><strong>Effort</strong></td>
+<td>15 menit menjalankan + 15 menit verifikasi.</td>
+</tr>
+<tr>
+<td><strong>Risiko</strong></td>
+<td>Sangat rendah. <code>create index</code> tidak mengubah data. Yang perlu diperhatikan hanya lock tulis sesaat pada tabel besar — catatan sudah ada di kepala berkas.</td>
+</tr>
+<tr>
+<td><strong>Verifikasi</strong></td>
+<td><code>explain (analyze, buffers) select … from event where status='tampil' order by tanggal desc limit 20;</code> → sebelum: <code>Seq Scan on event</code>; sesudah: <code>Index Scan using idx_event_status_tanggal</code>. Ulangi untuk <code>produk</code> dan <code>hasil_main</code>.</td>
+</tr>
+<tr>
+<td><strong>Prioritas</strong></td>
+<td><strong>P0</strong> — quick win termurah di seluruh dokumen.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="d2-rls-angkat-evaluasi-ke-initplan">D.2 RLS: angkat evaluasi ke InitPlan</h3>
+<h4 id="mekanismenya">Mekanismenya</h4>
+<p>Semua fungsi helper (<code>is_admin()</code>, <code>is_guru()</code>, <code>is_psikolog()</code>, <code>is_superuser()</code>, <code>is_investor()</code>) sudah ditulis dengan benar: <code>STABLE SECURITY DEFINER</code>, mencari <code>profiles</code> lewat primary key. Itu bagian yang sudah beres.</p>
+<p>Masalahnya di <strong>cara memanggilnya</strong>. Saat sebuah fungsi ditulis langsung di ekspresi policy:</p>
+<pre><code class="language-sql">using (public.is_admin() or ortu_id = auth.uid())        -- dievaluasi PER BARIS
+</code></pre>
+<p>PostgreSQL memperlakukannya sebagai bagian dari filter per baris. Bungkus dalam sub-select dan perencana mengangkatnya menjadi <strong>InitPlan</strong> — dievaluasi <strong>sekali per query</strong>, hasilnya dipakai ulang:</p>
+<pre><code class="language-sql">using ((select public.is_admin()) or ortu_id = (select auth.uid()))   -- SEKALI per query
+</code></pre>
+<p>Perbedaannya nol pada 10 baris dan besar pada 100.000 baris. Ini perubahan <strong>murni performa</strong> — hasil logisnya identik, karena kedua fungsi memang konstan sepanjang satu query.</p>
+<blockquote>
+<p><strong>Peringatan penting:</strong> repo punya ~160 policy. <strong>Jangan mengubah semuanya sekaligus.</strong> Policy adalah kode keamanan; satu salah tulis membuka data keluarga orang lain atau memblokir pengguna yang sah. Kerjakan 8 policy berdampak terbesar di bawah, uji tiap blok dengan empat peran, baru lanjut. Sisanya masuk P2 dengan aturan berhenti: hanya sentuh policy pada tabel yang <code>n_live_tup</code> sudah &gt; 1.000.</p>
+</blockquote>
+<h4 id="delapan-policy-yang-dikerjakan-lebih-dulu-dan-alasannya">Delapan policy yang dikerjakan lebih dulu, dan alasannya</h4>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Tabel</th>
+<th>Mengapa paling berdampak</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong><code>hasil_main</code></strong></td>
+<td>Tabel tercepat tumbuh, dan punya <strong>3 policy SELECT permissive yang di-OR</strong> — PostgreSQL harus mengevaluasi ketiganya sampai ada yang benar. Salah satunya <code>exists(select 1 from anak …)</code> per baris, satu lagi <code>boleh_lihat_laporan_anak(anak_id)</code> yang <strong>argumennya berubah per baris</strong> sehingga <code>STABLE</code> tidak bisa menolong. Dibaca penuh oleh <code>skor-core.ts:60</code> setiap sesi game.</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong><code>anak</code></strong></td>
+<td>Dibaca di hampir setiap halaman lewat <code>getAnakTerjamin</code>.</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong><code>event</code></strong></td>
+<td>Policy <code>exists(… pendaftaran_event …)</code> per baris, ditambah filter <code>status</code> tanpa index (diperbaiki di D.1).</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong><code>pendaftaran_event</code></strong></td>
+<td>Dibaca penuh oleh 3 reader admin tanpa filter.</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong><code>transaksi_keuangan</code></strong></td>
+<td>Di-full-scan oleh 8 halaman; setiap baris mengevaluasi <code>is_admin()</code> <strong>dan</strong> <code>is_investor()</code>.</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong><code>pesanan</code> + <code>item_pesanan</code></strong></td>
+<td><code>item_pesanan</code> punya <code>exists(… pesanan …)</code> per baris.</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong><code>aktivitas</code></strong></td>
+<td>1 insert per page view + dibaca 3.000–5.000 baris di halaman analitik.</td>
+</tr>
+<tr>
+<td>8</td>
+<td><strong><code>profiles</code></strong></td>
+<td>Ditarik <strong>seluruh tabel</strong> oleh <code>kpi.ts:164</code> dan <code>analitik:36</code>.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="artefak-supabasemigrations0088_rls_initplansql-pola-untuk-tiga-tabel-pertama">Artefak: <code>supabase/migrations/0088_rls_initplan.sql</code> (pola untuk tiga tabel pertama)</h4>
+<pre><code class="language-sql">-- 0088_rls_initplan.sql — bungkus fungsi &amp; auth.uid() dalam sub-select agar diangkat ke InitPlan.
+-- HASIL LOGIS TIDAK BERUBAH. Ini perubahan performa, bukan perubahan aturan akses.
+--
+-- CARA KERJA: jalankan BLOK DEMI BLOK, dan setelah tiap blok uji dengan 4 peran
+-- (ortu biasa · admin · guru · investor) memakai checklist di bawah tabel ini.
+-- JANGAN jalankan seluruh berkas lalu berharap yang terbaik.
+--
+-- PRASYARAT: 0087 sudah jalan (index pendukung harus ada lebih dulu, kalau tidak
+-- policy yang lebih murah hanya memindahkan biaya ke sequential scan).
+
+begin;
+
+-- ── BLOK 1 — hasil_main ────────────────────────────────────────────────────
+-- Tiga policy SELECT permissive digabung menjadi SATU. Cakupan aksesnya sama persis:
+--   (a) ortu pemilik anak  (b) admin  (c) psikolog yang berhak lihat laporan
+-- Dengan satu policy, PostgreSQL berhenti mengevaluasi tiga ekspresi ber-OR per baris.
+drop policy if exists &quot;hasil milik ortu&quot;      on public.hasil_main;
+drop policy if exists &quot;admin baca hasil&quot;      on public.hasil_main;   -- 0006:8
+drop policy if exists &quot;laporan psikolog hasil&quot; on public.hasil_main;  -- 0066:27
+create policy &quot;hasil_main baca&quot; on public.hasil_main
+for select to authenticated
+using (
+  (select public.is_admin())
+  or exists (select 1 from public.anak a
+             where a.id = hasil_main.anak_id and a.ortu_id = (select auth.uid()))
+  or public.boleh_lihat_laporan_anak(hasil_main.anak_id)
+);
+-- Urutan OR disengaja: cek termurah lebih dulu (is_admin sekali per query),
+-- lalu exists ber-index, dan yang termahal (boleh_lihat_laporan_anak) paling akhir —
+-- PostgreSQL melakukan short-circuit, jadi urutan ini menghemat pemanggilan.
+
+drop policy if exists &quot;tulis hasil anak sendiri&quot; on public.hasil_main;
+create policy &quot;hasil_main tulis&quot; on public.hasil_main
+for insert to authenticated
+with check (
+  exists (select 1 from public.anak a
+          where a.id = hasil_main.anak_id and a.ortu_id = (select auth.uid()))
+);
+
+-- ── BLOK 2 — anak ──────────────────────────────────────────────────────────
+drop policy if exists &quot;anak milik ortu&quot; on public.anak;
+create policy &quot;anak milik ortu&quot; on public.anak
+for all to authenticated
+using      (ortu_id = (select auth.uid()) or (select public.is_admin()))
+with check (ortu_id = (select auth.uid()) or (select public.is_admin()));
+
+-- ── BLOK 3 — event ─────────────────────────────────────────────────────────
+-- Sub-select pada auth.uid(); exists-nya kini dilayani idx_pendaftaran_event_event_ortu (0087).
+drop policy if exists &quot;event baca peserta&quot; on public.event;
+create policy &quot;event baca peserta&quot; on public.event
+for select to authenticated
+using (
+  status = 'tampil'
+  or (select public.is_admin())
+  or exists (select 1 from public.pendaftaran_event pe
+             where pe.event_id = event.id and pe.ortu_id = (select auth.uid()))
+);
+
+insert into public.schema_migrations (versi, nama) values ('0088','rls_initplan')
+  on conflict (versi) do nothing;
+
+commit;
+</code></pre>
+<p>Blok 4–8 mengikuti pola yang sama: <code>public.is_admin()</code> → <code>(select public.is_admin())</code>, <code>auth.uid()</code> → <code>(select auth.uid())</code>, tanpa mengubah struktur logika. Yang <strong>tidak</strong> boleh diubah adalah <code>boleh_lihat_laporan_anak(anak_id)</code> — argumennya bergantung pada baris, jadi tidak bisa diangkat; itulah sebabnya ia ditaruh paling akhir dalam rantai OR dan mengapa index <code>pendaftaran_konsultasi(anak_id)</code> di D.1 penting.</p>
+<h4 id="checklist-uji-wajib-setelah-setiap-blok">Checklist uji wajib setelah setiap blok</h4>
+<p>Ini bagian yang tidak boleh dilewati — policy yang salah tidak menimbulkan error, ia diam-diam memperlihatkan atau menyembunyikan data.</p>
+<ol>
+<li><strong>Ortu A</strong> melihat anaknya sendiri, dan <strong>tidak</strong> melihat anak Ortu B (uji dengan menukar id di URL, bukan hanya lewat UI).</li>
+<li><strong>Ortu A</strong> melihat riwayat main anaknya di <code>/anak/&lt;id&gt;/laporan</code>.</li>
+<li><strong>Admin</strong> melihat semua anak, semua pendaftaran, semua transaksi.</li>
+<li><strong>Guru</strong> melihat peserta event yang ditugaskan, dan <strong>tidak</strong> melihat data keuangan.</li>
+<li><strong>Investor</strong> melihat ringkasan keuangan, dan <strong>tidak</strong> melihat data pribadi anak.</li>
+<li>Anak menyelesaikan satu game → baris <code>hasil_main</code> masuk (menguji policy INSERT, yang paling mudah rusak saat menggabungkan policy SELECT).</li>
+<li><code>explain (analyze)</code> pada query <code>hasil_main</code> satu anak → cari <code>InitPlan</code> di rencana query, dan pastikan tidak muncul <code>SubPlan</code> yang dieksekusi ribuan kali.</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Aspek</th>
+<th>Isi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Dampak</strong></td>
+<td>Pada tabel besar, biaya evaluasi policy turun dari O(baris) menjadi O(1) untuk bagian fungsi. Penggabungan 3 policy <code>hasil_main</code> juga memotong dua evaluasi per baris.</td>
+</tr>
+<tr>
+<td><strong>Effort</strong></td>
+<td>½ hari termasuk uji 4 peran.</td>
+</tr>
+<tr>
+<td><strong>Risiko</strong></td>
+<td><strong>Tertinggi di Bab D</strong> — ini kode keamanan. Kerjakan per blok, uji per blok. Simpan definisi policy lama (<code>select polname, qual from pg_policies where tablename='hasil_main'</code>) sebelum mengubah, supaya bisa dikembalikan.</td>
+</tr>
+<tr>
+<td><strong>Prioritas</strong></td>
+<td><strong>P0</strong> untuk blok 1–5 · <strong>P1</strong> untuk 6–8 · <strong>P2</strong> untuk ~150 policy sisanya (hanya bila tabelnya &gt; 1.000 baris).</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="d3-agregasi-pindah-ke-sql-sekaligus-memperbaiki-bug-angka-salah">D.3 Agregasi: pindah ke SQL — sekaligus memperbaiki bug angka salah</h3>
+<h4 id="d3a-ini-bukan-optimasi-ini-perbaikan-kebenaran">D.3.a Ini bukan optimasi. Ini perbaikan kebenaran.</h4>
+<p>Pola berikut terulang di seluruh modul keuangan dan analitik:</p>
+<pre><code class="language-ts">// lib/data/keuangan.ts:28-34 — ambilSemua(): SELURUH tabel, tanpa filter tanggal, tanpa limit
+const { data } = await s.from('transaksi_keuangan').select('arah,kategori,jumlah,tanggal');
+// lalu belasan .filter().reduce() di JavaScript
+</code></pre>
+<p>Ada <strong>dua</strong> kerusakan di sini, dan yang kedua jauh lebih serius:</p>
+<ol>
+<li>
+<p><strong>Biaya</strong>: <code>admin/keuangan/laporan</code> memanggil <code>getPerBulan()</code> + <code>getPerKategori('masuk')</code> + <code>getPerKategori('keluar')</code>, dan ketiganya memanggil <code>ambilSemua()</code> → <strong>3× full scan identik dalam satu render</strong>. <code>anggaran</code> melakukannya 2×. <code>kpi.ts</code> menarik 4 tabel penuh termasuk <strong>seluruh <code>profiles</code></strong>.</p>
+</li>
+<li>
+<p><strong>Kebenaran</strong>: PostgREST punya batas baris default <strong>1.000</strong>. Query tanpa <code>.limit()</code> <strong>tidak error</strong> saat melewatinya — ia hanya mengembalikan 1.000 baris pertama. Jadi begitu <code>transaksi_keuangan</code> mencapai 1.001 baris, total pemasukan di dashboard <strong>salah</strong>, dan tidak ada satu pun tanda di UI, log, maupun Sentry. Angka yang salah tapi terlihat masuk akal lebih berbahaya daripada halaman error.</p>
+</li>
+</ol>
+<p><strong>Lakukan ini sekarang, sebelum apa pun</strong> (read-only, 5 menit) — jalankan di SQL Editor:</p>
+<pre><code class="language-sql">-- Apakah bug pemotongan 1.000 baris SUDAH aktif di produksi?
+select 'transaksi_keuangan' t, count(*) n, count(*) &gt; 1000 as sudah_terpotong from public.transaksi_keuangan
+union all select 'profiles',           count(*), count(*) &gt; 1000 from public.profiles
+union all select 'anak',               count(*), count(*) &gt; 1000 from public.anak
+union all select 'hasil_main',         count(*), count(*) &gt; 1000 from public.hasil_main
+union all select 'aktivitas',          count(*), count(*) &gt; 1000 from public.aktivitas
+union all select 'pendaftaran_event',  count(*), count(*) &gt; 1000 from public.pendaftaran_event
+union all select 'langganan',          count(*), count(*) &gt; 1000 from public.langganan
+order by n desc;
+</code></pre>
+<p>Kolom <code>sudah_terpotong = true</code> pada baris mana pun berarti <strong>halaman yang membaca tabel itu sudah menampilkan angka yang salah hari ini.</strong> Untuk <code>hasil_main</code>, <code>true</code> berarti lencana &amp; streak sebagian anak sudah salah hitung.</p>
+<h4 id="d3b-presedennya-sudah-ada-di-repo-ini">D.3.b Presedennya sudah ada di repo ini</h4>
+<p><code>laporan_engagement()</code> (<code>0040_laporan_rpc.sql</code>) sudah melakukan hal yang benar — <code>SECURITY DEFINER</code>, guard <code>is_admin()</code>, agregasi di dalam database, hanya angka yang keluar. Komentar di baris pertamanya bahkan menuliskan alasannya: <em>"hindari tarik semua baris ke app"</em>. Yang perlu dilakukan hanyalah <strong>menerapkan pola yang sudah Anda tulis sendiri</strong> ke keuangan dan analitik.</p>
+<h4 id="artefak-supabasemigrations0089_ringkas_rpcsql">Artefak: <code>supabase/migrations/0089_ringkas_rpc.sql</code></h4>
+<pre><code class="language-sql">-- 0089_ringkas_rpc.sql — agregasi pindah ke SQL. Mengembalikan ANGKA, bukan baris.
+-- Ini memperbaiki dua hal sekaligus: (1) 3× full scan per render, (2) bug pemotongan 1.000 baris.
+-- Pola mengikuti 0040_laporan_rpc.sql: SECURITY DEFINER + guard peran + STABLE.
+
+begin;
+
+-- ── Ringkasan keuangan dalam rentang tanggal ───────────────────────────────
+-- Mengganti: keuangan.ts ambilSemua() + getDashboardKeuangan + getPerBulan + getPerKategori
+-- Satu pemanggilan menggantikan 3 full scan. Rentang tanggal WAJIB (bukan opsional) —
+-- inilah yang mencegah query ini sendiri menjadi full scan saat tabel membesar.
+create or replace function public.ringkas_keuangan(p_dari date, p_sampai date)
+returns json
+language plpgsql stable security definer set search_path = public
+as $$
+declare hasil json;
+begin
+  if not (public.is_admin() or public.is_investor()) then
+    raise exception 'akses ditolak';
+  end if;
+
+  select json_build_object(
+    'dari', p_dari,
+    'sampai', p_sampai,
+    'total_masuk',  coalesce(sum(jumlah) filter (where arah = 'masuk'), 0),
+    'total_keluar', coalesce(sum(jumlah) filter (where arah = 'keluar'), 0),
+    'laba',         coalesce(sum(jumlah) filter (where arah = 'masuk'), 0)
+                  - coalesce(sum(jumlah) filter (where arah = 'keluar'), 0),
+    'jumlah_transaksi', count(*),
+    -- per bulan: satu lintasan, bukan 6 filter berulang di JavaScript
+    'per_bulan', (
+      select coalesce(json_agg(x order by x.ym), '[]'::json) from (
+        select to_char(tanggal, 'YYYY-MM') as ym,
+               sum(jumlah) filter (where arah = 'masuk')  as masuk,
+               sum(jumlah) filter (where arah = 'keluar') as keluar
+        from transaksi_keuangan
+        where tanggal between p_dari and p_sampai
+        group by 1) x),
+    -- per kategori: menggantikan DUA pemanggilan getPerKategori()
+    'per_kategori', (
+      select coalesce(json_agg(y order by y.total desc), '[]'::json) from (
+        select arah, kategori, sum(jumlah) as total, count(*) as n
+        from transaksi_keuangan
+        where tanggal between p_dari and p_sampai
+        group by 1, 2) y)
+  ) into hasil
+  from transaksi_keuangan
+  where tanggal between p_dari and p_sampai;
+
+  return hasil;
+end;
+$$;
+revoke all on function public.ringkas_keuangan(date, date) from public, anon;
+grant execute on function public.ringkas_keuangan(date, date) to authenticated;
+
+-- ── Ringkasan analitik N hari terakhir ─────────────────────────────────────
+-- Mengganti: admin/analitik/page.tsx:29-39 (9 query paralel, 2 di antaranya SELURUH tabel)
+-- DAU/WAU/MAU dihitung dengan count(distinct) di DB, bukan dengan Set di memori Node.
+create or replace function public.ringkas_analitik(p_hari int default 30)
+returns json
+language plpgsql stable security definer set search_path = public
+as $$
+declare hasil json; sejak timestamptz := now() - make_interval(days =&gt; p_hari);
+begin
+  if not public.is_admin() then raise exception 'akses ditolak'; end if;
+
+  select json_build_object(
+    'hari', p_hari,
+    'total_ortu', (select count(*) from profiles),
+    'total_anak', (select count(*) from anak),
+    'ortu_baru',  (select count(*) from profiles where created_at &gt;= sejak),
+    'dau', (select count(distinct ortu_id) from aktivitas where dibuat_at &gt;= now() - interval '1 day'),
+    'wau', (select count(distinct ortu_id) from aktivitas where dibuat_at &gt;= now() - interval '7 days'),
+    'mau', (select count(distinct ortu_id) from aktivitas where dibuat_at &gt;= sejak),
+    'sesi_main',  (select count(*) from hasil_main where tanggal &gt;= sejak::date),
+    'anak_aktif', (select count(distinct anak_id) from hasil_main where tanggal &gt;= sejak::date),
+    'per_fitur', (
+      select coalesce(json_agg(z order by z.n desc), '[]'::json) from (
+        select fitur, count(*) n, count(distinct ortu_id) pengguna
+        from aktivitas where dibuat_at &gt;= sejak group by 1) z),
+    'pendaftaran_event', (select count(*) from pendaftaran_event where created_at &gt;= sejak),
+    'pesanan',           (select count(*) from pesanan where created_at &gt;= sejak)
+  ) into hasil;
+
+  return hasil;
+end;
+$$;
+revoke all on function public.ringkas_analitik(int) from public, anon;
+grant execute on function public.ringkas_analitik(int) to authenticated;
+
+-- ── Perbaikan laporan_engagement(): 3 full scan → 1 ────────────────────────
+-- Versi lama (0040:8-35) melakukan count+sum, lalu DUA subquery group-by-order-limit-1
+-- atas seluruh hasil_main. Versi ini satu lintasan dengan window function.
+create or replace function public.laporan_engagement()
+returns json
+language plpgsql stable security definer set search_path = public
+as $$
+declare hasil json;
+begin
+  if not public.is_admin() then raise exception 'akses ditolak'; end if;
+
+  with dasar as (
+    select count(*)::bigint as total_sesi,
+           coalesce(sum(durasi_detik), 0)::bigint as total_detik
+    from hasil_main
+  ),
+  top_mesin as (
+    select mesin from hasil_main group by mesin order by count(*) desc limit 1
+  ),
+  top_tema as (
+    select tema_id from hasil_main where tema_id is not null
+    group by tema_id order by count(*) desc limit 1
+  )
+  select json_build_object(
+    'total_sesi',    (select total_sesi from dasar),
+    'total_detik',   (select total_detik from dasar),
+    'mesin_populer', (select mesin from top_mesin),
+    'tema_populer',  (select tema_id from top_tema)
+  ) into hasil;
+
+  return hasil;
+end;
+$$;
+
+insert into public.schema_migrations (versi, nama) values ('0089','ringkas_rpc')
+  on conflict (versi) do nothing;
+
+commit;
+</code></pre>
+<h4 id="d3c-sisi-typescript">D.3.c Sisi TypeScript</h4>
+<p>Reader menjadi tipis, dan <strong>kolom <code>arah</code>/<code>jumlah</code> tidak pernah lagi meninggalkan database</strong>:</p>
+<pre><code class="language-ts">// lib/data/keuangan.ts — pengganti ambilSemua(). Rentang tanggal WAJIB diberikan pemanggil.
+export async function ringkasKeuangan(dari: string, sampai: string) {
+  const s = await createClient();
+  const { data, error } = await s.rpc('ringkas_keuangan', { p_dari: dari, p_sampai: sampai });
+  if (error) { log('error', 'db.error', { konteks: 'ringkas_keuangan', pesan: error.message }); throw new Error(error.message); }
+  return data as RingkasKeuangan;
+}
+</code></pre>
+<p>Halaman yang berubah: <code>admin/keuangan/page.tsx</code>, <code>.../laporan</code>, <code>.../anggaran</code>, <code>.../kpi</code>, <code>.../insight</code>, <code>.../pajak</code>, <code>admin/analitik/page.tsx</code>, <code>investor/page.tsx</code>. Semuanya sekarang <strong>wajib</strong> menyebut rentang tanggal — default yang disarankan: bulan berjalan untuk dashboard, 6 bulan untuk laporan, 12 bulan untuk KPI.</p>
+<blockquote>
+<p><strong>Catatan penting saat mengerjakan:</strong> setelah beralih ke RPC, angka di dashboard <strong>akan berubah</strong> bila tabel sudah melewati 1.000 baris. Itu <strong>bukan bug baru</strong> — itu angka yang benar muncul untuk pertama kalinya. Catat perbandingan sebelum/sesudah sebagai bukti, dan beri tahu pemilik agar tidak dikira regresi.</p>
+</blockquote>
+<h4 id="d3d-kapan-naik-ke-tabel-ringkasan-harian">D.3.d Kapan naik ke tabel ringkasan harian</h4>
+<p>RPC di atas cukup sampai ratusan ribu baris. Setelah itu, <code>count(distinct ortu_id)</code> atas <code>aktivitas</code> yang berisi puluhan juta baris menjadi mahal walaupun ter-index. Tangga berikutnya, <strong>jangan dikerjakan sekarang</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Tahap</th>
+<th>Pendekatan</th>
+<th>Pemicu</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sekarang → T1</td>
+<td>RPC langsung (di atas)</td>
+<td>—</td>
+</tr>
+<tr>
+<td>T2</td>
+<td>Tabel rollup <code>ringkasan_harian(tanggal, metrik, nilai)</code> diisi <code>pg_cron</code> tiap malam; halaman analitik membaca rollup, bukan tabel mentah</td>
+<td><code>aktivitas</code> &gt; 5 juta baris <strong>atau</strong> RPC analitik &gt; 2 detik</td>
+</tr>
+<tr>
+<td>T2–T3</td>
+<td>Retensi: <code>delete from aktivitas where dibuat_at &lt; now() - interval '180 days'</code> setelah dirollup</td>
+<td>ukuran DB &gt; 6 GB</td>
+</tr>
+<tr>
+<td>T3</td>
+<td>Partisi deklaratif bulanan pada <code>hasil_main</code> &amp; <code>aktivitas</code></td>
+<td>insert &gt; 50/detik</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Aspek</th>
+<th>Isi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Dampak</strong></td>
+<td><strong>Memperbaiki angka yang salah</strong> (nilai utama). Ditambah: egress DB untuk satu render halaman laporan turun dari "seluruh tabel × 3" menjadi ~2 KB, dan waktu CPU Node untuk mengurai &amp; menjumlahkan hilang sepenuhnya.</td>
+</tr>
+<tr>
+<td><strong>Effort</strong></td>
+<td>1,5 hari (SQL ½ hari, mengganti 8 pemanggil + verifikasi angka 1 hari).</td>
+</tr>
+<tr>
+<td><strong>Risiko</strong></td>
+<td>Angka berubah (lihat catatan di atas — ini yang benar). Guard peran di dalam RPC <strong>harus</strong> diuji: pastikan akun ortu biasa memanggil RPC ini mendapat <code>akses ditolak</code>, bukan data.</td>
+</tr>
+<tr>
+<td><strong>Prioritas</strong></td>
+<td><strong>P0</strong> — satu-satunya butir P0 di dokumen ini yang memperbaiki kebenaran data, bukan kecepatan atau biaya.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="6-bab-e-pengiriman-ke-hp-bundle-payload-caching">6. Bab E — Pengiriman ke HP: bundle, payload, caching</h2>
+<p>Pengguna platform ini adalah orang tua dan anak dengan HP kelas menengah-bawah di jaringan Indonesia. Untuk mereka, <strong>byte lebih mahal daripada milidetik CPU server</strong>. Bab ini soal mengurangi apa yang harus diunduh dan diproses HP.</p>
+<h3 id="e1-code-splitting-mesin-game">E.1 Code-splitting mesin game</h3>
+<h4 id="masalahnya">Masalahnya</h4>
+<p><code>GameRunner.tsx:5-20</code> meng-import <strong>15 mesin game + komponen Reward secara statis</strong>, lalu memilih satu lewat rantai <code>if/else</code> saat runtime (<code>:72-86</code>). Konsekuensinya: anak yang memainkan satu game tetap mengunduh kode ke-15 mesin. <code>dynamic()</code> dan <code>React.lazy()</code> <strong>tidak dipakai sama sekali</strong> di seluruh repo — jadi tidak ada satu pun pemisahan kode manual.</p>
+<p>Rantai import ini juga menular: <code>MenuAnak.tsx</code> (satu-satunya pemakai <code>GameRunner</code>) adalah komponen client, sehingga seluruh subtree mesin masuk ke bundle rute <code>/main/[anakId]</code> — halaman yang paling sering dibuka anak.</p>
+<p>Total sumber mesin ≈ 1.832 baris, dengan yang terberat <code>MewarnaiGame</code> (201 baris, memakai <code>DOMParser</code> + manipulasi DOM SVG), <code>IngatanGame</code>, <code>HitungBendaGame</code>, <code>JiplakGame</code>.</p>
+<h4 id="artefak-peta-mesin-dinamis">Artefak: peta mesin dinamis</h4>
+<pre><code class="language-tsx">// src/components/game/mesin.ts — SATU tempat pemetaan mesin → loader.
+// Menggantikan 15 import statis di GameRunner.tsx:5-20 dan rantai if/else di :72-86.
+import dynamic from 'next/dynamic';
+import type { ComponentType } from 'react';
+import type { Mesin } from '@/lib/game/tipe';
+
+// Semua mesin ssr:false — game hanya berjalan setelah interaksi anak, tidak perlu HTML server.
+// `loading` menampilkan rangka sederhana; JANGAN spinner berputar (bikin anak menunggu terasa lama).
+const opsi = { ssr: false, loading: () =&gt; &lt;div className=&quot;kp-kartu&quot; style={{ minHeight: 260 }} /&gt; };
+
+export const MESIN: Record&lt;Mesin, ComponentType&lt;any&gt;&gt; = {
+  'tekan-sesuai':  dynamic(() =&gt; import('./ManaYa'), opsi),
+  'seret-wadah':   dynamic(() =&gt; import('./BeresBeres'), opsi),
+  'cari-pasangan': dynamic(() =&gt; import('./CariPasangan'), opsi),
+  'mewarnai':      dynamic(() =&gt; import('./MewarnaiGame'), opsi),
+  'dekode':        dynamic(() =&gt; import('./Dekode'), opsi),
+  'urutan':        dynamic(() =&gt; import('./UrutanGame'), opsi),
+  'jalur':         dynamic(() =&gt; import('./JalurGame'), opsi),
+  'hitung':        dynamic(() =&gt; import('./HitungGame'), opsi),
+  'cocokkan':      dynamic(() =&gt; import('./CocokkanGame'), opsi),
+  'ejakata':       dynamic(() =&gt; import('./EjaKataGame'), opsi),
+  'garis':         dynamic(() =&gt; import('./GarisGame'), opsi),
+  'sukukata':      dynamic(() =&gt; import('./SukuKataGame'), opsi),
+  'jiplak':        dynamic(() =&gt; import('./JiplakGame'), opsi),
+  'hitung-benda':  dynamic(() =&gt; import('./HitungBendaGame'), opsi),
+  'ingatan':       dynamic(() =&gt; import('./IngatanGame'), opsi),
+};
+</code></pre>
+<p>Di <code>GameRunner.tsx</code>, rantai <code>if/else</code> menjadi satu pencarian — dan <strong>mesin yang tidak dikenal harus tetap ditangani</strong>, karena mesin baru bisa ada di data sebelum kodenya ter-deploy:</p>
+<pre><code class="language-tsx">const Mesin = MESIN[paket.mesin as Mesin];
+if (!Mesin) return &lt;PesanRamah&gt;Game ini belum bisa dimainkan di versi ini. Coba game lain ya 🙂&lt;/PesanRamah&gt;;
+return &lt;Mesin data={paket.butir} onSelesai={selesai} /&gt;;
+</code></pre>
+<p><code>Reward</code> <strong>tetap statis</strong> — ia dipakai setiap kali game selesai, jadi lazy-loading-nya hanya menambah jeda di momen paling membahagiakan.</p>
+<table>
+<thead>
+<tr>
+<th>Aspek</th>
+<th>Isi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Dampak</strong></td>
+<td>Anak mengunduh 1 mesin, bukan 15. Perkiraan penghematan JS rute <code>/main/[anakId]</code>: <strong>60–75%</strong> dari porsi mesin game. Perkiraan ini <strong>harus diukur</strong>, bukan dipercaya — lihat E.5.</td>
+</tr>
+<tr>
+<td><strong>Effort</strong></td>
+<td>3–4 jam (peta 1 jam, ubah <code>GameRunner</code> 30 menit, uji 15 mesin 2 jam).</td>
+</tr>
+<tr>
+<td><strong>Risiko — wajib diuji</strong></td>
+<td>(a) <strong>Mainkan ke-15 mesin sampai selesai</strong> — <code>ssr:false</code> mengubah waktu mount, dan mesin yang membaca ukuran DOM saat mount (<code>JiplakGame</code> memakai <code>getBoundingClientRect</code>, <code>MewarnaiGame</code> memakai <code>DOMParser</code> + <code>innerHTML</code>) paling rentan. (b) Pastikan <code>loading</code> tidak menggeser layout (CLS) — karena itu <code>minHeight</code> dipatok. (c) Uji di jaringan lambat: chunk mesin diunduh <strong>saat game dibuka</strong>, jadi pramuat aset di <code>IngatanGame</code> kini bersaing dengan unduhan chunk — verifikasi layar "Menyiapkan kartu…" masih wajar.</td>
+</tr>
+<tr>
+<td><strong>Prioritas</strong></td>
+<td><strong>P1</strong> — dampak besar, tapi kalah mendesak dari kebenaran data &amp; keamanan.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="e2-pisahkan-query-ringan-dan-berat">E.2 Pisahkan query ringan dan berat</h3>
+<h4 id="masalahnya_1">Masalahnya</h4>
+<p>Kolom <code>jsonb</code> besar selalu ikut terbawa, bahkan di halaman yang hanya menampilkan judul:</p>
+<table>
+<thead>
+<tr>
+<th>Kolom</th>
+<th>Isinya</th>
+<th>Ikut terkirim di</th>
+<th>Padahal yang dipakai</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>paket_aset.butir</code></td>
+<td>seluruh isi game: markup SVG mewarnai, palette, grid jalur</td>
+<td><code>pustaka.ts:23</code> → props client di <code>/main/[anakId]</code> <strong>dan</strong> <code>/pilih-game/[anakId]</code>; <code>admin/tema/[id]/page.tsx:16</code></td>
+<td><code>/pilih-game</code> hanya judul + emoji; daftar admin hanya judul, mesin, rentang usia</td>
+</tr>
+<tr>
+<td><code>kelas_bermain.aktivitas</code> + <code>bahan</code></td>
+<td>array langkah &amp; bahan</td>
+<td><code>favorit.ts:6</code>, <code>riwayat-kelas.ts:5</code>, <code>/api/kelas-bermain</code></td>
+<td>daftar favorit &amp; riwayat hanya butuh judul</td>
+</tr>
+<tr>
+<td><code>event.indikator_perkembangan</code></td>
+<td>array indikator</td>
+<td><code>guru.ts:47</code> untuk <strong>semua</strong> event</td>
+<td>hanya dicek <code>Array.isArray(...).length &gt; 0</code> di JavaScript</td>
+</tr>
+</tbody>
+</table>
+<p>Presedennya sudah benar di <code>publik.ts:42,50</code> — <code>select('id,judul,tujuan,usia_min,usia_max,sampul_url')</code>. Yang kurang adalah menerapkannya ke jalur internal.</p>
+<h4 id="pola-dua-konstanta-kolom-per-modul">Pola: dua konstanta kolom per modul</h4>
+<pre><code class="language-ts">// lib/data/pustaka.ts — RINGAN untuk daftar, PENUH hanya saat game benar-benar dimainkan.
+const PAKET_RINGAN = 'id,tema_id,mesin,judul,area_skill,usia_min,usia_max,target_detik,kategori_usia_id';
+const PAKET_PENUH  = `${PAKET_RINGAN},butir`;   // `butir` = isi game, hanya untuk GameRunner
+</code></pre>
+<p>Aturan yang berlaku ke depan: <strong><code>butir</code> hanya boleh ikut ketika game akan dimainkan pada render itu.</strong> Untuk halaman pemilihan, kirim yang ringan; ambil <code>butir</code> satu paket saja saat anak menekan game — lewat Server Action <code>ambilButir(paketId)</code> atau reader <code>getPaketPenuh(id)</code>.</p>
+<p>Untuk <code>event.indikator_perkembangan</code>, hentikan menarik jsonb hanya untuk mengecek panjangnya. Pindahkan pengecekan ke database sebagai kolom hasil hitung:</p>
+<pre><code class="language-sql">-- bagian dari 0090_kolom_ringkas.sql
+-- Generated column: dihitung Postgres, ikut di select biasa, TIDAK menarik isi jsonb-nya.
+-- PRASYARAT: pastikan semua baris berisi array atau null, bukan objek —
+--   select count(*) from event where indikator_perkembangan is not null
+--     and jsonb_typeof(indikator_perkembangan) &lt;&gt; 'array';
+--   harus 0, kalau tidak generated column-nya akan error saat dibuat.
+alter table public.event
+  add column if not exists ada_indikator boolean
+  generated always as (
+    coalesce(jsonb_array_length(coalesce(indikator_perkembangan, '[]'::jsonb)), 0) &gt; 0
+  ) stored;
+</code></pre>
+<p>Dengan itu <code>guru.ts:47</code> cukup <code>select('id,judul,tanggal,ada_indikator')</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Aspek</th>
+<th>Isi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Dampak</strong></td>
+<td>Halaman <code>/pilih-game</code> berhenti mengirim seluruh isi game semua tema ke HP anak — ini kemungkinan <strong>penghematan byte terbesar</strong> di seluruh dokumen, dan salah satu yang termurah. Endpoint <code>/api/pustaka</code> (dipakai aplikasi mobile untuk sinkronisasi) ikut mengecil drastis.</td>
+</tr>
+<tr>
+<td><strong>Effort</strong></td>
+<td><code>/pilih-game</code> + <code>admin/tema/[id]</code> = 30 menit · <code>favorit</code>/<code>riwayat</code> = 30 menit · <code>guru.ts</code> + generated column = 1 jam · <code>/api/pustaka</code> + <code>/api/kelas-bermain</code> (parameter <code>?ringkas=1</code>, jaga kompatibilitas aplikasi mobile lama) = 2 jam.</td>
+</tr>
+<tr>
+<td><strong>Risiko</strong></td>
+<td>Kompatibilitas aplikasi mobile: jangan hapus kolom dari respons API yang sudah dipakai versi aplikasi yang sudah ter-install — rilis app store tidak bisa dipaksa. Karena itu API memakai parameter opsional, bukan perubahan bentuk respons.</td>
+</tr>
+<tr>
+<td><strong>Prioritas</strong></td>
+<td><strong>P0</strong> untuk <code>/pilih-game</code> &amp; <code>admin/tema</code> (30 menit, dampak besar) · <strong>P1</strong> sisanya.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="e3-caching-berlapis-dan-perbaikan-middleware">E.3 Caching berlapis dan perbaikan middleware</h3>
+<h4 id="e3a-ketidakseimbangan-yang-ada-sekarang">E.3.a Ketidakseimbangan yang ada sekarang</h4>
+<p><strong>5</strong> <code>unstable_cache</code> melawan <strong>160</strong> <code>revalidatePath</code> di 30 berkas. Artinya invalidasi jauh lebih agresif daripada caching-nya — dan <code>revalidatePath('/')</code> yang dipanggil dari mana saja membatalkan seluruh cabang rute, termasuk halaman yang tidak berkaitan dengan perubahan itu.</p>
+<h4 id="e3b-tiga-fase-dari-termurah">E.3.b Tiga fase, dari termurah</h4>
+<table>
+<thead>
+<tr>
+<th>Fase</th>
+<th>Tindakan</th>
+<th>Effort</th>
+<th>Prio</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1</strong></td>
+<td><strong>Halaman publik jadi static/ISR.</strong> <code>/artikel</code> dan <code>/artikel/[slug]</code> datanya sudah ter-cache lewat <code>unstable_cache</code>, tapi halamannya tetap SSR karena memanggil <code>createClient()</code> (yang menyentuh <code>cookies()</code>). Pakai client anon tanpa cookie di jalur publik (pola <code>publik.ts:7-9</code> sudah ada) + <code>export const revalidate = 300</code> + <code>generateStaticParams</code> untuk artikel.</td>
+<td>3 jam</td>
+<td>P1</td>
+</tr>
+<tr>
+<td><strong>2</strong></td>
+<td><strong>Perluas taksonomi tag.</strong> Sekarang hanya <code>katalog</code> dan <code>artikel</code>. Pecah menjadi <code>katalog:event</code>, <code>katalog:produk</code>, <code>katalog:kelas</code>, <code>tema</code>, <code>pustaka</code> — supaya menyimpan satu produk tidak membatalkan cache event.</td>
+<td>1 hari</td>
+<td>P1</td>
+</tr>
+<tr>
+<td><strong>3</strong></td>
+<td><strong>Ganti <code>revalidatePath</code> bertumpuk dengan <code>updateTag</code>.</strong> Mulai dari 5 berkas terbanyak: <code>keuangan-actions.ts</code> (19), <code>admin-event-actions.ts</code> (14), <code>admin-konten.ts</code> (13), <code>admin-bisnis.ts</code> (10), <code>psikolog-actions.ts</code> (9). <strong>Jangan</strong> semua 160 sekaligus.</td>
+<td>1–2 hari</td>
+<td>P1</td>
+</tr>
+</tbody>
+</table>
+<h4 id="e3c-middleware-dua-perbaikan-terpisah">E.3.c Middleware: dua perbaikan terpisah</h4>
+<p><strong>Perbaikan 1 — matcher (15 menit, P0, tanpa risiko).</strong> Matcher sekarang (<code>proxy.ts:53</code>) tidak mengecualikan <code>.css</code>, <code>.js</code>, <code>.woff2</code>, <code>sitemap.xml</code>, <code>robots.txt</code>, <code>_next/data</code>. Setiap sub-resource itu memicu invocation middleware <strong>dan</strong> satu <code>auth.getUser()</code> ke Supabase:</p>
+<pre><code class="language-ts">// src/proxy.ts — matcher yang benar
+export const config = {
+  matcher: [
+    // Kecualikan: API (pakai Bearer), aset build, berkas statis, dan metadata SEO.
+    '/((?!api|_next/static|_next/image|_next/data|favicon.ico|logo.png|sitemap.xml|robots.txt|llms.txt|manifest.webmanifest|.*\\.(?:png|jpg|jpeg|svg|ico|webp|css|js|woff2?|ttf|map|xml|txt)$).*)',
+  ],
+};
+</code></pre>
+<p><strong>Perbaikan 2 — kurangi <code>auth.getUser()</code> (3–4 jam, P1, butuh prasyarat).</strong> Setiap navigasi memicu satu perjalanan jaringan ke Supabase Auth; pada <code>/main/[anakId]</code> bahkan <strong>tiga kali</strong> dalam satu render.</p>
+<p>Di sini saya harus berterus terang soal keamanan: <strong>jangan mengganti <code>getUser()</code> dengan membaca isi JWT tanpa memverifikasi tanda tangannya.</strong> Token yang tidak diverifikasi bisa dipalsukan, dan di aplikasi ini itu berarti seseorang bisa mengaku sebagai admin. Yang <strong>boleh</strong> adalah verifikasi tanda tangan <strong>secara lokal</strong> memakai kunci publik — itulah gunanya <code>getClaims()</code> dengan asymmetric JWT signing keys di Supabase: aman secara kriptografis, tanpa perjalanan jaringan.</p>
+<p>Jadi urutannya: <strong>(a)</strong> aktifkan asymmetric JWT signing keys di dashboard Supabase 🔍, <strong>(b)</strong> ganti <code>auth.getUser()</code> → <code>auth.getClaims()</code> di <code>proxy.ts</code>, <strong>(c)</strong> teruskan hasilnya ke halaman agar tidak dipanggil ulang, <strong>(d)</strong> uji bahwa token kedaluwarsa &amp; token dipalsukan sama-sama ditolak. Selama (a) belum tersedia, <strong>biarkan <code>getUser()</code></strong> — 100 ms latensi jauh lebih murah daripada celah autentikasi.</p>
+<p><strong>Perbaikan 3 — pindahkan cek menu admin (1 jam, P1).</strong> <code>proxy.ts:31,33</code> menjalankan 2 query DB untuk setiap navigasi <code>/admin/*</code>. Pindahkan ke <code>admin/layout.tsx</code> (yang memang sudah memanggil <code>getAksesAdmin()</code>), sehingga tidak dieksekusi dua kali, dan bungkus <code>pengaturan_menu</code> dengan <code>unstable_cache</code> bertag — tabel satu baris yang nyaris tidak pernah berubah.</p>
+<h3 id="e4-gambar-keputusan-yang-berlawanan-dengan-dugaan-umum">E.4 Gambar: keputusan yang berlawanan dengan dugaan umum</h3>
+<blockquote>
+<p><strong>Ini titik di mana dua analisis dalam penyusunan dokumen ini bertentangan, jadi keputusannya ditulis eksplisit beserta alasannya.</strong></p>
+</blockquote>
+<p>Dugaan wajar: "ada 12 <code>&lt;img&gt;</code> mentah, pindahkan semuanya ke <code>next/image</code>." Untuk <strong>aset game</strong> itu <strong>keputusan yang salah</strong>, dan berpotensi lebih mahal daripada masalah yang diperbaiki.</p>
+<p>Alasannya: kuota <strong>Image Optimization</strong> Vercel dihitung per gambar sumber unik yang dioptimasi. <code>Aset.tsx</code> adalah jalur terpanas aplikasi dengan <strong>ratusan hingga ribuan aset unik</strong> (setiap kartu game adalah gambar berbeda). Memindahkannya ke <code>next/image</code> berarti menukar egress Supabase yang murah dan berkuota besar dengan kuota transformasi Vercel yang jauh lebih sempit — lalu tagihan muncul di tempat baru.</p>
+<p><strong>Yang dilakukan untuk aset game (lebih murah, dampak lebih besar):</strong></p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Tindakan</th>
+<th>Mengapa berdampak</th>
+<th>Effort</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Set <code>cacheControl: '31536000'</code></strong> saat unggah (sekarang tidak pernah diset → default pendek). Nama berkas sudah unik per unggahan, jadi isinya immutable dan aman di-cache setahun.</td>
+<td>Aset berhenti diunduh ulang setiap kali anak membuka game. Ini <strong>pengungkit egress terbesar</strong> di seluruh dokumen, dan pekerjaannya 20 menit.</td>
+<td>20 menit</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Turunkan preset kompresi aset game</strong> dari <code>maksDim</code> <strong>512</strong> (<code>AsetInput.tsx:22</code>) → <strong>256 px</strong>. Perhitungannya: aset dirender pada 42–90 px CSS (terbesar <code>size={90}</code>), jadi pada HP dengan DPR 3 dibutuhkan hingga 270 px — <strong>256 px menutup hampir semuanya, sementara 192 px akan tampak kabur pada aset terbesar.</strong> Jangan turunkan lebih jauh dari ini.</td>
+<td>Luas piksel turun 4× ⇒ byte per aset turun ~4×, dan waktu decode di HP kelas bawah ikut turun.</td>
+<td>1 jam + backfill</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Tetap <code>&lt;img&gt;</code></strong>, tapi tambahkan <code>width</code>/<code>height</code> eksplisit agar tidak ada pergeseran layout.</td>
+<td>—</td>
+<td>15 menit</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Yang memang layak <code>next/image</code>:</strong> <code>Sampul.tsx</code> (jumlah tema/kelas sedikit → varian optimasi sedikit), dan gambar konten seperti banner event, foto produk, sampul artikel — beberapa di antaranya sudah memakainya.</p>
+<p><strong>Yang harus TETAP <code>&lt;img&gt;</code> selain aset game:</strong> <code>BuktiLightbox</code>. Setelah bukti bayar pindah ke signed URL (<a href="#f3-memindahkan-bukti--nota-ke-bucket-privat--signed-url">F.3</a>), URL-nya berubah setiap kali dibuat — dan setiap URL unik akan dihitung sebagai gambar baru oleh optimizer. Ini alasan teknis, bukan preferensi gaya.</p>
+<h3 id="e5-pasang-alat-ukur-sebelum-mengerjakan-bab-ini">E.5 Pasang alat ukur SEBELUM mengerjakan bab ini</h3>
+<p><code>@vercel/analytics</code> sudah terpasang di <code>layout.tsx:58</code>. Aktifkan <strong>Web Vitals</strong> di dashboard Vercel (dan Speed Insights bila plan mengizinkan 🔍) <strong>sebelum</strong> memulai E.1–E.4.</p>
+<p>Alasannya sederhana: seluruh angka penghematan di bab ini adalah perkiraan saya dari membaca kode, bukan pengukuran pada HP Indonesia sungguhan. Tanpa data sebelum-sesudah, pekerjaan ini akan selesai tanpa ada yang tahu apakah ia berhasil — dan kalau ternyata bottleneck sebenarnya ada di tempat lain (misalnya TTFB dari SSR, bukan ukuran bundle), Anda baru mengetahuinya setelah membayar biaya kerjanya.</p>
+<p><strong>Effort 30 menit. Prioritas P0</strong> — bukan karena mendesak, tapi karena ia prasyarat agar sisa bab ini bisa dievaluasi.</p>
+<hr />
+<h2 id="7-bab-f-storage-egress-kontrol-biaya">7. Bab F — Storage, egress &amp; kontrol biaya</h2>
+<h3 id="f1-satu-pintu-unggahan-srclibuploadts">F.1 Satu pintu unggahan: <code>src/lib/upload.ts</code></h3>
+<p>Empat masalah berbeda punya satu solusi, jadi dikerjakan sekaligus:</p>
+<ol>
+<li><code>UploadNota.tsx:17-27</code> punya fungsi kompresi <strong>duplikat</strong> yang tidak memakai <code>lib/img.ts</code>.</li>
+<li>Duplikat itu <strong>melempar error</strong> untuk masukan non-raster, sementara <code>lib/img.ts</code> punya fallback yang benar. Akibat nyata: pada iPhone dengan foto HEIC, unggah nota <strong>gagal</strong>.</li>
+<li><strong>Tidak ada validasi ukuran di klien</strong> sama sekali, di 12 titik unggah.</li>
+<li><code>cacheControl</code> tidak pernah diset (lihat <a href="#e4-gambar-keputusan-yang-berlawanan-dengan-dugaan-umum">E.4</a>).</li>
+</ol>
+<pre><code class="language-ts">// src/lib/upload.ts — SATU pintu untuk semua unggahan ke Storage.
+// Menggantikan kompresWebp() duplikat di UploadNota.tsx dan 12 pemanggilan .upload() tersebar.
+'use client';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { kompresGambar } from '@/lib/img';
+
+export const BATAS = {
+  gambar: 5 * 1024 * 1024,   // 5 MB sebelum kompresi
+  svg:    256 * 1024,        // SVG tidak dikompres → batas ketat
+  pdf:    10 * 1024 * 1024,
+} as const;
+
+export const MIME_GAMBAR = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml'];
+export const MIME_DOK    = ['application/pdf'];
+
+/** Preset per jalur pakai. `maksDim` menentukan berapa byte yang akhirnya diunduh HP. */
+export const PRESET = {
+  aset:   { maksDim: 256,  kualitas: 0.78 },  // aset game: tampil 42-90px CSS, 256px menutup DPR 3
+  sampul: { maksDim: 480,  kualitas: 0.80 },  // sampul tema/kelas/produk
+  banner: { maksDim: 1080, kualitas: 0.82 },  // banner event, tampil lebar penuh
+  bukti:  { maksDim: 1280, kualitas: 0.78 },  // bukti bayar/nota: harus tetap terbaca
+  cetak:  null,                               // template sertifikat &amp; stiker: JANGAN dikompres
+} as const;
+
+/** Pesan Bahasa Indonesia bila tidak lolos, null bila lolos. */
+export function validasiFile(file: File, jenis: 'gambar' | 'dok'): string | null {
+  const mime = file.type || '';
+  const daftar = jenis === 'gambar' ? MIME_GAMBAR : MIME_DOK;
+  if (!daftar.includes(mime)) {
+    if (mime === 'image/gif') return 'Format GIF tidak didukung. Pakai JPG, PNG, atau WebP ya.';
+    if (mime === 'image/heic' || mime === 'image/heif')
+      return 'Foto HEIC dari iPhone belum didukung. Di iPhone: Pengaturan → Kamera → Format → &quot;Paling Kompatibel&quot;, lalu foto ulang.';
+    if (!mime) return 'Jenis berkas tidak terdeteksi. Coba pilih ulang dari Galeri.';
+    return `Jenis berkas ${mime} tidak didukung.`;
+  }
+  const batas = mime === 'image/svg+xml' ? BATAS.svg : jenis === 'dok' ? BATAS.pdf : BATAS.gambar;
+  if (file.size &gt; batas) {
+    const mb = (batas / 1024 / 1024).toFixed(batas &lt; 1024 * 1024 ? 2 : 0);
+    return mime === 'image/svg+xml'
+      ? `SVG maksimal ${mb} MB. Simpan ulang sebagai &quot;Optimized SVG&quot; di Inkscape/Illustrator.`
+      : `Berkas maksimal ${mb} MB (berkas ini ${(file.size / 1024 / 1024).toFixed(1)} MB).`;
+  }
+  return null;
+}
+
+export async function unggah(
+  sb: SupabaseClient,
+  folder: string,
+  file: File,
+  opsi: { jenis: 'gambar' | 'dok'; preset?: keyof typeof PRESET; bucket?: string },
+): Promise&lt;{ path: string; url: string }&gt; {
+  const salah = validasiFile(file, opsi.jenis);
+  if (salah) throw new Error(salah);
+
+  const bucket = opsi.bucket ?? 'aset';
+  const preset = PRESET[opsi.preset ?? 'sampul'];
+  const perluKompres = opsi.jenis === 'gambar' &amp;&amp; file.type !== 'image/svg+xml' &amp;&amp; preset !== null;
+
+  const { blob, ext } = perluKompres
+    ? await kompresGambar(file, preset)
+    : { blob: file as Blob, ext: (file.name.split('.').pop() || 'bin').toLowerCase() };
+
+  const path = `${folder}/${Date.now()}-${Math.floor(performance.now())}.${ext}`;
+  const { error } = await sb.storage.from(bucket).upload(path, blob, {
+    upsert: false,
+    // MIME EKSPLISIT — jangan `blob.type || undefined`. Ini prasyarat F.2.
+    contentType: blob.type || file.type || 'application/octet-stream',
+    // Nama unik per unggahan ⇒ isi immutable ⇒ aman di-cache setahun. Pengungkit egress terbesar.
+    cacheControl: '31536000',
+  });
+  if (error) throw error;
+
+  return { path, url: sb.storage.from(bucket).getPublicUrl(path).data.publicUrl };
+}
+</code></pre>
+<p><strong>Dua belas titik yang bermigrasi:</strong> <code>components/admin/AsetInput.tsx</code>, <code>components/UploadNota.tsx</code>, <code>components/UploadDok.tsx</code>, <code>app/pesanan/[id]/BuktiUpload.tsx</code>, <code>app/event/[id]/daftar/DaftarForm.tsx</code>, <code>app/admin/TambahTemaForm.tsx</code>, <code>app/admin/event/EventAdmin.tsx</code> (×3), <code>app/admin/kelas-bermain/KelasAdmin.tsx</code> (×2), <code>app/admin/artikel/[id]/ArtikelForm.tsx</code>, <code>app/admin/produk/ProdukAdmin.tsx</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Aspek</th>
+<th>Isi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Dampak</strong></td>
+<td><code>cacheControl</code> setahun (egress aset game turun besar) + preset 256 px (byte per aset turun ~4×) + bug unggah HEIC hilang + validasi ukuran + prasyarat F.2 terpenuhi. Empat perbaikan, satu berkas.</td>
+</tr>
+<tr>
+<td><strong>Effort</strong></td>
+<td>4–6 jam (tulis 1 jam, migrasi 12 titik + uji tiap form 3–5 jam).</td>
+</tr>
+<tr>
+<td><strong>Risiko — wajib diuji</strong></td>
+<td>Uji <strong>setiap</strong> form unggah di HP nyata (Android <strong>dan</strong> iPhone): bukti bayar pesanan, bukti daftar event, nota keuangan, dokumen sponsor, sampul tema, banner + template sertifikat + background stiker event, worksheet + sampul kelas, sampul artikel, gambar produk, aset game. <strong>Perhatian khusus:</strong> <code>tools/backfill-util.mjs:4</code> mengecualikan <code>event/sertifikat</code> &amp; <code>event/stiker</code> dari kompresi karena template cetak butuh resolusi tinggi — karena itu ada <code>PRESET.cetak = null</code>; pastikan dua jalur itu memakainya.</td>
+</tr>
+<tr>
+<td><strong>Prioritas</strong></td>
+<td><strong>P0</strong> — memuat dua quick win egress terbesar sekaligus menjadi prasyarat F.2 dan F.3.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="f2-batas-bucket">F.2 Batas bucket</h3>
+<blockquote>
+<p><strong>Jangan jalankan SQL di bawah sebelum <code>src/lib/upload.ts</code> ter-deploy.</strong> Repo memanggil <code>.upload(..., { contentType: blob.type || undefined })</code> di 12 titik. Bila <code>blob.type</code> kosong — sering terjadi pada pemilih berkas Android dan beberapa kamera — Supabase memakai <code>application/octet-stream</code>. Begitu <code>allowed_mime_types</code> aktif, unggahan itu <strong>ditolak</strong>: orang tua tidak bisa mengirim bukti bayar dan admin tidak bisa mengunggah gambar produk. Kerugiannya langsung ke pendapatan.</p>
+</blockquote>
+<pre><code class="language-sql">-- 0091_storage_kebijakan.sql — batas ukuran &amp; tipe berkas. Idempoten (update, bukan insert).
+-- JALANKAN SETELAH src/lib/upload.ts ter-deploy dan diverifikasi di produksi.
+
+-- Lihat kondisi sekarang lebih dulu (read-only):
+--   select id, public, file_size_limit, allowed_mime_types from storage.buckets;
+
+update storage.buckets set
+  -- 10 MB: cukup untuk worksheet PDF hasil scan; menutup kecelakaan video/RAW.
+  -- CATATAN: nilai ini tidak boleh melebihi batas global proyek
+  -- (Dashboard → Settings → Storage → Upload file size limit). Cek dulu.
+  file_size_limit = 10485760,
+  allowed_mime_types = array[
+    'image/jpeg','image/png','image/webp','image/svg+xml','application/pdf'
+    -- image/gif SENGAJA TIDAK dimasukkan — lihat F.5.
+    -- application/octet-stream SENGAJA TIDAK dimasukkan: memasukkannya meniadakan
+    -- seluruh gunanya. Perbaiki klien, jangan longgarkan server.
+  ]
+where id = 'aset';
+</code></pre>
+<p><strong>Effort 10 menit · Prioritas P1</strong> (P0-nya adalah F.1 yang menjadi prasyaratnya) · <strong>Uji sesudahnya:</strong> unggah dari Android nyata, dari iPhone (HEIC!), gambar produk, worksheet PDF, dan SVG aset game — kelimanya harus berhasil.</p>
+<h3 id="f3-memindahkan-bukti-nota-ke-bucket-privat-signed-url">F.3 Memindahkan <code>bukti/</code> &amp; <code>nota/</code> ke bucket privat + signed URL</h3>
+<h4 id="f3a-pernyataan-masalah-privasi-bukan-performa">F.3.a Pernyataan masalah (privasi, bukan performa)</h4>
+<p>Bucket <code>aset</code> dideklarasikan <code>public = true</code> (<code>0007_storage_aset.sql:2-3</code>) dengan policy baca terbuka untuk siapa pun — bahkan tanpa <code>to authenticated</code>. Path bukti berbentuk <code>bukti/&lt;Date.now()&gt;-&lt;performance.now()&gt;.&lt;ext&gt;</code>.</p>
+<p>Konsekuensi konkretnya:</p>
+<ul>
+<li><strong>Isi berkasnya</strong>: bukti transfer memuat nama pemilik rekening, nomor rekening, nominal, kadang nomor HP. Nota memuat data vendor dan harga internal.</li>
+<li><strong>URL absolutnya tersimpan di DB</strong> (<code>pesanan.bukti_url</code>, <code>pendaftaran_event.bukti_url</code>, <code>aset.invoice_url</code>, <code>transaksi_keuangan.lampiran_url</code>) lalu mengalir ke log, tangkapan layar WhatsApp, dan riwayat browser. Siapa pun yang pernah melihat satu URL bisa membukanya selamanya, tanpa login.</li>
+<li><strong>Entropi path rendah</strong>: <code>Date.now()</code> dalam jendela yang bisa diperkirakan + <code>performance.now()</code> yang berkorelasi. Ini bukan rahasia kriptografis.</li>
+<li>Ini data pribadi menurut <strong>UU PDP</strong> — bukan sekadar kerapian teknis.</li>
+</ul>
+<p>Ada pula celah tulis: policy <code>"aset unggah bukti user"</code> (<code>0017_event.sql:47-49</code>) mengizinkan <strong>setiap</strong> pengguna terautentikasi menulis ke mana pun di bawah <code>bukti/</code>, tanpa pembatasan per pengguna.</p>
+<h4 id="f3b-keputusan-arsitektur-dan-yang-ditolak">F.3.b Keputusan arsitektur, dan yang ditolak</h4>
+<p><strong>Fakta teknis yang harus jelas:</strong> pada bucket <code>public = true</code>, endpoint <code>/storage/v1/object/public/…</code> <strong>tidak memeriksa RLS</strong>. Jadi memperketat policy pada <code>storage.objects</code> <strong>tidak akan</strong> membuat <code>bukti/</code> privat. Satu-satunya cara adalah memindahkan berkasnya ke bucket dengan <code>public = false</code>.</p>
+<p><strong>Ditolak:</strong> mengubah <code>aset</code> sendiri menjadi privat. Itu merusak setiap URL publik yang sudah tersimpan untuk aset game, gambar produk, banner event, dan sampul artikel (ratusan baris DB), sekaligus menambah perjalanan penandatanganan di jalur terpanas (<code>Aset.tsx</code>).</p>
+<p><strong>Dipilih:</strong> bucket kedua bernama <code>privat</code>, dan <strong>berhenti menyimpan URL absolut</strong> — simpan <strong>path</strong>, tandatangani saat render.</p>
+<pre><code class="language-sql">-- 0092_bucket_privat.sql — bucket privat untuk bukti bayar &amp; nota keuangan.
+-- Idempoten. TIDAK mengubah bucket `aset` (aset game &amp; produk tetap publik).
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('privat', 'privat', false, 5242880,
+        array['image/jpeg','image/png','image/webp','application/pdf'])
+on conflict (id) do update
+  set public = false,
+      file_size_limit = excluded.file_size_limit,
+      allowed_mime_types = excluded.allowed_mime_types;
+
+-- ── TULIS: user hanya boleh menulis ke bukti/&lt;uid-nya&gt;/… ────────────────────
+-- Sekaligus menutup celah policy lama yang mengizinkan tulis ke mana pun di bawah bukti/.
+drop policy if exists &quot;privat unggah bukti sendiri&quot; on storage.objects;
+create policy &quot;privat unggah bukti sendiri&quot; on storage.objects for insert to authenticated
+with check (
+  bucket_id = 'privat'
+  and (storage.foldername(name))[1] = 'bukti'
+  and (storage.foldername(name))[2] = (select auth.uid())::text
+);
+
+drop policy if exists &quot;privat unggah admin&quot; on storage.objects;
+create policy &quot;privat unggah admin&quot; on storage.objects for insert to authenticated
+with check (bucket_id = 'privat' and (select public.is_admin()));
+
+-- ── BACA: pemilik + admin + investor (khusus nota). Guru &amp; psikolog TIDAK. ──
+-- createSignedUrl() tetap melewati policy ini, jadi ini penjaga yang sebenarnya.
+drop policy if exists &quot;privat baca&quot; on storage.objects;
+create policy &quot;privat baca&quot; on storage.objects for select to authenticated
+using (
+  bucket_id = 'privat'
+  and (
+    (select public.is_admin())
+    or ((select public.is_investor()) and (storage.foldername(name))[1] = 'nota')
+    or ((storage.foldername(name))[1] = 'bukti'
+        and (storage.foldername(name))[2] = (select auth.uid())::text)
+  )
+);
+
+-- ── HAPUS: hanya admin. User TIDAK boleh menghapus bukti bayarnya (jejak audit). ──
+drop policy if exists &quot;privat hapus admin&quot; on storage.objects;
+create policy &quot;privat hapus admin&quot; on storage.objects for delete to authenticated
+using (bucket_id = 'privat' and (select public.is_admin()));
+</code></pre>
+<pre><code class="language-ts">// src/lib/data/lampiran.ts — resolver TOLERAN. Mengikuti pola wajib di CLAUDE.md:
+// data LAMA (URL absolut) tetap tampil, data BARU (path) ditandatangani saat render.
+import { createClient } from '@/lib/supabase/server';
+
+/** Terima URL absolut lama ATAU path baru. Kembalikan URL siap pakai di &lt;img src&gt;. */
+export async function urlLampiran(nilai?: string | null): Promise&lt;string | null&gt; {
+  const v = (nilai ?? '').trim();
+  if (!v) return null;
+  if (/^https?:\/\//.test(v)) return v;             // baris lama: biarkan
+  const s = await createClient();
+  const { data, error } = await s.storage.from('privat').createSignedUrl(v, 60 * 10);
+  if (error) { console.error('signedUrl:', error.message, v); return null; }
+  return data.signedUrl;
+}
+</code></pre>
+<p>Masa berlaku 10 menit cukup untuk admin memeriksa bukti, terlalu pendek untuk dibagikan bermakna. Untuk halaman admin yang lama dibuka, pertimbangkan 60 menit.</p>
+<h4 id="f3c-jalur-migrasi-tiga-fase">F.3.c Jalur migrasi tiga fase</h4>
+<p><strong>Fase 1 — hentikan pendarahan (P0, ~3 jam).</strong> Jalankan <code>0092</code>. Ubah <code>BuktiUpload.tsx</code>, <code>DaftarForm.tsx</code>, <code>UploadNota.tsx</code>, <code>UploadDok.tsx</code> agar mengunggah ke bucket <code>privat</code> dengan folder <code>bukti/&lt;uid&gt;</code> atau <code>nota</code>, dan menyimpan <strong>path, bukan URL</strong>. Pakai <code>urlLampiran()</code> di ~6 titik render (<code>BuktiLightbox</code>, detail pesanan admin, detail pendaftaran admin, <code>getTransaksiDetail</code>, halaman aset keuangan, halaman pesanan milik ortu). Sejak titik ini <strong>tidak ada bukti baru yang publik</strong>.</p>
+<p><strong>Fase 2 — pindahkan yang lama (P1, ~4 jam).</strong> Skrip sekali-jalan <code>tools/pindah-bukti.mjs</code> dijalankan owner dari laptop dengan service role key (<strong>kunci itu jangan pernah masuk env Vercel</strong>):</p>
+<pre><code>Untuk setiap baris di pesanan.bukti_url, pendaftaran_event.bukti_url,
+aset.invoice_url, transaksi_keuangan.lampiran_url yang berupa URL publik ke aset/bukti|nota:
+  1. tentukan path tujuan: bukti/&lt;ortu_id&gt;/&lt;namaberkas&gt;  |  nota/&lt;namaberkas&gt;
+  2. unduh dari `aset` → unggah ke `privat` (upsert:true, cacheControl:'0')
+  3. UPDATE kolom DB menjadi path tujuan
+  4. HAPUS objek sumber di `aset`
+Idempoten: baris yang sudah berupa path dilewati.
+Urutan 2→3→4 disengaja — bila gagal di tengah, sumber MASIH ADA dan kolom DB masih
+menunjuk URL lama yang valid. Paling buruk hanya duplikat, tidak ada bukti yang hilang.
+Wajib: --dry-run sebagai default, --yakin untuk benar-benar menulis, log ke berkas.
+</code></pre>
+<p>Storage bukan transaksional, jadi jangan membungkusnya dalam transaksi DB — urutan di atas dipilih supaya kegagalan selalu "aman gagal".</p>
+<p><strong>Fase 3 — tutup pintunya (P1, 15 menit).</strong> Setelah query verifikasi mengembalikan 0 di semua baris:</p>
+<pre><code class="language-sql">select 'pesanan' t, count(*) from public.pesanan
+  where bukti_url like 'http%' and bukti_url like '%/aset/bukti/%'
+union all select 'pendaftaran_event', count(*) from public.pendaftaran_event
+  where bukti_url like 'http%' and bukti_url like '%/aset/bukti/%'
+union all select 'aset', count(*) from public.aset
+  where invoice_url like 'http%' and invoice_url like '%/aset/nota/%'
+union all select 'transaksi_keuangan', count(*) from public.transaksi_keuangan
+  where lampiran_url like 'http%' and lampiran_url like '%/aset/nota/%';
+
+-- Baru setelah semuanya 0:
+drop policy if exists &quot;aset unggah bukti user&quot; on storage.objects;
+-- Sisa objek di aset/bukti|nota dihapus lewat tools/pindah-bukti.mjs --sapu
+-- (JANGAN lewat SQL: menghapus baris storage.objects tanpa menghapus berkasnya
+--  meninggalkan berkas hantu yang tetap ditagih).
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Aspek</th>
+<th>Isi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Dampak</strong></td>
+<td>Kebocoran data pribadi tertutup. Bonus: bucket privat tidak bisa di-hotlink → egress dari luar hilang; dan celah tulis lintas-pengguna di <code>bukti/</code> tertutup.</td>
+</tr>
+<tr>
+<td><strong>Effort</strong></td>
+<td>Fase 1 ~3 jam · Fase 2 ~4 jam · Fase 3 ~15 menit → <strong>≈1 hari</strong>.</td>
+</tr>
+<tr>
+<td><strong>Risiko — wajib diuji</strong></td>
+<td>(1) Admin tetap bisa melihat bukti <strong>lama</strong> (URL absolut) <strong>dan baru</strong> (path) — uji keduanya. (2) Investor bisa melihat nota tapi <strong>tidak</strong> bukti bayar ortu. (3) Ortu bisa melihat buktinya sendiri dan <strong>tidak</strong> milik orang lain — uji dengan menukar path manual. (4) Bila <code>createSignedUrl</code> gagal, UI menampilkan "bukti tidak dapat dibuka", bukan gambar rusak tanpa penjelasan. (5) Signed URL kedaluwarsa saat halaman admin dibuka lama → pertimbangkan 60 menit. (6) Jangan kirim URL bertanda tangan ke <code>next/image</code>.</td>
+</tr>
+<tr>
+<td><strong>Prioritas</strong></td>
+<td>Fase 1 <strong>P0</strong> (privasi) · Fase 2–3 <strong>P1</strong>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="f4-berkas-orphan">F.4 Berkas orphan</h3>
+<p>Semua unggahan memakai nama berbasis <code>Date.now()</code> dengan <code>upsert: false</code>, dan <strong>tidak ada satu pun jalur yang menghapus berkas lama</strong>. Ganti banner event 10× → 10 berkas, 1 dirujuk. Lebih buruk: <code>EventAdmin.tsx:46</code> mengunggah <strong>saat berkas dipilih</strong>, sebelum form disimpan — admin yang membatalkan form tetap meninggalkan berkas.</p>
+<blockquote>
+<h3 id="bahaya-terbesar-justru-dari-pembersihannya-sendiri">⚠️ Bahaya terbesar justru dari pembersihannya sendiri</h3>
+<p><strong>Aset game dirujuk dari DALAM jsonb <code>paket_aset.butir</code>, bukan dari kolom <code>*_url</code>.</strong> Skrip pembersih naif yang berlogika "hapus objek yang tidak ada di kolom <code>*_url</code> mana pun" akan <strong>MENGHAPUS SELURUH ASET GAME</strong> dan merusak setiap paket mewarnai, cocokkan, dan ingatan. Ini kesalahan yang tidak bisa dibatalkan.</p>
+</blockquote>
+<p>Ekstraksi rujukan yang benar dari jsonb — <strong>jalankan dan bandingkan jumlahnya sebelum mempercayai skrip pembersih apa pun</strong>:</p>
+<pre><code class="language-sql">-- Semua path Storage yang tertanam di paket_aset.butir, rekursif, kedalaman berapa pun.
+select count(*) as rujukan_dalam_butir from (
+  select distinct trim(both '&quot;' from v::text) as ref
+  from public.paket_aset p,
+       lateral jsonb_path_query(p.butir, '$.**') v
+  where jsonb_typeof(v) = 'string'
+    and (v #&gt;&gt; '{}') like '%/storage/v1/object/%'
+) x;
+</code></pre>
+<p><strong>Sumber rujukan lengkap</strong> yang harus dikumpulkan skrip: <code>tema.sampul</code> · <code>paket_aset.butir</code> (jsonb, rekursif) · <code>kelas_bermain.sampul_url</code> · <code>kelas_bermain.worksheet_url</code> · <code>kelas_bermain.bahan[].link</code> · <code>event.gambar_url</code> · template sertifikat &amp; stiker event · <code>produk.gambar_url</code> · <code>artikel.sampul</code> · <code>pesanan.bukti_url</code> · <code>pendaftaran_event.bukti_url</code> · <code>aset.invoice_url</code> · <code>transaksi_keuangan.lampiran_url</code>.</p>
+<p><strong>Rancangan <code>tools/bersihkan-orphan.mjs</code> (P1, ~4 jam):</strong></p>
+<ul>
+<li>Kumpulkan <code>SET_RUJUKAN</code> dari semua sumber di atas (normalisasi URL → path); <code>list()</code> bucket rekursif → <code>SET_OBJEK</code>.</li>
+<li>Kandidat = <code>SET_OBJEK − SET_RUJUKAN</code>, <strong>dan</strong> umur objek &gt; <strong>30 hari</strong>. Masa tenggang ini menutup kasus nyata "diunggah saat memilih berkas, form disimpan besok".</li>
+<li>Default <code>--dry-run</code>: cetak jumlah, total byte, dan <strong>20 contoh path</strong> per folder. Butuh <code>--yakin</code> untuk menghapus. Selalu tulis log ke berkas.</li>
+<li><strong>Palang pengaman:</strong> bila kandidat &gt; 30% dari total objek, <strong>berhenti</strong> dan minta konfirmasi eksplisit — itu tanda kuat satu sumber rujukan terlewat.</li>
+<li>Ikuti preseden <code>tools/backfill-kompres.mjs</code> + <code>backfill-util.mjs</code>: taruh logika keputusan di fungsi murni <code>bolehHapus(path, umurHari, setRujukan)</code> dan <strong>tulis unit test-nya</strong>, termasuk kasus yang membuktikan aset yang dirujuk dari <code>butir</code> <strong>tidak</strong> boleh dihapus.</li>
+</ul>
+<p><strong>Menghentikan pertumbuhannya (P1–P2):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Pendekatan</th>
+<th>Cara</th>
+<th>Catatan</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Hapus-saat-ganti</strong> (P1, ~4 jam)</td>
+<td>Server Action yang menyimpan URL baru tahu nilai lamanya → hapus setelah update DB <strong>berhasil</strong></td>
+<td>Urutan penting: hapus <strong>setelah</strong> commit. Kalau dibalik dan update gagal, baris DB menunjuk berkas yang sudah tidak ada.</td>
+</tr>
+<tr>
+<td><strong>Path ber-entitas + <code>upsert:true</code></strong> (P2, ~1 hari)</td>
+<td><code>produk/&lt;produk_id&gt;.webp</code>, <code>event/&lt;event_id&gt;.webp</code> — mengganti gambar = menimpa ⇒ <strong>nol orphan, selamanya</strong></td>
+<td>URL tidak berubah, jadi cache setahun butuh pembatal: pakai <code>?v=&lt;updated_at epoch&gt;</code> pada URL yang dirender. Satu-satunya perbaikan yang benar-benar menutup masalah alih-alih menyapunya berkala.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Ukur dulu sebelum memutuskan seberapa mendesak:</strong></p>
+<pre><code class="language-sql">select (storage.foldername(name))[1] as folder, count(*) jml,
+       pg_size_pretty(sum((metadata-&gt;&gt;'size')::bigint)) besar
+from storage.objects where bucket_id = 'aset' group by 1 order by sum((metadata-&gt;&gt;'size')::bigint) desc;
+</code></pre>
+<p><strong>Risiko: penghapusan tidak bisa dibatalkan.</strong> Palang pengaman + dry-run + masa tenggang 30 hari + unit test rujukan-jsonb adalah syarat mutlak, bukan opsi. Ini pekerjaan paling berisiko di seluruh dokumen — perlakukan sesuai.</p>
+<h3 id="f5-svg-gif-dan-pdf-yang-lolos-tanpa-kompresi">F.5 SVG, GIF, dan PDF yang lolos tanpa kompresi</h3>
+<p><code>lib/img.ts:18-20</code> sengaja melewatkan <code>image/svg+xml</code> dan <code>image/gif</code>; PDF worksheet tidak pernah tersentuh.</p>
+<table>
+<thead>
+<tr>
+<th>Format</th>
+<th>Keputusan</th>
+<th>Alasan</th>
+<th>Prio</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>SVG</strong></td>
+<td>Batas keras 256 KB di klien (<code>BATAS.svg</code>) + <strong>sanitasi sebelum disimpan dan sebelum dirender</strong></td>
+<td>SVG dari Inkscape/Illustrator rutin 10–20× lebih besar dari perlunya karena metadata; menolak + memberi instruksi lebih murah daripada memelihara optimizer. <strong>Sanitasi bukan soal ukuran:</strong> <code>MewarnaiGame</code> memakai <code>DOMParser</code> + <code>innerHTML</code> atas markup dari <code>paket_aset.butir</code>. <code>innerHTML</code> tidak menjalankan <code>&lt;script&gt;</code>, <strong>tetapi <code>&lt;svg onload=…&gt;</code> / <code>&lt;image onerror=…&gt;</code> tetap menyala</strong>. Jangkauannya terbatas ke admin (hanya admin menulis <code>butir</code>), jadi P1 bukan P0 — tapi jangan dibiarkan. Cukup ~30 baris: buang node <code>script</code>/<code>foreignObject</code>/<code>use[href^=http]</code> dan semua atribut berawalan <code>on</code>. Tanpa dependency.</td>
+<td><strong>P1</strong></td>
+</tr>
+<tr>
+<td><strong>GIF</strong></td>
+<td><strong>Tolak</strong> (tidak masuk <code>allowed_mime_types</code> + pesan ramah di <code>validasiFile</code>)</td>
+<td>Rasio byte/kualitas terburuk dan tidak pernah dibutuhkan sebagai aset game statis atau foto produk. Menolak lebih baik daripada mengonversi diam-diam ke frame pertama.</td>
+<td><strong>P1</strong></td>
+</tr>
+<tr>
+<td><strong>PDF worksheet</strong></td>
+<td>Batas keras 10 MB + <code>file_size_limit</code> sebagai jaring server. <strong>Jangan tambah library kompresi PDF.</strong> Sajikan sebagai tautan unduh, bukan <code>&lt;embed&gt;</code> inline</td>
+<td>Kompresi PDF di klien butuh <code>pdf-lib</code>/wasm Ghostscript — puluhan hingga ratusan KB dependency dan CPU berat, di aplikasi yang penggunanya HP kelas bawah, untuk memperbaiki alur yang <strong>hanya dipakai admin</strong>. Yang menyelamatkan egress adalah tidak mengembed PDF di halaman yang dibuka setiap orang tua.</td>
+<td><strong>P1</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="f6-estimasi-egress-kontrol-biaya">F.6 Estimasi egress &amp; kontrol biaya</h3>
+<h4 id="f6a-asumsi-koreksi-angka-ini-bila-data-nyata-berbeda">F.6.a Asumsi (koreksi angka ini bila data nyata berbeda)</h4>
+<table>
+<thead>
+<tr>
+<th>Kode</th>
+<th>Asumsi</th>
+<th>Skenario "sekarang"</th>
+<th>Skenario "5×"</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A1</td>
+<td>Keluarga aktif/bulan</td>
+<td>200</td>
+<td>1.000</td>
+</tr>
+<tr>
+<td>A3</td>
+<td>Sesi bermain/anak/bulan</td>
+<td>12</td>
+<td>12</td>
+</tr>
+<tr>
+<td>A5</td>
+<td>Aset gambar per layar game</td>
+<td>12</td>
+<td>12</td>
+</tr>
+<tr>
+<td>A6</td>
+<td>Ukuran aset <strong>sebelum</strong> perbaikan (WebP 512 px)</td>
+<td>60 KB</td>
+<td>60 KB</td>
+</tr>
+<tr>
+<td>A7</td>
+<td>Ukuran aset <strong>sesudah</strong> (preset 256 px — luas 4× lebih kecil)</td>
+<td>15 KB</td>
+<td>15 KB</td>
+</tr>
+<tr>
+<td>A8/A9</td>
+<td>Cache hit aset sebelum → sesudah</td>
+<td>~0% → ~85%</td>
+<td>sama</td>
+</tr>
+<tr>
+<td>A10</td>
+<td>Gambar konten per halaman non-game</td>
+<td>150 KB</td>
+<td>150 KB</td>
+</tr>
+</tbody>
+</table>
+<h4 id="f6b-hitungan-egress-storage">F.6.b Hitungan egress Storage</h4>
+<p>Sesi/bulan = 200 × 12 = <strong>2.400</strong> (skenario 5×: 12.000).</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Sekarang</th>
+<th>Sesudah F.1 + E.4</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Aset game</td>
+<td>2.400 × 12 × 60 KB ≈ <strong>1,73 GB</strong></td>
+<td>2.400 × 12 × 15 KB × 0,15 ≈ <strong>65 MB</strong></td>
+</tr>
+<tr>
+<td>Gambar konten</td>
+<td>≈ <strong>0,24 GB</strong></td>
+<td>≈ <strong>0,04 GB</strong></td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td><strong>≈ 2,0 GB/bulan</strong></td>
+<td><strong>≈ 0,1 GB/bulan</strong> (≈ <strong>20× turun</strong>)</td>
+</tr>
+<tr>
+<td>Skenario 5×</td>
+<td>≈ <strong>10 GB/bulan</strong> → <strong>melewati batas Supabase Free</strong></td>
+<td>≈ 0,5 GB/bulan → aman</td>
+</tr>
+</tbody>
+</table>
+<p>Kesimpulannya: <strong>egress Storage belum jadi masalah hari ini, tapi akan melewati batas tepat saat pemasaran mulai berhasil.</strong> Dua quick win di F.1 memindahkan tebing itu sekitar 20× dengan biaya kerja beberapa jam.</p>
+<h4 id="f6c-egress-database-yang-sering-terlupakan">F.6.c Egress database — yang sering terlupakan</h4>
+<p>Ini konsekuensi langsung dari agregasi-di-JavaScript (<a href="#d3-agregasi-pindah-ke-sql--memperbaiki-bug-angka-salah">D.3</a>), dan pada skala besar <strong>melampaui</strong> egress gambar:</p>
+<table>
+<thead>
+<tr>
+<th>Halaman</th>
+<th>Sekarang</th>
+<th>Sesudah RPC</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/admin/keuangan/laporan</code></td>
+<td>3 × seluruh <code>transaksi_keuangan</code></td>
+<td>1 × ~2 KB</td>
+</tr>
+<tr>
+<td><code>/admin/keuangan/anggaran</code></td>
+<td>2 × seluruh <code>transaksi_keuangan</code></td>
+<td>1 × ~2 KB</td>
+</tr>
+<tr>
+<td><code>/admin/analitik</code></td>
+<td>seluruh <code>anak</code> + seluruh <code>profiles</code> + 30 hari <code>hasil_main</code> + <code>aktivitas</code></td>
+<td>1 × ~3 KB</td>
+</tr>
+<tr>
+<td><code>/admin/keuangan/kpi</code></td>
+<td>seluruh <code>langganan</code> + <code>pembayaran_langganan</code> + <code>transaksi_keuangan</code> + <code>profiles</code></td>
+<td>1 × ~3 KB</td>
+</tr>
+</tbody>
+</table>
+<p>Pada 200 pengguna angkanya kecil. Pada <strong>20.000 pengguna</strong>, <code>profiles</code> sendiri ≈ 4 MB; admin membuka halaman itu 30×/bulan × 3 scan ⇒ <strong>~360 MB/bulan untuk satu halaman</strong>, ditambah waktu CPU Node untuk mengurainya. Jadi RPC di Bab D adalah pekerjaan <strong>biaya</strong>, bukan hanya kecepatan.</p>
+<h4 id="f6d-risiko-biaya-diurut-dari-yang-paling-nyata">F.6.d Risiko biaya, diurut dari yang paling nyata</h4>
+<ol>
+<li><strong>Kuota Image Optimization Vercel</strong> — akan meledak bila <code>Aset.tsx</code> dipindah ke <code>next/image</code>. Cara mencegahnya: <strong>jangan lakukan itu</strong> (<a href="#e4-gambar-keputusan-yang-berlawanan-dengan-dugaan-umum">E.4</a>). Ini risiko yang diciptakan oleh "perbaikan" yang salah, bukan oleh kondisi sekarang.</li>
+<li><strong>Compute &amp; disk Supabase</strong> saat <code>aktivitas</code> tumbuh (1 insert per page view, 3 index). Aturan retensi 180 hari lebih berdampak pada biaya daripada optimasi query apa pun di tabel itu — <strong>P1, dan sangat murah</strong>.</li>
+<li><strong>Egress database</strong> dari query tanpa <code>limit</code> (F.6.c).</li>
+<li><strong>Egress Storage</strong> — nomor 4, bukan nomor 1. Penting ditulis agar prioritas tidak salah arah.</li>
+<li><strong>Bukan teknis, tapi paling mendesak:</strong> Vercel Hobby melarang penggunaan komersial (<a href="#03-satu-keputusan-bisnis-yang-menahan-segalanya">§0.3</a>).</li>
+</ol>
+<blockquote>
+<p><strong>Catatan wajib:</strong> kuota &amp; harga Vercel dan Supabase berubah beberapa kali per tahun. Jangan memperlakukan angka di dokumen ini sebagai fakta abadi — yang stabil dan berguna adalah <strong>asumsi A1–A10 dan formulanya</strong>, yang bisa dihitung ulang kapan pun kuotanya berubah.</p>
+</blockquote>
+<h4 id="f6e-budget-alert-pemantauan-pertumbuhan">F.6.e Budget alert &amp; pemantauan pertumbuhan</h4>
+<p><strong>Vercel</strong> → Settings → <strong>Spend Management</strong>: pasang batas belanja + notifikasi pada 50/75/100%. Ada opsi "pause project" saat batas tercapai — <strong>jangan aktifkan untuk produksi</strong>: mematikan aplikasi yang sudah dibayar orang tua lebih mahal daripada tagihan kejutan. Notifikasi saja untuk produksi; auto-pause boleh untuk environment beta.</p>
+<p><strong>Supabase</strong> → Organization → Billing: aktifkan <strong>Spend cap</strong> + usage alert 50/75/90%. Catatan: di Free tier proyek <strong>dijeda setelah ~7 hari tanpa aktivitas</strong> — relevan untuk proyek Supabase beta yang bisa tertidur di antara sesi pengujian.</p>
+<p><strong>Pemantauan sendiri (P2, ~2 jam)</strong> supaya pertumbuhan terlihat sebelum menjadi tagihan:</p>
+<pre><code class="language-sql">create or replace function public.ringkas_penyimpanan()
+returns json language sql stable security definer set search_path = public as $$
+  select json_build_object(
+    'db_bytes', pg_database_size(current_database()),
+    'tabel_terbesar', (
+      select coalesce(json_agg(json_build_object(
+               'tabel', relname, 'baris', n_live_tup, 'bytes', pg_total_relation_size(relid))
+               order by pg_total_relation_size(relid) desc), '[]'::json)
+      from (select relname, n_live_tup, relid from pg_stat_user_tables
+            where schemaname = 'public'
+            order by pg_total_relation_size(relid) desc limit 10) x),
+    'storage_per_folder', (
+      select coalesce(json_agg(json_build_object('folder', f, 'jml', n, 'bytes', b)), '[]'::json)
+      from (select (storage.foldername(name))[1] as f, count(*) n,
+                   sum((metadata-&gt;&gt;'size')::bigint) b
+            from storage.objects where bucket_id in ('aset','privat') group by 1) y)
+  );
+$$;
+revoke all on function public.ringkas_penyimpanan() from public, anon;
+grant execute on function public.ringkas_penyimpanan() to authenticated;
+</code></pre>
+<p>Tampilkan di halaman admin bergerbang, atau kirim mingguan lewat cron. Nilainya: pertumbuhan jadi <strong>terlihat</strong> — prasyarat semua keputusan biaya di bab ini.</p>
+<hr />
+<h2 id="8-roadmap-prioritas">8. Roadmap &amp; prioritas</h2>
+<h3 id="81-urutan-menjalankan-sql-manual-di-sql-editor-berurutan-verifikasi-tiap-langkah">8.1 Urutan menjalankan SQL (manual di SQL Editor, berurutan, verifikasi tiap langkah)</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Berkas</th>
+<th>Isi</th>
+<th>Prasyarat</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>0000_baseline.sql</code></td>
+<td>Tabel <code>schema_migrations</code> + catat <code>0001</code>–<code>0086</code> retroaktif</td>
+<td>—</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>0087_perf_index_2.sql</code></td>
+<td>Semua index yang kurang + <code>analyze</code></td>
+<td>0000</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>0087b_ledger_gagal.sql</code></td>
+<td>Outbox kegagalan tulis keuangan</td>
+<td>0000</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>0088_rls_initplan.sql</code></td>
+<td>8 policy prioritas — <strong>blok demi blok, uji 4 peran tiap blok</strong></td>
+<td>0087 (index harus ada dulu)</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>0089_ringkas_rpc.sql</code></td>
+<td><code>ringkas_keuangan</code>, <code>ringkas_analitik</code>, <code>laporan_engagement</code> versi baru</td>
+<td>0087</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>0090_kolom_ringkas.sql</code></td>
+<td>Generated column <code>ada_indikator</code> dll.</td>
+<td>Cek jsonb non-array dulu · <strong>migrasi dulu, baru deploy kode</strong></td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>0091_storage_kebijakan.sql</code></td>
+<td><code>file_size_limit</code> + <code>allowed_mime_types</code> bucket <code>aset</code></td>
+<td><strong><code>src/lib/upload.ts</code> sudah ter-deploy</strong></td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>0092_bucket_privat.sql</code></td>
+<td>Bucket <code>privat</code> + 4 policy</td>
+<td>0091</td>
+</tr>
+</tbody>
+</table>
+<h3 id="82-murah-mendesak-p0-45-hari-kerja-45bulan">8.2 Murah &amp; MENDESAK (P0) — ≈ 4–5 hari kerja + $45/bulan</h3>
+<p>Kelompok ini menutup ketiga temuan yang sudah berlaku hari ini, plus fondasi yang membuat sisanya bisa dikerjakan dengan aman.</p>
+<table>
+<thead>
+<tr>
+<th>Pekerjaan</th>
+<th>Effort</th>
+<th>Bab</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Rotasi kata sandi admin + audit jejak masuk</strong></td>
+<td>1,5 jam</td>
+<td><a href="#c5-membereskan-tools--ini-insiden-keamanan-aktif">C.5</a></td>
+</tr>
+<tr>
+<td><strong>Cek plafon 1.000 baris</strong> (query diagnostik, read-only)</td>
+<td>5 menit</td>
+<td><a href="#d3-agregasi-pindah-ke-sql--memperbaiki-bug-angka-salah">D.3.a</a></td>
+</tr>
+<tr>
+<td>Naik <strong>Vercel Pro + Supabase Pro</strong> (ToS komersial + backup harian)</td>
+<td>30 menit / $45/bln</td>
+<td><a href="#03-satu-keputusan-bisnis-yang-menahan-segalanya">§0.3</a></td>
+</tr>
+<tr>
+<td>Kredensial <code>tools/</code> → env var + guard anti-produksi</td>
+<td>3–4 jam</td>
+<td>C.5</td>
+</tr>
+<tr>
+<td>Branch protection <code>master</code> + template PR</td>
+<td>45 menit</td>
+<td>C.4</td>
+</tr>
+<tr>
+<td>Jalankan <code>0087_perf_index_2.sql</code></td>
+<td>15 menit</td>
+<td><a href="#d1-index-satu-migrasi-semua-yang-benar-benar-dibutuhkan">D.1</a></td>
+</tr>
+<tr>
+<td>Rate limit + delay pada <code>/api/auth/*</code></td>
+<td>2 jam</td>
+<td>B.5</td>
+</tr>
+<tr>
+<td><code>.limit()</code>/<code>.range()</code> di 19 route API + deteksi <code>postgrest.terpotong</code></td>
+<td>5–7 jam</td>
+<td>B.3</td>
+</tr>
+<tr>
+<td>Sentry + <code>instrumentation.ts</code> + <code>error.tsx</code> melaporkan</td>
+<td>3 jam</td>
+<td>B.2</td>
+</tr>
+<tr>
+<td><code>log.ts</code> + <code>wajib.ts</code> + 10 event wajib</td>
+<td>4 jam</td>
+<td>B.3</td>
+</tr>
+<tr>
+<td><code>ledger.ts</code> anti-telan + tabel <code>ledger_gagal</code> + alert</td>
+<td>4 jam</td>
+<td>B.6</td>
+</tr>
+<tr>
+<td><code>/api/health</code> + <code>/api/health/db</code> + uptime monitor + 4 alert PAGE</td>
+<td>4 jam</td>
+<td>B.1/B.4</td>
+</tr>
+<tr>
+<td><code>0000_baseline.sql</code> + <code>tools/migrate.mjs</code> + gerbang idempotensi di CI</td>
+<td>8–10 jam</td>
+<td>C.3</td>
+</tr>
+<tr>
+<td><code>backup-db.sh</code> + <code>backup-storage.sh</code> + <strong>uji restore pertama</strong></td>
+<td>6 jam</td>
+<td>C.1</td>
+</tr>
+<tr>
+<td><code>proxy.ts</code> matcher lengkap</td>
+<td>15 menit</td>
+<td><a href="#e3c-middleware-dua-perbaikan-terpisah">E.3.c</a></td>
+</tr>
+<tr>
+<td>Aktifkan Web Vitals <strong>sebelum</strong> mengerjakan Bab E</td>
+<td>30 menit</td>
+<td><a href="#e5-pasang-alat-ukur-sebelum-mengerjakan-bab-ini">E.5</a></td>
+</tr>
+<tr>
+<td><code>/pilih-game</code> + <code>admin/tema/[id]</code> → kolom ringan tanpa <code>butir</code></td>
+<td>30 menit</td>
+<td><a href="#e2-pisahkan-query-ringan-dan-berat">E.2</a></td>
+</tr>
+<tr>
+<td><code>cacheControl: '31536000'</code> + preset aset 256 px</td>
+<td>1,5 jam</td>
+<td><a href="#f1-satu-pintu-unggahan-srclibuploadts">F.1</a></td>
+</tr>
+<tr>
+<td><strong><code>ringkas_keuangan</code> + <code>ringkas_analitik</code></strong> (memperbaiki angka salah)</td>
+<td>1,5 hari</td>
+<td><a href="#d3-agregasi-pindah-ke-sql--memperbaiki-bug-angka-salah">D.3</a></td>
+</tr>
+<tr>
+<td><code>0088</code> RLS blok 1–5 + uji 4 peran</td>
+<td>½ hari</td>
+<td><a href="#d2-rls-angkat-evaluasi-ke-initplan">D.2</a></td>
+</tr>
+<tr>
+<td><code>src/lib/upload.ts</code> (satu pintu unggahan)</td>
+<td>½ hari</td>
+<td>F.1</td>
+</tr>
+<tr>
+<td><strong>Bukti/nota baru → bucket privat + <code>urlLampiran()</code></strong> (fase 1)</td>
+<td>½ hari</td>
+<td><a href="#f3-memindahkan-bukti--nota-ke-bucket-privat--signed-url">F.3</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="83-sebelum-t1-2000-dau-p1">8.3 Sebelum T1 (~2.000 DAU) — P1</h3>
+<table>
+<thead>
+<tr>
+<th>Pekerjaan</th>
+<th>Effort</th>
+<th>Bab</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>catatHasilCore</code> berhenti menarik seluruh <code>hasil_main</code></strong> — blocker T1</td>
+<td>1–2 hari</td>
+<td><a href="#t1--2000-dau">A.3 T1</a></td>
+</tr>
+<tr>
+<td><code>getClaims()</code> menggantikan <code>auth.getUser()</code> di middleware (<strong>butuh asymmetric JWT aktif</strong>)</td>
+<td>3–4 jam</td>
+<td>E.3.c</td>
+</tr>
+<tr>
+<td>Deploy lewat GitHub Actions: migrate sebelum deploy</td>
+<td>3–4 jam</td>
+<td>C.4</td>
+</tr>
+<tr>
+<td>Code-splitting 15 mesin game (<code>next/dynamic</code>)</td>
+<td>3–4 jam</td>
+<td><a href="#e1-code-splitting-mesin-game">E.1</a></td>
+</tr>
+<tr>
+<td>Caching berlapis + taksonomi tag (3 fase)</td>
+<td>2–3 hari</td>
+<td>E.3.b</td>
+</tr>
+<tr>
+<td>Sampling/batch <code>aktivitas</code> + turunkan 3 index → 1</td>
+<td>3 jam</td>
+<td>A.3 T1</td>
+</tr>
+<tr>
+<td><code>riwayat_kelas</code> upsert keluar dari jalur GET</td>
+<td>2 jam</td>
+<td>A.3 T1</td>
+</tr>
+<tr>
+<td><code>ChatKonsultasi</code> polling inkremental + <code>.limit(50)</code></td>
+<td>3 jam</td>
+<td>A.3 T1</td>
+</tr>
+<tr>
+<td>Environment beta + arahkan <code>tools/</code> ke sana</td>
+<td>1–1,5 hari</td>
+<td>C.5</td>
+</tr>
+<tr>
+<td>Bersihkan data uji di produksi</td>
+<td>2–3 jam</td>
+<td>C.5</td>
+</tr>
+<tr>
+<td>Backfill bukti/nota (fase 2–3) + <code>bersihkan-orphan.mjs</code></td>
+<td>1 hari</td>
+<td>F.3/F.4</td>
+</tr>
+<tr>
+<td>Sanitasi SVG · tolak GIF · batas PDF · batas bucket</td>
+<td>4 jam</td>
+<td>F.2/F.5</td>
+</tr>
+<tr>
+<td>Retensi <code>aktivitas</code> 180 hari</td>
+<td>1 jam</td>
+<td>D.3.d</td>
+</tr>
+<tr>
+<td>RLS blok 6–8 · <code>Sampul.tsx</code> → <code>next/image</code> · generated column <code>0090</code></td>
+<td>1 hari</td>
+<td>D.2/E.2/E.4</td>
+</tr>
+</tbody>
+</table>
+<h3 id="84-t2-dan-seterusnya-p2">8.4 T2 dan seterusnya — P2</h3>
+<p>Tabel rollup <code>ringkasan_harian</code> + cron · arsip/partisi <code>aktivitas</code> &amp; <code>hasil_main</code> · <strong>PITR</strong> (~$100/bln) · CDN di depan Storage · rate limit terdistribusi · read replica untuk halaman laporan · Log Drain (retensi &gt; 1 hari) · path ber-entitas + <code>upsert:true</code> · Supabase Image Transformation · <code>~150</code> policy RLS sisa (hanya bila tabelnya &gt; 1.000 baris) · queue/worker (T3).</p>
+<h3 id="85-tiga-hal-yang-harus-diverifikasi-ulang-sebelum-menandatangani-anggaran">8.5 Tiga hal yang harus diverifikasi ulang sebelum menandatangani anggaran 🔍</h3>
+<ol>
+<li>Kuota &amp; harga Vercel Hobby/Pro — Fast Data Transfer, GB-jam, edge request, <code>maxDuration</code> default, jumlah cron, apakah rate limit Firewall termasuk di Pro.</li>
+<li>Kuota &amp; harga Supabase Free/Pro — egress termasuk, ukuran DB, harga tiap tingkat compute, harga PITR, apakah add-on IPv4 diperlukan untuk <code>pg_dump</code>.</li>
+<li>Kuota free tier Sentry dan uptime monitor pilihan.</li>
+</ol>
+<hr />
+<h2 id="9-yang-sengaja-tidak-direkomendasikan">9. Yang sengaja TIDAK direkomendasikan</h2>
+<p>Bagian ini sama pentingnya dengan rekomendasinya. Empat hal berikut terlihat seperti perbaikan yang wajar, tapi pada konteks aplikasi ini justru merugikan — dan tanpa catatan ini, kelak ada yang akan "memperbaikinya".</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Yang tidak dilakukan</th>
+<th>Alasan</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Menaikkan "Max rows" PostgREST</strong> untuk memperbaiki angka keuangan yang salah</td>
+<td>Hanya memindahkan tebingnya sedikit lebih jauh, sambil menaikkan egress dan memori function. Angka akan salah lagi di ambang baru, tetap tanpa peringatan. Perbaikan yang benar adalah agregasi di SQL (<a href="#d3-agregasi-pindah-ke-sql--memperbaiki-bug-angka-salah">D.3</a>).</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong><code>Aset.tsx</code> → <code>next/image</code></strong></td>
+<td>Menukar egress Supabase yang murah dan berkuota besar dengan kuota Image Optimization Vercel yang sempit, tepat di jalur terpanas dengan ribuan gambar sumber unik. <code>cacheControl</code> + preset 256 px memberi penghematan yang sama tanpa risiko itu (<a href="#e4-gambar-keputusan-yang-berlawanan-dengan-dugaan-umum">E.4</a>).</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Library kompresi PDF / optimizer SVG di klien</strong></td>
+<td>Puluhan hingga ratusan KB dependency dan CPU berat, ditanggung HP kelas bawah, untuk memperbaiki alur yang <strong>hanya dipakai admin</strong>. Batas ukuran + instruksi ke admin menyelesaikan 90% masalahnya dengan 0 KB.</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Membaca isi JWT tanpa memverifikasi tanda tangannya</strong> demi menghemat satu perjalanan jaringan</td>
+<td>Token yang tidak diverifikasi bisa dipalsukan — di aplikasi ini artinya seseorang bisa mengaku admin. Yang boleh adalah verifikasi lokal berbasis kunci publik (<code>getClaims()</code> + asymmetric JWT). Selama itu belum aktif, <code>getUser()</code> tetap dipakai (<a href="#e3c-middleware-dua-perbaikan-terpisah">E.3.c</a>).</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Pindah ke VPS/GCP sekarang</strong></td>
+<td>Untuk tim satu orang, biaya nyata bukan tagihan bulanan melainkan <strong>jam kerja</strong>: patching, backup, monitoring, on-call. Selisih biaya baru berarti di atas T3, dan pada titik itu keputusan sebaiknya diambil dengan data operasional yang belum ada hari ini.</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>Menulis ulang 86 migrasi lama jadi idempoten</strong></td>
+<td>2–3 hari kerja berisiko tinggi dengan nilai rendah, karena produksi sudah ada. Baseline retroaktif memberi 90% manfaatnya dalam 6–8 jam (<a href="#c3-pelacak-migrasi--pola-idempoten">C.3</a>).</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="10-pemeliharaan-dokumen-ini">10. Pemeliharaan dokumen ini</h2>
+<p>Dokumen ini akan menjadi salah bila tidak dirawat. Tiga aturan:</p>
+<ol>
+<li><strong>Angka bertanda 🔍 wajib diverifikasi ulang</strong> sebelum dipakai untuk keputusan anggaran. Yang stabil adalah asumsi &amp; formulanya, bukan nilai kuotanya.</li>
+<li><strong>Setiap kali satu butir P0/P1 selesai</strong>, tandai di tabel <a href="#8-roadmap--prioritas">§8</a> dengan tanggal — supaya sisa pekerjaan selalu terlihat jelas.</li>
+<li><strong>Setiap kali naik tier</strong>, catat metrik nyata (p95 TTFB, CPU Supabase, egress) di tabel di bawah dan bandingkan dengan asumsi <a href="#a1-asumsi-beban-dasar-semua-hitungan">A.1</a>. Kalau menyimpang jauh, perbaiki asumsinya — bukan mengabaikan datanya.</li>
+</ol>
+<h3 id="riwayat-pengukuran">Riwayat pengukuran</h3>
+<table>
+<thead>
+<tr>
+<th>Tanggal</th>
+<th>DAU</th>
+<th>p95 TTFB <code>/main</code></th>
+<th>CPU Supabase</th>
+<th>Ukuran DB</th>
+<th>Egress/bln</th>
+<th>Catatan</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2026-07-31</td>
+<td>—</td>
+<td>belum diukur</td>
+<td>belum diukur</td>
+<td>belum diukur</td>
+<td>belum diukur</td>
+<td>Audit awal. Web Vitals belum diaktifkan — lihat <a href="#e5-pasang-alat-ukur-sebelum-mengerjakan-bab-ini">E.5</a>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="riwayat-uji-restore">Riwayat uji restore</h3>
+<p>Backup tanpa uji restore bukan backup. Catat setiap uji, termasuk yang gagal.</p>
+<table>
+<thead>
+<tr>
+<th>Tanggal</th>
+<th>Ruang lingkup</th>
+<th>Berhasil?</th>
+<th>RTO nyata</th>
+<th>Temuan</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>—</td>
+<td>belum pernah</td>
+<td>—</td>
+<td>—</td>
+<td><strong>Uji restore pertama masuk P0</strong> (<a href="RUNBOOK-OPERASIONAL.md">RB-02</a>).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="riwayat-insiden">Riwayat insiden</h3>
+<table>
+<thead>
+<tr>
+<th>Tanggal</th>
+<th>Insiden</th>
+<th>Dampak</th>
+<th>RPO/RTO nyata</th>
+<th>Perubahan pencegah</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>~2026-07</td>
+<td>Kolom <code>kuota_*</code> belum ada saat kode ter-deploy</td>
+<td>Daftar event kosong, orang tua gagal mendaftar, admin gagal menyimpan event</td>
+<td>—</td>
+<td>Pola akses toleran (<code>lib/data/kuota-event.ts</code>). <strong>Pencegahan strukturalnya</strong> ada di <a href="#c4-urutan-rilis-hentikan-kode-mendahului-migrasi">C.4</a> dan belum dikerjakan.</td>
+</tr>
+</tbody>
+</table></body></html>

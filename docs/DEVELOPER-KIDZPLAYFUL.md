@@ -2,7 +2,9 @@
 
 > Panduan teknis untuk developer baru. Menjelaskan **per halaman/menu**: file apa yang menanganinya, function/reader/server-action apa yang dipakai, dan **endpoint backend** (tabel Supabase / RPC / storage / auth) yang disentuh. Termasuk **REST API internal** (untuk aplikasi mobile) dan infrastruktur.
 
-Terakhir diperbarui: 2026-07-24.
+Terakhir diperbarui: 2026-07-31.
+
+**Dokumen pendamping:** [`INFRASTRUKTUR-KIDZPLAYFUL.md`](INFRASTRUKTUR-KIDZPLAYFUL.md) — rencana penataan & skala infrastruktur (model kapasitas 4 tier, index/RLS/agregasi, observability, backup & DR, egress & biaya) · [`RUNBOOK-OPERASIONAL.md`](RUNBOOK-OPERASIONAL.md) — prosedur saat kejadian (backup, uji restore, DR, insiden, rilis+migrasi, rotasi kredensial).
 
 ---
 

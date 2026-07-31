@@ -84,5 +84,7 @@ Rancangan disetujui owner, **kode belum dikerjakan** — detail lengkap + daftar
 ## Dokumentasi
 
 - `docs/DOKUMENTASI-KIDZPLAYFUL.md` (+PDF) — dokumentasi teknis menyeluruh (arsitektur, skema, deploy).
+- `docs/INFRASTRUKTUR-KIDZPLAYFUL.md` (+PDF) — **rencana infrastruktur & skala**: model kapasitas 4 tier (T0→T3) dengan pemicu terukur, index/RLS/RPC agregasi, observability & alert, backup/DR, egress & biaya. Semua SQL/kode di sana berstatus **lampiran siap tempel — belum diterapkan ke repo**.
+- `docs/RUNBOOK-OPERASIONAL.md` (+PDF) — prosedur saat kejadian (RB-01…RB-09): backup, uji restore, DR, insiden down, rilis+migrasi, rollback, rotasi kredensial.
 - `docs/specs/` — spec desain. `docs/superpowers/plans/` — rencana per milestone (M1–M17).
 - `MEMORY.md` — peta modul & alur (dari `/graphify`).

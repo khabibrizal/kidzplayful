@@ -1,0 +1,479 @@
+<!DOCTYPE html><html lang="id"><head><meta charset="utf-8">
+<title>Dokumentasi KidzPlayful</title><style>
+@page { size: A4; margin: 15mm 14mm; }
+* { box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; color:#222; line-height:1.55; font-size:11pt; }
+h1 { font-size:20pt; color:#5a2ca0; border-bottom:3px solid #efe7fb; padding-bottom:6px; }
+h2 { font-size:14pt; color:#3a78d6; margin-top:20px; border-bottom:1px solid #eee; padding-bottom:3px; page-break-after:avoid; }
+h3 { font-size:12pt; color:#2ba8a3; margin-top:14px; page-break-after:avoid; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:9.5pt; page-break-inside:avoid; }
+th,td { border:1px solid #ddd; padding:5px 8px; text-align:left; vertical-align:top; }
+th { background:#f4f0fb; color:#444; }
+code { background:#f3f3f7; padding:1px 5px; border-radius:4px; font-size:9pt; color:#a13; font-family:'Consolas','Courier New',monospace; }
+pre { background:#f7f7fb; border:1px solid #e6e6ee; border-radius:8px; padding:10px 12px; overflow:auto; font-size:8pt; line-height:1.35; page-break-inside:avoid; white-space:pre-wrap; font-family:'Consolas','Courier New',monospace; }
+pre code { background:none; color:#333; padding:0; font-family:'Consolas','Courier New',monospace; }
+blockquote { border-left:4px solid #ffc93c; background:#fffdf3; margin:10px 0; padding:6px 14px; color:#665; }
+hr { border:none; border-top:1px solid #e2e2ea; margin:16px 0; }
+a { color:#3a78d6; text-decoration:none; }
+ul,ol { margin:8px 0 8px 6px; padding-left:20px; }
+li { margin:3px 0; }
+</style></head>
+<body><h1 id="runbook-operasional-kidzplayful">RUNBOOK OPERASIONAL — KidzPlayful</h1>
+<blockquote>
+<p>Prosedur yang dijalankan <strong>saat kejadian</strong>. Dibuat terpisah dari <a href="INFRASTRUKTUR-KIDZPLAYFUL.md"><code>INFRASTRUKTUR-KIDZPLAYFUL.md</code></a> dengan alasan sederhana: runbook dibaca saat panik, dan tidak boleh terkubur di dokumen 2.000 baris.</p>
+<p><strong>Cetak PDF-nya dan simpan offline.</strong> Saat situs mati atau database tidak bisa diakses, dokumen yang hanya ada di dalam aplikasi tidak menolong.</p>
+<p><strong>Disusun:</strong> 31 Juli 2026 · <strong>Status:</strong> RB-01 s/d RB-02 belum pernah dijalankan — lihat catatan di masing-masing.</p>
+</blockquote>
+<h2 id="daftar-prosedur">Daftar prosedur</h2>
+<table>
+<thead>
+<tr>
+<th>Kode</th>
+<th>Prosedur</th>
+<th>Kapan dipakai</th>
+<th>Frekuensi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="#rb-01--backup-mingguan">RB-01</a></td>
+<td>Backup mingguan</td>
+<td>Tiap Jumat</td>
+<td>rutin</td>
+</tr>
+<tr>
+<td><a href="#rb-02--uji-restore">RB-02</a></td>
+<td>Uji restore</td>
+<td>Sekali sekarang, lalu bulanan</td>
+<td>rutin</td>
+</tr>
+<tr>
+<td><a href="#rb-03--dr-database-tidak-bisa-diakses">RB-03</a></td>
+<td>DR: database tidak bisa diakses</td>
+<td>Insiden</td>
+<td>—</td>
+</tr>
+<tr>
+<td><a href="#rb-04--dr-data-terhapus-atau-rusak">RB-04</a></td>
+<td>DR: data terhapus / rusak</td>
+<td>Insiden</td>
+<td>—</td>
+</tr>
+<tr>
+<td><a href="#rb-05--insiden-situs-down">RB-05</a></td>
+<td>Insiden: situs down</td>
+<td>Alert PAGE</td>
+<td>—</td>
+</tr>
+<tr>
+<td><a href="#rb-06--rilis-dengan-migrasi">RB-06</a></td>
+<td>Rilis dengan migrasi</td>
+<td>Tiap rilis berskema</td>
+<td>rutin</td>
+</tr>
+<tr>
+<td><a href="#rb-07--rollback-deploy">RB-07</a></td>
+<td>Rollback deploy</td>
+<td>Rilis rusak</td>
+<td>—</td>
+</tr>
+<tr>
+<td><a href="#rb-08--rotasi-kredensial-yang-bocor">RB-08</a></td>
+<td>Rotasi kredensial bocor</td>
+<td>Insiden keamanan</td>
+<td>—</td>
+</tr>
+<tr>
+<td><a href="#rb-09--bersihkan-data-uji-di-produksi">RB-09</a></td>
+<td>Bersihkan data uji di produksi</td>
+<td>Berkala</td>
+<td>rutin</td>
+</tr>
+</tbody>
+</table>
+<h3 id="prasyarat-sekali-pasang">Prasyarat sekali-pasang</h3>
+<p>Sebelum runbook ini bisa dijalankan, tiga hal harus ada. <strong>Ketiganya belum ada</strong> per 31 Juli 2026:</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Prasyarat</th>
+<th>Untuk</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>postgresql-client</code> (versi ≥ server) + 7-Zip di PATH</td>
+<td>RB-01, RB-02</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Berkas rahasia <strong>di luar repo</strong>: <code>~/.kidzplayful-backup.env</code> (chmod 600) berisi <code>PGURI</code> dan <code>PASSPHRASE</code>. Passphrase disimpan di password manager.</td>
+<td>RB-01</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Supabase <strong>Pro</strong> (backup harian otomatis; Free tidak punya backup sama sekali)</td>
+<td>RB-03, RB-04</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Larangan tegas:</strong> berkas backup tidak boleh masuk repo. Tambahkan ke <code>.gitignore</code>: <code>*.dump</code>, <code>*.7z</code>, <code>backup/</code>, <code>.kidzplayful-backup.env</code>. Repo ini publik.</p>
+</blockquote>
+<hr />
+<h2 id="rb-01-backup-mingguan">RB-01 — Backup mingguan</h2>
+<p><strong>Kapan:</strong> tiap Jumat, ±10 menit. <strong>Prasyarat:</strong> 1 &amp; 2 di atas.</p>
+<p>Dua hal harus di-backup, dan ini poin yang sering terlewat: <strong>backup database Supabase TIDAK mencakup berkas Storage.</strong> Bukti bayar orang tua dan nota keuangan berada di Storage, jadi butuh jalur terpisah.</p>
+<h3 id="langkah">Langkah</h3>
+<ol>
+<li>Jalankan <code>bash scripts/backup-db.sh</code> → menghasilkan satu <code>.7z</code> terenkripsi.</li>
+<li>Jalankan <code>bash scripts/backup-storage.sh</code> → sinkron inkremental bucket.</li>
+<li>Unggah <code>.7z</code> ke Google Drive folder <code>kidzplayful-backup</code>.</li>
+<li>Sebulan sekali: salin juga ke disk eksternal (offline — aman dari ransomware dan dari akun yang hilang).</li>
+</ol>
+<h3 id="scriptsbackup-dbsh"><code>scripts/backup-db.sh</code></h3>
+<pre><code class="language-bash">#!/usr/bin/env bash
+# scripts/backup-db.sh — backup mandiri. Jalankan dari laptop owner tiap Jumat.
+#
+# CATATAN KONEKSI: pakai port 5432 (session pooler / direct). Port 6543 (transaction
+# pooler) TIDAK mendukung pg_dump. Koneksi direct kini IPv6-only — bila jaringan
+# IPv4-only, pakai hostname pooler, atau add-on IPv4 (~$4/bln 🔍).
+set -euo pipefail
+source ~/.kidzplayful-backup.env      # PGURI, PASSPHRASE
+
+STAMP=$(date +%Y%m%d-%H%M)
+DIR=&quot;/d/backup-kidzplayful/$STAMP&quot;
+mkdir -p &quot;$DIR&quot;
+
+echo &quot;[1/5] schema public (struktur + data)&quot;
+pg_dump &quot;$PGURI&quot; --format=custom --no-owner --no-privileges --schema=public --file=&quot;$DIR/public.dump&quot;
+
+echo &quot;[2/5] schema auth (akun ortu — TANPA INI, restore = semua user hilang)&quot;
+pg_dump &quot;$PGURI&quot; --format=custom --no-owner --no-privileges --schema=auth --file=&quot;$DIR/auth.dump&quot;
+
+echo &quot;[3/5] schema storage (metadata objek; berkas fisik lihat backup-storage.sh)&quot;
+pg_dump &quot;$PGURI&quot; --format=custom --no-owner --no-privileges --schema=storage --file=&quot;$DIR/storage-meta.dump&quot;
+
+echo &quot;[4/5] manifest verifikasi (dipakai saat uji restore RB-02)&quot;
+psql &quot;$PGURI&quot; -Atc &quot;
+  select 'profiles='||(select count(*) from profiles)
+      ||' anak='||(select count(*) from anak)
+      ||' hasil_main='||(select count(*) from hasil_main)
+      ||' transaksi_keuangan='||(select count(*) from transaksi_keuangan)
+      ||' pendaftaran_event='||(select count(*) from pendaftaran_event)
+      ||' pesanan='||(select count(*) from pesanan)
+      ||' total_masuk='||(select coalesce(sum(jumlah),0) from transaksi_keuangan where arah='masuk')
+      ||' total_keluar='||(select coalesce(sum(jumlah),0) from transaksi_keuangan where arah='keluar')
+      ||' migrasi='||(select coalesce(max(versi),'-') from schema_migrations)
+&quot; &gt; &quot;$DIR/MANIFEST.txt&quot;
+cat &quot;$DIR/MANIFEST.txt&quot;
+
+echo &quot;[5/5] enkripsi (isinya data pribadi anak &amp; bukti transfer)&quot;
+7z a -t7z -mhe=on -p&quot;$PASSPHRASE&quot; &quot;$DIR.7z&quot; &quot;$DIR&quot; &gt;/dev/null
+rm -rf &quot;$DIR&quot;
+echo &quot;SELESAI: $DIR.7z ($(du -h &quot;$DIR.7z&quot; | cut -f1))&quot;
+</code></pre>
+<h3 id="scriptsbackup-storagesh"><code>scripts/backup-storage.sh</code></h3>
+<pre><code class="language-bash">#!/usr/bin/env bash
+# scripts/backup-storage.sh — bucket Storage TIDAK tercakup backup DB Supabase.
+# Supabase Storage mendukung protokol S3 → rclone (inkremental, murah).
+#   rclone config: tipe s3, provider Other,
+#   endpoint = https://&lt;ref&gt;.supabase.co/storage/v1/s3 · region = ap-south-1
+#   access_key/secret = S3 Access Keys dari Dashboard → Storage → S3
+set -euo pipefail
+for B in aset privat; do
+  echo &quot;== bucket $B ==&quot;
+  rclone sync &quot;supabase:$B&quot; &quot;/d/backup-kidzplayful/$B&quot; --progress --transfers 8 --checksum
+done
+du -sh /d/backup-kidzplayful/aset /d/backup-kidzplayful/privat
+</code></pre>
+<h3 id="verifikasi-berhasil">Verifikasi berhasil</h3>
+<ul>
+<li>Berkas <code>.7z</code> ada, ukurannya wajar (bukan beberapa KB), dan <code>MANIFEST.txt</code> tercetak dengan angka yang masuk akal.</li>
+<li>Angka di manifest <strong>tidak menurun</strong> dibanding minggu lalu (kecuali ada penghapusan yang disengaja — kalau menurun tanpa alasan, itu sendiri sebuah temuan).</li>
+</ul>
+<h3 id="retensi">Retensi</h3>
+<p>Mingguan 8 minggu · bulanan 12 bulan · tahunan permanen (data keuangan untuk kebutuhan pembukuan).</p>
+<hr />
+<h2 id="rb-02-uji-restore">RB-02 — Uji restore</h2>
+<blockquote>
+<p><strong>Backup tanpa uji restore bukan backup.</strong> Ini prosedur terpenting di seluruh runbook, dan <strong>belum pernah dijalankan sekali pun</strong>. Uji pertama masuk P0.</p>
+</blockquote>
+<p><strong>Jadwal:</strong> sekali sekarang (ke Postgres lokal via Docker, ~2 jam) → bulanan Sabtu pertama (ke proyek Supabase kedua, ~1,5 jam) → kuartalan (restore + jalankan aplikasi + smoke 5 alur, ~3 jam).</p>
+<h3 id="checklist-wajib-centang-semua-dan-catat-waktunya">Checklist wajib — centang semua, dan catat waktunya</h3>
+<ol>
+<li><code>pg_restore</code> selesai tanpa error fatal.</li>
+<li>Jalankan query yang sama seperti <code>MANIFEST.txt</code> pada database hasil restore → <strong>8 angka harus identik</strong>, termasuk <code>total_masuk</code> dan <code>total_keluar</code>.</li>
+<li><code>select max(versi) from schema_migrations</code> sama dengan manifest.</li>
+<li>Login satu akun orang tua uji berhasil (membuktikan <code>auth.users</code> <strong>dan</strong> <code>profiles</code> ikut ter-restore — inilah gunanya mem-backup schema <code>auth</code>).</li>
+<li>Buka <code>/pilih-anak</code>, <code>/main/&lt;anakId&gt;</code>, <code>/admin/keuangan</code> → tidak ada halaman error.</li>
+<li>Buka satu URL <code>bukti/</code> dari backup Storage → berkasnya ada.</li>
+<li><strong>Catat total menit dari mulai sampai langkah 6 selesai. Angka itu adalah RTO nyata Anda</strong> — bukan angka yang tertulis di tabel mana pun. Tulis di tabel "Riwayat uji restore" di <a href="INFRASTRUKTUR-KIDZPLAYFUL.md#riwayat-uji-restore">dokumen infrastruktur §10</a>.</li>
+</ol>
+<h3 id="kalau-gagal">Kalau gagal</h3>
+<p>Gagal pada uji restore adalah <strong>kabar baik</strong> — ditemukan saat tidak ada tekanan. Catat penyebabnya, perbaiki skrip backup, lalu ulangi dari langkah 1. Jangan tandai RB-01 sebagai "beres" sebelum RB-02 pernah lulus.</p>
+<hr />
+<h2 id="rb-03-dr-database-tidak-bisa-diakses">RB-03 — DR: database tidak bisa diakses</h2>
+<p><strong>Gejala:</strong> <code>/api/health/db</code> balas 503, atau seluruh halaman error, atau dashboard Supabase menunjukkan proyek jeda/CPU 100%.</p>
+<h3 id="langkah_1">Langkah</h3>
+<ol>
+<li><strong>(2 menit) Pastikan ini bukan masalah aplikasi.</strong> Cek <code>/api/health</code> (tanpa DB) — kalau ia 200 sementara <code>/api/health/db</code> 503, masalahnya di database, bukan di Vercel.</li>
+<li><strong>(3 menit) Cek penyebab yang paling sering, berurutan:</strong>
+   - Supabase → Reports → Database: CPU, Disk IO budget, jumlah koneksi. <strong>Disk IO budget habis</strong> membuat seluruh database melambat tanpa error yang jelas.
+   - Supabase → Settings → Usage: apakah ada batas terlampaui (ukuran DB, egress) yang memicu pembatasan.
+   - Free tier: apakah proyek <strong>dijeda karena idle</strong> (terjadi setelah ~7 hari tanpa aktivitas).
+   - Halaman status Supabase: apakah ini gangguan penyedia.</li>
+<li><strong>(5 menit) Bila CPU/IO jenuh karena query:</strong> Supabase → Reports → Query Performance, cari query terlama. Tersangka utama berdasarkan audit: halaman <code>/admin/keuangan/*</code> yang melakukan full scan <code>transaksi_keuangan</code>, dan <code>catatHasilCore</code> yang menarik seluruh riwayat <code>hasil_main</code>. <strong>Mitigasi cepat:</strong> naikkan tingkat compute satu tingkat (efektif dalam beberapa menit) — itu membeli waktu, bukan memperbaiki akar masalah.</li>
+<li><strong>Bila database rusak, bukan hanya lambat:</strong> lanjut ke <a href="#rb-04--dr-data-terhapus-atau-rusak">RB-04</a>.</li>
+<li><strong>(10 menit) Setelah pulih:</strong> pantau <code>/api/health/db</code> dan Sentry selama 30 menit sebelum menyatakan selesai.</li>
+</ol>
+<hr />
+<h2 id="rb-04-dr-data-terhapus-atau-rusak">RB-04 — DR: data terhapus atau rusak</h2>
+<p><strong>Penyebab paling mungkin di platform ini:</strong> perintah salah di SQL Editor produksi. Ini bukan spekulasi — 86 migrasi dijalankan manual di sana, jadi frekuensi tangan manusia di lingkungan produksi tinggi.</p>
+<h3 id="0-2-menit-bekukan-kerusakan-lakukan-ini-sebelum-berpikir">0. (2 menit) Bekukan kerusakan — lakukan ini SEBELUM berpikir</h3>
+<ul>
+<li>Aktifkan Vercel Deployment Protection, <strong>atau</strong> set env <code>NEXT_PUBLIC_MODE_PEMELIHARAAN=1</code> lalu redeploy. Tujuannya menghentikan tulis baru yang akan menimpa keadaan yang masih bisa dipulihkan.</li>
+<li><strong>Catat waktu insiden</strong> (WIB dan UTC). Angka ini menentukan titik PITR.</li>
+<li>Jangan menjalankan perintah perbaikan spekulatif di produksi. Setiap tulis tambahan mempersempit pilihan.</li>
+</ul>
+<h3 id="1-5-menit-tentukan-ruang-lingkup">1. (5 menit) Tentukan ruang lingkup</h3>
+<table>
+<thead>
+<tr>
+<th>Ruang lingkup</th>
+<th>Jalur</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Satu tabel / beberapa baris</td>
+<td><strong>Jalur A</strong> — restore selektif</td>
+</tr>
+<tr>
+<td>Seluruh database</td>
+<td><strong>Jalur B</strong> — restore penuh</td>
+</tr>
+<tr>
+<td>Berkas Storage hilang</td>
+<td><strong>Jalur C</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="jalur-a-selektif-3060-menit">Jalur A — selektif (30–60 menit)</h3>
+<ol>
+<li>Restore dump terakhir ke Postgres lokal (Docker) — <strong>jangan</strong> ke produksi.</li>
+<li>Ekspor hanya yang terdampak: <code>pg_dump --table=&lt;tabel&gt; --data-only</code>.</li>
+<li>Impor ke produksi <strong>di dalam transaksi</strong>; verifikasi <code>count(*)</code> sebelum <code>COMMIT</code>.</li>
+<li>Untuk <code>transaksi_keuangan</code>: bandingkan <code>sum(jumlah)</code> per arah sebelum dan sesudah, dan cocokkan dengan <code>MANIFEST.txt</code>.</li>
+</ol>
+<h3 id="jalur-b-penuh-26-jam">Jalur B — penuh (2–6 jam)</h3>
+<table>
+<thead>
+<tr>
+<th>Kondisi</th>
+<th>Cara</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pro + PITR</td>
+<td>Dashboard → Database → Restore to point in time → <strong>5 menit sebelum</strong> waktu insiden</td>
+</tr>
+<tr>
+<td>Pro tanpa PITR</td>
+<td>Dashboard → Database → Backups → pilih tanggal → Restore</td>
+</tr>
+<tr>
+<td>Free (tanpa keduanya)</td>
+<td>Buat proyek baru → <code>pg_restore</code> <code>public</code> + <code>auth</code> + <code>storage-meta</code> → perbarui env Vercel (URL, anon key, service role) → redeploy → perbarui Auth URL Configuration</td>
+</tr>
+</tbody>
+</table>
+<p>Lalu jalankan checklist verifikasi <a href="#rb-02--uji-restore">RB-02</a> langkah 2–6.</p>
+<h3 id="jalur-c-storage-30-menit">Jalur C — Storage (30 menit)</h3>
+<pre><code class="language-bash">rclone copy /d/backup-kidzplayful/aset   supabase:aset   --immutable
+rclone copy /d/backup-kidzplayful/privat supabase:privat --immutable
+</code></pre>
+<p><code>--immutable</code> mencegah menimpa berkas yang sudah ada — jadi hanya yang benar-benar hilang yang dipulihkan.</p>
+<h3 id="3-10-menit-buka-kembali">3. (10 menit) Buka kembali</h3>
+<p>Nonaktifkan mode pemeliharaan. Pantau <code>/api/health/db</code> + Sentry 30 menit.</p>
+<h3 id="4-esok-hari-post-mortem">4. (esok hari) Post-mortem</h3>
+<p>Tulis di <a href="INFRASTRUKTUR-KIDZPLAYFUL.md#riwayat-insiden">dokumen infrastruktur §10</a>: penyebab, <strong>RPO nyata</strong>, <strong>RTO nyata</strong>, dan <strong>satu</strong> perubahan pencegah. Satu saja — yang benar-benar akan dikerjakan.</p>
+<hr />
+<h2 id="rb-05-insiden-situs-down">RB-05 — Insiden: situs down</h2>
+<p><strong>Pemicu:</strong> alert PAGE "Situs mati" (<code>/api/health</code> gagal 2× berturut-turut).</p>
+<ol>
+<li><strong>(1 menit)</strong> Buka situs dari jaringan lain (data seluler). Kalau normal, masalahnya di jaringan Anda atau DNS lokal — bukan insiden.</li>
+<li><strong>(2 menit)</strong> Vercel → Deployments: apakah ada deploy baru tepat sebelum alert? Kalau ya → <a href="#rb-07--rollback-deploy">RB-07</a>. Ini penyebab paling sering dan paling cepat diperbaiki.</li>
+<li><strong>(2 menit)</strong> Vercel → Observability → Runtime Logs: cari error berulang. Lalu Sentry: apakah ada issue baru dengan lonjakan tajam?</li>
+<li><strong>(2 menit)</strong> Cek <code>/api/health</code> vs <code>/api/health/db</code> untuk memisahkan masalah aplikasi dari masalah database → bila database, lanjut <a href="#rb-03--dr-database-tidak-bisa-diakses">RB-03</a>.</li>
+<li><strong>(3 menit)</strong> Cek halaman status Vercel dan Supabase. Bila gangguan penyedia: tidak ada yang bisa dikerjakan selain komunikasi — pasang pesan di kanal WhatsApp orang tua bila lebih dari 30 menit.</li>
+<li><strong>(5 menit)</strong> Kalau penyebabnya kuota/tagihan (Spend Management memblokir), naikkan batas. Inilah alasan auto-pause <strong>tidak</strong> diaktifkan untuk produksi.</li>
+<li><strong>Setelah pulih:</strong> catat di riwayat insiden.</li>
+</ol>
+<hr />
+<h2 id="rb-06-rilis-dengan-migrasi">RB-06 — Rilis dengan migrasi</h2>
+<blockquote>
+<p>Prosedur ini menutup <strong>penyebab insiden yang sudah pernah terjadi</strong>: Vercel auto-deploy tiap push <code>master</code>, sementara migrasi dijalankan manual sesudahnya — sehingga kode selalu mendahului skema. Insiden <code>kuota_*</code> adalah wujudnya.</p>
+</blockquote>
+<h3 id="pola-wajib-expand-migrate-contract">Pola wajib: expand → migrate → contract</h3>
+<table>
+<thead>
+<tr>
+<th>Fase</th>
+<th>Yang dilakukan</th>
+<th>Aturan</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1. EXPAND</strong></td>
+<td>Migrasi <strong>saja</strong>: tambah kolom nullable/berdefault, tabel baru, index baru</td>
+<td><strong>Tanpa</strong> perubahan kode di rilis ini. Selalu kompatibel ke belakang.</td>
+</tr>
+<tr>
+<td><strong>2. DEPLOY</strong></td>
+<td>Kode yang menulis &amp; membaca kolom baru</td>
+<td>Dipush <strong>setelah</strong> fase 1 terbukti. Kode toleran terhadap <code>null</code>, bukan terhadap "kolom tidak ada".</td>
+</tr>
+<tr>
+<td><strong>3. BACKFILL</strong></td>
+<td>Isi data lama, bertahap (<code>limit</code>), idempoten</td>
+<td>Jangan <code>update</code> satu tabel besar dalam satu perintah.</td>
+</tr>
+<tr>
+<td><strong>4. CONTRACT</strong></td>
+<td><code>set not null</code>, buang kolom lama, buang lapisan toleransi</td>
+<td>Minimal 1 rilis setelah fase 3, dan hanya bila stabil ≥ 1 minggu.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="checklist-tiap-rilis">Checklist tiap rilis</h3>
+<ol>
+<li>Migrasi baru mengikuti template idempoten (<code>if not exists</code>, <code>drop policy if exists</code> sebelum <code>create policy</code>, mencatat diri ke <code>schema_migrations</code>).</li>
+<li>CI hijau, termasuk gerbang <strong>"migrasi dijalankan dua kali harus no-op"</strong>.</li>
+<li>Jalankan migrasi di <strong>beta</strong> lebih dulu (bila environment beta sudah ada), lalu produksi.</li>
+<li>Jalankan <code>node tools/migrate.mjs --db-url "$PGURI"</code> — tempel keluarannya di PR.</li>
+<li>Naikkan env <code>MIGRASI_MINIMAL</code> di Vercel ke versi terbaru.</li>
+<li>Push → tunggu deploy → cek <code>/api/health/db</code> = 200 dengan <code>cek.migrasi.ok = true</code>.</li>
+<li>Pantau Sentry 15 menit.</li>
+</ol>
+<h3 id="kapan-pola-kolom-toleran-tetap-dipakai">Kapan pola "kolom toleran" tetap dipakai</h3>
+<ul>
+<li><strong>Ya</strong> — selama jendela fase 2 (kolom sudah ada tapi masih <code>null</code> untuk baris lama); untuk field opsional/kosmetik; dan untuk kompatibilitas aplikasi mobile yang versinya tertinggal di HP pengguna (<strong>alasan permanen dan sah</strong> — rilis app store tidak bisa dipaksa).</li>
+<li><strong>Tidak</strong> — sebagai satu-satunya pengaman race; di jalur keuangan, di mana kegagalan <strong>harus</strong> berbunyi; dan sebagai alasan <code>catch {}</code> kosong.</li>
+</ul>
+<hr />
+<h2 id="rb-07-rollback-deploy">RB-07 — Rollback deploy</h2>
+<p><strong>Kapan:</strong> rilis baru menyebabkan error massal atau situs down.</p>
+<ol>
+<li><strong>(1 menit)</strong> Vercel → Deployments → pilih deployment terakhir yang sehat → <strong>Promote to Production</strong>. Ini instan; jangan mencoba memperbaiki maju-maju saat pengguna sedang terdampak.</li>
+<li><strong>(1 menit)</strong> Verifikasi situs normal, lalu beri tahu bila ada yang sudah mengeluh.</li>
+<li><strong>⚠️ Periksa apakah rilis itu menyertakan migrasi.</strong> Ini bagian yang paling mudah salah:
+   - <strong>Migrasi hanya menambah</strong> (kolom nullable, tabel, index) → <strong>jangan di-rollback</strong>. Skema yang lebih maju aman untuk kode lama, dan mengembalikannya justru berisiko.
+   - <strong>Migrasi menghapus/mengetatkan</strong> (<code>drop column</code>, <code>set not null</code>) → kode lama bisa gagal. Di sinilah pola expand→contract <a href="#rb-06--rilis-dengan-migrasi">RB-06</a> membayar dirinya: bila diikuti, situasi ini tidak pernah terjadi.</li>
+<li><strong>(catatan)</strong> "Server Action was not found on the server" <strong>setelah</strong> deploy bukan bug — itu klien lama memegang ID Server Action lama. Cukup muat ulang keras (Ctrl+Shift+R). Jangan me-rollback karena ini.</li>
+<li>Perbaiki akar masalah di branch, lewat PR.</li>
+</ol>
+<hr />
+<h2 id="rb-08-rotasi-kredensial-yang-bocor">RB-08 — Rotasi kredensial yang bocor</h2>
+<blockquote>
+<p><strong>Status per 31 Juli 2026: prosedur ini perlu dijalankan sekarang.</strong> Ada 56 kemunculan email + kata sandi admin produksi di 23 skrip <code>tools/*.mjs</code> pada repo publik. Asumsikan sudah bocor — pencarian kode GitHub mengindeks repo publik dalam hitungan menit.</p>
+</blockquote>
+<h3 id="langkah-berurutan">Langkah, berurutan</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Langkah</th>
+<th>Detail</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Rotasi kata sandi</strong> (15 menit)</td>
+<td>Supabase → Auth → Users → akun admin → set kata sandi baru (generator, ≥ 24 karakter) → simpan <strong>hanya</strong> di password manager</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Audit jejak penyalahgunaan</strong> (1 jam)</td>
+<td><code>auth.users.last_sign_in_at</code> akun admin (ada login yang tidak Anda kenali?) · <code>select * from aktivitas order by dibuat_at desc limit 200</code> · baris <code>transaksi_keuangan</code> / <code>pesanan</code> / <code>postingan</code> yang asing · <code>select name, created_at from storage.objects order by created_at desc limit 100</code> (berkas asing) · <strong>dan</strong> <code>git log -p -S 'service_role'</code> — anon key aman dipublikasikan, <strong>service role tidak</strong></td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Ganti identitas admin</strong> (30 menit)</td>
+<td>Buat akun admin baru dengan email yang tidak mudah diduga (bukan pola <code>admin@&lt;domain&gt;</code>). Turunkan akun lama menjadi non-admin — <strong>jangan dihapus</strong>, ada foreign key <code>dibuat_oleh</code> yang merujuknya</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Kredensial → env var</strong> (2–3 jam)</td>
+<td>Skrip membaca <code>KP_EMAIL</code>, <code>KP_PASSWORD</code>, <code>KP_BASE_URL</code>, <code>KP_SUPABASE_URL</code>; <strong>fail-fast</strong> bila kosong; nilai di <code>.env.tools.local</code> (gitignored). Buat <code>tools/_env.mjs</code> bersama agar tidak menyalin 23×</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Guard anti-produksi</strong> (1 jam)</td>
+<td>Di <code>tools/_env.mjs</code>: bila URL mengandung domain produksi → <code>process.exit(1)</code> kecuali <code>KP_ALLOW_PROD=1</code> diset eksplisit. <strong>Ini yang menutup 11 skrip yang menunjuk <code>localhost</code> tapi memakai Supabase produksi</strong> — kategori paling berbahaya karena tampak aman</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>Gitleaks di CI + pre-commit</strong> (1 jam)</td>
+<td>Gagalkan PR bila ada secret</td>
+</tr>
+<tr>
+<td>7</td>
+<td><strong>Riwayat git</strong> (opsional, nilai rendah)</td>
+<td>Kata sandi tetap ada di riwayat walau berkasnya diubah. <code>git filter-repo</code> + force-push mungkin dilakukan (repo publik tanpa kolaborator), <strong>tetapi fork dan cache GitHub tetap menyimpannya</strong> → <strong>rotasi di langkah 1 adalah satu-satunya mitigasi nyata.</strong> Jangan menunda langkah 1 demi mengerjakan langkah ini</td>
+</tr>
+</tbody>
+</table>
+<h3 id="aturan-permanen-sesudahnya">Aturan permanen sesudahnya</h3>
+<p>Tidak ada kredensial apa pun di repo. Semua <code>.env*</code> di <code>.gitignore</code>. Service role key hanya di env Vercel dan di berkas rahasia lokal. Anon key boleh publik <strong>karena dilindungi RLS</strong> — yang berarti RLS harus diperlakukan sebagai lapis pertahanan sesungguhnya, terutama selama repo masih publik dan seluruh skema serta policy bisa dibaca siapa pun.</p>
+<hr />
+<h2 id="rb-09-bersihkan-data-uji-di-produksi">RB-09 — Bersihkan data uji di produksi</h2>
+<p><strong>Kapan:</strong> setelah menjalankan skrip <code>tools/*_check.mjs</code>, dan sebagai pemeriksaan berkala sampai skrip sudah diarahkan ke environment beta.</p>
+<p><strong>Masalahnya:</strong> 10 skrip menargetkan URL produksi dan benar-benar membuat data nyata di sana — produk uji, pendaftaran uji, dan berkas bukti bayar yang terunggah ke bucket produksi. Pembersihan saat ini hanya berupa konvensi manual, tanpa mekanisme penegak.</p>
+<h3 id="langkah_2">Langkah</h3>
+<ol>
+<li><strong>Inventarisasi dulu, jangan langsung hapus.</strong> Cari data bertanda uji:
+   <code>sql
+   select 'produk' t, id, nama, created_at from public.produk where nama ilike '%uji%' or nama ilike '%test%'
+   union all select 'event', id, judul, created_at from public.event where judul ilike '%uji%' or judul ilike '%test%';
+   select id, email, created_at from auth.users where email ilike '%uji%' or email ilike '%test%' or email like '%@example.%';
+   select name, created_at, (metadata-&gt;&gt;'size')::bigint from storage.objects
+     where bucket_id = 'aset' and (name like 'uji/%' or name ilike '%test%') order by created_at desc;</code></li>
+<li><strong>Tinjau manual.</strong> Pastikan tidak ada data pelanggan sungguhan yang kebetulan mengandung kata "uji" atau "test".</li>
+<li><strong>Hapus berurutan</strong> dari anak ke induk (hormati foreign key): <code>item_pesanan</code> → <code>pesanan</code>, <code>pendaftaran_event</code> → <code>event</code>, lalu berkas Storage.</li>
+<li><strong>Periksa efek sampingnya di keuangan.</strong> Pesanan/pendaftaran uji yang pernah diverifikasi kemungkinan sudah membuat baris <code>transaksi_keuangan</code> — kalau tidak dibersihkan, laporan keuangan ikut salah. Cocokkan lewat <code>ref_tipe</code>/<code>ref_id</code>.</li>
+<li><strong>Konvensi ke depan:</strong> semua data buatan skrip diberi prefiks <code>[UJI]</code> dan berkas diletakkan di folder <code>uji/</code>, supaya bisa dihapus dengan aman dan otomatis.</li>
+</ol>
+<hr />
+<h2 id="kontak-eskalasi">Kontak &amp; eskalasi</h2>
+<table>
+<thead>
+<tr>
+<th>Situasi</th>
+<th>Tindakan</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Situs down &gt; 30 menit</td>
+<td>Kabari orang tua lewat kanal WhatsApp; pasang pesan di halaman bila memungkinkan</td>
+</tr>
+<tr>
+<td>Data pribadi bocor</td>
+<td>Catat lingkup &amp; waktu; rotasi kredensial terkait (<a href="#rb-08--rotasi-kredensial-yang-bocor">RB-08</a>); pertimbangkan kewajiban pemberitahuan menurut <strong>UU PDP</strong></td>
+</tr>
+<tr>
+<td>Gangguan penyedia (Vercel/Supabase)</td>
+<td>Pantau halaman status; tidak ada mitigasi teknis; fokus ke komunikasi</td>
+</tr>
+<tr>
+<td>Tagihan melonjak</td>
+<td>Jangan matikan produksi; naikkan batas lalu telusuri penyebabnya dengan <code>ringkas_penyimpanan()</code></td>
+</tr>
+</tbody>
+</table></body></html>
