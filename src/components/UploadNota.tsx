@@ -3,6 +3,7 @@
 'use client';
 import { useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { usePadaResetForm } from '@/lib/form-reset';
 import BuktiLightbox from './BuktiLightbox';
 
 function loadImage(file: File): Promise<HTMLImageElement> {
@@ -30,7 +31,14 @@ export default function UploadNota({ name, label = '⬆ Upload foto nota', awal 
   const [url, setUrl] = useState(awal);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
-  const ref = useRef<HTMLInputElement>(null);
+  const ref = useRef<HTMLInputElement>(null);        // input file
+  const bawa = useRef<HTMLInputElement>(null);       // input hidden pembawa URL ke server action
+
+  // Input hidden di bawah SENGAJA uncontrolled agar React ikut membersihkannya setelah
+  // <form action={serverAction}> selesai. Sebelum perbaikan ini, URL nota tertinggal di
+  // state → nota transaksi sebelumnya IKUT TER-SUBMIT pada entri berikutnya bila admin
+  // tidak menyentuh tombol unggah. Hook ini menyinkronkan tampilan (thumbnail) dgn reset itu.
+  usePadaResetForm(bawa, () => { setUrl(awal); setErr(''); });
 
   async function pilih(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -42,14 +50,16 @@ export default function UploadNota({ name, label = '⬆ Upload foto nota', awal 
       const path = `nota/${Date.now()}-${Math.floor(performance.now())}.webp`;
       const { error } = await s.storage.from('aset').upload(path, webp, { upsert: false, contentType: 'image/webp' });
       if (error) throw error;
-      setUrl(s.storage.from('aset').getPublicUrl(path).data.publicUrl);
+      const publik = s.storage.from('aset').getPublicUrl(path).data.publicUrl;
+      setUrl(publik);
+      if (bawa.current) bawa.current.value = publik;   // nilai yang benar-benar ter-submit
     } catch (e2) { setErr(e2 instanceof Error ? e2.message : 'Gagal unggah'); }
     finally { setBusy(false); if (ref.current) ref.current.value = ''; }
   }
 
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-      <input type="hidden" name={name} value={url} />
+      <input ref={bawa} type="hidden" name={name} defaultValue={awal} />
       {url && <BuktiLightbox url={url} variant="thumb" judul="Nota" />}
       <button type="button" onClick={() => ref.current?.click()} disabled={busy}
         style={{ border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: 12, padding: '7px 12px', borderRadius: 999, background: '#efe7fb', color: 'var(--lavender-d)' }}>
