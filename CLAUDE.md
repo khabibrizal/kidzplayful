@@ -40,6 +40,7 @@ Jangan pakai *secret key*. `NEXT_PUBLIC_*` harus ada **sebelum build** (juga di 
 - **Peran:** `profiles.is_admin` & `is_guru` + fungsi SQL `is_admin()`/`is_guru()`. Trigger `cegah_self_admin` mencegah user mempromosikan diri (hanya admin/SQL yang boleh ubah role). Peran hanya diberikan lewat SQL Editor atau halaman admin (Kelola Guru).
 - **Uang/total dihitung ulang di server** (anti manipulasi); harga di-*snapshot* saat checkout/pendaftaran (`item_pesanan`, `pendaftaran_event.total`). Stok berkurang saat admin verifikasi.
 - `params`/`searchParams` = Promise (harus `await`). Setelah menulis, panggil `revalidatePath('/...')`.
+- **Form + Server Action — field harus ikut ter-reset.** React 19 mereset `<form action={serverAction}>` otomatis setelah action selesai, **tapi hanya field UNCONTROLLED**. Komponen client yang menyimpan nilai di `useState` tetap terisi setelah simpan — pernah menyebabkan bug nyata: nominal tak ter-reset DAN **URL foto nota transaksi sebelumnya ikut ter-submit** pada entri berikutnya. Aturan: nilai yang ter-submit dibuat **uncontrolled** (`defaultValue`, set lewat `ref` bila perlu); state khusus tampilan dibersihkan lewat **`usePadaResetForm`** (`lib/form-reset.ts`). Contoh: `InputRupiah`, `UploadNota`, `BudgetKategoriSelect`.
 - **Styling:** kelas global `kp-*` (tombol jelly, kartu, chip) di `globals.css` + CSS Modules `*.module.css`. Palet pastel lavender/mint/peach, tinta `#5b5170`. Maskot `Pewi`, logo `public/logo.png` (komponen `Logo`).
 
 ## Database & migrasi

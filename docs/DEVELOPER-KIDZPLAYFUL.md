@@ -63,6 +63,15 @@ tools/md2pdf.py        # generator PDF dokumentasi
 - **Enforcement rute**: `src/proxy.ts` (middleware) memblokir user membuka `/admin/<menu>` yang tak diizinkan role-nya → redirect `/admin`.
 - **Server action**: setiap file `*-actions.ts` mengulang cek admin sendiri lewat helper lokal (`adminDb()` / `db()` / `pengelola()`) → `auth.getUser()` + baca `profiles.is_admin`.
 
+### Form + Server Action: aturan reset (WAJIB)
+- React 19 **mereset `<form action={serverAction}>` secara otomatis** setelah action selesai (selama action tidak `redirect()`) — **tapi hanya field UNCONTROLLED.** Komponen client yang menyimpan nilainya di `useState` (input bermask, pemilih berkas, dropdown ber-info) **tidak** ikut bersih; nilainya tertinggal untuk entri berikutnya.
+- **Aturan:** nilai yang **ikut ter-submit** harus **uncontrolled** (`defaultValue`, dan bila perlu di-set lewat `ref`), supaya dibersihkan React sendiri. State yang hanya untuk **tampilan** dibersihkan sendiri lewat **`usePadaResetForm(ref, fn)`** (`lib/form-reset.ts`) yang menyimak event `reset` pada `<form>` induk.
+- **Preseden (bug nyata, sudah diperbaiki):** `InputRupiah`, `UploadNota`, dan `BudgetKategoriSelect` dulu controlled → setelah menyimpan pengeluaran, nominal tetap terisi, dan **URL nota transaksi sebelumnya tetap ter-submit** pada entri berikutnya bila admin tidak menyentuh tombol unggah (lampiran salah, bukan cuma kosmetik). Karena ketiganya komponen bersama, satu perbaikan menyembuhkan **5 form**: Pengeluaran, Anggaran, Aset, Sponsor, dan Detail Sponsor.
+  - `InputRupiah`: `defaultValue` + mask diterapkan ke **nilai DOM** di `onChange`; posisi kursor dijaga dari **ujung kanan** agar menyunting di tengah angka tidak melompatkan kursor ke akhir.
+  - `UploadNota`: `<input type="hidden">` uncontrolled, di-set lewat `ref` saat unggah sukses; thumbnail dibersihkan lewat `usePadaResetForm`.
+  - `BudgetKategoriSelect`: `<select>` uncontrolled; panel sisa anggaran disinkronkan kembali ke pilihan awal saat reset.
+- **Tidak berlaku untuk** komponen yang menyimpan langsung lewat server action tanpa field tersembunyi di form (mis. `UploadDok` di detail sponsor, yang menulis per `dealId`).
+
 ### Data layer
 - **Reader** (baca) ada di `lib/data/<fitur>.ts`, memakai `createClient()` dari `@/lib/supabase/server`.
 - **Server action** (tulis) ada di `lib/data/<fitur>-actions.ts` dengan `'use server'` + guard.
@@ -319,6 +328,7 @@ Sub-navigasi: `KeuanganNav.tsx` (client). Semua reader read-only lewat `createCl
 
 ### 💸 Pengeluaran — `/admin/keuangan/expense`
 - **File**: `keuangan/expense/page.tsx` + client `InputRupiah`, `UploadNota`, `BudgetKategoriSelect`.
+- **Reset setelah simpan**: ketiga komponen client itu **uncontrolled** by design — lihat §3 "Form + Server Action: aturan reset". Bila menambah field baru di form ini, ikuti aturan itu; kalau tidak, nilainya (termasuk **URL foto nota**) akan tertinggal dan ikut ter-submit pada entri berikutnya.
 - **Fungsi data**: `getLedger({arah:'keluar'})`, `getKategoriPengeluaran()`, `getBudgetMap(ym)` (sisa anggaran per kategori).
 - **Server action**: `catatPengeluaran`, `hapusTransaksi` (`keuangan-actions.ts`).
 - **Endpoint**: `transaksi_keuangan`, `kategori_pengeluaran`, `anggaran`; `UploadNota` → `storage.from('aset')` (folder `nota/`, WebP).

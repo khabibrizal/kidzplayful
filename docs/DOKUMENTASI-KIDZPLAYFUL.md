@@ -218,6 +218,7 @@ Push GitHub → Import (Next.js) → isi 2 env var **sebelum** Deploy → tiap `
 | Migrasi 0016 `subquery in transform` | Konversi bahan via kolom sementara + UPDATE |
 | Input link YouTube ditolak | Ekstraksi dukung shorts/live/format lain |
 | Menu Kelas Bermain kosong (event ≠ materi) | `/kelas-saya` kini tampilkan event yang diikuti + catatan |
+| Field tak ter-reset setelah simpan (nominal, kategori, **foto nota ikut ter-submit ke entri berikutnya**) | React 19 hanya mereset field **uncontrolled** pada `<form action={serverAction}>`. `InputRupiah`/`UploadNota`/`BudgetKategoriSelect` dibuat uncontrolled + hook `usePadaResetForm` (`lib/form-reset.ts`) untuk state tampilan |
 
 ---
 
