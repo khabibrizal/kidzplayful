@@ -523,6 +523,7 @@ Penilaian perkembangan anak per event offline. **Parameter (Area + Indikator) di
 - **Fungsi data**: `getEventUntukGuru()`, `getPesertaEvent(eventId)` (`guru.ts`), `getEvent()`/`getCatatanEventSaya()` (`event.ts`/`catatan.ts`).
 - **Server action**: `simpanCatatan` (`guru-actions.ts`, upsert) — di-gate izin fitur **`nilai`** (form disembunyikan bila off; `pengisi()` menolak di server).
 - **Rekomendasi item**: `GuruNilai.tsx` juga menampilkan `<RekomendasiItemPicker>` per peserta (produk/event/materi, izin via Akses Fitur `fiturUntukRole({is_guru,is_admin})`).
+- **Cari nama anak** (`GuruNilai.tsx`): kotak pencarian di atas daftar peserta, cocok substring case-insensitive pada nama anak; menampilkan `N dari M anak cocok` + tautan "tampilkan semua", dan pesan khusus bila tak ada yang cocok. **Filternya menyembunyikan kartu (`display:none`), BUKAN meng-unmount** — tiap kartu memuat `NilaiPerkembanganForm` dengan state sendiri, jadi unmount akan membuang penilaian/catatan yang sudah diketik guru tapi belum ditekan Simpan. Ikuti pola ini untuk filter apa pun di atas daftar yang berisi form belum tersimpan.
 - **Endpoint**: `profiles`, `event`, `pendaftaran_event`, `catatan_perkembangan`, `rekomendasi_item`, katalog `produk`/`kelas_bermain`.
 
 ### 🧠 Psikolog — `/psikolog`, `/psikolog/jadwal`, `/psikolog/[pendaftaranId]`
