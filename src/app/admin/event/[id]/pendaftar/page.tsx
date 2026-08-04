@@ -3,7 +3,7 @@ import { getEventAdmin, getPendaftaranByEvent, getSertifikatMapByEvent, getEvent
 import { getPesertaEvent, getEventBerParameter } from '@/lib/data/guru';
 import { getKuotaEvent } from '@/lib/data/event';
 import { createClient } from '@/lib/supabase/server';
-import { umurTeks } from '@/lib/domain/anak';
+import { umurTeks, umurBulanTotal } from '@/lib/domain/anak';
 import type { BarisNilai } from '@/lib/game/tipe';
 import ParameterPerkembanganForm from '@/components/ParameterPerkembanganForm';
 import PendaftarAdmin from './PendaftarAdmin';
@@ -23,7 +23,8 @@ export default async function PendaftarPage({ params }: { params: Promise<{ id: 
   for (const [anakId, c] of Object.entries(catatanData.catatan)) catatanMap[anakId] = { penilaian: c.penilaian ?? [], catatan: c.catatan ?? '' };
 
   // Umur tiap anak yang mendaftar (per hari ini). Admin bisa baca `anak` via RLS boleh_lihat_laporan_anak.
-  const umurMap: Record<string, string> = {};
+  const umurMap: Record<string, string> = {};      // anak_id -> "2 th 3 bln" (tampilan)
+  const umurBulanMap: Record<string, number> = {}; // anak_id -> umur dalam BULAN (dasar filter rentang usia)
   const ortuMap: Record<string, string> = {}; // ortu_id -> nama orang tua
   const waMap: Record<string, string> = {};    // ortu_id -> no WhatsApp
   const anakIds = [...new Set(list.flatMap((p) => p.anak_ids ?? []))];
@@ -36,7 +37,11 @@ export default async function PendaftarPage({ params }: { params: Promise<{ id: 
     ]);
     const now = new Date();
     for (const a of anakRows ?? []) {
-      if (a.tanggal_lahir) umurMap[a.id as string] = umurTeks(new Date((a.tanggal_lahir as string) + 'T00:00:00Z'), now);
+      if (a.tanggal_lahir) {
+        const lahir = new Date((a.tanggal_lahir as string) + 'T00:00:00Z');
+        umurMap[a.id as string] = umurTeks(lahir, now);
+        umurBulanMap[a.id as string] = umurBulanTotal(lahir, now);
+      }
     }
     for (const o of ortuRows ?? []) {
       ortuMap[o.id as string] = (o.nama_tampilan as string)?.trim() || (o.email as string)?.split('@')[0] || '—';
@@ -56,7 +61,7 @@ export default async function PendaftarPage({ params }: { params: Promise<{ id: 
       </details>
 
       <div className={s.section}>Pendaftar</div>
-      <PendaftarAdmin awal={list} sertMap={sertMap} eventsAktif={eventsAktif} params={paramEvent} catatanMap={catatanMap} umurMap={umurMap} ortuMap={ortuMap} kuota={{ baby: kuotaEvent.baby, toddler: kuotaEvent.toddler, gabungan: kuotaEvent.gabungan }}
+      <PendaftarAdmin awal={list} sertMap={sertMap} eventsAktif={eventsAktif} params={paramEvent} catatanMap={catatanMap} umurMap={umurMap} umurBulanMap={umurBulanMap} ortuMap={ortuMap} kuota={{ baby: kuotaEvent.baby, toddler: kuotaEvent.toddler, gabungan: kuotaEvent.gabungan }}
         waMap={waMap} judulEvent={ev?.judul ?? 'Event'}
         kelasTersedia={[
           ...((ev?.baby_jam_mulai || ev?.baby_tanggal) ? ['baby'] : []),

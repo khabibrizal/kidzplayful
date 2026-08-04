@@ -17,10 +17,21 @@ function waktuDaftar(iso?: string | null): string {
 
 type EventOpsi = { id: string; judul: string; tanggal: string | null };
 
-export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = [], catatanMap = {}, umurMap = {}, ortuMap = {}, kuota = {}, waMap = {}, judulEvent = 'Event', kelasTersedia = [] }: {
+// Preset cepat, nilainya dalam BULAN. Labelnya memakai satuan yang wajar dibaca
+// (bulan untuk bayi, tahun setelahnya) supaya admin tak perlu berhitung sendiri.
+const PRESET_USIA: { label: string; min: string; maks: string }[] = [
+  { label: '0–12 bln', min: '0', maks: '12' },
+  { label: '1–2 th', min: '12', maks: '24' },
+  { label: '2–3 th', min: '24', maks: '36' },
+  { label: '3–4 th', min: '36', maks: '48' },
+  { label: '4 th+', min: '48', maks: '' },
+];
+
+export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = [], catatanMap = {}, umurMap = {}, umurBulanMap = {}, ortuMap = {}, kuota = {}, waMap = {}, judulEvent = 'Event', kelasTersedia = [] }: {
   awal: PendaftaranEvent[]; sertMap: Record<string, string>; eventsAktif: EventOpsi[];
   params?: BarisParam[]; catatanMap?: Record<string, { penilaian: BarisNilai[]; catatan: string | null }>;
   umurMap?: Record<string, string>;
+  umurBulanMap?: Record<string, number>;
   ortuMap?: Record<string, string>;
   kuota?: Record<string, number | null>;
   waMap?: Record<string, string>;
@@ -37,6 +48,8 @@ export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = []
   const [pkOpen, setPkOpen] = useState<string | null>(null);   // id pendaftaran yg panel pindah-kelas terbuka
   const [pkTarget, setPkTarget] = useState<Record<string, string>>({});
   const [tutup, setTutup] = useState<Record<string, boolean>>({}); // grup kelas yang DITUTUP admin
+  const [uMin, setUMin] = useState('');   // filter usia minimal (bulan), '' = tanpa batas
+  const [uMaks, setUMaks] = useState(''); // filter usia maksimal (bulan), '' = tanpa batas
   function flash(m: string) { setToast(m); setTimeout(() => setToast(''), 2000); }
 
   async function reschedule(p: PendaftaranEvent) {
@@ -118,15 +131,50 @@ Pastikan sudah konfirmasi ke orang tua (tombol 💬 WA).`)) return;
 
   const totalHadir = list.reduce((n, p) => n + (p.hadir_anak_ids?.length ?? 0), 0);
   const q = cari.trim().toLowerCase();
-  const tampil = q ? list.filter((p) => (p.anak_nama ?? []).some((n) => (n ?? '').toLowerCase().includes(q)) || (ortuMap[p.ortu_id] ?? '').toLowerCase().includes(q)) : list;
+
+  // --- Filter rentang usia (satuan BULAN) ------------------------------------
+  // Bulan, bukan tahun: kelas Baby biasanya 6-18 bulan — rentang seperti itu tidak
+  // bisa dinyatakan dalam tahun bulat. Kosong = tanpa batas di sisi itu.
+  const angkaAtauNull = (v: string): number | null => {
+    const t = v.trim();
+    if (!t) return null;
+    const n = Number(t);
+    return Number.isFinite(n) && n >= 0 ? Math.floor(n) : null;
+  };
+  const bMin = angkaAtauNull(uMin);
+  const bMaks = angkaAtauNull(uMaks);
+  const pakaiUsia = bMin !== null || bMaks !== null;
+  const rentangSalah = bMin !== null && bMaks !== null && bMin > bMaks;
+
+  // Sebuah PENDAFTARAN lolos bila punya MINIMAL SATU anak di dalam rentang.
+  // Anak tanpa tanggal lahir tidak punya umur → tidak dianggap cocok saat filter aktif.
+  const cocokUsia = (p: PendaftaranEvent) => {
+    if (!pakaiUsia || rentangSalah) return true;
+    return (p.anak_ids ?? []).some((id) => {
+      const b = umurBulanMap[id];
+      if (b == null) return false;
+      if (bMin !== null && b < bMin) return false;
+      if (bMaks !== null && b > bMaks) return false;
+      return true;
+    });
+  };
+  const cocokCari = (p: PendaftaranEvent) =>
+    !q || (p.anak_nama ?? []).some((n) => (n ?? '').toLowerCase().includes(q)) || (ortuMap[p.ortu_id] ?? '').toLowerCase().includes(q);
+  const lolos = (p: PendaftaranEvent) => cocokCari(p) && cocokUsia(p);
+  const menyaring = !!q || (pakaiUsia && !rentangSalah);
+
+  const tampil = list.filter(lolos);
   const GRUP: { key: string; label: string }[] = [
     { key: 'baby', label: '👶 Baby Class' },
     { key: 'toddler', label: '🧒 Toddler Class' },
     { key: 'gabungan', label: 'Gabungan' },
   ];
 
-  const kartu = (p: PendaftaranEvent) => (
-        <div key={p.id} className={s.card}>
+  // `tampil=false` → kartu DISEMBUNYIKAN, bukan di-unmount. Kartu memuat
+  // NilaiPerkembanganForm dengan state sendiri, jadi meng-unmount saat admin mengetik
+  // di kotak cari / filter usia akan membuang penilaian yang belum ditekan Simpan.
+  const kartu = (p: PendaftaranEvent, tampil = true) => (
+        <div key={p.id} className={s.card} style={tampil ? undefined : { display: 'none' }}>
           <div className={s.row}>
             <span style={{ flex: 1 }}>
               <b>{p.anak_ids?.length ? p.anak_ids.map((id, i) => `${p.anak_nama[i] ?? 'Anak'}${umurMap[id] ? ` (${umurMap[id]})` : ''}`).join(', ') : (p.anak_nama.join(', ') || `${p.jumlah_anak} anak`)}</b>
@@ -273,17 +321,53 @@ Pastikan sudah konfirmasi ke orang tua (tombol 💬 WA).`)) return;
         </button>
         <span className={s.tag} style={{ background: '#dff5e6', color: '#1c7a43' }}>✅ {totalHadir} anak hadir</span>
       </div>
+
+      {/* Filter rentang usia — satuan BULAN (kelas Baby ~6-18 bln tidak bisa dinyatakan dlm tahun bulat) */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+        <span className={s.muted} style={{ fontSize: 12, fontWeight: 700 }}>🎂 Usia</span>
+        <input className={s.inp} type="number" min={0} inputMode="numeric" aria-label="Usia minimal dalam bulan"
+          placeholder="min (bln)" value={uMin} onChange={(e) => setUMin(e.target.value)}
+          style={{ width: 96, marginBottom: 0 }} />
+        <span className={s.muted} style={{ fontSize: 12 }}>–</span>
+        <input className={s.inp} type="number" min={0} inputMode="numeric" aria-label="Usia maksimal dalam bulan"
+          placeholder="maks (bln)" value={uMaks} onChange={(e) => setUMaks(e.target.value)}
+          style={{ width: 104, marginBottom: 0 }} />
+        {PRESET_USIA.map((r) => {
+          const aktif = uMin === r.min && uMaks === r.maks;
+          return (
+            <button key={r.label} type="button" onClick={() => { setUMin(aktif ? '' : r.min); setUMaks(aktif ? '' : r.maks); }}
+              className={s.btnSm}
+              style={{ background: aktif ? 'var(--lavender-d)' : '#f3f0fb', color: aktif ? '#fff' : 'var(--lavender-d)', fontSize: 11 }}>
+              {r.label}
+            </button>
+          );
+        })}
+        {pakaiUsia && (
+          <button type="button" onClick={() => { setUMin(''); setUMaks(''); }} className={s.btnSm}
+            style={{ background: '#efe7fb', color: 'var(--lavender-d)', fontSize: 11 }}>✕ semua usia</button>
+        )}
+      </div>
+      {rentangSalah && <p style={{ color: '#b3261e', fontSize: 12, margin: '-4px 0 10px' }}>Usia minimal lebih besar dari maksimal — filter usia diabaikan.</p>}
+      {pakaiUsia && !rentangSalah && (
+        <p className={s.muted} style={{ fontSize: 12, margin: '-4px 0 10px' }}>
+          Menampilkan <b>{tampil.length}</b> dari {list.length} pendaftaran yang punya minimal 1 anak berusia{' '}
+          {bMin !== null ? `${bMin} bln` : '0 bln'}–{bMaks !== null ? `${bMaks} bln` : 'tanpa batas'}. Anak tanpa tanggal lahir tidak ikut terhitung.
+        </p>
+      )}
       {tampil.length === 0 && <p className={s.muted}>Tidak ada pendaftar yang cocok.</p>}
       {GRUP.map((g) => {
         // kelas tak dikenal / kosong → masuk grup Gabungan (jangan sampai kartu tersembunyi)
         const kelasDari = (p: PendaftaranEvent) => (p.kelas === 'baby' || p.kelas === 'toddler') ? p.kelas : 'gabungan';
-        const items = tampil.filter((p) => kelasDari(p) === g.key);
-        if (!items.length) return null;
-        // peserta dihitung TANPA pendaftaran yang ditolak
-        const jml = items.filter((p) => p.status !== 'ditolak').reduce((n, p) => n + (p.jumlah_anak ?? (p.anak_nama?.length ?? 0)), 0);
-        // Saat MENCARI, grup dipaksa terbuka agar hasil pencarian selalu terlihat
+        // SEMUA pendaftaran kelas ini — dasar hitungan peserta & kuota.
+        const semua = list.filter((p) => kelasDari(p) === g.key);
+        const items = semua.filter(lolos);   // yang lolos filter → yang ditampilkan
+        if (!semua.length) return null;
+        // Peserta & kuota SELALU dihitung dari `semua`, bukan dari hasil filter — kalau
+        // dari hasil filter, "sisa kuota" jadi salah setiap kali admin mencari/memfilter.
+        const jml = semua.filter((p) => p.status !== 'ditolak').reduce((n, p) => n + (p.jumlah_anak ?? (p.anak_nama?.length ?? 0)), 0);
+        // Saat MENYARING (cari / usia), grup dipaksa terbuka agar hasilnya selalu terlihat
         // walau admin sebelumnya menutup kelas itu.
-        const terbuka = !!q || !tutup[g.key];
+        const terbuka = menyaring || !tutup[g.key];
         const kv = kuota[g.key === 'baby' || g.key === 'toddler' ? g.key : 'gabungan'];
         const sisa = kv != null && kv > 0 ? Math.max(0, kv - jml) : null;
         return (
@@ -299,11 +383,16 @@ Pastikan sudah konfirmasi ke orang tua (tombol 💬 WA).`)) return;
                   {sisa <= 0 ? `kuota PENUH (${jml}/${kv})` : `sisa ${sisa}/${kv}`}
                 </span>
               )}
-              {!!q && <span style={{ fontSize: 11, fontWeight: 700, color: '#1b5fa8', background: '#e7f0fb', borderRadius: 99, padding: '2px 8px' }}>{items.length} hasil</span>}
+              {menyaring && <span style={{ fontSize: 11, fontWeight: 700, color: '#1b5fa8', background: '#e7f0fb', borderRadius: 99, padding: '2px 8px' }}>{items.length} hasil</span>}
             </button>
             {terbuka
-              ? items.map(kartu)
-              : <div className={s.muted} style={{ fontSize: 12, margin: '0 0 8px 14px' }}>{items.length} pendaftar disembunyikan — klik untuk membuka.</div>}
+              ? <>
+                  {semua.map((p) => kartu(p, lolos(p)))}
+                  {/* pesan per-kelas hanya bila kelas LAIN ada hasilnya; kalau nihil semua,
+                      cukup satu pesan global di atas supaya tidak menumpuk */}
+                  {menyaring && items.length === 0 && tampil.length > 0 && <p className={s.muted} style={{ fontSize: 12, margin: '0 0 8px 14px' }}>Tidak ada yang cocok di kelas ini.</p>}
+                </>
+              : <div className={s.muted} style={{ fontSize: 12, margin: '0 0 8px 14px' }}>{semua.length} pendaftar disembunyikan — klik untuk membuka.</div>}
           </div>
         );
       })}
