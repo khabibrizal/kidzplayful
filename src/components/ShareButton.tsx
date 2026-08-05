@@ -1,10 +1,15 @@
 // src/components/ShareButton.tsx — tombol Bagikan: menu (native share + Story + sosmed).
 'use client';
-import { useEffect, useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { tautanShare, denganUtm, type ShareTarget } from '@/lib/share';
 import { buatKartuStory } from '@/lib/story-card';
 
-const LABEL_JENIS: Record<string, string> = { artikel: 'Artikel', kelas: 'Kelas Bermain', game: 'Game' };
+// Teks kartu Story per jenis konten (desainnya di lib/story-card.ts).
+const TEKS_STORY: Record<string, { badge: string; label: string; ajakan: string; footer: string }> = {
+  artikel: { badge: 'Artikel Baru',  label: 'Artikel KidzPlayful', ajakan: 'BACA SELENGKAPNYA DI SINI!', footer: 'Swipe up / Klik tautan untuk membaca artikel' },
+  kelas:   { badge: 'Kelas Bermain', label: 'Kelas KidzPlayful',   ajakan: 'LIHAT KELASNYA DI SINI!',    footer: 'Swipe up / Klik tautan untuk melihat kelas' },
+  game:    { badge: 'Game Baru',     label: 'Game KidzPlayful',    ajakan: 'MAIN GRATIS DI SINI!',       footer: 'Swipe up / Klik tautan untuk mencoba game' },
+};
 
 // url boleh relatif ('/coba/tema/x') atau absolut; diselesaikan ke absolut saat diklik.
 export default function ShareButton({ url, title, text, jenis, gambar, label = 'Bagikan', kelas = 'kp-btn putih' }: {
@@ -12,9 +17,14 @@ export default function ShareButton({ url, title, text, jenis, gambar, label = '
 }) {
   const [buka, setBuka] = useState(false);
   const [toast, setToast] = useState('');
-  const [bisaNative, setBisaNative] = useState(false);
   const [sibuk, setSibuk] = useState(false);
-  useEffect(() => { setBisaNative(typeof navigator !== 'undefined' && typeof navigator.share === 'function'); }, []);
+  // Dukungan Web Share hanya diketahui di klien. useSyncExternalStore membacanya tanpa
+  // setState-di-effect (yang memicu render berantai) dan tanpa ketidakcocokan hidrasi.
+  const bisaNative = useSyncExternalStore(
+    () => () => {},
+    () => typeof navigator !== 'undefined' && typeof navigator.share === 'function',
+    () => false,
+  );
   function flash(m: string) { setToast(m); setTimeout(() => setToast(''), 2500); }
 
   function absolut(): string {
@@ -44,9 +54,14 @@ export default function ShareButton({ url, title, text, jenis, gambar, label = '
     if (sibuk) return;
     setSibuk(true);
     try {
+      const st = TEKS_STORY[jenis] ?? TEKS_STORY.artikel;
       const blob = await buatKartuStory({
-        judul: title, jenisLabel: LABEL_JENIS[jenis] ?? '', ajakan: 'Coba Gratis di KidzPlayful',
-        gambar, urlTeks: absolut().replace(/^https?:\/\//, ''),
+        judul: title,
+        // subjudul dipakai hanya bila berbeda dari judul (mis. `ringkasan` artikel),
+        // supaya kartu tidak menampilkan kalimat yang sama dua kali.
+        subjudul: text && text.trim() !== title.trim() ? text : undefined,
+        badge: st.badge, labelKartu: st.label, ajakan: st.ajakan, footer: st.footer,
+        gambar, urlTeks: absolut().replace(/^https?:\/\//, '').replace(/\/$/, ''),
       });
       const file = new File([blob], 'kidzplayful-story.png', { type: 'image/png' });
       const teks = `${text ?? title}\n${urlShare('story')}`;
