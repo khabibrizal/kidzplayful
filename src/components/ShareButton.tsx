@@ -5,10 +5,10 @@ import { tautanShare, denganUtm, type ShareTarget } from '@/lib/share';
 import { buatKartuStory } from '@/lib/story-card';
 
 // Teks kartu Story per jenis konten (desainnya di lib/story-card.ts).
-const TEKS_STORY: Record<string, { badge: string; label: string; ajakan: string; footer: string }> = {
-  artikel: { badge: 'Artikel Baru',  label: 'Artikel KidzPlayful', ajakan: 'BACA SELENGKAPNYA DI SINI!', footer: 'Swipe up / Klik tautan untuk membaca artikel' },
-  kelas:   { badge: 'Kelas Bermain', label: 'Kelas KidzPlayful',   ajakan: 'LIHAT KELASNYA DI SINI!',    footer: 'Swipe up / Klik tautan untuk melihat kelas' },
-  game:    { badge: 'Game Baru',     label: 'Game KidzPlayful',    ajakan: 'MAIN GRATIS DI SINI!',       footer: 'Swipe up / Klik tautan untuk mencoba game' },
+const TEKS_STORY: Record<string, { label: string; ajakan: string }> = {
+  artikel: { label: 'Artikel KidzPlayful', ajakan: 'BACA SELENGKAPNYA DI SINI!' },
+  kelas:   { label: 'Kelas KidzPlayful',   ajakan: 'LIHAT KELASNYA DI SINI!' },
+  game:    { label: 'Game KidzPlayful',    ajakan: 'MAIN GRATIS DI SINI!' },
 };
 
 // url boleh relatif ('/coba/tema/x') atau absolut; diselesaikan ke absolut saat diklik.
@@ -60,8 +60,7 @@ export default function ShareButton({ url, title, text, jenis, gambar, label = '
         // subjudul dipakai hanya bila berbeda dari judul (mis. `ringkasan` artikel),
         // supaya kartu tidak menampilkan kalimat yang sama dua kali.
         subjudul: text && text.trim() !== title.trim() ? text : undefined,
-        badge: st.badge, labelKartu: st.label, ajakan: st.ajakan, footer: st.footer,
-        gambar, urlTeks: absolut().replace(/^https?:\/\//, '').replace(/\/$/, ''),
+        labelKartu: st.label, ajakan: st.ajakan, gambar,
       });
       const file = new File([blob], 'kidzplayful-story.png', { type: 'image/png' });
       const teks = `${text ?? title}\n${urlShare('story')}`;

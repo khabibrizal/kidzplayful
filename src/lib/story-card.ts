@@ -10,7 +10,6 @@ const NAVY = '#123A5C';
 const TEAL = '#1E7F6F';
 const KUNING = '#F6C445';
 const PERI = '#A9BEE6';   // biru lembut untuk blob kanan-atas
-const ABU = '#6B7C8C';
 
 /** Pecah teks jadi baris berdasar batas karakter (per kata; kata > maks tetap satu baris). Murni & teruji. */
 export function bungkusTeks(teks: string, maks: number): string[] {
@@ -155,12 +154,9 @@ function hatiGaris(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: num
 export interface OpsiKartuStory {
   judul: string;
   subjudul?: string;      // ringkasan / teks pendukung di bawah judul
-  badge: string;          // pil atas, mis. "Artikel Baru"
   labelKartu: string;     // label kecil di kartu pratinjau, mis. "ARTIKEL KIDZPLAYFUL"
   ajakan?: string;        // teks tombol CTA
-  footer?: string;        // baris ajakan paling bawah
   gambar?: string;        // foto utama (sampul)
-  urlTeks?: string;       // domain/URL kecil paling bawah (berguna bila gambar diunduh manual)
 }
 
 export async function buatKartuStory(opts: OpsiKartuStory): Promise<Blob> {
@@ -192,8 +188,8 @@ export async function buatKartuStory(opts: OpsiKartuStory): Promise<Blob> {
   ctx.fillStyle = KRIM; ctx.fillRect(0, 0, W, H);
   blobKananAtas(ctx);
   blobKiriBawah(ctx);
-  busurPutus(ctx, 980, 250, 210, Math.PI * 0.15, Math.PI * 0.95, TEAL);
-  kilau(ctx, 296, 246, 34, KUNING);
+  // Digeser naik setelah badge dihapus — pada posisi lama busurnya menyentuh baris judul.
+  busurPutus(ctx, 1010, 150, 205, Math.PI * 0.18, Math.PI * 0.92, TEAL);
   hatiGaris(ctx, 1004, 596, 32, TEAL);
 
   // ── Logo ─────────────────────────────────────────────────────────────────
@@ -206,22 +202,13 @@ export async function buatKartuStory(opts: OpsiKartuStory): Promise<Blob> {
     ctx.fillText('KidzPlayful', W / 2, 150);
   }
 
-  // ── Badge ────────────────────────────────────────────────────────────────
-  ctx.textAlign = 'center';
-  ctx.font = `700 46px ${fTeks}`;
-  const bw = Math.max(300, ctx.measureText(opts.badge).width + 110);
-  const bx = (W - bw) / 2, by = 214, bh = 96;
-  ctx.fillStyle = NAVY;
-  jalurKotakBulat(ctx, bx, by, bw, bh, bh / 2); ctx.fill();
-  ctx.fillStyle = '#fff';
-  ctx.fillText(opts.badge, W / 2, by + bh / 2 + 16);
-
   // ── Judul (baris terakhir diberi warna teal, meniru aksen desain) ────────
+  // Mulai lebih tinggi karena pil badge dihapus atas permintaan pemilik.
   const KIRI = 88, LEBAR = W - KIRI * 2;
   ctx.textAlign = 'left';
   ctx.font = `800 104px ${fJudul}`;
   const barisJudul = bungkusUkur(ctx, opts.judul, LEBAR, 3);
-  let y = 420;
+  let y = 336;
   barisJudul.forEach((b, i) => {
     ctx.fillStyle = i === barisJudul.length - 1 && barisJudul.length > 1 ? TEAL : NAVY;
     ctx.fillText(b, KIRI, y);
@@ -241,9 +228,8 @@ export async function buatKartuStory(opts: OpsiKartuStory): Promise<Blob> {
   }
 
   // ── Blok bawah dipatok dari tepi bawah agar judul panjang tak merusak tata letak ──
-  const footerY = H - 74;
-  // CTA diangkat cukup jauh dari baris footer — pada versi pertama keduanya bertabrakan.
-  const ctaH = 126, ctaY = H - 268;
+  // CTA kini elemen terakhir (baris footer & URL dihapus), jadi diberi margin bawah wajar.
+  const ctaH = 126, ctaY = H - 96 - ctaH;
   const prevH = 212, prevY = ctaY - 44 - prevH;
 
   // ── Foto utama: mengisi sisa ruang antara subjudul dan kartu pratinjau ───
@@ -301,19 +287,6 @@ export async function buatKartuStory(opts: OpsiKartuStory): Promise<Blob> {
   ctx.fillText('🔗', KIRI + 76, ctaY + ctaH / 2 + 15);
   ctx.fillStyle = '#fff'; ctx.font = `800 44px ${fTeks}`;
   ctx.fillText(opts.ajakan ?? 'BACA SELENGKAPNYA DI SINI!', KIRI + 76 + (LEBAR - 76) / 2, ctaY + ctaH / 2 + 16);
-
-  // ── Footer ───────────────────────────────────────────────────────────────
-  ctx.fillStyle = TEAL;
-  ctx.beginPath(); ctx.arc(KIRI + 26, footerY - 12, 26, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#fff'; ctx.font = `700 28px ${fTeks}`;
-  ctx.fillText('↑', KIRI + 26, footerY - 2);
-  ctx.textAlign = 'left'; ctx.fillStyle = NAVY; ctx.font = `600 30px ${fTeks}`;
-  ctx.fillText(opts.footer ?? 'Swipe up / Klik tautan untuk membaca artikel', KIRI + 64, footerY - 2);
-
-  if (opts.urlTeks) {
-    ctx.textAlign = 'center'; ctx.fillStyle = ABU; ctx.font = `600 24px ${fTeks}`;
-    ctx.fillText(opts.urlTeks, W / 2, H - 18);
-  }
 
   return await new Promise<Blob>((res, rej) => canvas.toBlob((b) => (b ? res(b) : rej(new Error('toBlob gagal'))), 'image/png'));
 }
