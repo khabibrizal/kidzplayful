@@ -78,8 +78,9 @@ Rancangan disetujui owner, **kode belum dikerjakan** — detail lengkap + daftar
 ## Catatan lingkungan
 
 - Shell user = **PowerShell**: `&&` TIDAK berlaku — pakai `;` atau baris terpisah.
+- **Dev server yatim**: `next dev` bisa tertinggal memegang port 3000 setelah proses induknya mati. Instance baru menolak start (*"Another next dev server is already running"*) dan halaman balas **500** dari proses lama yang rusak — mudah disalahartikan sebagai bug kode. Matikan PID yang disebut di pesan Next.js (`taskkill //PID <pid> //F`), lalu jalankan ulang. Jangan menjalankan `npm run dev` bersamaan dengan `npm run build` — keduanya menulis ke `.next`.
 - Commit tanpa gpg sign bila perlu: `git -c commit.gpgsign=false commit ...`.
-- Deploy Vercel **Hobby** butuh repo **public**. Reset password butuh **SMTP** + **Redirect URL** `/reset-sandi` diatur di Supabase Auth.
+- Deploy Vercel **Hobby** butuh repo **public**. **Kegagalannya SENYAP**: kalau repo diprivatkan, deploy diblokir tapi `git push` tetap sukses dan CI tetap hijau — fitur baru sekadar tidak pernah muncul (pernah 5 hari, Agustus 2026). Setelah repo dipublikkan lagi, Vercel **tidak** otomatis membangun commit yang masuk saat privat → picu dengan `git commit --allow-empty` atau Redeploy. Diagnosis: `docs/RUNBOOK-OPERASIONAL.md` **RB-10**. Reset password butuh **SMTP** + **Redirect URL** `/reset-sandi` diatur di Supabase Auth.
 - Akun admin uji: `admin@kidzplayful.app`. Peran guru diaktifkan via Admin → Kelola Guru (guru daftar dulu).
 
 ## Dokumentasi

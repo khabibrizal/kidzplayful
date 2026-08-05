@@ -212,7 +212,7 @@ Push GitHub → Import (Next.js) → isi 2 env var **sebelum** Deploy → tiap `
 
 | Masalah | Solusi |
 |---|---|
-| Deploy "Blocked" (Hobby+private) | Repo dibuat public |
+| Deploy "Blocked" (Hobby+private) — **gejalanya SENYAP**: `git push` tetap sukses, CI hijau, tak ada error; fitur baru sekadar tidak pernah muncul (pernah 5 hari) | Repo dibuat public **atau** naik Vercel Pro. Setelah itu Vercel TIDAK otomatis membangun commit yang masuk saat privat → picu dengan commit kosong / Redeploy. Diagnosis lengkap: `docs/RUNBOOK-OPERASIONAL.md` RB-10 |
 | Login admin ke /pilih-anak | Filter `.eq('id',user.id)` di query |
 | Self-promote admin/guru | Trigger `cegah_self_admin` (0012/0020) |
 | Migrasi 0016 `subquery in transform` | Konversi bahan via kolom sementara + UPDATE |

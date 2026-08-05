@@ -89,6 +89,12 @@ li { margin:3px 0; }
 <td>Berkala</td>
 <td>rutin</td>
 </tr>
+<tr>
+<td><a href="#rb-10--fitur-baru-tidak-muncul-di-produksi">RB-10</a></td>
+<td>Fitur baru tidak muncul di produksi</td>
+<td>Saat rilis "tidak berefek"</td>
+<td>—</td>
+</tr>
 </tbody>
 </table>
 <h3 id="prasyarat-sekali-pasang">Prasyarat sekali-pasang</h3>
@@ -449,6 +455,75 @@ rclone copy /d/backup-kidzplayful/privat supabase:privat --immutable
 <li><strong>Periksa efek sampingnya di keuangan.</strong> Pesanan/pendaftaran uji yang pernah diverifikasi kemungkinan sudah membuat baris <code>transaksi_keuangan</code> — kalau tidak dibersihkan, laporan keuangan ikut salah. Cocokkan lewat <code>ref_tipe</code>/<code>ref_id</code>.</li>
 <li><strong>Konvensi ke depan:</strong> semua data buatan skrip diberi prefiks <code>[UJI]</code> dan berkas diletakkan di folder <code>uji/</code>, supaya bisa dihapus dengan aman dan otomatis.</li>
 </ol>
+<hr />
+<h2 id="rb-10-fitur-baru-tidak-muncul-di-produksi">RB-10 — Fitur baru tidak muncul di produksi</h2>
+<p><strong>Kapan:</strong> commit sudah di-push, CI hijau, tapi perubahannya tidak terlihat di produksi.</p>
+<blockquote>
+<p><strong>Kejadian nyata (5 Agustus 2026):</strong> repo diprivatkan, Vercel plan <strong>Hobby</strong> memblokir deploy, dan <strong><code>git push</code> tetap sukses</strong>. Tidak ada error di terminal, tidak ada notifikasi, CI tetap hijau. 6 commit menumpuk <strong>~5 hari</strong> tanpa pernah live, dan baru ketahuan karena pemilik melaporkan "fiturnya belum bisa". Ini kelas kegagalan paling berbahaya: <strong>senyap, dan menyerupai bug fitur.</strong></p>
+</blockquote>
+<h3 id="langkah-diagnosis-urut-3-menit">Langkah diagnosis (urut, ±3 menit)</h3>
+<p><strong>1. Apakah kode barunya benar-benar tersaji?</strong> Ini pemeriksaan yang paling menentukan — jangan menebak dari dashboard. Pilih satu string unik dari perubahan terakhir yang pasti masuk <strong>bundel klien</strong> (mis. teks tombol baru), lalu cari di chunk produksi:</p>
+<pre><code class="language-bash">URL=&quot;https://www.kidzplayful.com/artikel/&lt;slug&gt;&quot;
+curl -s -A &quot;Mozilla/5.0&quot; &quot;$URL&quot; -o h.html
+for c in $(grep -o '/_next/static/chunks/[a-zA-Z0-9_./-]*\.js' h.html | sort -u); do
+  curl -s -A &quot;Mozilla/5.0&quot; &quot;https://www.kidzplayful.com$c&quot; -o k.js
+  grep -q &quot;TEKS PENANDA BARU&quot; k.js &amp;&amp; echo &quot;BARU ada di $c&quot;
+  grep -q &quot;TEKS PENANDA LAMA&quot; k.js &amp;&amp; echo &quot;LAMA masih ada di $c&quot;
+done
+</code></pre>
+<p><strong>2. Berapa umur halaman yang tersaji?</strong></p>
+<pre><code class="language-bash">curl -s -I -A &quot;Mozilla/5.0&quot; https://www.kidzplayful.com/ | grep -iE &quot;^(age|x-vercel-cache|x-vercel-id)&quot;
+</code></pre>
+<p><code>Age</code> dalam satuan detik. Nilai besar (mis. <code>428563</code> ≈ 5 hari) dengan <code>X-Vercel-Cache: HIT</code> = tidak ada deployment sejak saat itu.</p>
+<p><strong>3. Apakah GitHub sudah memegang commit-nya, dan apakah repo masih publik?</strong></p>
+<pre><code class="language-bash">curl -s -o /dev/null -w &quot;repo: %{http_code}
+&quot; https://github.com/khabibrizal/kidzplayful   # 404 = PRIVAT
+curl -s &quot;https://api.github.com/repos/khabibrizal/kidzplayful/commits?per_page=1&quot; | head -c 200
+</code></pre>
+<p><strong>4. Apakah domain kustom tertinggal di deployment lama?</strong> Bandingkan daftar chunk <code>www.kidzplayful.com</code> dengan <code>kidzplayful-fe2a.vercel.app</code> — kalau <strong>identik</strong>, keduanya menunjuk deployment yang sama dan masalahnya bukan di domain.</p>
+<p><strong>5. Baru sesudah itu</strong> buka <strong>Vercel → Deployments</strong> untuk melihat pesan resminya (<em>Blocked</em>, gagal build, atau memang tidak ada deployment).</p>
+<h3 id="penyebab-perbaikan">Penyebab &amp; perbaikan</h3>
+<table>
+<thead>
+<tr>
+<th>Penyebab</th>
+<th>Tanda</th>
+<th>Perbaikan</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Repo privat pada plan Hobby</strong></td>
+<td>GitHub 404 tanpa login; tidak ada deployment sejak tanggal repo diprivatkan</td>
+<td>Naik <strong>Vercel Pro</strong> (repo boleh privat) <strong>atau</strong> kembalikan repo ke publik. Bila memilih publik, <strong>rotasi kredensial dulu</strong> (<a href="#rb-08--rotasi-kredensial-yang-bocor">RB-08</a>)</td>
+</tr>
+<tr>
+<td>Build gagal di Vercel</td>
+<td>Deployment berstatus Error</td>
+<td>Baca log build; reproduksi lokal dengan <code>npm run build</code></td>
+</tr>
+<tr>
+<td>Domain kustom di-pin ke deployment lama</td>
+<td>Chunk <code>www</code> ≠ chunk <code>*.vercel.app</code></td>
+<td>Vercel → Domains, arahkan ulang ke Production</td>
+</tr>
+<tr>
+<td>Integrasi Git terputus</td>
+<td>Push baru pun tidak memicu apa pun</td>
+<td>Vercel → Settings → Git, hubungkan ulang</td>
+</tr>
+</tbody>
+</table>
+<h3 id="setelah-penyebabnya-beres-deploy-tidak-jalan-sendiri">⚠️ Setelah penyebabnya beres, deploy TIDAK jalan sendiri</h3>
+<p>Mengembalikan repo ke publik <strong>tidak</strong> membangun ulang commit yang masuk saat repo masih privat — Vercel butuh event baru. Picu dengan salah satu:</p>
+<pre><code class="language-bash">git commit --allow-empty -m &quot;chore: picu deploy ulang&quot;
+git push origin master
+</code></pre>
+<p>atau tombol <strong>Redeploy</strong> di dashboard. Commit kosong sekaligus jadi diagnosis: kalau ini pun tidak memicu apa pun, berarti integrasi Git-nya yang putus, bukan soal visibilitas repo.</p>
+<h3 id="verifikasi-berhasil_1">Verifikasi berhasil</h3>
+<p>Ulangi langkah 1 sampai string <strong>BARU ada</strong> dan string <strong>LAMA hilang</strong>. Sesudahnya, muat ulang keras (Ctrl+Shift+R) di browser — bundel lama bisa tertahan di cache browser walau produksi sudah benar.</p>
+<h3 id="pencegahan">Pencegahan</h3>
+<p>Kegagalan ini tidak memicu alert apa pun karena tidak ada yang membandingkan <strong>commit terakhir di Git</strong> dengan <strong>commit yang benar-benar tersaji</strong>. Masukkan perbandingan itu ke digest harian (<a href="INFRASTRUKTUR-KIDZPLAYFUL.md#b4-alert-yang-layak-membangunkan-orang-maksimal-6">Bab B.4</a>) — bukan sebagai alert yang membangunkan orang, tapi cukup untuk ketahuan dalam hitungan jam, bukan hari.</p>
 <hr />
 <h2 id="kontak-eskalasi">Kontak &amp; eskalasi</h2>
 <table>

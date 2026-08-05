@@ -557,6 +557,8 @@ Pisahkan tegas **PAGE** (bunyi, WhatsApp/telepon) dari **DIGEST** (email harian,
 
 **Digest (email harian, TIDAK page):** p95 TTFB per route, jumlah `postgrest.terpotong`, proyeksi egress & GB-jam bulan ini, pertumbuhan ukuran DB & bucket, jumlah baris `ledger_gagal` yang belum di-replay, jumlah `skor.catat_fallback`.
 
+> **Tambahan wajib ke digest — pelajaran dari insiden 5 Agustus 2026:** bandingkan **commit terakhir di Git** dengan **commit yang benar-benar tersaji di produksi**. Deploy pernah berhenti diam-diam selama ~5 hari (repo privat + plan Hobby) tanpa memicu satu pun sinyal: push sukses, CI hijau, tidak ada error. Ini **bukan** alert yang layak membangunkan orang — cukup satu baris di email harian, tapi tanpa itu waktu deteksinya adalah *hari*, bukan jam. Cara memeriksanya ada di [RB-10](RUNBOOK-OPERASIONAL.md#rb-10--fitur-baru-tidak-muncul-di-produksi).
+
 #### Artefak: konfigurasi alert (Sentry — Alerts → Create Alert)
 
 ```yaml
@@ -2293,3 +2295,4 @@ Backup tanpa uji restore bukan backup. Catat setiap uji, termasuk yang gagal.
 | Tanggal | Insiden | Dampak | RPO/RTO nyata | Perubahan pencegah |
 |---|---|---|---|---|
 | ~2026-07 | Kolom `kuota_*` belum ada saat kode ter-deploy | Daftar event kosong, orang tua gagal mendaftar, admin gagal menyimpan event | — | Pola akses toleran (`lib/data/kuota-event.ts`). **Pencegahan strukturalnya** ada di [C.4](#c4-urutan-rilis-hentikan-kode-mendahului-migrasi) dan belum dikerjakan. |
+| 2026-07-31 s/d 08-05 | **Deploy berhenti diam-diam ~5 hari.** Repo diprivatkan → Vercel plan Hobby memblokir deploy, sementara `git push` tetap sukses dan CI tetap hijau | 6 commit (termasuk 2 perbaikan bug dan 3 fitur) tidak pernah live; terdeteksi hanya karena pemilik melaporkan "fiturnya belum bisa" | Waktu deteksi **~5 hari** — tidak ada satu pun sinyal otomatis | Prosedur [RB-10](RUNBOOK-OPERASIONAL.md#rb-10--fitur-baru-tidak-muncul-di-produksi) + item digest harian di [B.4](#b4-alert-yang-layak-membangunkan-orang-maksimal-6). Pencegahan permanennya: **Vercel Pro** agar repo boleh privat tanpa memblokir deploy ([§0.3](#03-satu-keputusan-bisnis-yang-menahan-segalanya)) |

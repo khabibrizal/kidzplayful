@@ -1262,6 +1262,9 @@ export function log(level: Level, event: string, fields: Record&lt;string, unkno
 </tbody>
 </table>
 <p><strong>Digest (email harian, TIDAK page):</strong> p95 TTFB per route, jumlah <code>postgrest.terpotong</code>, proyeksi egress &amp; GB-jam bulan ini, pertumbuhan ukuran DB &amp; bucket, jumlah baris <code>ledger_gagal</code> yang belum di-replay, jumlah <code>skor.catat_fallback</code>.</p>
+<blockquote>
+<p><strong>Tambahan wajib ke digest — pelajaran dari insiden 5 Agustus 2026:</strong> bandingkan <strong>commit terakhir di Git</strong> dengan <strong>commit yang benar-benar tersaji di produksi</strong>. Deploy pernah berhenti diam-diam selama ~5 hari (repo privat + plan Hobby) tanpa memicu satu pun sinyal: push sukses, CI hijau, tidak ada error. Ini <strong>bukan</strong> alert yang layak membangunkan orang — cukup satu baris di email harian, tapi tanpa itu waktu deteksinya adalah <em>hari</em>, bukan jam. Cara memeriksanya ada di <a href="RUNBOOK-OPERASIONAL.md#rb-10--fitur-baru-tidak-muncul-di-produksi">RB-10</a>.</p>
+</blockquote>
 <h4 id="artefak-konfigurasi-alert-sentry-alerts-create-alert">Artefak: konfigurasi alert (Sentry — Alerts → Create Alert)</h4>
 <pre><code class="language-yaml"># Alert 2 — Kegagalan tulis keuangan (paling ketat, ambang 1)
 nama: &quot;P0 Keuangan: ledger gagal&quot;
@@ -3845,6 +3848,13 @@ grant execute on function public.ringkas_penyimpanan() to authenticated;
 <td>Daftar event kosong, orang tua gagal mendaftar, admin gagal menyimpan event</td>
 <td>—</td>
 <td>Pola akses toleran (<code>lib/data/kuota-event.ts</code>). <strong>Pencegahan strukturalnya</strong> ada di <a href="#c4-urutan-rilis-hentikan-kode-mendahului-migrasi">C.4</a> dan belum dikerjakan.</td>
+</tr>
+<tr>
+<td>2026-07-31 s/d 08-05</td>
+<td><strong>Deploy berhenti diam-diam ~5 hari.</strong> Repo diprivatkan → Vercel plan Hobby memblokir deploy, sementara <code>git push</code> tetap sukses dan CI tetap hijau</td>
+<td>6 commit (termasuk 2 perbaikan bug dan 3 fitur) tidak pernah live; terdeteksi hanya karena pemilik melaporkan "fiturnya belum bisa"</td>
+<td>Waktu deteksi <strong>~5 hari</strong> — tidak ada satu pun sinyal otomatis</td>
+<td>Prosedur <a href="RUNBOOK-OPERASIONAL.md#rb-10--fitur-baru-tidak-muncul-di-produksi">RB-10</a> + item digest harian di <a href="#b4-alert-yang-layak-membangunkan-orang-maksimal-6">B.4</a>. Pencegahan permanennya: <strong>Vercel Pro</strong> agar repo boleh privat tanpa memblokir deploy (<a href="#03-satu-keputusan-bisnis-yang-menahan-segalanya">§0.3</a>)</td>
 </tr>
 </tbody>
 </table></body></html>

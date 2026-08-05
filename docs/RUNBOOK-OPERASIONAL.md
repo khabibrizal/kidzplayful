@@ -19,6 +19,7 @@
 | [RB-07](#rb-07--rollback-deploy) | Rollback deploy | Rilis rusak | — |
 | [RB-08](#rb-08--rotasi-kredensial-yang-bocor) | Rotasi kredensial bocor | Insiden keamanan | — |
 | [RB-09](#rb-09--bersihkan-data-uji-di-produksi) | Bersihkan data uji di produksi | Berkala | rutin |
+| [RB-10](#rb-10--fitur-baru-tidak-muncul-di-produksi) | Fitur baru tidak muncul di produksi | Saat rilis "tidak berefek" | — |
 
 ### Prasyarat sekali-pasang
 
@@ -314,6 +315,76 @@ Tidak ada kredensial apa pun di repo. Semua `.env*` di `.gitignore`. Service rol
 3. **Hapus berurutan** dari anak ke induk (hormati foreign key): `item_pesanan` → `pesanan`, `pendaftaran_event` → `event`, lalu berkas Storage.
 4. **Periksa efek sampingnya di keuangan.** Pesanan/pendaftaran uji yang pernah diverifikasi kemungkinan sudah membuat baris `transaksi_keuangan` — kalau tidak dibersihkan, laporan keuangan ikut salah. Cocokkan lewat `ref_tipe`/`ref_id`.
 5. **Konvensi ke depan:** semua data buatan skrip diberi prefiks `[UJI]` dan berkas diletakkan di folder `uji/`, supaya bisa dihapus dengan aman dan otomatis.
+
+---
+
+## RB-10 — Fitur baru tidak muncul di produksi
+
+**Kapan:** commit sudah di-push, CI hijau, tapi perubahannya tidak terlihat di produksi.
+
+> **Kejadian nyata (5 Agustus 2026):** repo diprivatkan, Vercel plan **Hobby** memblokir deploy, dan **`git push` tetap sukses**. Tidak ada error di terminal, tidak ada notifikasi, CI tetap hijau. 6 commit menumpuk **~5 hari** tanpa pernah live, dan baru ketahuan karena pemilik melaporkan "fiturnya belum bisa". Ini kelas kegagalan paling berbahaya: **senyap, dan menyerupai bug fitur.**
+
+### Langkah diagnosis (urut, ±3 menit)
+
+**1. Apakah kode barunya benar-benar tersaji?** Ini pemeriksaan yang paling menentukan — jangan menebak dari dashboard. Pilih satu string unik dari perubahan terakhir yang pasti masuk **bundel klien** (mis. teks tombol baru), lalu cari di chunk produksi:
+
+```bash
+URL="https://www.kidzplayful.com/artikel/<slug>"
+curl -s -A "Mozilla/5.0" "$URL" -o h.html
+for c in $(grep -o '/_next/static/chunks/[a-zA-Z0-9_./-]*\.js' h.html | sort -u); do
+  curl -s -A "Mozilla/5.0" "https://www.kidzplayful.com$c" -o k.js
+  grep -q "TEKS PENANDA BARU" k.js && echo "BARU ada di $c"
+  grep -q "TEKS PENANDA LAMA" k.js && echo "LAMA masih ada di $c"
+done
+```
+
+**2. Berapa umur halaman yang tersaji?**
+
+```bash
+curl -s -I -A "Mozilla/5.0" https://www.kidzplayful.com/ | grep -iE "^(age|x-vercel-cache|x-vercel-id)"
+```
+
+`Age` dalam satuan detik. Nilai besar (mis. `428563` ≈ 5 hari) dengan `X-Vercel-Cache: HIT` = tidak ada deployment sejak saat itu.
+
+**3. Apakah GitHub sudah memegang commit-nya, dan apakah repo masih publik?**
+
+```bash
+curl -s -o /dev/null -w "repo: %{http_code}
+" https://github.com/khabibrizal/kidzplayful   # 404 = PRIVAT
+curl -s "https://api.github.com/repos/khabibrizal/kidzplayful/commits?per_page=1" | head -c 200
+```
+
+**4. Apakah domain kustom tertinggal di deployment lama?** Bandingkan daftar chunk `www.kidzplayful.com` dengan `kidzplayful-fe2a.vercel.app` — kalau **identik**, keduanya menunjuk deployment yang sama dan masalahnya bukan di domain.
+
+**5. Baru sesudah itu** buka **Vercel → Deployments** untuk melihat pesan resminya (*Blocked*, gagal build, atau memang tidak ada deployment).
+
+### Penyebab & perbaikan
+
+| Penyebab | Tanda | Perbaikan |
+|---|---|---|
+| **Repo privat pada plan Hobby** | GitHub 404 tanpa login; tidak ada deployment sejak tanggal repo diprivatkan | Naik **Vercel Pro** (repo boleh privat) **atau** kembalikan repo ke publik. Bila memilih publik, **rotasi kredensial dulu** ([RB-08](#rb-08--rotasi-kredensial-yang-bocor)) |
+| Build gagal di Vercel | Deployment berstatus Error | Baca log build; reproduksi lokal dengan `npm run build` |
+| Domain kustom di-pin ke deployment lama | Chunk `www` ≠ chunk `*.vercel.app` | Vercel → Domains, arahkan ulang ke Production |
+| Integrasi Git terputus | Push baru pun tidak memicu apa pun | Vercel → Settings → Git, hubungkan ulang |
+
+### ⚠️ Setelah penyebabnya beres, deploy TIDAK jalan sendiri
+
+Mengembalikan repo ke publik **tidak** membangun ulang commit yang masuk saat repo masih privat — Vercel butuh event baru. Picu dengan salah satu:
+
+```bash
+git commit --allow-empty -m "chore: picu deploy ulang"
+git push origin master
+```
+
+atau tombol **Redeploy** di dashboard. Commit kosong sekaligus jadi diagnosis: kalau ini pun tidak memicu apa pun, berarti integrasi Git-nya yang putus, bukan soal visibilitas repo.
+
+### Verifikasi berhasil
+
+Ulangi langkah 1 sampai string **BARU ada** dan string **LAMA hilang**. Sesudahnya, muat ulang keras (Ctrl+Shift+R) di browser — bundel lama bisa tertahan di cache browser walau produksi sudah benar.
+
+### Pencegahan
+
+Kegagalan ini tidak memicu alert apa pun karena tidak ada yang membandingkan **commit terakhir di Git** dengan **commit yang benar-benar tersaji**. Masukkan perbandingan itu ke digest harian ([Bab B.4](INFRASTRUKTUR-KIDZPLAYFUL.md#b4-alert-yang-layak-membangunkan-orang-maksimal-6)) — bukan sebagai alert yang membangunkan orang, tapi cukup untuk ketahuan dalam hitungan jam, bukan hari.
 
 ---
 
