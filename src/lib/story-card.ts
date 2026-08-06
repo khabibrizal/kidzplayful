@@ -1,95 +1,21 @@
-// src/lib/story-card.ts — kartu gambar Story (1080x1920) via canvas untuk dibagikan ke IG/WA Story.
+// src/lib/story-card.ts — kartu gambar Story (1080×1920) via canvas untuk dibagikan ke IG/WA Story.
 // Gaya mengikuti desain kartu artikel KidzPlayful: latar krem, blob dekoratif, judul dua warna,
 // foto besar, kartu pratinjau tautan, dan tombol ajakan. Tanpa dependency — murni canvas.
+// Bagian yang dipakai bersama kartu Feed ada di `kartu-bersama.ts`.
 'use client';
+import {
+  KRIM, NAVY, TEAL, KUNING, PERI,
+  bungkusUkur, muatGambar, keluarga, siapkanFont,
+  jalurKotakBulat, gambarCover, bayangan,
+  busurPutus, kilau, bintangGaris, hatiGaris,
+  type IsiKartu,
+} from './kartu-bersama';
+
+export { bungkusTeks } from './kartu-bersama';
+export type OpsiKartuStory = IsiKartu;
 
 const W = 1080, H = 1920;
 
-const KRIM = '#FBF7EE';
-const NAVY = '#123A5C';
-const TEAL = '#1E7F6F';
-const KUNING = '#F6C445';
-const PERI = '#A9BEE6';   // biru lembut untuk blob kanan-atas
-
-/** Pecah teks jadi baris berdasar batas karakter (per kata; kata > maks tetap satu baris). Murni & teruji. */
-export function bungkusTeks(teks: string, maks: number): string[] {
-  const kata = (teks ?? '').trim().split(/\s+/).filter(Boolean);
-  if (!kata.length) return [];
-  const baris: string[] = [];
-  let cur = '';
-  for (const w of kata) {
-    if (!cur) cur = w;
-    else if ((cur + ' ' + w).length <= maks) cur += ' ' + w;
-    else { baris.push(cur); cur = w; }
-  }
-  if (cur) baris.push(cur);
-  return baris;
-}
-
-/** Pembungkus berbasis LEBAR terukur — dipakai canvas agar baris pas dengan lebar kolom. */
-function bungkusUkur(ctx: CanvasRenderingContext2D, teks: string, maksLebar: number, maksBaris = 4): string[] {
-  const kata = (teks ?? '').trim().split(/\s+/).filter(Boolean);
-  if (!kata.length) return [];
-  const baris: string[] = [];
-  let cur = '';
-  for (const w of kata) {
-    const coba = cur ? cur + ' ' + w : w;
-    if (ctx.measureText(coba).width <= maksLebar || !cur) cur = coba;
-    else { baris.push(cur); cur = w; }
-  }
-  if (cur) baris.push(cur);
-  if (baris.length <= maksBaris) return baris;
-  const potong = baris.slice(0, maksBaris);
-  potong[maksBaris - 1] = potong[maksBaris - 1].replace(/[.,;:]$/, '') + '…';
-  return potong;
-}
-
-function muatGambar(src: string): Promise<HTMLImageElement> {
-  return new Promise((res, rej) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => res(img);
-    img.onerror = () => rej(new Error('gagal muat gambar'));
-    img.src = src;
-  });
-}
-
-/** Nama family font brand (next/font menghasilkan nama ter-hash → dibaca dari variabel CSS). */
-function keluarga(varCss: string, cadangan: string): string {
-  if (typeof document === 'undefined') return cadangan;
-  const v = getComputedStyle(document.documentElement).getPropertyValue(varCss).trim();
-  return v ? `${v}, ${cadangan}` : cadangan;
-}
-
-function jalurKotakBulat(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  const rr = Math.min(r, w / 2, h / 2);
-  ctx.beginPath();
-  ctx.moveTo(x + rr, y);
-  ctx.arcTo(x + w, y, x + w, y + h, rr);
-  ctx.arcTo(x + w, y + h, x, y + h, rr);
-  ctx.arcTo(x, y + h, x, y, rr);
-  ctx.arcTo(x, y, x + w, y, rr);
-  ctx.closePath();
-}
-
-/** Gambar `img` menutupi kotak (object-fit: cover) dengan sudut membulat. */
-function gambarCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, w: number, h: number, r: number) {
-  ctx.save();
-  jalurKotakBulat(ctx, x, y, w, h, r);
-  ctx.clip();
-  const ar = img.width / img.height, arBox = w / h;
-  let sw = img.width, sh = img.height, sx = 0, sy = 0;
-  if (ar > arBox) { sw = img.height * arBox; sx = (img.width - sw) / 2; }
-  else { sh = img.width / arBox; sy = (img.height - sh) / 2; }
-  ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
-  ctx.restore();
-}
-
-function bayangan(ctx: CanvasRenderingContext2D, blur: number, dy: number, warna = 'rgba(18,58,92,.14)') {
-  ctx.shadowColor = warna; ctx.shadowBlur = blur; ctx.shadowOffsetY = dy;
-}
-
-// ── Ornamen ────────────────────────────────────────────────────────────────
 function blobKananAtas(ctx: CanvasRenderingContext2D) {
   ctx.fillStyle = PERI;
   ctx.beginPath();
@@ -109,57 +35,8 @@ function blobKiriBawah(ctx: CanvasRenderingContext2D) {
   ctx.closePath();
   ctx.fill();
 }
-function busurPutus(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, a0: number, a1: number, warna: string) {
-  ctx.save();
-  ctx.setLineDash([16, 18]); ctx.lineWidth = 5; ctx.strokeStyle = warna; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.arc(cx, cy, r, a0, a1); ctx.stroke();
-  ctx.restore();
-}
-function kilau(ctx: CanvasRenderingContext2D, cx: number, cy: number, p: number, warna: string) {
-  ctx.save();
-  ctx.strokeStyle = warna; ctx.lineWidth = 6; ctx.lineCap = 'round';
-  for (let i = 0; i < 3; i++) {
-    const a = (-Math.PI / 2) + (i - 1) * 0.55;
-    ctx.beginPath();
-    ctx.moveTo(cx + Math.cos(a) * p * 0.45, cy + Math.sin(a) * p * 0.45);
-    ctx.lineTo(cx + Math.cos(a) * p, cy + Math.sin(a) * p);
-    ctx.stroke();
-  }
-  ctx.restore();
-}
-function bintangGaris(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, warna: string) {
-  ctx.save();
-  ctx.strokeStyle = warna; ctx.lineWidth = 6; ctx.lineJoin = 'round';
-  ctx.beginPath();
-  for (let i = 0; i < 5; i++) {
-    const a1 = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
-    const a2 = a1 + Math.PI / 5;
-    ctx[i ? 'lineTo' : 'moveTo'](cx + Math.cos(a1) * r, cy + Math.sin(a1) * r);
-    ctx.lineTo(cx + Math.cos(a2) * r * 0.45, cy + Math.sin(a2) * r * 0.45);
-  }
-  ctx.closePath(); ctx.stroke();
-  ctx.restore();
-}
-function hatiGaris(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, warna: string) {
-  ctx.save();
-  ctx.strokeStyle = warna; ctx.lineWidth = 6; ctx.lineJoin = 'round';
-  ctx.beginPath();
-  ctx.moveTo(cx, cy + s * 0.7);
-  ctx.bezierCurveTo(cx - s * 1.3, cy - s * 0.2, cx - s * 0.5, cy - s * 1.1, cx, cy - s * 0.35);
-  ctx.bezierCurveTo(cx + s * 0.5, cy - s * 1.1, cx + s * 1.3, cy - s * 0.2, cx, cy + s * 0.7);
-  ctx.closePath(); ctx.stroke();
-  ctx.restore();
-}
 
-export interface OpsiKartuStory {
-  judul: string;
-  subjudul?: string;      // ringkasan / teks pendukung di bawah judul
-  labelKartu: string;     // label kecil di kartu pratinjau, mis. "ARTIKEL KIDZPLAYFUL"
-  ajakan?: string;        // teks tombol CTA
-  gambar?: string;        // foto utama (sampul)
-}
-
-export async function buatKartuStory(opts: OpsiKartuStory): Promise<Blob> {
+export async function buatKartuStory(opts: IsiKartu): Promise<Blob> {
   const canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d');
@@ -167,16 +44,7 @@ export async function buatKartuStory(opts: OpsiKartuStory): Promise<Blob> {
 
   const fJudul = keluarga('--font-baloo', 'system-ui, sans-serif');
   const fTeks = keluarga('--font-quick', 'system-ui, sans-serif');
-
-  // Pastikan font brand siap; kalau gagal, canvas jatuh ke system-ui (tetap terbaca).
-  try {
-    await document.fonts.ready;
-    await Promise.all([
-      document.fonts.load(`800 110px ${fJudul}`),
-      document.fonts.load(`700 46px ${fTeks}`),
-      document.fonts.load(`600 40px ${fTeks}`),
-    ]);
-  } catch { /* lanjut dengan fallback */ }
+  await siapkanFont(fJudul, fTeks);
 
   // Muat aset (logo satu origin; foto bisa gagal karena CORS → kartu tetap dibuat)
   const [logo, foto] = await Promise.all([
@@ -290,4 +158,3 @@ export async function buatKartuStory(opts: OpsiKartuStory): Promise<Blob> {
 
   return await new Promise<Blob>((res, rej) => canvas.toBlob((b) => (b ? res(b) : rej(new Error('toBlob gagal'))), 'image/png'));
 }
-

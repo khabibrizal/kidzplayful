@@ -3,6 +3,8 @@
 import { useState, useSyncExternalStore } from 'react';
 import { tautanShare, denganUtm, type ShareTarget } from '@/lib/share';
 import { buatKartuStory } from '@/lib/story-card';
+import { buatKartuFeed } from '@/lib/feed-card';
+import type { IsiKartu } from '@/lib/kartu-bersama';
 
 // Teks kartu Story per jenis konten (desainnya di lib/story-card.ts).
 const TEKS_STORY: Record<string, { label: string; ajakan: string }> = {
@@ -50,18 +52,44 @@ export default function ShareButton({ url, title, text, jenis, gambar, label = '
     setBuka(false);
   }
 
+  /** Isi kartu — SATU sumber untuk Story maupun Feed, supaya kontennya benar-benar identik. */
+  function isiKartu(): IsiKartu {
+    const st = TEKS_STORY[jenis] ?? TEKS_STORY.artikel;
+    return {
+      judul: title,
+      // subjudul dipakai hanya bila berbeda dari judul (mis. `ringkasan` artikel),
+      // supaya kartu tidak menampilkan kalimat yang sama dua kali.
+      subjudul: text && text.trim() !== title.trim() ? text : undefined,
+      labelKartu: st.label, ajakan: st.ajakan, gambar,
+    };
+  }
+
+  async function bagikanFeed() {
+    if (sibuk) return;
+    setSibuk(true);
+    try {
+      const blob = await buatKartuFeed(isiKartu());
+      const file = new File([blob], 'kidzplayful-feed.png', { type: 'image/png' });
+      const teks = text ?? title;
+      const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
+      if (nav.canShare?.({ files: [file] }) && typeof navigator.share === 'function') {
+        await navigator.share({ files: [file], title, text: teks + '\n' + urlShare('feed') });
+      } else {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob); a.download = 'kidzplayful-feed.png';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        flash('Gambar Feed (1:1) diunduh — unggah ke Instagram, taruh tautan di bio/caption ✨');
+      }
+    } catch { flash('Gagal membuat gambar Feed'); }
+    finally { setSibuk(false); setBuka(false); }
+  }
+
   async function bagikanStory() {
     if (sibuk) return;
     setSibuk(true);
     try {
-      const st = TEKS_STORY[jenis] ?? TEKS_STORY.artikel;
-      const blob = await buatKartuStory({
-        judul: title,
-        // subjudul dipakai hanya bila berbeda dari judul (mis. `ringkasan` artikel),
-        // supaya kartu tidak menampilkan kalimat yang sama dua kali.
-        subjudul: text && text.trim() !== title.trim() ? text : undefined,
-        labelKartu: st.label, ajakan: st.ajakan, gambar,
-      });
+      const blob = await buatKartuStory(isiKartu());
       const file = new File([blob], 'kidzplayful-story.png', { type: 'image/png' });
       const teks = `${text ?? title}\n${urlShare('story')}`;
       const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
@@ -93,6 +121,7 @@ export default function ShareButton({ url, title, text, jenis, gambar, label = '
       {buka && (
         <div role="menu" style={{ position: 'absolute', bottom: '100%', left: 0, marginBottom: 6, background: '#fff', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,.18)', padding: 6, zIndex: 90, minWidth: 190 }}>
           <button type="button" onClick={bagikanStory} disabled={sibuk} style={{ ...itemStyle, fontWeight: 700 }}>{sibuk ? '⏳ Menyiapkan…' : '📸 Bagikan ke Story'}</button>
+          <button type="button" onClick={bagikanFeed} disabled={sibuk} style={{ ...itemStyle, fontWeight: 700 }}>{sibuk ? '⏳ Menyiapkan…' : '🖼️ Bagikan ke Feed (1:1)'}</button>
           {bisaNative && <button type="button" onClick={bagikanNative} style={itemStyle}>📱 Bagikan…</button>}
           {opsi.map((o) => (
             <button key={o.t} type="button" onClick={() => (o.t === 'copy' ? salin() : bagikanKe(o.t))} style={itemStyle}>{o.label}</button>
