@@ -134,6 +134,24 @@ export function gambarCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement
   ctx.restore();
 }
 
+/**
+ * Gambar `img` UTUH di dalam kotak (object-fit: contain) — tidak ada bagian yang dipotong.
+ * Dipakai bila isi gambarnya penting sampai ke tepi, mis. sampul artikel yang memuat
+ * TULISAN: memotongnya akan memenggal kata. Mengembalikan kotak nyata gambar setelah
+ * diskalakan, supaya pemanggil bisa menempatkan bingkai/bayangan tepat di situ.
+ */
+export function gambarMuat(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, w: number, h: number, r: number) {
+  const s = Math.min(w / img.width, h / img.height);
+  const dw = img.width * s, dh = img.height * s;
+  const dx = x + (w - dw) / 2, dy = y + (h - dh) / 2;
+  ctx.save();
+  jalurKotakBulat(ctx, dx, dy, dw, dh, Math.min(r, dw / 2, dh / 2));
+  ctx.clip();
+  ctx.drawImage(img, dx, dy, dw, dh);
+  ctx.restore();
+  return { x: dx, y: dy, w: dw, h: dh };
+}
+
 export function bayangan(ctx: CanvasRenderingContext2D, blur: number, dy: number, warna = 'rgba(18,58,92,.14)') {
   ctx.shadowColor = warna; ctx.shadowBlur = blur; ctx.shadowOffsetY = dy;
 }
