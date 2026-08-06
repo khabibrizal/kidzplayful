@@ -121,7 +121,7 @@ RLS: **ortu baca catatan anaknya**, admin & **guru** baca; **guru** insert/updat
 ## 8. Struktur Folder & Berkas (utama)
 
 ### `src/lib/`
-- `supabase/{client,server}.ts`; `domain/*` (logika murni + 30 test); `game/tipe.ts` (semua interface incl. `Produk`, `Pesanan`, `EventKelas`, `CatatanPerkembangan`, `SkalaPaud`).
+- `supabase/{client,server}.ts`; `domain/*` (logika murni; total **86 unit test** vitest di `src/lib/**/__tests__`); `game/tipe.ts` (semua interface incl. `Produk`, `Pesanan`, `EventKelas`, `CatatanPerkembangan`, `SkalaPaud`).
 - **`format.ts`** — `formatTanggal`, `formatRupiah`, `STATUS_PESANAN`, **`ASPEK_PAUD`/`SKALA_PAUD`/`metaSkala`**, **`nomorWaIntl`/`linkWa`** (WA).
 
 ### `src/lib/data/`

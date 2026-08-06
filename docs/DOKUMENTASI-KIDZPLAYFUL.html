@@ -154,7 +154,7 @@ Profil anak, langganan trial, konten game/tema/skor/video (lihat versi sebelumny
 <h2 id="8-struktur-folder-berkas-utama">8. Struktur Folder &amp; Berkas (utama)</h2>
 <h3 id="srclib"><code>src/lib/</code></h3>
 <ul>
-<li><code>supabase/{client,server}.ts</code>; <code>domain/*</code> (logika murni + 30 test); <code>game/tipe.ts</code> (semua interface incl. <code>Produk</code>, <code>Pesanan</code>, <code>EventKelas</code>, <code>CatatanPerkembangan</code>, <code>SkalaPaud</code>).</li>
+<li><code>supabase/{client,server}.ts</code>; <code>domain/*</code> (logika murni; total <strong>86 unit test</strong> vitest di <code>src/lib/**/__tests__</code>); <code>game/tipe.ts</code> (semua interface incl. <code>Produk</code>, <code>Pesanan</code>, <code>EventKelas</code>, <code>CatatanPerkembangan</code>, <code>SkalaPaud</code>).</li>
 <li><strong><code>format.ts</code></strong> — <code>formatTanggal</code>, <code>formatRupiah</code>, <code>STATUS_PESANAN</code>, <strong><code>ASPEK_PAUD</code>/<code>SKALA_PAUD</code>/<code>metaSkala</code></strong>, <strong><code>nomorWaIntl</code>/<code>linkWa</code></strong> (WA).</li>
 </ul>
 <h3 id="srclibdata"><code>src/lib/data/</code></h3>
