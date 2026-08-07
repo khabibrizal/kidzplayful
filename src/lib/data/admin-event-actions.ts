@@ -12,6 +12,7 @@ export interface BarisPesertaEkspor {
   kelas: string;          // 'Baby Class' | 'Toddler Class' | 'Gabungan'
   namaPanggilan: string;
   namaLengkap: string;
+  jenisKelamin: string;   // "Laki-laki" | "Perempuan" | "-" (belum diisi)
   tglLahir: string;       // "10 Juli 2022" (tanpa koma)
   umur: string;           // "2 thn 3 bln"
   namaOrtu: string;
@@ -29,13 +30,16 @@ export async function getPesertaEkspor(eventId: string): Promise<BarisPesertaEks
   const anakIds = [...new Set(rowsPend.flatMap((p) => (p.anak_ids as string[]) ?? []))];
   const ortuIds = [...new Set(rowsPend.map((p) => p.ortu_id as string))];
   const [aRes, oRes] = await Promise.all([
-    anakIds.length ? s.from('anak').select('id,nama,nama_panggilan,tanggal_lahir').in('id', anakIds) : Promise.resolve({ data: [] as unknown[] }),
+    anakIds.length ? s.from('anak').select('id,nama,nama_panggilan,tanggal_lahir,jenis_kelamin').in('id', anakIds) : Promise.resolve({ data: [] as unknown[] }),
     ortuIds.length ? s.from('profiles').select('id,nama_tampilan,email').in('id', ortuIds) : Promise.resolve({ data: [] as unknown[] }),
   ]);
-  const anakMap: Record<string, { nama?: string; nama_panggilan?: string; tanggal_lahir?: string }> = {};
+  const anakMap: Record<string, { nama?: string; nama_panggilan?: string; tanggal_lahir?: string; jenis_kelamin?: string }> = {};
   for (const a of (aRes.data ?? []) as Record<string, string>[]) anakMap[a.id] = a;
   const ortuMap: Record<string, string> = {};
   for (const o of (oRes.data ?? []) as Record<string, string>[]) ortuMap[o.id] = (o.nama_tampilan?.trim()) || o.email || '';
+  // Kolom `anak.jenis_kelamin` boleh kosong (nullable) → tampilkan "-" alih-alih kosong,
+  // supaya kolomnya tetap terbaca rapi di tabel cetak & CSV.
+  const labelJk = (v?: string | null) => v === 'laki-laki' ? 'Laki-laki' : v === 'perempuan' ? 'Perempuan' : '-';
   const now = new Date();
   const fmtTgl = (tgl: string) => new Date(tgl + 'T00:00:00Z').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
   const fmtWaktu = (iso: string | null | undefined) => iso ? new Date(iso).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) + ' WIB' : '';
@@ -54,6 +58,7 @@ export async function getPesertaEkspor(eventId: string): Promise<BarisPesertaEks
         kelas,
         namaPanggilan: a?.nama_panggilan?.trim() || '',
         namaLengkap: a?.nama || nm[i] || '',
+        jenisKelamin: labelJk(a?.jenis_kelamin),
         tglLahir: tgl ? fmtTgl(tgl) : '',
         umur: tgl ? umurTeks(new Date(tgl + 'T00:00:00Z'), now) : '',
         namaOrtu: ortuMap[p.ortu_id as string] || '',

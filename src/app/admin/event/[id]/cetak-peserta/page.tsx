@@ -68,6 +68,7 @@ export default async function CetakPesertaPage({ params }: { params: Promise<{ i
                   <th style={{ ...th, width: 28 }}>No</th>
                   <th style={th}>Nama Panggilan</th>
                   <th style={th}>Nama Lengkap</th>
+                  <th style={th}>L/P</th>
                   <th style={th}>Tgl Lahir (Umur)</th>
                   <th style={th}>Orang Tua</th>
                   <th style={th}>Pendamping</th>
@@ -80,6 +81,7 @@ export default async function CetakPesertaPage({ params }: { params: Promise<{ i
                     <td style={td}>{i + 1}</td>
                     <td style={{ ...td, fontWeight: 700 }}>{r.namaPanggilan}</td>
                     <td style={td}>{r.namaLengkap}</td>
+                    <td style={{ ...td, whiteSpace: 'nowrap' }}>{r.jenisKelamin}</td>
                     <td style={td}>{r.tglLahir}{r.umur ? ` (${r.umur})` : ''}</td>
                     <td style={td}>{r.namaOrtu}</td>
                     <td style={td}>{r.pendamping > 0 ? `+${r.pendamping}` : '-'}</td>
