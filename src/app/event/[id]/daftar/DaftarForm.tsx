@@ -1,7 +1,6 @@
 // src/app/event/[id]/daftar/DaftarForm.tsx
 'use client';
 import { useRef, useState } from 'react';
-import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -92,7 +91,7 @@ export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor, b
   async function kirim() {
     if (pilih.size === 0) { setErr('Pilih minimal 1 anak dulu — pendamping tidak bisa didaftarkan tanpa anak.'); return; }
     if (penuh) { setErr('Mohon maaf, kuota sudah penuh. Terima kasih 🙏'); return; }
-    if (lebihKuota) { setErr(`Mohon maaf, kuota tersisa hanya ${sisaAktif} anak. Kurangi jumlah anak yang didaftarkan ya 🙏`); return; }
+    if (lebihKuota) { setErr('Mohon maaf, kuota yang tersisa tidak cukup untuk jumlah anak yang dipilih. Kurangi jumlah anaknya ya 🙏'); return; }
     if (kelasOpsi.length > 0 && !kelas) { setErr('Pilih kelas dulu.'); return; }
     if (ev.harga_per_anak > 0 && !buktiUrl) { setErr('Unggah bukti pembayaran dulu.'); return; }
     setSubmitting(true); setErr('');
@@ -155,10 +154,11 @@ export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor, b
             <label key={o.key} className="kp-card" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, cursor: 'pointer' }}>
               <input type="radio" name="kelas" checked={kelas === o.key} onChange={() => setKelas(o.key)} style={{ width: 18, height: 18 }} />
               <span style={{ flex: 1 }}><b>{o.label}</b><br /><small style={{ color: 'var(--abu)' }}>🕐 {o.jadwal || 'jadwal menyusul'}</small>
-                {sisaKuotaKelas(o.key) !== null && (
-                  <><br /><small style={{ color: sisaKuotaKelas(o.key)! <= 0 ? '#b3261e' : 'var(--mint-d)', fontWeight: 700 }}>
-                    {sisaKuotaKelas(o.key)! <= 0 ? '❌ Kuota penuh' : `👥 Sisa kuota ${sisaKuotaKelas(o.key)} anak`}
-                  </small></>
+                {/* Sisa kuota SENGAJA tidak ditampilkan ke orang tua (permintaan pemilik).
+                    Status "penuh" tetap ditampilkan — tanpa itu orang tua memilih kelas yang
+                    sudah penuh, menekan Daftar, lalu baru ditolak. */}
+                {sisaKuotaKelas(o.key) !== null && sisaKuotaKelas(o.key)! <= 0 && (
+                  <><br /><small style={{ color: '#b3261e', fontWeight: 700 }}>❌ Kuota penuh</small></>
                 )}
               </span>
             </label>
@@ -170,9 +170,6 @@ export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor, b
         <div className="kp-card" style={{ background: '#fde8e6', color: '#b3261e', marginBottom: 12, textAlign: 'center', fontWeight: 700 }}>
           Mohon maaf, kuota sudah penuh. Terima kasih 🙏
         </div>
-      )}
-      {!penuh && sisaAktif !== null && (
-        <div style={{ fontSize: 12, color: 'var(--abu)', marginBottom: 8 }}>👥 Sisa kuota{kelasTerpilih ? ` ${kelasTerpilih.label}` : ''}: <b style={{ color: 'var(--mint-d)' }}>{sisaAktif} anak</b></div>
       )}
       <div style={{ fontWeight: 700, marginBottom: 6 }}>Pilih anak yang ikut: <span style={{ color: '#c0392b' }}>*</span></div>
       {anak.length === 0 && <p style={{ color: 'var(--abu)' }}>Belum ada profil anak. Tambahkan dulu di dashboard.</p>}
@@ -235,7 +232,7 @@ export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor, b
 
       {err && <div className="kp-error" style={{ marginBottom: 10 }}>{err}</div>}
       <button className="kp-btn" onClick={kirim} disabled={submitting || pilih.size === 0 || penuh || lebihKuota} style={{ width: '100%', opacity: (pilih.size === 0 || penuh || lebihKuota) ? 0.55 : 1 }}>
-        {submitting ? 'Mengirim…' : penuh ? 'Kuota sudah penuh' : lebihKuota ? `Sisa kuota hanya ${sisaAktif} anak` : pilih.size === 0 ? 'Pilih anak dulu untuk mendaftar' : 'Daftar Sekarang'}
+        {submitting ? 'Mengirim…' : penuh ? 'Kuota sudah penuh' : lebihKuota ? 'Kurangi jumlah anak yang dipilih' : pilih.size === 0 ? 'Pilih anak dulu untuk mendaftar' : 'Daftar Sekarang'}
       </button>
       {pilih.size === 0 && <p style={{ color: 'var(--abu)', fontSize: 12, textAlign: 'center', marginTop: 6 }}>Centang minimal 1 anak — pendamping hanya pelengkap, tidak bisa didaftarkan sendiri.</p>}
     </main>

@@ -54,7 +54,9 @@ export async function daftarEvent(eventId: string, anakIds: string[], buktiUrl: 
     const terpakai = await getKuotaTerpakai(eventId);
     const sisa = Math.max(0, kuotaKelas - (terpakai[kelasFinal] ?? 0));
     if (sisa <= 0) return { ok: false, error: 'Mohon maaf, kuota sudah penuh. Terima kasih 🙏' };
-    if (baru.length > sisa) return { ok: false, error: `Mohon maaf, kuota tersisa hanya ${sisa} anak. Kurangi jumlah anak yang didaftarkan ya 🙏` };
+    // Jumlah sisa SENGAJA tidak disebut - halaman pendaftaran orang tua tidak menampilkan
+    // sisa kuota (permintaan pemilik), jadi pesan ini pun tidak boleh membocorkannya.
+    if (baru.length > sisa) return { ok: false, error: 'Mohon maaf, kuota yang tersisa tidak cukup untuk jumlah anak yang dipilih. Kurangi jumlah anaknya ya 🙏' };
   }
 
   const status = await getStatusLangganan(s, user.id);
