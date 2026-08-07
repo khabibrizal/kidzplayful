@@ -702,6 +702,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <li><strong>Fungsi data</strong>: <code>getSertifikat(id)</code> (<code>sertifikat.ts</code>); stiker (<strong>guard admin</strong> <code>getAdminTerjamin</code>): <code>getEventAdmin(id)</code>, <code>getPendaftaranByEvent(id)</code>.</li>
 <li><strong>Komponen</strong>: <code>SertifikatView</code>, <code>StikerSheet</code>, <code>UnduhPdfBtn</code>.</li>
 <li><strong>Nama di stiker</strong>: memakai <strong><code>anak.nama_panggilan</code></strong> (fallback: kata pertama nama lengkap) — join <code>anak</code> per <code>anak_ids</code> pendaftaran.</li>
+<li><strong>Baris kedua stiker = KATEGORI KELAS</strong>, bukan judul event (permintaan pemilik). Sumbernya <code>pendaftaran_event.kelas</code> → <code>Baby Class</code> / <code>Toddler Class</code>. <strong>Dibawa per stiker, bukan per lembar</strong> — satu event bisa memuat peserta Baby dan Toddler sekaligus, jadi <code>StikerSheet</code> menerima <code>items: {nama, kelas}[]</code>, bukan satu <code>kelas</code> global. Kelas <code>gabungan</code>/kosong → baris itu <strong>tidak dirender</strong> (lebih baik kosong daripada memunculkan kembali nama event yang diminta dihapus). Judul event tetap dipakai untuk <strong>nama berkas PDF</strong> dan header layar (<code>no-print</code>).</li>
 <li><strong>Endpoint</strong>: <code>sertifikat</code>, <code>event</code>, <code>pendaftaran_event</code>, <code>anak</code> (nama panggilan).</li>
 </ul>
 <blockquote>

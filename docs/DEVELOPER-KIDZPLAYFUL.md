@@ -593,6 +593,7 @@ Sisi orang tua; **khusus member `aktif`** (gate `getStatusLangganan` → `<Terku
 - **Fungsi data**: `getSertifikat(id)` (`sertifikat.ts`); stiker (**guard admin** `getAdminTerjamin`): `getEventAdmin(id)`, `getPendaftaranByEvent(id)`.
 - **Komponen**: `SertifikatView`, `StikerSheet`, `UnduhPdfBtn`.
 - **Nama di stiker**: memakai **`anak.nama_panggilan`** (fallback: kata pertama nama lengkap) — join `anak` per `anak_ids` pendaftaran.
+- **Baris kedua stiker = KATEGORI KELAS**, bukan judul event (permintaan pemilik). Sumbernya `pendaftaran_event.kelas` → `Baby Class` / `Toddler Class`. **Dibawa per stiker, bukan per lembar** — satu event bisa memuat peserta Baby dan Toddler sekaligus, jadi `StikerSheet` menerima `items: {nama, kelas}[]`, bukan satu `kelas` global. Kelas `gabungan`/kosong → baris itu **tidak dirender** (lebih baik kosong daripada memunculkan kembali nama event yang diminta dihapus). Judul event tetap dipakai untuk **nama berkas PDF** dan header layar (`no-print`).
 - **Endpoint**: `sertifikat`, `event`, `pendaftaran_event`, `anak` (nama panggilan).
 
 > **Lintas-halaman**: `RekamAktivitas` (store/event/komunitas/pesanan/kelas-saya/pilih-anak/main/laporan) memanggil `catatAktivitas` → insert `aktivitas`. Fungsi `...Cached` di `publik.ts` memakai anon client + cache untuk `event`/`produk`/`kelas_bermain`.
