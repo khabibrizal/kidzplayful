@@ -615,6 +615,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 <ul>
 <li><strong>File</strong>: client component penuh + <code>Logo.tsx</code>. Memakai Supabase client-side.</li>
 <li><strong>Endpoint</strong>: <code>auth.signInWithPassword</code> / <code>signUp</code> / <code>resetPasswordForEmail</code> / <code>updateUser</code> / <code>signOut</code>; <code>profiles</code> (cek <code>is_guru</code> untuk arahkan; update nama/no_wa saat daftar).</li>
+<li><strong><code>components/InputSandi.tsx</code></strong> — input kata sandi dengan <strong>tombol mata</strong> (lihat/sembunyikan), ikon SVG inline (bukan emoji, agar konsisten lintas perangkat). Menerima semua prop <code>&lt;input&gt;</code> kecuali <code>type</code>. Detail yang penting: tombolnya <strong><code>type="button"</code></strong> — tanpa itu ia ikut men-submit form; input diberi <code>paddingRight</code> agar teks tidak tertimpa ikon; <code>aria-label</code>/<code>aria-pressed</code> berganti sesuai keadaan. <strong>Terpasang di <code>/login</code></strong>; <code>/daftar</code>, <code>/reset-sandi</code> (2 field), dan <code>/pengaturan</code> (AkunForm) masih memakai <code>&lt;input type="password"&gt;</code> biasa dan bisa memakai komponen yang sama bila diminta.</li>
 </ul>
 <h3 id="ortu-anak-pilih-anak-anakanakid-ortuanakid-pengaturan">👶 Ortu &amp; Anak — <code>/pilih-anak</code>, <code>/anak/[anakId]</code>, <code>/ortu/[anakId]</code>, <code>/pengaturan</code></h3>
 <ul>

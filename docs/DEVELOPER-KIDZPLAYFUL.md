@@ -510,6 +510,7 @@ Penilaian perkembangan anak per event offline. **Parameter (Area + Indikator) di
 ### 🔐 Auth — `/login`, `/daftar`, `/lupa-sandi`, `/reset-sandi`
 - **File**: client component penuh + `Logo.tsx`. Memakai Supabase client-side.
 - **Endpoint**: `auth.signInWithPassword` / `signUp` / `resetPasswordForEmail` / `updateUser` / `signOut`; `profiles` (cek `is_guru` untuk arahkan; update nama/no_wa saat daftar).
+- **`components/InputSandi.tsx`** — input kata sandi dengan **tombol mata** (lihat/sembunyikan), ikon SVG inline (bukan emoji, agar konsisten lintas perangkat). Menerima semua prop `<input>` kecuali `type`. Detail yang penting: tombolnya **`type="button"`** — tanpa itu ia ikut men-submit form; input diberi `paddingRight` agar teks tidak tertimpa ikon; `aria-label`/`aria-pressed` berganti sesuai keadaan. **Terpasang di `/login`**; `/daftar`, `/reset-sandi` (2 field), dan `/pengaturan` (AkunForm) masih memakai `<input type="password">` biasa dan bisa memakai komponen yang sama bila diminta.
 
 ### 👶 Ortu & Anak — `/pilih-anak`, `/anak/[anakId]`, `/ortu/[anakId]`, `/pengaturan`
 - **Fungsi data**: `getEventTampilCached()`, `getStatusPendaftaranSaya()`, `getArtikelTerbit({limit:3})`, `getPengaturanBayar()`; sisanya inline.

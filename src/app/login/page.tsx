@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import Logo from '@/components/Logo';
+import InputSandi from '@/components/InputSandi';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -41,7 +42,7 @@ export default function LoginPage() {
       <form className="kp-card" onSubmit={submit}>
         <input className="kp-input" type="email" placeholder="Email orang tua"
           value={email} onChange={(e) => setEmail(e.target.value)} required />
-        <input className="kp-input" type="password" placeholder="Kata sandi"
+        <InputSandi placeholder="Kata sandi" autoComplete="current-password"
           value={sandi} onChange={(e) => setSandi(e.target.value)} required />
         {err && <div className="kp-error">{err}</div>}
         <button className="kp-btn" type="submit" disabled={loading} style={{ width: '100%' }}>
