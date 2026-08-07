@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getStatusLangganan } from '@/lib/data/langganan-status';
 import { getPsikologTersedia, getAnakSaya, getKonsultasiSaya } from '@/lib/data/konsultasi';
+import { getProfilPsikologMap } from '@/lib/data/psikolog-profil';
 import { formatTanggal } from '@/lib/format';
 import Terkunci from '@/components/Terkunci';
 import BottomNav from '@/components/BottomNav';
@@ -31,7 +32,9 @@ export default async function KonsultasiPage() {
     return <main className="kp-page-narrow" style={{ padding: 16, marginTop: 20 }}><Terkunci fitur="Konsultasi Psikolog" /><BottomNav /></main>;
   }
 
-  const [psikolog, anak, sesi] = await Promise.all([getPsikologTersedia(), getAnakSaya(), getKonsultasiSaya()]);
+  const [psikolog, anak, sesi, profil] = await Promise.all([
+    getPsikologTersedia(), getAnakSaya(), getKonsultasiSaya(), getProfilPsikologMap(),
+  ]);
 
   // Kelompokkan konsultasi per tanggal (terbaru dulu) — pola seperti blok event.
   const grup = new Map<string, typeof sesi>();
@@ -46,7 +49,7 @@ export default async function KonsultasiPage() {
       <p style={{ color: 'var(--abu)', fontSize: 12, marginBottom: 12 }}>Daftar konsultasi lalu chat dengan psikolog. Rekomendasi akan tersimpan di laporan tumbuh kembang anak. 🌿</p>
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '8px 0' }}>DAFTAR KONSULTASI BARU</div>
-      <BookingForm psikolog={psikolog} anak={anak} />
+      <BookingForm psikolog={psikolog} anak={anak} profil={profil} />
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '18px 0 8px' }}>KONSULTASI SAYA ({sesi.length})</div>
       {sesi.length === 0 && <p style={{ color: 'var(--abu)', fontSize: 13 }}>Belum ada konsultasi.</p>}
