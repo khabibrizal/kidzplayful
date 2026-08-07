@@ -1,9 +1,18 @@
-// src/components/StikerSheet.tsx — lembar stiker nama 9×6 cm (10/lembar F4, grid 2×5)
+// src/components/StikerSheet.tsx — lembar stiker nama 9×6 cm (10/lembar F4, 2 kolom × 5 baris)
 // Tiap stiker: nama panggilan anak + KATEGORI KELAS (Baby/Toddler Class).
 // Kategori dibawa PER STIKER, bukan per lembar, karena satu event bisa memuat peserta
 // Baby Class dan Toddler Class sekaligus.
+//
+// PAGINASI (perbaikan bug "stiker terpotong di batas halaman"):
+// versi sebelumnya memakai satu CSS Grid panjang dan mengandalkan `break-inside: avoid`
+// pada tiap stiker. Chrome TIDAK menghormati itu untuk grid item saat memaginasi, sehingga
+// baris ke-5 terpenggal separuh di bawah halaman. Sekarang stiker dipotong SENDIRI menjadi
+// kelompok 10 (2×5) dan tiap kelompok jadi satu blok halaman dengan `break-after: page`,
+// jadi tidak ada baris yang bisa menyeberang halaman.
 
 export interface ItemStiker { nama: string; kelas: string }
+
+export const PER_LEMBAR = 10;   // 2 kolom × 5 baris pada F4
 
 function Stiker({ nama, kelas, bg }: { nama: string; kelas: string; bg: string | null }) {
   const sh = bg ? { textShadow: '0 1px 3px rgba(255,255,255,.9)' } : {};
@@ -25,9 +34,25 @@ function Stiker({ nama, kelas, bg }: { nama: string; kelas: string; bg: string |
 }
 
 export default function StikerSheet({ items, bg }: { items: ItemStiker[]; bg: string | null }) {
+  // potong jadi lembaran 10 stiker
+  const lembar: ItemStiker[][] = [];
+  for (let i = 0; i < items.length; i += PER_LEMBAR) lembar.push(items.slice(i, i + PER_LEMBAR));
+
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '90mm 90mm', width: '180mm', margin: '0 auto' }}>
-      {items.map((it, i) => <Stiker key={i} nama={it.nama} kelas={it.kelas} bg={bg} />)}
-    </div>
+    <>
+      {lembar.map((isi, li) => (
+        <div
+          key={li}
+          style={{
+            display: 'flex', flexWrap: 'wrap', width: '180mm', margin: '0 auto',
+            // baris tidak boleh menyeberang halaman
+            breakInside: 'avoid',
+            breakAfter: li < lembar.length - 1 ? 'page' : 'auto',
+          }}
+        >
+          {isi.map((it, i) => <Stiker key={i} nama={it.nama} kelas={it.kelas} bg={bg} />)}
+        </div>
+      ))}
+    </>
   );
 }

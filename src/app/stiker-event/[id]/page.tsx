@@ -36,7 +36,14 @@ export default async function StikerEventPage({ params }: { params: Promise<{ id
 
   return (
     <main style={{ maxWidth: '196mm', margin: '12px auto', padding: 12 }}>
-      <style>{`@media print{ @page{ size:215mm 330mm; margin:7mm } }`}</style>
+      {/* Margin 5mm (bukan 7mm): 5 baris x 60mm = 300mm, jadi butuh sisa ruang cukup supaya
+          header/footer bawaan dialog cetak tidak mendorong baris terakhir ke halaman berikut.
+          Padding/margin <main> juga dinolkan saat cetak dengan alasan yang sama. */}
+      <style>{`@media print{
+        @page{ size:215mm 330mm; margin:5mm }
+        html,body{ margin:0 !important; padding:0 !important }
+        main{ margin:0 !important; padding:0 !important; max-width:none !important }
+      }`}</style>
       <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
         <TombolKembali fallback="/admin/event" style={{ color: 'var(--abu)', fontSize: 13 }} />
         <b>🏷️ Stiker: {ev.judul}</b>
@@ -44,7 +51,7 @@ export default async function StikerEventPage({ params }: { params: Promise<{ id
         <UnduhPdfBtn judul={`Stiker ${ev.judul}`} />
       </div>
       <div className="no-print" style={{ fontSize: 12, color: 'var(--abu)', marginBottom: 10 }}>
-        Ukuran stiker 9×6 cm, 10 per lembar F4. Saat mencetak, pilih kertas <b>F4/Folio</b> & skala 100% (tanpa &quot;fit to page&quot;). Garis putus-putus = panduan potong.
+        Ukuran stiker 9×6 cm, 10 per lembar F4. Di dialog cetak: kertas <b>F4/Folio</b>, skala <b>100%</b> (bukan &quot;Fit to page&quot;), dan <b>matikan &quot;Headers and footers&quot;</b> — header/footer bawaan browser memakan tinggi halaman sehingga baris terakhir bisa terdorong. Aktifkan juga <b>Background graphics</b> agar template gambar ikut tercetak. Garis putus-putus = panduan potong.
       </div>
       {items.length === 0
         ? <p style={{ color: 'var(--abu)' }}>Belum ada anak yang mendaftar event ini.</p>

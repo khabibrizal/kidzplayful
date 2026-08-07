@@ -169,6 +169,7 @@ export default function EventAdmin({ awal, counts, menunggu = {} }: { awal: Even
               <span style={{ background: '#ffe3e0', color: '#c62828', fontWeight: 800, fontSize: 12, borderRadius: 99, padding: '4px 10px' }}>🔴 {menunggu[e.id]} baru</span>
             )}
             <DownloadPesertaBtn eventId={e.id} judul={e.judul} />
+            <Link href={`/admin/event/${e.id}/cetak-peserta`} className={s.btnSm} style={{ background: '#e7f0fb', color: '#1b5fa8', textDecoration: 'none' }}>🧾 PDF</Link>
             <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)' }} onClick={() => bukaEdit(e)} disabled={busyId === e.id}>Edit</button>
             <button className={s.btnSm} style={{ background: '#fff3d6', color: '#b88600' }} onClick={() => toggle(e)} disabled={busyId === e.id}>{busyId === e.id ? '...' : (e.status === 'tampil' ? 'Arsipkan' : 'Tampilkan')}</button>
             <button className={`${s.btnSm} ${s.danger}`} onClick={() => hapus(e)} disabled={busyId === e.id}>Hapus</button>
