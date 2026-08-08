@@ -36,6 +36,20 @@ export async function generateSertifikatEvent(eventId: string): Promise<number> 
     .eq('status', 'diterima');
   if (e2) throw new Error(e2.message);
 
+  // Nama pada sertifikat harus NAMA LENGKAP. `pendaftaran_event.anak_nama` hanyalah
+  // snapshot saat mendaftar — bila orang tua melengkapi nama anak setelahnya, snapshot
+  // itu basi. Jadi ambil nama terkini dari tabel `anak`, snapshot dipakai bila baris
+  // anaknya tak terbaca.
+  const semuaAnakIds = [...new Set((pendaftaran ?? []).flatMap((p) => (p.anak_ids as string[]) ?? []))];
+  const namaLengkap: Record<string, string> = {};
+  if (semuaAnakIds.length) {
+    const { data: anakRows } = await s.from('anak').select('id,nama').in('id', semuaAnakIds);
+    for (const a of anakRows ?? []) {
+      const n = (a.nama as string | null)?.trim();
+      if (n) namaLengkap[a.id as string] = n;
+    }
+  }
+
   const rows: Record<string, unknown>[] = [];
   for (const p of pendaftaran ?? []) {
     const ids = (p.anak_ids as string[]) ?? [];
@@ -47,7 +61,7 @@ export async function generateSertifikatEvent(eventId: string): Promise<number> 
         event_id: ev.id,
         anak_id: anakId,
         ortu_id: p.ortu_id,
-        anak_nama: nama[i] ?? 'Anak',
+        anak_nama: namaLengkap[anakId] ?? nama[i] ?? 'Anak',
         event_judul: ev.judul,
         event_tanggal: ev.tanggal,
         lokasi: ev.lokasi,
