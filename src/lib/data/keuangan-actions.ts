@@ -18,7 +18,10 @@ export async function catatPengeluaran(formData: FormData) {
   const { s, adminId } = await adminDb();
   const jumlah = int(formData.get('jumlah'));
   if (jumlah <= 0) throw new Error('Nominal wajib diisi.');
-  const { error } = await s.from('transaksi_keuangan').insert({
+  const eventId = String(formData.get('event_id') ?? '').trim() || null;
+  // Record<string, unknown>: tipe hasil generate Supabase menolak properti di luar
+  // bentuk literal pertama, sehingga `event_id` opsional harus dilonggarkan di sini.
+  const baris: Record<string, unknown> = {
     arah: 'keluar',
     kategori: String(formData.get('kategori') ?? 'lainnya'),
     jumlah,
@@ -29,10 +32,20 @@ export async function catatPengeluaran(formData: FormData) {
     pic: String(formData.get('pic') ?? '').trim() || null,
     ref_tipe: 'manual',
     dibuat_oleh: adminId,
-  });
-  if (error) throw new Error(error.message);
+  };
+  // Kolom `event_id` (migrasi 0088) mungkin BELUM ada saat kode ini sudah ter-deploy —
+  // aturan wajib di CLAUDE.md. Coba dengan kolomnya, bila ditolak (42703) ulangi tanpa
+  // kolom itu supaya pencatatan pengeluaran tetap jalan (hanya kaitan event yang hilang).
+  const { error } = await s.from('transaksi_keuangan').insert(eventId ? { ...baris, event_id: eventId } : { ...baris });
+  if (error) {
+    const kolomHilang = error.code === '42703' || /event_id/.test(error.message ?? '');
+    if (!(eventId && kolomHilang)) throw new Error(error.message);
+    const { error: e2 } = await s.from('transaksi_keuangan').insert({ ...baris });
+    if (e2) throw new Error(e2.message);
+  }
   revalidatePath('/admin/keuangan/expense');
   revalidatePath('/admin/keuangan');
+  revalidatePath('/admin/keuangan/transaksi');
 }
 
 export async function hapusTransaksi(id: string) {

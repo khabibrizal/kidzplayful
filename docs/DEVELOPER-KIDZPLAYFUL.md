@@ -352,6 +352,11 @@ Sub-navigasi: `KeuanganNav.tsx` (client). Semua reader read-only lewat `createCl
 - **Reset setelah simpan**: ketiga komponen client itu **uncontrolled** by design — lihat §3 "Form + Server Action: aturan reset". Bila menambah field baru di form ini, ikuti aturan itu; kalau tidak, nilainya (termasuk **URL foto nota**) akan tertinggal dan ikut ter-submit pada entri berikutnya.
 - **Fungsi data**: `getLedger({arah:'keluar'})`, `getKategoriPengeluaran()`, `getBudgetMap(ym)` (sisa anggaran per kategori).
 - **Server action**: `catatPengeluaran`, `hapusTransaksi` (`keuangan-actions.ts`).
+- **🎈 Pengeluaran untuk EVENT tertentu** (migrasi **0088**): form pengeluaran punya dropdown *"Untuk event (opsional)"* → disimpan ke kolom baru **`transaksi_keuangan.event_id`**. Riwayat pengeluaran & halaman Transaksi menampilkan badge nama event.
+  - **Kenapa kolom baru, bukan `ref_tipe='event'`**: ada unique index `uq_transaksi_ref (ref_tipe, ref_id)` yang memaksa SATU baris per referensi — memakai `ref_tipe` berarti hanya boleh ada satu pengeluaran per event. Selain itu `ref_tipe/ref_id` sudah dipakai `getTransaksiDetail` untuk mencabangkan JENIS sumber transaksi.
+  - **`ON DELETE SET NULL`**: menghapus event tidak boleh menghapus catatan keuangannya — uang yang sudah keluar tetap harus tercatat.
+  - **Filter per event di `/admin/keuangan/transaksi` kini dua arah**: (a) pemasukan lewat `ref_tipe='pendaftaran'` + `ref_id` milik event itu, (b) pengeluaran lewat `event_id`. `getLedger` menjalankannya sebagai **dua query lalu digabung + dedupe**, bukan satu `.or()`, supaya cabang (b) bisa gagal sendirian saat kolomnya belum ada tanpa menjatuhkan cabang (a).
+  - **Toleran**: `getLedger` mencoba `select` dengan `event_id` lalu mengulang tanpa kolom itu bila `42703`; `catatPengeluaran` mengulang insert tanpa `event_id`. Jadi sebelum migrasi 0088 dijalankan, ledger & pencatatan tetap jalan — hanya kaitan event yang belum tersedia.
 - **Endpoint**: `transaksi_keuangan`, `kategori_pengeluaran`, `anggaran`; `UploadNota` → `storage.from('aset')` (folder `nota/`, WebP).
 
 ### 🖥️ Aset — `/admin/keuangan/aset`

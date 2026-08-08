@@ -21,6 +21,8 @@ export default async function TransaksiPage({ searchParams }: { searchParams: Pr
     getKategoriPengeluaran(),
     getEventSemua(),
   ]);
+  const judulEvent: Record<string, string> = {};
+  for (const e of events) judulEvent[e.id] = e.judul;
   const masuk = rows.filter((r) => r.arah === 'masuk').reduce((a, r) => a + r.jumlah, 0);
   const keluar = rows.filter((r) => r.arah === 'keluar').reduce((a, r) => a + r.jumlah, 0);
 
@@ -49,7 +51,9 @@ export default async function TransaksiPage({ searchParams }: { searchParams: Pr
             <optgroup label="Masuk">{KATEGORI_MASUK.map((k) => <option key={k} value={k}>{LABEL_KATEGORI[k] ?? k}</option>)}</optgroup>
             <optgroup label="Keluar">{katKeluar.map((k) => <option key={k.id} value={k.kode}>{k.nama}</option>)}</optgroup>
           </select>
-          <select className={s.inp} name="event" defaultValue={eventId} style={{ flex: 1, minWidth: 160 }} title="Filter pemasukan per event">
+          {/* Sejak migrasi 0088 filter ini mencakup DUA arah: pemasukan dari pendaftaran
+              event, dan pengeluaran yang dikaitkan ke event tsb saat dicatat. */}
+          <select className={s.inp} name="event" defaultValue={eventId} style={{ flex: 1, minWidth: 160 }} title="Filter transaksi per event (pemasukan pendaftaran + pengeluaran yang dikaitkan)">
             <option value="">Semua event</option>
             {events.map((e) => <option key={e.id} value={e.id}>🎈 {e.judul}{e.tanggal ? ` (${e.tanggal})` : ''}</option>)}
           </select>
@@ -72,6 +76,9 @@ export default async function TransaksiPage({ searchParams }: { searchParams: Pr
             <span style={{ flex: 1, minWidth: 0 }}>
               <b style={{ color: t.arah === 'masuk' ? '#1c7a43' : '#c0392b' }}>{LABEL_KATEGORI[t.kategori] ?? t.kategori}</b>
               {bisa && <span className={s.muted} style={{ fontSize: 12 }}> · lihat detail ›</span>}
+              {t.event_id && judulEvent[t.event_id] && (
+                <><br /><span className={s.tag} style={{ background: '#e7f0fb', color: '#1b5fa8', fontSize: 11 }}>🎈 {judulEvent[t.event_id]}</span></>
+              )}
               <br /><small className={s.muted}>{t.tanggal}{t.keterangan ? ` · ${t.keterangan}` : ''}{t.metode ? ` · ${t.metode}` : ''}</small>
             </span>
             <span style={{ fontWeight: 800, color: t.arah === 'masuk' ? '#1c7a43' : '#c0392b' }}>{t.arah === 'masuk' ? '+' : '−'}{formatRupiah(t.jumlah)}</span>

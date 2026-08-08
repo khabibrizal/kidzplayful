@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { tanggalWIB } from '@/lib/domain/gamifikasi';
 import { statusLangganan } from '@/lib/domain/trial';
 
-export interface Trx { id?: string; arah: 'masuk' | 'keluar'; kategori: string; jumlah: number; tanggal: string; metode?: string | null; keterangan?: string | null; lampiran_url?: string | null; ref_tipe?: string | null; ref_id?: string | null; }
+export interface Trx { id?: string; arah: 'masuk' | 'keluar'; kategori: string; jumlah: number; tanggal: string; metode?: string | null; keterangan?: string | null; lampiran_url?: string | null; ref_tipe?: string | null; ref_id?: string | null; event_id?: string | null; }
 
 export { METODE_BAYAR } from '@/lib/metode';
 
@@ -79,25 +79,65 @@ export async function getDashboardKeuangan(): Promise<DashboardKeuangan> {
 }
 
 /** Daftar transaksi (untuk halaman Ledger & Cash Flow), filter periode & arah/kategori. */
+const LEDGER_COLS = 'id,arah,kategori,jumlah,tanggal,metode,keterangan,lampiran_url,ref_tipe,ref_id';
+const LEDGER_COLS_EV = `${LEDGER_COLS},event_id`;
+
+/** true bila error berasal dari kolom `event_id` yang belum ada (migrasi 0088 belum jalan). */
+function kolomEventHilang(err?: { code?: string; message?: string } | null): boolean {
+  return !!err && (err.code === '42703' || /event_id/.test(err.message ?? ''));
+}
+
 export async function getLedger(opts?: { from?: string; to?: string; arah?: string; kategori?: string; eventId?: string; limit?: number }): Promise<Trx[]> {
   try {
     const s = await createClient();
-    // Filter per event: transaksi pendaftaran yang ref_id-nya milik event tsb.
-    let refIds: string[] | null = null;
-    if (opts?.eventId) {
-      const { data: pend } = await s.from('pendaftaran_event').select('id').eq('event_id', opts.eventId);
-      refIds = (pend ?? []).map((r) => r.id as string);
-      if (!refIds.length) return []; // event tak punya pendaftaran → tak ada transaksi
+    const batas = opts?.limit ?? 500;
+
+    // Filter dasar yang berlaku untuk semua cabang query.
+    const dasar = (kolom: string) => {
+      let q = s.from('transaksi_keuangan').select(kolom)
+        .order('tanggal', { ascending: false }).order('created_at', { ascending: false });
+      if (opts?.from) q = q.gte('tanggal', opts.from);
+      if (opts?.to) q = q.lte('tanggal', opts.to);
+      if (opts?.arah) q = q.eq('arah', opts.arah);
+      if (opts?.kategori) q = q.eq('kategori', opts.kategori);
+      return q.limit(batas);
+    };
+
+    // Tanpa filter event: satu query biasa. Kolom `event_id` (migrasi 0088) mungkin belum
+    // ada → coba dengan kolomnya, bila ditolak ulangi tanpa kolom itu (ledger tetap tampil).
+    if (!opts?.eventId) {
+      const coba = await dasar(LEDGER_COLS_EV);
+      if (!coba.error) return (coba.data ?? []) as unknown as Trx[];
+      if (!kolomEventHilang(coba.error)) return [];
+      const ulang = await dasar(LEDGER_COLS);
+      return (ulang.data ?? []) as unknown as Trx[];
     }
-    let q = s.from('transaksi_keuangan').select('id,arah,kategori,jumlah,tanggal,metode,keterangan,lampiran_url,ref_tipe,ref_id').order('tanggal', { ascending: false }).order('created_at', { ascending: false });
-    if (opts?.from) q = q.gte('tanggal', opts.from);
-    if (opts?.to) q = q.lte('tanggal', opts.to);
-    if (opts?.arah) q = q.eq('arah', opts.arah);
-    if (opts?.kategori) q = q.eq('kategori', opts.kategori);
-    if (refIds) q = q.eq('ref_tipe', 'pendaftaran').in('ref_id', refIds);
-    q = q.limit(opts?.limit ?? 500);
-    const { data } = await q;
-    return (data ?? []) as Trx[];
+
+    // Filter per event menggabungkan DUA sumber yang berbeda bentuk kaitannya:
+    //  (a) PEMASUKAN  — transaksi pendaftaran yang ref_id-nya milik event tsb;
+    //  (b) PENGELUARAN — transaksi yang event_id-nya menunjuk event tsb (migrasi 0088).
+    // Digabung di sini (bukan lewat .or()) supaya tetap jalan saat kolom event_id belum ada.
+    const { data: pend } = await s.from('pendaftaran_event').select('id').eq('event_id', opts.eventId);
+    const refIds = (pend ?? []).map((r) => r.id as string);
+
+    const hasil: Trx[] = [];
+    if (refIds.length) {
+      const q = await dasar(LEDGER_COLS_EV).eq('ref_tipe', 'pendaftaran').in('ref_id', refIds);
+      if (q.error && kolomEventHilang(q.error)) {
+        const u = await dasar(LEDGER_COLS).eq('ref_tipe', 'pendaftaran').in('ref_id', refIds);
+        hasil.push(...((u.data ?? []) as unknown as Trx[]));
+      } else if (!q.error) {
+        hasil.push(...((q.data ?? []) as unknown as Trx[]));
+      }
+    }
+    const qb = await dasar(LEDGER_COLS_EV).eq('event_id', opts.eventId);
+    if (!qb.error) hasil.push(...((qb.data ?? []) as unknown as Trx[]));
+    // qb.error karena kolom belum ada → abaikan; pengeluaran per event memang belum tersedia.
+
+    // Dedupe (satu baris bisa terjaring dua cabang) lalu urutkan ulang: tanggal terbaru dulu.
+    const unik = new Map<string, Trx>();
+    for (const r of hasil) unik.set(r.id ?? JSON.stringify(r), r);
+    return [...unik.values()].sort((a, b) => (a.tanggal < b.tanggal ? 1 : a.tanggal > b.tanggal ? -1 : 0)).slice(0, batas);
   } catch { return []; }
 }
 
