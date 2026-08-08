@@ -6,7 +6,14 @@ export interface ReminderRow {
   reminder_terkirim: boolean;
   anak_nama: string[];
   kelas: string | null;
-  event: { id: string; judul: string; lokasi: string | null; tanggal: string | null; jam_mulai: string | null; jam_selesai: string | null; pesan_reminder: string | null } | null;
+  event: {
+    id: string; judul: string; lokasi: string | null; pesan_reminder: string | null;
+    tanggal: string | null; jam_mulai: string | null; jam_selesai: string | null;
+    // Jadwal per kelas — event yang dipisah Baby/Toddler menyimpan jamnya di sini,
+    // dan kolom level atas sering kosong pada event seperti itu.
+    baby_tanggal: string | null; baby_jam_mulai: string | null; baby_jam_selesai: string | null;
+    toddler_tanggal: string | null; toddler_jam_mulai: string | null; toddler_jam_selesai: string | null;
+  } | null;
   nama: string | null;
   no_wa: string | null;
 }
@@ -16,7 +23,7 @@ export async function getReminderPendaftaran(): Promise<ReminderRow[]> {
   const s = await createClient();
   const { data } = await s
     .from('pendaftaran_event')
-    .select('id, reminder_terkirim, anak_nama, kelas, event:event_id(id,judul,lokasi,tanggal,jam_mulai,jam_selesai,pesan_reminder), ortu:ortu_id(nama_tampilan,no_wa)')
+    .select('id, reminder_terkirim, anak_nama, kelas, event:event_id(id,judul,lokasi,tanggal,jam_mulai,jam_selesai,pesan_reminder,baby_tanggal,baby_jam_mulai,baby_jam_selesai,toddler_tanggal,toddler_jam_mulai,toddler_jam_selesai), ortu:ortu_id(nama_tampilan,no_wa)')
     .eq('status', 'diterima')
     .order('created_at', { ascending: false })
     .limit(500); // batas aman; reminder hanya untuk event mendatang

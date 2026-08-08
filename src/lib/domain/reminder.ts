@@ -34,3 +34,36 @@ export function susunPesanReminder(i: InputReminder): string {
   baris.push('— KidzPlayful');
   return baris.join('\n');
 }
+
+/** Jadwal satu event, termasuk jadwal khusus per kelas (Baby/Toddler). */
+export interface JadwalEvent {
+  tanggal: string | null;
+  jam_mulai: string | null;
+  jam_selesai: string | null;
+  baby_tanggal?: string | null;
+  baby_jam_mulai?: string | null;
+  baby_jam_selesai?: string | null;
+  toddler_tanggal?: string | null;
+  toddler_jam_mulai?: string | null;
+  toddler_jam_selesai?: string | null;
+}
+
+/**
+ * Pilih tanggal & jam yang BENAR untuk sebuah pendaftaran.
+ *
+ * Event yang dipisah Baby/Toddler menyimpan jadwalnya di kolom per kelas, dan
+ * `event.jam_mulai` level atas sering KOSONG di event seperti itu — akibatnya pesan
+ * reminder tidak memuat jam sama sekali. Jadi: pakai jadwal kelas bila ada, dan
+ * jatuh ke jadwal event untuk kelas 'gabungan' atau bila kolom kelasnya kosong.
+ */
+export function jadwalUntukKelas(ev: JadwalEvent, kelas: string | null): { tanggal: string | null; jamMulai: string | null; jamSelesai: string | null } {
+  const pakai = (tgl?: string | null, m?: string | null, s?: string | null) =>
+    (m || s || tgl) ? { tanggal: tgl ?? ev.tanggal, jamMulai: m ?? null, jamSelesai: s ?? null } : null;
+
+  const dari =
+    kelas === 'baby' ? pakai(ev.baby_tanggal, ev.baby_jam_mulai, ev.baby_jam_selesai)
+    : kelas === 'toddler' ? pakai(ev.toddler_tanggal, ev.toddler_jam_mulai, ev.toddler_jam_selesai)
+    : null;
+
+  return dari ?? { tanggal: ev.tanggal, jamMulai: ev.jam_mulai, jamSelesai: ev.jam_selesai };
+}

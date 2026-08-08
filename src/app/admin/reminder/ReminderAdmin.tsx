@@ -2,7 +2,7 @@
 'use client';
 import { useState } from 'react';
 import { tandaiReminder, simpanPesanReminder } from '@/lib/data/admin-reminder-actions';
-import { susunPesanReminder } from '@/lib/domain/reminder';
+import { susunPesanReminder, jadwalUntukKelas } from '@/lib/domain/reminder';
 import type { ReminderRow } from '@/lib/data/admin-reminder';
 import { formatTanggal, linkWa } from '@/lib/format';
 import s from '../admin.module.css';
@@ -17,9 +17,12 @@ export default function ReminderAdmin({ rows, todayStr, besokStr }: { rows: Remi
   function flash(m: string) { setToast(m); setTimeout(() => setToast(''), 2000); }
 
   function pesanWa(r: ReminderRow, ev: NonNullable<ReminderRow['event']>, pesanManual: string): string {
+    // Jadwal diambil sesuai KELAS pendaftaran — pada event yang dipisah Baby/Toddler,
+    // jam level event sering kosong sehingga pesan jadi tanpa jam sama sekali.
+    const j = jadwalUntukKelas(ev, r.kelas);
     return susunPesanReminder({
-      nama: r.nama, judul: ev.judul, tanggal: ev.tanggal, tanggalFmt: ev.tanggal ? formatTanggal(ev.tanggal) : undefined,
-      jamMulai: ev.jam_mulai, jamSelesai: ev.jam_selesai, lokasi: ev.lokasi, anakNama: r.anak_nama, kelas: r.kelas, pesanManual,
+      nama: r.nama, judul: ev.judul, tanggal: j.tanggal, tanggalFmt: j.tanggal ? formatTanggal(j.tanggal) : undefined,
+      jamMulai: j.jamMulai, jamSelesai: j.jamSelesai, lokasi: ev.lokasi, anakNama: r.anak_nama, kelas: r.kelas, pesanManual,
     });
   }
 
@@ -40,23 +43,41 @@ export default function ReminderAdmin({ rows, todayStr, besokStr }: { rows: Remi
 
   if (list.length === 0) return <p className={s.muted}>Tidak ada peserta pada event apa pun.</p>;
 
-  // kelompokkan per event, lalu saring berdasarkan nama event
+  // kelompokkan per event
   const grup = new Map<string, ReminderRow[]>();
   for (const r of list) { const k = r.event!.id; if (!grup.has(k)) grup.set(k, []); grup.get(k)!.push(r); }
-  const grupTampil = [...grup.values()].filter((pe) => pe[0].event!.judul.toLowerCase().includes(q.trim().toLowerCase()));
+
+  // Pencarian mencakup NAMA ANAK & NAMA ORANG TUA (seperti halaman pendaftar), bukan
+  // hanya judul event. Bila judul event yang cocok, seluruh pesertanya ditampilkan.
+  const kata = q.trim().toLowerCase();
+  const cocokOrang = (r: ReminderRow) =>
+    (r.nama ?? '').toLowerCase().includes(kata) ||
+    (r.anak_nama ?? []).some((n) => (n ?? '').toLowerCase().includes(kata));
+  const grupSemua = [...grup.values()];
+  const hasilGrup = grupSemua.map((pe) => {
+    if (!kata) return { pe, anggota: pe, tampil: true };
+    const judulCocok = pe[0].event!.judul.toLowerCase().includes(kata);
+    const anggota = judulCocok ? pe : pe.filter(cocokOrang);
+    return { pe, anggota, tampil: anggota.length > 0 };
+  });
+  const jmlTampil = hasilGrup.filter((g) => g.tampil).length;
 
   return (
     <div>
-      <input className={s.inp} placeholder="Cari nama kelas bermain / event..." value={q} onChange={(e) => setQ(e.target.value)} style={{ width: '100%', marginBottom: 12 }} />
-      {grupTampil.length === 0 && <p className={s.muted}>Tidak ada event yang cocok dengan &quot;{q}&quot;.</p>}
-      {grupTampil.map((peserta) => {
-        const ev = peserta[0].event!;
+      <input className={s.inp} placeholder="🔎 Cari nama anak / orang tua / event…" value={q} onChange={(e) => setQ(e.target.value)} style={{ width: '100%', marginBottom: 12 }} />
+      {!!kata && jmlTampil === 0 && <p className={s.muted}>Tidak ada yang cocok dengan &quot;{q}&quot;.</p>}
+      {/* Grup yang tidak cocok DISEMBUNYIKAN, bukan di-unmount: tiap grup punya textarea
+          pesan reminder, dan meng-unmount-nya membuang teks yang belum ditekan Simpan. */}
+      {hasilGrup.map(({ pe, anggota, tampil }) => {
+        const peserta = anggota;
+        const ev = pe[0].event!;
         const label = ev.tanggal === besokStr ? 'BESOK (H-1)' : ev.tanggal === todayStr ? 'HARI INI' : (ev.tanggal ? formatTanggal(ev.tanggal) : 'tanpa tanggal');
         const besok = ev.tanggal === besokStr;
         return (
-          <div key={ev.id} className={s.card} style={besok ? { border: '2px solid var(--lavender)' } : undefined}>
+          <div key={ev.id} className={s.card} style={{ ...(besok ? { border: '2px solid var(--lavender)' } : {}), ...(tampil ? {} : { display: 'none' }) }}>
             <div className={s.row}>
               <span style={{ flex: 1 }}><b>🎈 {ev.judul}</b></span>
+              {!!kata && <span className={s.tag} style={{ background: '#e7f0fb', color: '#1b5fa8' }}>{peserta.length} hasil</span>}
               <span className={s.tag} style={{ background: besok ? '#efe7fb' : '#eee', color: besok ? 'var(--lavender-d)' : 'var(--abu)' }}>{label}</span>
             </div>
             <div style={{ marginTop: 8 }}>
