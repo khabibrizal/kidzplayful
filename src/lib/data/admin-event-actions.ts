@@ -236,18 +236,43 @@ export async function reschedulePendaftaran(pendaftaranId: string, eventBaruId: 
   const alsn = alasan.trim();
   if (!alsn) throw new Error('Alasan reschedule wajib diisi.');
 
-  const { data: p } = await s.from('pendaftaran_event').select('event_id').eq('id', pendaftaranId).single();
+  const { data: p } = await s.from('pendaftaran_event').select('event_id,kelas').eq('id', pendaftaranId).single();
   if (!p) throw new Error('Pendaftaran tidak ditemukan.');
   if (p.event_id === eventBaruId) throw new Error('Pilih event yang berbeda.');
 
-  const { data: ev } = await s.from('event').select('id,status').eq('id', eventBaruId).maybeSingle();
+  const { data: ev } = await s.from('event')
+    .select('id,status,tanggal,jam_mulai,jam_selesai,baby_tanggal,baby_jam_mulai,baby_jam_selesai,toddler_tanggal,toddler_jam_mulai,toddler_jam_selesai')
+    .eq('id', eventBaruId).maybeSingle();
   if (!ev || ev.status !== 'tampil') throw new Error('Event tujuan tidak aktif.');
 
+  // Snapshot kelas & jadwal HARUS dihitung ulang terhadap event TUJUAN. Tanpa ini,
+  // kartu pendaftar tetap menampilkan jadwal event LAMA setelah dipindah — dan kelasnya
+  // bisa menunjuk kelas yang tidak ditawarkan event tujuan.
+  const adaBaby = !!(ev.baby_jam_mulai || ev.baby_tanggal);
+  const adaToddler = !!(ev.toddler_jam_mulai || ev.toddler_tanggal);
+  const kelasLama = p.kelas === 'baby' || p.kelas === 'toddler' ? p.kelas : 'gabungan';
+  // Kelas dipertahankan bila event tujuan menawarkannya; kalau tidak, turun ke 'gabungan'.
+  const kelasBaru = (kelasLama === 'baby' && adaBaby) || (kelasLama === 'toddler' && adaToddler) ? kelasLama : 'gabungan';
+  const kelasJadwal = kelasBaru === 'baby'
+    ? jadwalTeks(ev.baby_tanggal ?? ev.tanggal, ev.baby_jam_mulai, ev.baby_jam_selesai)
+    : kelasBaru === 'toddler'
+      ? jadwalTeks(ev.toddler_tanggal ?? ev.tanggal, ev.toddler_jam_mulai, ev.toddler_jam_selesai)
+      : jadwalTeks(ev.tanggal, ev.jam_mulai, ev.jam_selesai);
+
   const { error } = await s.from('pendaftaran_event')
-    .update({ event_id: eventBaruId, event_asal_id: p.event_id, alasan_reschedule: alsn, hadir_anak_ids: [] })
+    .update({
+      event_id: eventBaruId, event_asal_id: p.event_id, alasan_reschedule: alsn, hadir_anak_ids: [],
+      kelas: kelasBaru, kelas_jadwal: kelasJadwal,
+    })
     .eq('id', pendaftaranId);
   if (error) throw new Error(error.message);
+  // Pemasukan pendaftaran TIDAK perlu dipindah manual: `transaksi_keuangan` menyimpan
+  // ref_tipe='pendaftaran' + ref_id, dan laporan per event menurunkan kaitannya dari
+  // `pendaftaran_event.event_id` yang baru saja diperbarui — jadi revenue ikut pindah sendiri.
   revalidatePath('/event'); revalidatePath('/pilih-anak');
+  revalidatePath(`/admin/event/${p.event_id}/pendaftar`);
+  revalidatePath(`/admin/event/${eventBaruId}/pendaftar`);
+  revalidatePath('/admin/keuangan/transaksi');
 }
 
 /** Simpan template sertifikat (JPEG) &/atau link dokumentasi pada sebuah event. */

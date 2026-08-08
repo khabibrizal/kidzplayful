@@ -357,6 +357,14 @@ Sub-navigasi: `KeuanganNav.tsx` (client). Semua reader read-only lewat `createCl
   - **`ON DELETE SET NULL`**: menghapus event tidak boleh menghapus catatan keuangannya — uang yang sudah keluar tetap harus tercatat.
   - **Filter per event di `/admin/keuangan/transaksi` kini dua arah**: (a) pemasukan lewat `ref_tipe='pendaftaran'` + `ref_id` milik event itu, (b) pengeluaran lewat `event_id`. `getLedger` menjalankannya sebagai **dua query lalu digabung + dedupe**, bukan satu `.or()`, supaya cabang (b) bisa gagal sendirian saat kolomnya belum ada tanpa menjatuhkan cabang (a).
   - **Toleran**: `getLedger` mencoba `select` dengan `event_id` lalu mengulang tanpa kolom itu bila `42703`; `catatPengeluaran` mengulang insert tanpa `event_id`. Jadi sebelum migrasi 0088 dijalankan, ledger & pencatatan tetap jalan — hanya kaitan event yang belum tersedia.
+- **🔁 Revenue IKUT PINDAH saat pendaftar direschedule — by design, bukan kebetulan.** `reschedulePendaftaran` meng-**update `event_id` pada baris pendaftaran yang sama** (bukan membuat baris baru), sementara seluruh jalur revenue per event bersifat **turunan, bukan snapshot**:
+  1. `getLedger({eventId})` menurunkan `ref_id` dari `pendaftaran_event` yang `event_id`-nya sekarang;
+  2. `getInsight().topEvent` (`kpi.ts`) membaca `pendaftaran_event.select('total,status,event:event_id(judul)')` — join mengikuti `event_id` terkini;
+  3. `getTransaksiDetail` menampilkan event lewat join dari baris pendaftaran;
+  4. baris ledger-nya sendiri hanya menyimpan `ref_tipe='pendaftaran'` + `ref_id`, dan `keterangan`-nya generik (`'Pendaftaran event'`) — **tidak ada nama/id event yang dibekukan**, jadi tak ada yang bisa basi.
+  Konsekuensinya: pemasukan otomatis keluar dari event asal dan masuk ke event tujuan. **Jangan menambahkan snapshot event pada baris ledger pendaftaran** — itu justru akan mematahkan perilaku ini.
+  - **Catatan**: `transaksi_keuangan.event_id` (0088) khusus untuk **pengeluaran**; ia TIDAK ikut pindah saat pendaftar direschedule, dan memang tidak boleh — biaya yang sudah dikeluarkan untuk event asal tetap milik event asal.
+  - **Perbaikan menyertai**: `reschedulePendaftaran` dulu tidak menghitung ulang snapshot **`kelas`/`kelas_jadwal`**, sehingga setelah pindah event kartu pendaftar masih menampilkan **jadwal event LAMA** (dan bisa menunjuk kelas yang tidak ditawarkan event tujuan). Kini keduanya dihitung ulang terhadap event tujuan: kelas dipertahankan bila ditawarkan, selain itu turun ke `gabungan`. Bandingkan dengan `pindahKelasPendaftaran` yang sejak awal sudah melakukannya.
 - **Endpoint**: `transaksi_keuangan`, `kategori_pengeluaran`, `anggaran`; `UploadNota` → `storage.from('aset')` (folder `nota/`, WebP).
 
 ### 🖥️ Aset — `/admin/keuangan/aset`
