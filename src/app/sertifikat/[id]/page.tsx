@@ -1,10 +1,10 @@
 // src/app/sertifikat/[id]/page.tsx — halaman e-sertifikat (view + Unduh PDF)
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getSertifikat } from '@/lib/data/sertifikat';
 import SertifikatView from '@/components/SertifikatView';
-import UnduhPdfBtn from '@/components/UnduhPdfBtn';
+import UnduhSertifikatBtn from '@/components/UnduhSertifikatBtn';
+import { formatTanggal } from '@/lib/format';
 import TombolKembali from '@/components/TombolKembali';
 
 export default async function SertifikatPage({ params }: { params: Promise<{ id: string }> }) {
@@ -21,7 +21,13 @@ export default async function SertifikatPage({ params }: { params: Promise<{ id:
       <style>{`@media print{@page{size:A4 landscape;margin:8mm}}`}</style>
       <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, flexWrap: 'wrap' }}>
         <TombolKembali fallback={`/anak/${sert.anak_id}/laporan`} style={{ color: 'var(--abu)', fontSize: 13 }} />
-        <UnduhPdfBtn judul={`Sertifikat ${sert.anak_nama}`} />
+        <UnduhSertifikatBtn isi={{
+          anakNama: sert.anak_nama,
+          eventJudul: sert.event_judul,
+          tanggalLokasi: [formatTanggal(sert.event_tanggal), sert.lokasi].filter(Boolean).join(' · '),
+          bgUrl: sert.bg_url,
+          diterbitkanOleh: sert.diterbitkan_oleh,
+        }} />
       </div>
       <SertifikatView s={sert} />
       {sert.dokumentasi_url && (
