@@ -39,5 +39,15 @@ export async function getSertifikat(id: string): Promise<Sertifikat | null> {
     const lengkap = (anak?.nama as string | undefined)?.trim();
     if (lengkap) sert.anak_nama = lengkap;
   }
+  // `dokumentasi_url` juga SNAPSHOT saat sertifikat dibuat. Bila admin memasang link
+  // dokumentasi SETELAH sertifikat di-generate, snapshot itu null dan tombol "Lihat
+  // Dokumentasi" tidak pernah muncul — meski link-nya sudah ada di event. Karena itu
+  // dibaca ulang dari event (RLS 0068 mengizinkan ortu peserta membacanya); snapshot
+  // hanya dipakai bila baris event tak terbaca.
+  if (sert.event_id) {
+    const { data: ev } = await s.from('event').select('dokumentasi_url').eq('id', sert.event_id).maybeSingle();
+    const link = (ev?.dokumentasi_url as string | null | undefined)?.trim();
+    if (link) sert.dokumentasi_url = link;
+  }
   return sert;
 }

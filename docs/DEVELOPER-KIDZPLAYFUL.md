@@ -604,6 +604,13 @@ Sisi orang tua; **khusus member `aktif`** (gate `getStatusLangganan` → `<Terku
 - **Fungsi data**: `getDashboardKeuangan()`, `getPerBulan(6)` (`keuangan.ts`).
 - **Endpoint**: `profiles`, `transaksi_keuangan`, `langganan` (+ sumber lain via dashboard keuangan).
 
+> **⚠️ Kenapa sebagian orang tua "tidak bisa melihat event" padahal sudah diterima & absen** (keluhan nyata) — tiga sebab berbeda, semuanya sudah ditangani/didiagnosis:
+> 1. **Halaman `/event` hanya memuat katalog `status='tampil'`** (via `getEventTampilCached`, client anon agar cacheable). Begitu admin **mengarsipkan** event yang sudah selesai, kartunya hilang — padahal **tautan Catatan Perkembangan menempel di kartu itu**. Diperbaiki: `/event` kini menambahkan blok **"EVENT YANG PERNAH DIIKUTI"** dari `getEventDiikuti()` untuk event di luar katalog. Ini bekerja karena policy **`event baca peserta` (0068)** mengizinkan ortu membaca event yang pernah ia daftari walau diarsipkan.
+> 2. **`sertifikat.dokumentasi_url` adalah SNAPSHOT** saat sertifikat dibuat. Bila admin memasang link dokumentasi **setelah** generate, snapshot itu `null` dan tombol dokumentasi tak pernah muncul. Diperbaiki: `getSertifikat` membaca `event.dokumentasi_url` **live**, snapshot hanya cadangan — sertifikat lama ikut benar **tanpa generate ulang**.
+> 3. **Sertifikat hanya dibuat untuk anak di `hadir_anak_ids`** (`generateSertifikatEvent`). Bila admin menekan Generate **sebelum** absensi ditandai, anak yang hadir belakangan tidak dapat sertifikat. Ini **bukan bug** — cukup tekan Generate lagi (upsert idempoten). Perilaku ini disengaja: sertifikat hanya untuk yang benar-benar hadir.
+>
+> Jalur ke sertifikat & catatan **tidak** bergantung status event: `LaporanAnakView` menyusun blok dari baris `sertifikat`/`catatan_perkembangan` itu sendiri (dengan judul cadangan), dan `getSertifikatAnak` memakai kolom snapshot. Jadi rapor anak tetap bisa diakses walau event diarsipkan.
+
 ### 🏅 Sertifikat & Stiker — `/sertifikat/[id]`, `/stiker-event/[id]`
 - **Fungsi data**: `getSertifikat(id)` (`sertifikat.ts`); stiker (**guard admin** `getAdminTerjamin`): `getEventAdmin(id)`, `getPendaftaranByEvent(id)`.
 - **Komponen**: `SertifikatView`, `StikerSheet`, `UnduhPdfBtn` (stiker & peserta), **`UnduhSertifikatBtn`** (sertifikat).
