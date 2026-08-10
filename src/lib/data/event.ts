@@ -40,6 +40,45 @@ export async function getEventDiikuti(): Promise<{ event: EventKelas; status: st
   return out;
 }
 
+/** Info event TERKINI untuk blok KEGIATAN di Rapor anak (bukan snapshot sertifikat). */
+export interface EventInfoRapor { id: string; judul: string; tanggal: string | null; dokumentasi_url: string | null }
+
+/**
+ * id event yang benar-benar DIHADIRI anak (ditandai absensi admin).
+ *
+ * Dipakai Rapor anak agar blok KEGIATAN tetap muncul meskipun sertifikatnya belum
+ * di-generate — sebelumnya blok hanya lahir dari catatan/sertifikat, sehingga anak yang
+ * sudah hadir tapi sertifikatnya belum terbit tidak melihat apa pun (termasuk tautan
+ * dokumentasi). Status event ('tampil'/'arsip') TIDAK berpengaruh di sini.
+ */
+export async function getEventIdHadirAnak(anakId: string): Promise<string[]> {
+  const s = await createClient();
+  const { data } = await s.from('pendaftaran_event')
+    .select('event_id').eq('status', 'diterima').contains('hadir_anak_ids', [anakId]);
+  return [...new Set((data ?? []).map((r) => r.event_id as string).filter(Boolean))];
+}
+
+/**
+ * Info event terkini untuk sekumpulan id. Event yang sudah DIARSIPKAN tetap terbaca oleh
+ * orang tua peserta berkat policy "event baca peserta" (migrasi 0068), jadi judul, tanggal,
+ * dan tautan dokumentasi di Rapor selalu mengikuti data event — bukan snapshot lama.
+ */
+export async function getEventInfoBanyak(ids: string[]): Promise<Map<string, EventInfoRapor>> {
+  const out = new Map<string, EventInfoRapor>();
+  if (ids.length === 0) return out;
+  const s = await createClient();
+  const { data } = await s.from('event').select('id,judul,tanggal,dokumentasi_url').in('id', ids);
+  for (const r of data ?? []) {
+    out.set(r.id as string, {
+      id: r.id as string,
+      judul: (r.judul as string) ?? '',
+      tanggal: (r.tanggal as string | null) ?? null,
+      dokumentasi_url: ((r.dokumentasi_url as string | null) ?? null),
+    });
+  }
+  return out;
+}
+
 export interface PendaftaranSaya {
   /** status pendaftaran terbaru per event (termasuk 'ditolak'). */
   statusMap: Record<string, string>;

@@ -7,6 +7,7 @@ import { laporanAnak, type BarisHasil } from '@/lib/domain/laporan-anak';
 import { getCatatanAnak } from '@/lib/data/catatan';
 import { getSertifikatAnak } from '@/lib/data/sertifikat';
 import { getGamifikasiAnak } from '@/lib/data/gamifikasi';
+import { getEventIdHadirAnak, getEventInfoBanyak } from '@/lib/data/event';
 import { formatTanggal } from '@/lib/format';
 import CatatanCard from '@/components/CatatanCard';
 
@@ -22,23 +23,24 @@ function Stat({ b, l }: { b: string; l: string }) {
 export default async function LaporanAnakView({ anakId, tampilkanSertifikat = true }: { anakId: string; tampilkanSertifikat?: boolean }) {
   const supabase = await createClient();
   const { data: anak } = await supabase.from('anak').select('nama').eq('id', anakId).maybeSingle();
-  const [{ data: rows }, catatan, sertifikat, gami] = await Promise.all([
+  const [{ data: rows }, catatan, sertifikat, gami, idHadir] = await Promise.all([
     supabase.from('hasil_main').select('mesin,area_skill,bintang,durasi_detik,selesai').eq('anak_id', anakId),
     getCatatanAnak(anakId),
     getSertifikatAnak(anakId),
     getGamifikasiAnak(anakId),
+    getEventIdHadirAnak(anakId),
   ]);
   const r = laporanAnak((rows ?? []) as unknown as BarisHasil[]);
   const maxArea = Math.max(1, ...Object.values(r.perArea));
   const namaAnak = (anak?.nama as string) ?? 'anak';
 
-  // Gabungkan catatan + sertifikat per EVENT (daftar collapse).
-  type BlokEvent = { key: string; judul: string; tanggal: string | null; catatan: typeof catatan[number]['c'][]; sertifikat: typeof sertifikat };
+  // Gabungkan catatan + sertifikat + KEHADIRAN per EVENT (daftar collapse).
+  type BlokEvent = { key: string; judul: string; tanggal: string | null; hadir: boolean; dokumentasi: string | null; catatan: typeof catatan[number]['c'][]; sertifikat: typeof sertifikat };
   const blokMap = new Map<string, BlokEvent>();
   const judulBaik = (j?: string | null) => !!j && j.trim() !== '' && j !== 'Event';
   const ambilBlok = (key: string, judul: string, tanggal: string | null) => {
     let b = blokMap.get(key);
-    if (!b) { b = { key, judul, tanggal, catatan: [], sertifikat: [] }; blokMap.set(key, b); }
+    if (!b) { b = { key, judul, tanggal, hadir: false, dokumentasi: null, catatan: [], sertifikat: [] }; blokMap.set(key, b); }
     // upgrade ke judul yang lebih valid bila blok sebelumnya masih fallback "Event"
     if (!judulBaik(b.judul) && judulBaik(judul)) b.judul = judul;
     if (!b.tanggal && tanggal) b.tanggal = tanggal;
@@ -46,6 +48,25 @@ export default async function LaporanAnakView({ anakId, tampilkanSertifikat = tr
   };
   for (const { c, judulEvent } of catatan) ambilBlok(c.event_id ?? `j:${judulEvent}`, judulEvent, null).catatan.push(c);
   if (tampilkanSertifikat) for (const st of sertifikat) ambilBlok(st.event_id ?? `j:${st.event_judul}`, st.event_judul, st.event_tanggal).sertifikat.push(st);
+  // Anak yang sudah diabsen HADIR selalu dapat bloknya sendiri — walau sertifikatnya belum
+  // di-generate dan walau eventnya sudah diarsipkan. Di blok itulah tautan dokumentasi ada.
+  for (const id of idHadir) ambilBlok(id, 'Event', null).hadir = true;
+
+  // Judul, tanggal, dan tautan dokumentasi diambil ULANG dari event (bukan snapshot
+  // sertifikat): admin sering memasang link dokumentasi SETELAH sertifikat terbit, dan
+  // snapshot yang kosong itu membuat tombol Dokumentasi tak pernah muncul.
+  const info = await getEventInfoBanyak([...blokMap.keys()].filter((k) => !k.startsWith('j:')));
+  for (const b of blokMap.values()) {
+    const i = info.get(b.key);
+    if (i) {
+      if (judulBaik(i.judul)) b.judul = i.judul;
+      if (i.tanggal) b.tanggal = i.tanggal;
+      b.dokumentasi = i.dokumentasi_url?.trim() || null;
+    }
+    // cadangan: event tak terbaca (mis. dilihat psikolog) → pakai snapshot sertifikat
+    if (!b.dokumentasi) b.dokumentasi = b.sertifikat.find((st) => st.dokumentasi_url)?.dokumentasi_url ?? null;
+    if (!judulBaik(b.judul)) b.judul = b.sertifikat[0]?.event_judul || 'Kelas Bermain';
+  }
   const blokEvent = [...blokMap.values()].sort((a, b) => (b.tanggal ?? '').localeCompare(a.tanggal ?? ''));
 
   return (
@@ -107,19 +128,26 @@ export default async function LaporanAnakView({ anakId, tampilkanSertifikat = tr
               <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 400, fontSize: 12, color: 'var(--abu)' }}>
                 {b.tanggal && <span>{formatTanggal(b.tanggal)}</span>}
                 {b.sertifikat.length > 0 && <span title="Ada sertifikat">🏅</span>}
+                {b.dokumentasi && <span title="Ada dokumentasi">📷</span>}
                 <span aria-hidden>▾</span>
               </span>
             </summary>
             <div style={{ marginTop: 10 }}>
-              {b.sertifikat.map((st) => (
-                <div key={st.id} style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
-                  <Link href={`/sertifikat/${st.id}`} className="kp-btn" style={{ display: 'inline-block' }}>🏅 Lihat / Unduh Sertifikat</Link>
-                  {st.dokumentasi_url && <a href={st.dokumentasi_url} target="_blank" rel="noopener noreferrer" className="kp-btn" style={{ display: 'inline-block', background: 'var(--mint-d)' }}>📷 Dokumentasi</a>}
+              {(b.sertifikat.length > 0 || b.dokumentasi) && (
+                <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+                  {b.sertifikat.map((st) => (
+                    <Link key={st.id} href={`/sertifikat/${st.id}`} className="kp-btn" style={{ display: 'inline-block' }}>🏅 Lihat / Unduh Sertifikat</Link>
+                  ))}
+                  {/* satu tombol dokumentasi per event — sumbernya event, bukan snapshot sertifikat */}
+                  {b.dokumentasi && <a href={b.dokumentasi} target="_blank" rel="noopener noreferrer" className="kp-btn" style={{ display: 'inline-block', background: 'var(--mint-d)' }}>📷 Dokumentasi</a>}
                 </div>
-              ))}
+              )}
+              {tampilkanSertifikat && b.hadir && b.sertifikat.length === 0 && (
+                <p style={{ color: 'var(--abu)', fontSize: 13, marginTop: 0 }}>🏅 E-sertifikat untuk event ini belum diterbitkan admin.</p>
+              )}
               {b.catatan.length > 0
                 ? b.catatan.map((c) => <CatatanCard key={c.id} c={c} judulEvent={b.judul} />)
-                : b.sertifikat.length === 0 && <p style={{ color: 'var(--abu)', fontSize: 13, margin: 0 }}>Belum ada detail.</p>}
+                : b.sertifikat.length === 0 && !b.hadir && !b.dokumentasi && <p style={{ color: 'var(--abu)', fontSize: 13, margin: 0 }}>Belum ada detail.</p>}
             </div>
           </details>
         ))}
