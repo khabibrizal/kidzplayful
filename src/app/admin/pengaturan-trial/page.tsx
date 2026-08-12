@@ -55,10 +55,10 @@ export default async function PengaturanTrialPage({ searchParams }: { searchPara
         <div style={{ marginTop: 12 }}><button className={s.btn} type="submit">💾 Simpan</button></div>
       </form>
 
-      {/* Materi Kelas Bermain */}
+      {/* Materi Ide Bermain */}
       <details className={s.card} open>
-        <summary style={{ cursor: 'pointer', fontWeight: 800, color: 'var(--lavender-d)' }}>🎈 Materi Kelas Bermain ({kelas.length})</summary>
-        {kelas.length === 0 && <p className={s.muted} style={{ marginTop: 8 }}>Belum ada kelas bermain.</p>}
+        <summary style={{ cursor: 'pointer', fontWeight: 800, color: 'var(--lavender-d)' }}>🎈 Materi Ide Bermain ({kelas.length})</summary>
+        {kelas.length === 0 && <p className={s.muted} style={{ marginTop: 8 }}>Belum ada ide bermain.</p>}
         {kelas.map((k) => (
           <div key={k.id} className={s.row} style={{ padding: '7px 0', borderBottom: '1px solid #f0f0f5', alignItems: 'center' }}>
             <span style={{ flex: 1, fontSize: 14 }}>{k.judul}{k.status === 'nonaktif' && <span className={s.muted} style={{ fontSize: 11 }}> (nonaktif)</span>}</span>

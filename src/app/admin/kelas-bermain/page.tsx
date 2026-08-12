@@ -11,7 +11,7 @@ export default async function AdminKelasBermain() {
   const areaOpsi = area.map((a) => ({ key: a.key, label: a.label }));
   return (
     <div>
-      <div className={s.head} style={{ marginTop: 8 }}><h1>🎈 Kelas Bermain</h1></div>
+      <div className={s.head} style={{ marginTop: 8 }}><h1>🎈 Ide Bermain</h1></div>
       <KelasAdmin awal={list} produkOpsi={produkOpsi} areaOpsi={areaOpsi} />
     </div>
   );

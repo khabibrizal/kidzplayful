@@ -50,6 +50,9 @@ export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = []
   const [tutup, setTutup] = useState<Record<string, boolean>>({}); // grup kelas yang DITUTUP admin
   const [uMin, setUMin] = useState('');   // filter usia minimal (bulan), '' = tanpa batas
   const [uMaks, setUMaks] = useState(''); // filter usia maksimal (bulan), '' = tanpa batas
+  // Urutan waktu daftar. Default 'baru' = urutan yang dikirim server
+  // (`getPendaftaranByEvent` sudah order created_at desc), jadi tampilan awal tak berubah.
+  const [urut, setUrut] = useState<'baru' | 'lama'>('baru');
   function flash(m: string) { setToast(m); setTimeout(() => setToast(''), 2000); }
 
   async function reschedule(p: PendaftaranEvent) {
@@ -164,6 +167,17 @@ Pastikan sudah konfirmasi ke orang tua (tombol 💬 WA).`)) return;
   const menyaring = !!q || (pakaiUsia && !rentangSalah);
 
   const tampil = list.filter(lolos);
+
+  // --- Urutan waktu daftar ---------------------------------------------------
+  // Pendaftaran tanpa `created_at` (data lama) selalu ditaruh PALING BAWAH di kedua
+  // arah — kalau tidak, "terlama" akan diawali baris yang justru tak diketahui waktunya.
+  const msDaftar = (p: PendaftaranEvent) => (p.created_at ? new Date(p.created_at).getTime() : NaN);
+  const urutkan = (arr: PendaftaranEvent[]) => [...arr].sort((a, b) => {
+    const ta = msDaftar(a), tb = msDaftar(b);
+    if (Number.isNaN(ta) || Number.isNaN(tb)) return Number.isNaN(ta) ? (Number.isNaN(tb) ? 0 : 1) : -1;
+    return urut === 'baru' ? tb - ta : ta - tb;
+  });
+
   const GRUP: { key: string; label: string }[] = [
     { key: 'baby', label: '👶 Baby Class' },
     { key: 'toddler', label: '🧒 Toddler Class' },
@@ -322,6 +336,20 @@ Pastikan sudah konfirmasi ke orang tua (tombol 💬 WA).`)) return;
         <span className={s.tag} style={{ background: '#dff5e6', color: '#1c7a43' }}>✅ {totalHadir} anak hadir</span>
       </div>
 
+      {/* Urutan waktu daftar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+        <span className={s.muted} style={{ fontSize: 12, fontWeight: 700 }}>🕐 Urutkan</span>
+        {([['baru', 'Terbaru'], ['lama', 'Terlama']] as const).map(([k, label]) => (
+          <button key={k} type="button" onClick={() => setUrut(k)} aria-pressed={urut === k} className={s.btnSm}
+            style={{ background: urut === k ? 'var(--lavender-d)' : '#f3f0fb', color: urut === k ? '#fff' : 'var(--lavender-d)', fontSize: 11 }}>
+            {k === 'baru' ? '↓' : '↑'} {label}
+          </button>
+        ))}
+        <span className={s.muted} style={{ fontSize: 11 }}>
+          {urut === 'baru' ? 'yang paling baru mendaftar di atas' : 'yang paling awal mendaftar di atas'}
+        </span>
+      </div>
+
       {/* Filter rentang usia — satuan BULAN (kelas Baby ~6-18 bln tidak bisa dinyatakan dlm tahun bulat) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
         <span className={s.muted} style={{ fontSize: 12, fontWeight: 700 }}>🎂 Usia</span>
@@ -359,7 +387,9 @@ Pastikan sudah konfirmasi ke orang tua (tombol 💬 WA).`)) return;
         // kelas tak dikenal / kosong → masuk grup Gabungan (jangan sampai kartu tersembunyi)
         const kelasDari = (p: PendaftaranEvent) => (p.kelas === 'baby' || p.kelas === 'toddler') ? p.kelas : 'gabungan';
         // SEMUA pendaftaran kelas ini — dasar hitungan peserta & kuota.
-        const semua = list.filter((p) => kelasDari(p) === g.key);
+        // Kartu di-render dengan `key={p.id}`, jadi mengurutkan ulang hanya MEMINDAHKAN
+        // elemen — state NilaiPerkembanganForm yang belum disimpan tidak ikut hilang.
+        const semua = urutkan(list.filter((p) => kelasDari(p) === g.key));
         const items = semua.filter(lolos);   // yang lolos filter → yang ditampilkan
         if (!semua.length) return null;
         // Peserta & kuota SELALU dihitung dari `semua`, bukan dari hasil filter — kalau

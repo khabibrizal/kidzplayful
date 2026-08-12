@@ -149,13 +149,13 @@ export default function MenuAnak({
         </div>
         {kelasList.length === 0 ? (
           <div style={{ flex: 1, overflow: 'auto', padding: '6px 2px' }}>
-            <p style={{ color: 'var(--abu)', textAlign: 'center' }}>Belum ada kelas bermain.</p>
+            <p style={{ color: 'var(--abu)', textAlign: 'center' }}>Belum ada ide bermain.</p>
           </div>
         ) : (
           <div className={s.menu}>
             {kelasList.map((k, i) => {
               const kunci = terkunci(k.boleh_trial);
-              const buka = () => { if (kunci) { setKunciFitur('Materi Kelas Bermain'); return; } setKelasDipilih(k); setLayar('kelas-detail'); catatRiwayatKelas(k.id).catch(() => {}); };
+              const buka = () => { if (kunci) { setKunciFitur('Materi Ide Bermain'); return; } setKelasDipilih(k); setLayar('kelas-detail'); catatRiwayatKelas(k.id).catch(() => {}); };
               return (
                 <div key={k.id} className={`kp-tile ${['mint', 'lavender', 'biru'][i % 3]}`}
                   role="button" tabIndex={0} onClick={buka}

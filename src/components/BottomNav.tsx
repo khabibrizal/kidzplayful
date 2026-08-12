@@ -7,7 +7,7 @@ import { jumlahKeranjang } from '@/lib/data/keranjang-actions';
 
 const ITEMS = [
   { href: '/pilih-anak', label: 'Beranda', icon: '🏠' },
-  { href: '/kelas-saya', label: 'Kelas', icon: '🎈' },
+  { href: '/kelas-saya', label: 'Ide', icon: '🎈' },
   { href: '/store', label: 'Store', icon: '🛒', badge: true },
   { href: '/pesanan', label: 'Pesanan', icon: '📦' },
   { href: '/komunitas', label: 'Komunitas', icon: '💬' },

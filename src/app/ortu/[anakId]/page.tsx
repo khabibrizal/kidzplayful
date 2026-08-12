@@ -34,13 +34,13 @@ export default async function ModeOrtu({ params }: { params: Promise<{ anakId: s
         </div>
       </div>
 
-      {kelasList.length === 0 && <p className={s.muted}>Belum ada kelas bermain aktif. Admin dapat menambah di Kelola Kelas Bermain.</p>}
+      {kelasList.length === 0 && <p className={s.muted}>Belum ada ide bermain aktif. Admin dapat menambah di Kelola Ide Bermain.</p>}
 
       {kelasList.map((k) => (
         terkunci(k.boleh_trial) ? (
           <div key={k.id} className="kp-card" style={{ marginBottom: 12, opacity: 0.85 }}>
             <b>🔒 {k.judul}</b>
-            <div style={{ marginTop: 6 }}><Terkunci fitur="Materi Kelas Bermain" ringkas /></div>
+            <div style={{ marginTop: 6 }}><Terkunci fitur="Materi Ide Bermain" ringkas /></div>
           </div>
         ) : (
         <div key={k.id} className="kp-card" style={{ marginBottom: 12 }}>

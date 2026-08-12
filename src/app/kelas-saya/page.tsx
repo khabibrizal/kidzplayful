@@ -1,4 +1,4 @@
-// src/app/kelas-saya/page.tsx — kelas bermain yang diikuti (event) + catatan, lalu riwayat materi
+// src/app/kelas-saya/page.tsx — ide bermain yang diikuti (event) + catatan, lalu riwayat materi
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
@@ -23,11 +23,11 @@ export default async function KelasSayaPage() {
   return (
     <main className="kp-page" style={{ padding: 16, paddingBottom: 90, marginTop: 24 }}>
       <RekamAktivitas fitur="kelas" />
-      <h1 style={{ color: 'var(--lavender-d)', fontSize: 24, margin: '6px 0 14px' }}>🎈 Kelas Bermain Saya</h1>
+      <h1 style={{ color: 'var(--lavender-d)', fontSize: 24, margin: '6px 0 14px' }}>🎈 Ide Bermain Saya</h1>
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '0 0 8px' }}>KELAS BERMAIN YANG DIIKUTI</div>
       {diikuti.length === 0 ? (
-        <p style={{ color: 'var(--abu)', fontSize: 13 }}>Belum mengikuti kelas bermain (event). Lihat jadwal di menu <Link href="/event" style={{ color: 'var(--biru-d)' }}>Event</Link>.</p>
+        <p style={{ color: 'var(--abu)', fontSize: 13 }}>Belum mengikuti event kelas bermain. Lihat jadwal di menu <Link href="/event" style={{ color: 'var(--biru-d)' }}>Event</Link>.</p>
       ) : <div className="kp-grid-kartu">{diikuti.map(({ event, status, adaCatatan }) => {
         const st = STATUS[status] ?? { teks: status, warna: 'var(--abu)', bg: '#eee' };
         return (
@@ -46,7 +46,7 @@ export default async function KelasSayaPage() {
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '20px 0 8px' }}>MATERI YANG PERNAH DIBUKA</div>
       {riwayat.length === 0 ? (
-        <p style={{ color: 'var(--abu)', fontSize: 13 }}>Belum ada. Buka materi kelas bermain dari Mode Anak, nanti muncul di sini.</p>
+        <p style={{ color: 'var(--abu)', fontSize: 13 }}>Belum ada. Buka materi ide bermain dari Mode Anak, nanti muncul di sini.</p>
       ) : <div className="kp-grid-kartu">{riwayat.map((k) => (
         <a key={k.id} href={`/kelas/${k.id}`} className="kp-card"
           style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'inherit' }}>

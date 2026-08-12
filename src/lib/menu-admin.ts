@@ -9,7 +9,7 @@ export const MENU_ADMIN: MenuAdmin[] = [
   { key: 'produk', href: '/admin/produk', label: '🛍️ Produk' },
   { key: 'pesanan', href: '/admin/pesanan', label: '📦 Pesanan' },
   { key: 'voucher', href: '/admin/voucher', label: '🎟️ Voucher' },
-  { key: 'kelas-bermain', href: '/admin/kelas-bermain', label: '🎈 Kelas Bermain' },
+  { key: 'kelas-bermain', href: '/admin/kelas-bermain', label: '🎈 Ide Bermain' },
   { key: 'fokus-area', href: '/admin/fokus-area', label: '🧩 Fokus Area' },
   { key: 'kategori-usia', href: '/admin/kategori-usia', label: '👶 Kategori Usia' },
   { key: 'artikel', href: '/admin/artikel', label: '📝 Artikel' },

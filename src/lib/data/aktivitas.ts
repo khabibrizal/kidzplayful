@@ -4,7 +4,7 @@ import { tanggalWIB } from '@/lib/domain/gamifikasi';
 
 export const FITUR_LABEL: Record<string, string> = {
   beranda: 'Beranda', game: 'Game', store: 'Store', event: 'Event',
-  komunitas: 'Komunitas', kelas: 'Kelas Bermain', pesanan: 'Pesanan', rapor: 'Rapor', video: 'Video',
+  komunitas: 'Komunitas', kelas: 'Ide Bermain', pesanan: 'Pesanan', rapor: 'Rapor', video: 'Video',
 };
 export const labelFitur = (f: string) => FITUR_LABEL[f] ?? f;
 

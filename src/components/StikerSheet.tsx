@@ -10,9 +10,16 @@
 // kelompok 10 (2×5) dan tiap kelompok jadi satu blok halaman dengan `break-after: page`,
 // jadi tidak ada baris yang bisa menyeberang halaman.
 
+import { ukuranNama } from '@/lib/domain/stiker';
+
 export interface ItemStiker { nama: string; kelas: string }
 
 export const PER_LEMBAR = 10;   // 2 kolom × 5 baris pada F4
+
+// Seluruh teks stiker MERAH (permintaan pemilik) — dipakai satu konstanta agar ketiga baris
+// tak pernah lepas sinkron. #d62828 dipilih ketimbang merah murni (#f00) karena lebih pekat
+// di cetakan dan tetap terbaca di atas template terang maupun gradasi pastel bawaan.
+const MERAH = '#d62828';
 
 function Stiker({ nama, kelas, bg }: { nama: string; kelas: string; bg: string | null }) {
   const sh = bg ? { textShadow: '0 1px 3px rgba(255,255,255,.9)' } : {};
@@ -22,12 +29,15 @@ function Stiker({ nama, kelas, bg }: { nama: string; kelas: string; bg: string |
         // eslint-disable-next-line @next/next/no-img-element
         <img src={bg} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
       )}
-      <div style={{ position: 'relative', zIndex: 1 }}>
-        <div style={{ fontSize: '10pt', color: 'var(--mint-d, #2e9e63)', fontWeight: 700, ...sh }}>Hai, aku</div>
-        <div style={{ fontSize: '22pt', fontWeight: 800, color: 'var(--lavender-d, #6b4fb0)', lineHeight: 1.1, margin: '1mm 0', ...sh }}>{nama}</div>
+      {/* `width:100%` + `overflowWrap` — pada ukuran font yang diperbesar, nama panggilan
+          panjang harus BOLEH turun baris; tanpa ini ia melebar lalu terpotong oleh
+          `overflow:hidden` milik stiker. Tinggi 60mm masih cukup untuk nama 2 baris. */}
+      <div style={{ position: 'relative', zIndex: 1, width: '100%', overflowWrap: 'anywhere' }}>
+        <div style={{ fontSize: '14pt', color: MERAH, fontWeight: 700, ...sh }}>Hai, aku</div>
+        <div style={{ fontSize: `${ukuranNama(nama)}pt`, fontWeight: 800, color: MERAH, lineHeight: 1.08, margin: '1.5mm 0', ...sh }}>{nama}</div>
         {/* Baris kategori DISEMBUNYIKAN bila kelasnya gabungan/tidak diketahui — lebih baik
             kosong daripada memunculkan kembali nama event yang memang diminta dihapus. */}
-        {!!kelas && <div style={{ fontSize: '11pt', fontWeight: 700, color: 'var(--tinta, #3a3350)', ...sh }}>{kelas}</div>}
+        {!!kelas && <div style={{ fontSize: '16pt', fontWeight: 700, color: MERAH, ...sh }}>{kelas}</div>}
       </div>
     </div>
   );

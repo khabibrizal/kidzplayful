@@ -70,8 +70,8 @@ export default async function KelolaTema({ params }: { params: Promise<{ id: str
       <div className={s.section}>Video</div>
       <p className={s.muted}>Video dikelola per kategori usia di <Link href="/admin/video">Kelola Video</Link>.</p>
 
-      <div className={s.section}>Kelas Bermain</div>
-      <p className={s.muted}>Materi Kelas Bermain dikelola di menu <Link href="/admin/kelas-bermain">Kelas Bermain</Link>.</p>
+      <div className={s.section}>Ide Bermain</div>
+      <p className={s.muted}>Materi Ide Bermain dikelola di menu <Link href="/admin/kelas-bermain">Ide Bermain</Link>.</p>
     </div>
   );
 }

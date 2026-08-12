@@ -1,5 +1,5 @@
 // src/app/kelas/[id]/page.tsx
-// Detail kelas bermain mandiri (dibuka dari Favorit / Mode Anak / Mode Ortu). Bisa diunduh PDF.
+// Detail ide bermain mandiri (dibuka dari Favorit / Mode Anak / Mode Ortu). Bisa diunduh PDF.
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import type { KelasBermain } from '@/lib/game/tipe';
@@ -28,9 +28,9 @@ export default async function KelasDetailPage({ params }: { params: Promise<{ id
 
   // gating trial: materi ini hanya untuk pelanggan bila tak ditandai "boleh trial"
   if (dibatasiTrial(status) && kelas.boleh_trial === false) {
-    return <main style={{ maxWidth: 480, margin: '24px auto', padding: 16 }}><Terkunci fitur="Materi Kelas Bermain" /></main>;
+    return <main style={{ maxWidth: 480, margin: '24px auto', padding: 16 }}><Terkunci fitur="Materi Ide Bermain" /></main>;
   }
-  await rekamRiwayat(kelas.id); // catat ke riwayat "Kelas Bermain Saya"
+  await rekamRiwayat(kelas.id); // catat ke riwayat "Ide Bermain Saya"
 
   return (
     <main style={{ maxWidth: 480, margin: '24px auto', padding: 16 }}>

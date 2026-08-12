@@ -1,5 +1,5 @@
 // src/app/favorit/page.tsx
-// Daftar kelas bermain favorit milik ortu (dibuka dari tombol "Favoritmu" di dashboard).
+// Daftar ide bermain favorit milik ortu (dibuka dari tombol "Favoritmu" di dashboard).
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
@@ -18,11 +18,11 @@ export default async function FavoritPage() {
   return (
     <main className="kp-page" style={{ padding: 16, paddingBottom: 90, marginTop: 30 }}>
       <TombolKembali fallback="/pilih-anak" style={{ color: 'var(--abu)', fontSize: 13 }} />
-      <h1 style={{ color: 'var(--lavender-d)', fontSize: 24, margin: '10px 0 16px' }}>❤️ Kelas Bermain Favorit</h1>
+      <h1 style={{ color: 'var(--lavender-d)', fontSize: 24, margin: '10px 0 16px' }}>❤️ Ide Bermain Favorit</h1>
 
       {favorit.length === 0 ? (
         <p style={{ color: 'var(--abu)', fontSize: 14 }}>
-          Belum ada favorit. Tandai kelas bermain dengan ikon 🤍 di Mode Anak untuk menyimpannya di sini.
+          Belum ada favorit. Tandai ide bermain dengan ikon 🤍 di Mode Anak untuk menyimpannya di sini.
         </p>
       ) : (
         <div className="kp-grid-kartu">{favorit.map((k) => (

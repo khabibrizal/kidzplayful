@@ -158,12 +158,12 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [] }: { a
     <div>
       <div className={s.row} style={{ gap: 8, marginBottom: 12 }}>
         <input className={s.inp} placeholder="Cari judul..." value={q} onChange={(e) => setQ(e.target.value)} style={{ flex: 1, marginBottom: 0 }} />
-        <button className={s.btn} onClick={bukaTambah}>+ Tambah Kelas Bermain</button>
+        <button className={s.btn} onClick={bukaTambah}>+ Tambah Ide Bermain</button>
       </div>
 
       {form && (
         <div className={s.card} style={{ border: '2px solid var(--lavender)' }}>
-          <b>{editId ? 'Edit' : 'Tambah'} Kelas Bermain</b>
+          <b>{editId ? 'Edit' : 'Tambah'} Ide Bermain</b>
 
           <input className={s.inp} placeholder="Judul kelas" value={form.judul} onChange={(e) => setForm({ ...form, judul: e.target.value })} style={{ width: '100%', marginTop: 8 }} />
 
@@ -181,7 +181,7 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [] }: { a
           </div>
 
           {/* TUJUAN + USIA */}
-          <textarea className={s.inp} placeholder="🎯 Tujuan kelas bermain ini (mis. melatih motorik halus & mengenal warna) — tampil ke orang tua" rows={2} value={form.tujuan} onChange={(e) => setForm({ ...form, tujuan: e.target.value })} style={{ width: '100%', resize: 'vertical' }} />
+          <textarea className={s.inp} placeholder="🎯 Tujuan ide bermain ini (mis. melatih motorik halus & mengenal warna) — tampil ke orang tua" rows={2} value={form.tujuan} onChange={(e) => setForm({ ...form, tujuan: e.target.value })} style={{ width: '100%', resize: 'vertical' }} />
           <div className={s.row} style={{ gap: 6, alignItems: 'center' }}>
             <span className={s.muted} style={{ fontSize: 12 }}>👶 Untuk usia:</span>
             <input className={s.inp} type="number" min={0} max={12} value={form.usiaMin} onChange={(e) => setForm({ ...form, usiaMin: Number(e.target.value) })} style={{ width: 64, marginBottom: 0 }} />
@@ -204,7 +204,7 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [] }: { a
               );
             })}
           </div>
-          <textarea className={s.inp} placeholder="🤝 Peran orang tua dalam kelas bermain ini (mis. mendampingi, membacakan instruksi, memuji usaha anak) — tampil ke orang tua" rows={2} value={form.peranOrtu} onChange={(e) => setForm({ ...form, peranOrtu: e.target.value })} style={{ width: '100%', resize: 'vertical', marginTop: 8 }} />
+          <textarea className={s.inp} placeholder="🤝 Peran orang tua dalam ide bermain ini (mis. mendampingi, membacakan instruksi, memuji usaha anak) — tampil ke orang tua" rows={2} value={form.peranOrtu} onChange={(e) => setForm({ ...form, peranOrtu: e.target.value })} style={{ width: '100%', resize: 'vertical', marginTop: 8 }} />
 
           {/* BAHAN (nama + link toko opsional) */}
           <div className={s.muted} style={{ margin: '8px 0 4px' }}>🧺 Bahan (boleh hubungkan ke produk Store, atau pakai link toko luar):</div>
@@ -279,7 +279,7 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [] }: { a
           </div>
         </div>
       ))}
-      {tampil.length === 0 && <p className={s.muted}>Belum ada kelas bermain{q ? ' yang cocok' : ''}.</p>}
+      {tampil.length === 0 && <p className={s.muted}>Belum ada ide bermain{q ? ' yang cocok' : ''}.</p>}
 
       {toast && <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: '#2b2440', color: '#fff', padding: '10px 18px', borderRadius: 99, fontSize: 14, zIndex: 80 }}>{toast}</div>}
     </div>

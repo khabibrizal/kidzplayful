@@ -9,7 +9,7 @@ export default async function AdminFokusAreaPage() {
     <div>
       <div className={s.head} style={{ marginTop: 8 }}><h1>🧩 Master Fokus Area Perkembangan</h1></div>
       <p className={s.muted} style={{ fontSize: 13, marginBottom: 10 }}>
-        Daftar area ini tampil sebagai <b>pilihan chips</b> saat tambah/edit Kelas Bermain, dan label-nya tampil di halaman user.
+        Daftar area ini tampil sebagai <b>pilihan chips</b> saat tambah/edit Ide Bermain, dan label-nya tampil di halaman user.
         Nonaktifkan area agar tak muncul di form (tanpa menghapus data kelas lama). <b>Key</b> tersimpan di kelas & tidak berubah saat label diedit.
       </p>
       <FokusAreaAdmin awal={list} />
