@@ -16,7 +16,7 @@ export interface ItemStiker { nama: string; kelas: string }
 
 export const PER_LEMBAR = 10;   // 2 kolom × 5 baris pada F4
 
-// Seluruh teks stiker MERAH (permintaan pemilik) — dipakai satu konstanta agar ketiga baris
+// Seluruh teks stiker MERAH (permintaan pemilik) — dipakai satu konstanta agar kedua baris
 // tak pernah lepas sinkron. #d62828 dipilih ketimbang merah murni (#f00) karena lebih pekat
 // di cetakan dan tetap terbaca di atas template terang maupun gradasi pastel bawaan.
 const MERAH = '#d62828';
@@ -33,8 +33,9 @@ function Stiker({ nama, kelas, bg }: { nama: string; kelas: string; bg: string |
           panjang harus BOLEH turun baris; tanpa ini ia melebar lalu terpotong oleh
           `overflow:hidden` milik stiker. Tinggi 60mm masih cukup untuk nama 2 baris. */}
       <div style={{ position: 'relative', zIndex: 1, width: '100%', overflowWrap: 'anywhere' }}>
-        <div style={{ fontSize: '14pt', color: MERAH, fontWeight: 700, ...sh }}>Hai, aku</div>
-        <div style={{ fontSize: `${ukuranNama(nama)}pt`, fontWeight: 800, color: MERAH, lineHeight: 1.08, margin: '1.5mm 0', ...sh }}>{nama}</div>
+        {/* Tanpa sapaan pembuka (dulu "Hai, aku") — stiker hanya memuat nama + kategori
+            kelas. Ruang yang ditinggalkannya membuat nama 2 baris makin longgar. */}
+        <div style={{ fontSize: `${ukuranNama(nama)}pt`, fontWeight: 800, color: MERAH, lineHeight: 1.08, margin: '0 0 1.5mm', ...sh }}>{nama}</div>
         {/* Baris kategori DISEMBUNYIKAN bila kelasnya gabungan/tidak diketahui — lebih baik
             kosong daripada memunculkan kembali nama event yang memang diminta dihapus. */}
         {!!kelas && <div style={{ fontSize: '16pt', fontWeight: 700, color: MERAH, ...sh }}>{kelas}</div>}
