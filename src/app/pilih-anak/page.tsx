@@ -14,7 +14,8 @@ import BottomNav from '@/components/BottomNav';
 import { tambahAnak } from './actions';
 import Pewi from '@/components/ui/Pewi';
 
-export default async function PilihAnakPage() {
+export default async function PilihAnakPage({ searchParams }: { searchParams: Promise<{ galat?: string }> }) {
+  const { galat } = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
@@ -63,8 +64,16 @@ export default async function PilihAnakPage() {
       </div>
       <p style={{ color: 'var(--abu)', marginBottom: 16 }}>
         Status langganan: <b>{status}</b>
-        {!bolehAkses(status) && ' — silakan perpanjang untuk lanjut.'}
+        {!bolehAkses(status) && ' — perpanjang untuk membuka materi & game khusus pelanggan.'}
       </p>
+
+      {/* Guard halaman anak memantulkan ke sini; dulu tanpa pesan sama sekali sehingga
+          klik pada kartu anak terasa seperti tombol rusak. */}
+      {galat === 'anak-tidak-ditemukan' && (
+        <p style={{ background: '#fdeaea', color: '#b3261e', fontSize: 13, borderRadius: 12, padding: '10px 14px', marginBottom: 16 }}>
+          Profil anak itu tidak ditemukan atau bukan milik akun ini. Pilih salah satu profil di bawah ya.
+        </p>
+      )}
 
       <OnboardingChecklist
         adaAnak={jumlahAnak > 0}

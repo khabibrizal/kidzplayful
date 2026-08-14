@@ -58,7 +58,7 @@ tools/md2pdf.py        # generator PDF dokumentasi
 - **Trigger `cegah_self_admin`** (migrasi 0056): mencegah eskalasi mandiri — `is_admin`/`is_superuser` hanya bisa diubah super user; `is_guru`/`is_investor` hanya oleh admin/super user; user biasa tak bisa mengubah role apa pun pada dirinya.
 
 ### Pola guard (lapis ganda)
-- **Halaman admin**: `admin/layout.tsx` memakai **`getAksesAdmin()`** (`lib/data/admin.ts`) → hitung menu yang boleh per role (matriks Akses Menu, lihat §4 Akses Menu); redirect `/pilih-anak` bila tak punya akses menu apa pun. Super user = semua. `getAdminTerjamin()` (is_admin/superuser) masih dipakai halaman non-menu (mis. stiker). `/admin/akses-menu` pakai `getSuperuserTerjamin()`. Halaman anak: `getAnakTerjamin()`. Investor: `getInvestorTerjamin()`.
+- **Halaman admin**: `admin/layout.tsx` memakai **`getAksesAdmin()`** (`lib/data/admin.ts`) → hitung menu yang boleh per role (matriks Akses Menu, lihat §4 Akses Menu); redirect `/pilih-anak` bila tak punya akses menu apa pun. Super user = semua. `getAdminTerjamin()` (is_admin/superuser) masih dipakai halaman non-menu (mis. stiker). `/admin/akses-menu` pakai `getSuperuserTerjamin()`. Halaman anak: `getAnakTerjamin()` (login + kepemilikan; **tanpa** gerbang langganan). Investor: `getInvestorTerjamin()`.
 - **Routing login**: setelah login → **admin/superuser ke `/admin`**, guru ke `/guru`, lainnya `/pilih-anak` (`login/page.tsx`); admin/superuser yang mendarat di `/pilih-anak` di-redirect ke `/admin`.
 - **Enforcement rute**: `src/proxy.ts` (middleware) memblokir user membuka `/admin/<menu>` yang tak diizinkan role-nya → redirect `/admin`.
 - **Server action**: setiap file `*-actions.ts` mengulang cek admin sendiri lewat helper lokal (`adminDb()` / `db()` / `pengelola()`) → `auth.getUser()` + baca `profiles.is_admin`.
@@ -549,7 +549,16 @@ Penilaian perkembangan anak per event offline. **Parameter (Area + Indikator) di
 - **Endpoint**: `anak`, `hasil_main`, `catatan_perkembangan`, `sertifikat`, gamifikasi (`lencana_anak`/`tantangan_kustom*`), `pendaftaran_konsultasi`, `rekomendasi_psikolog`, `rekomendasi_item`.
 
 ### 🎮 Game — `/pilih-game/[anakId]`, `/main/[anakId]`
-- **Guard**: `getAnakTerjamin(anakId)` (`anak.ts`) — login + langganan + kepemilikan.
+- **Guard**: `getAnakTerjamin(anakId)` (`anak.ts`) — **login + kepemilikan saja** (RLS yang menegakkan kepemilikan). **Bukan** gerbang langganan; lihat peringatan di bawah.
+
+> **⚠️ Bug major "klik profil anak tidak membuka halaman anak" & perbaikannya.** `getAnakTerjamin` dulu me-`redirect('/pilih-anak')` **diam-diam** begitu `bolehAkses(status)` false. Efeknya: sekali masa trial ortu habis, mengetuk kartu anak di `/pilih-anak` terasa seperti tombol rusak — layar hanya kembali ke halaman yang sama, tanpa satu pun pesan. Dua hal yang membuatnya layak disebut bug, bukan paywall:
+> 1. **Kunci per konten yang sudah dibangun jadi mustahil tampil.** `/main`, `/ortu`, `/pilih-game` semuanya menghitung `batasi = dibatasiTrial(status)` (= `status !== 'aktif'`, jadi **termasuk `kadaluarsa`**) untuk memberi 🔒 pada item non-trial. Selama gerbang ini ada, cabang `kadaluarsa` itu **dead code** — user dipantulkan sebelum melihatnya.
+> 2. **Gerbangnya menyala karena sebab yang bukan kedaluwarsa.** `langganan` dibaca dengan `.single()`; baris yang **hilang** (user lama / trigger `0001` gagal) atau **ganda** membuatnya error → `lang` null → status dipaksa `'kadaluarsa'` → ortu terkunci dari anaknya sendiri tanpa sebab.
+>
+> **Perbaikan** (keputusan pemilik: *tetap boleh masuk, konten dikunci*): pemeriksaan langganan dicabut dari guard — status kini hanya menentukan 🔒 per item, seperti yang memang sudah dirancang. Query anak memakai `maybeSingle()`, dan satu-satunya pantulan tersisa membawa alasan (`/pilih-anak?galat=anak-tidak-ditemukan`) yang **ditampilkan** sebagai spanduk. **Aturan umum yang lahir dari sini: jangan pernah `redirect()` tanpa membawa alasan yang bisa dibaca pengguna** — pantulan diam ke halaman asal tak bisa dibedakan dari tombol rusak.
+>
+> Pantulan diam kedua di jalur yang sama juga dihapus: `/main` dulu `redirect('/pilih-anak')` bila `getPustaka()` kosong. Mode Anak tetap berguna tanpa game (Ide Bermain, Pojok Video, koin & lencana), dan `MenuAnak` sudah punya keadaan kosong **"Belum ada game"** yang selama ini tak pernah bisa tampil.
+
 - **Fungsi data**: `getPustaka()` (`pustaka.ts`), `getVideoByKategori()` (`video.ts`), `getKelasAktifCached()` (`publik.ts`), `getFavoritIds()` (`favorit.ts`), `getGamifikasiAnak()` (`gamifikasi.ts`), `getStatusSaya()`/`getStatusLangganan()` (`langganan-status.ts`).
 - **Server action**: `catatHasil` (`skor.ts`) via `GameRunner`, `catatRiwayatKelas` (`riwayat-actions.ts`), `catatAktivitas`.
 - **Endpoint**: `anak`, `langganan`, `tema`, `paket_aset`, `video`, `kelas_bermain`, `favorit`, `hasil_main`, `lencana_anak`, `tantangan_kustom`(+`_anak`), `tantangan_anak`, `profiles` (pin), `riwayat_kelas`, `aktivitas`.
@@ -843,7 +852,8 @@ Guard halaman:
   /admin/akses-menu → getSuperuserTerjamin() (khusus super user)
   /admin/users    → getPengelolaUserTerjamin() (is_admin ATAU is_superuser)
   /investor       → getInvestorTerjamin()     (is_investor / is_admin)
-  /main,/ortu,/pilih-game → getAnakTerjamin() (login+langganan+milik anak)
+  /main,/ortu,/pilih-game → getAnakTerjamin() (login + milik anak; BUKAN langganan —
+                            status langganan hanya mengunci item, lihat §9)
 ```
 
 ### 13.3 Checkout store → pendapatan (basis kas)

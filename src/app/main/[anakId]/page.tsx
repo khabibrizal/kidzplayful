@@ -1,5 +1,4 @@
 // src/app/main/[anakId]/page.tsx
-import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getAnakTerjamin } from '@/lib/data/anak';
 import { getPustaka } from '@/lib/data/pustaka';
@@ -37,7 +36,10 @@ export default async function MainPage({ params, searchParams }: { params: Promi
   // gating trial: item tetap TAMPIL untuk user non-aktif, tapi yang tak ditandai
   // "boleh trial" akan terkunci (🔒) di UI. Data dikirim penuh + flag `batasi`.
   const batasi = dibatasiTrial(status);
-  if (pustaka0.length === 0) redirect('/pilih-anak');
+  // CATATAN: pustaka kosong TIDAK lagi memantulkan ke `/pilih-anak`. Pantulan itu diam-diam
+  // (klik kartu anak seolah tak berfungsi) padahal Mode Anak masih berguna tanpa game —
+  // masih ada Ide Bermain, Pojok Video, koin & lencana. `MenuAnak` sendiri sudah punya
+  // keadaan kosong "Belum ada game", yang selama ada redirect ini tak pernah bisa tampil.
 
   return (
     <>
