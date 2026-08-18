@@ -223,8 +223,13 @@ Fitur share dari halaman detail agar orang non-login jadi aware & mendaftar.
 ### 💳 Langganan — `/admin/langganan`
 - **File**: `admin/langganan/page.tsx` (query inline + `Pager.tsx`) → `AktifkanForm.tsx`. Util `@/lib/domain/trial` (`statusLangganan`), `@/lib/format` (`linkWa`), `@/lib/metode` (`METODE_BAYAR`).
 - **Fungsi data**: query inline `profiles` (member + embed anak & langganan) & `langganan` (jatuh tempo ≤ 7 hari untuk tombol WA pengingat); `getPengaturanBayar()` (nominal default).
+- **🔎 Cari nama orang tua / anak / email** (`?q=`): **server-side**, karena daftar member dipaginasi 30/halaman — menyaring di klien hanya akan mencari di halaman yang sedang terbuka. Formnya `<form method="get">` biasa (bukan komponen klien), dan karena hanya mengirim `q`, menekan Cari otomatis membuang `hal` sehingga hasil selalu mulai dari halaman 1.
+  - **Kenapa dua query**: nama anak ada di tabel lain, dan PostgREST tak bisa meng-OR-kan syarat pada tabel induk dengan syarat pada tabel anak dalam satu query (`anak.nama=ilike.*q*` + `!inner` bersifat AND). Jadi `anak` di-query lebih dulu untuk mengumpulkan `ortu_id`, lalu digabung ke filter member sebagai `or=(nama_tampilan.ilike.…,email.ilike.…,id.in.(…))`.
+  - **Sanitasi wajib**: kata kunci dibersihkan dari `% _ , ( ) " * \` sebelum masuk `or=(...)`. Koma dan kurung **memecah bentuk klausa `or`** (bukan sekadar hasil salah), sedangkan `%`/`_` adalah wildcard ILIKE. Karakter itu **dibuang**, bukan di-escape — kata kunci nama tak pernah membutuhkannya. Bentuk ketiga query sudah diuji langsung ke PostgREST produksi (semuanya `200`, bukan `400`).
+  - **Batas 1.000** id anak (`BATAS_ANAK`) agar kata kunci super umum tidak meledakkan panjang URL; bila batas itu tersentuh, halaman **mengatakannya** ("persempit kata kuncinya") alih-alih memotong diam-diam.
+  - Blok **🔔 Perlu diingatkan** ikut disaring dengan kata kunci yang sama (di JS — daftarnya kecil & sudah termuat penuh) supaya kedua bagian halaman konsisten. `Pager` kini menyambung `hal` dengan `&` bila `basePath` sudah membawa query, jadi kata kunci tidak hilang saat pindah halaman.
 - **Server action**: `aktifkanLangganan` (`admin-bisnis.ts`).
-- **Endpoint**: `profiles`, `langganan`, `pengaturan_pembayaran`; `aktifkanLangganan` → `langganan` (update +1 bln), `pembayaran_langganan` (insert), `catatLedger` (kategori `membership`).
+- **Endpoint**: `profiles`, `langganan`, `anak` (pencarian), `pengaturan_pembayaran`; `aktifkanLangganan` → `langganan` (update +1 bln), `pembayaran_langganan` (insert), `catatLedger` (kategori `membership`).
 
 ### 🧒 Anak & Gamifikasi — `/admin/anak`
 - **File**: `admin/anak/page.tsx` → `AnakGamiForm.tsx`. Konstanta `LENCANA` (`domain/gamifikasi`).

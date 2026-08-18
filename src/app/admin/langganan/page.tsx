@@ -9,6 +9,8 @@ import Pager from '../Pager';
 import s from '../admin.module.css';
 
 const PER_HAL = 30;
+// Batas id anak yang ikut dijadikan klausa pencarian (lihat komentar di bawah).
+const BATAS_ANAK = 1000;
 // Ingatkan perpanjangan bila langganan tinggal ≤ AMBANG_HARI lagi, atau sudah lewat.
 const AMBANG_HARI = 7;
 
@@ -55,8 +57,13 @@ function pesanReminder(nama: string | null, anakNama: string[], aktifSampai: str
 
 type Jatuh = { ortu_id: string; email: string; nama_tampilan: string | null; no_wa: string | null; anak: string[]; aktif_sampai: string };
 
-export default async function Langganan({ searchParams }: { searchParams: Promise<{ hal?: string }> }) {
-  const { hal } = await searchParams;
+export default async function Langganan({ searchParams }: { searchParams: Promise<{ hal?: string; q?: string }> }) {
+  const { hal, q: qRaw } = await searchParams;
+  const q = (qRaw ?? '').trim();
+  // Karakter yang punya arti khusus di filter PostgREST (`or=(...)`) dan di pola ILIKE
+  // DIBUANG, bukan di-escape: kata kunci nama tak pernah membutuhkannya, sedangkan
+  // membiarkannya lewat bisa mengubah bentuk query (mis. koma memecah klausa `or`).
+  const cari = q.replace(/[%_,()"*\\]/g, ' ').replace(/\s+/g, ' ').trim();
   const halNum = Math.max(1, Number(hal) || 1);
   const from = (halNum - 1) * PER_HAL;
   const supabase = await createClient();
@@ -65,12 +72,31 @@ export default async function Langganan({ searchParams }: { searchParams: Promis
   const t = new Date();
   const cutoff = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate() + AMBANG_HARI)).toISOString().slice(0, 10);
 
+  // Pencarian nama ortu / anak dijalankan di SERVER karena daftar ini dipaginasi
+  // (30/halaman): menyaring di klien hanya akan mencari di halaman yang sedang terbuka.
+  // Nama anak ada di tabel lain, dan PostgREST tak bisa meng-OR-kan syarat pada tabel
+  // induk dengan syarat pada tabel anak di satu query — jadi id ortu yang anaknya cocok
+  // dicari lebih dulu, lalu digabung sebagai klausa `id.in.(...)`.
+  let idOrtuDariAnak: string[] = [];
+  let anakTerpotong = false;
+  if (cari) {
+    const { data: anakCocok } = await supabase
+      .from('anak').select('ortu_id').ilike('nama', `%${cari}%`).limit(BATAS_ANAK);
+    anakTerpotong = (anakCocok ?? []).length >= BATAS_ANAK;   // jangan diam-diam memotong
+    idOrtuDariAnak = [...new Set((anakCocok ?? []).map((r) => r.ortu_id as string).filter(Boolean))];
+  }
+
+  let qMember = supabase
+    .from('profiles')
+    .select('id,email,created_at,nama_tampilan,no_wa,anak(nama),langganan(status,nominal,trial_mulai,aktif_sampai)', { count: 'exact' });
+  if (cari) {
+    const klausa = [`nama_tampilan.ilike.%${cari}%`, `email.ilike.%${cari}%`];
+    if (idOrtuDariAnak.length) klausa.push(`id.in.(${idOrtuDariAnak.join(',')})`);
+    qMember = qMember.or(klausa.join(','));
+  }
+
   const [{ data, count }, bayar, jatuhRes] = await Promise.all([
-    supabase
-      .from('profiles')
-      .select('id,email,created_at,nama_tampilan,no_wa,anak(nama),langganan(status,nominal,trial_mulai,aktif_sampai)', { count: 'exact' })
-      .order('created_at', { ascending: false })
-      .range(from, from + PER_HAL - 1),
+    qMember.order('created_at', { ascending: false }).range(from, from + PER_HAL - 1),
     getPengaturanBayar(),
     supabase
       .from('langganan')
@@ -93,6 +119,13 @@ export default async function Langganan({ searchParams }: { searchParams: Promis
     })
     .filter((x): x is Jatuh => x !== null);
 
+  // Daftar jatuh tempo ikut disaring memakai kata kunci yang sama supaya hasil pencarian
+  // konsisten di kedua bagian halaman (daftar ini kecil & sudah termuat penuh → saring di JS).
+  const kunci = cari.toLowerCase();
+  const jatuhTampil = kunci
+    ? jatuh.filter((j) => [j.nama_tampilan ?? '', j.email, ...j.anak].some((t) => t.toLowerCase().includes(kunci)))
+    : jatuh;
+
   function statusEfektif(l: Row['langganan']) {
     if (!l) return 'kadaluarsa';
     return statusLangganan(
@@ -107,13 +140,29 @@ export default async function Langganan({ searchParams }: { searchParams: Promis
       <div className={s.head} style={{ marginTop: 8 }}><h1>💳 Kelola Langganan</h1><Link href="/admin/laporan" className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)' }}>📊 Laporan</Link></div>
       <p className={s.muted}>Setelah member transfer/QRIS, klik Aktifkan (langganan +1 bulan).</p>
 
+      {/* Form GET biasa (bukan komponen klien): pencariannya server-side, dan menekan
+          Cari otomatis membuang `hal` sehingga hasil selalu mulai dari halaman 1. */}
+      <form method="get" className={s.row} style={{ gap: 8, margin: '10px 0 14px', flexWrap: 'wrap' }}>
+        <input className={s.inp} type="search" name="q" defaultValue={q}
+          placeholder="🔎 Cari nama orang tua / nama anak / email…"
+          style={{ flex: 1, minWidth: 200, marginBottom: 0 }} />
+        <button type="submit" className={s.btnSm} style={{ background: 'var(--lavender-d)', color: '#fff' }}>Cari</button>
+        {q && <Link href="/admin/langganan" className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)' }}>✕ Reset</Link>}
+      </form>
+      {cari && (
+        <p className={s.muted} style={{ marginTop: -6 }}>
+          <b>{total}</b> member cocok dengan &quot;{cari}&quot; (nama orang tua, nama anak, atau email).
+          {anakTerpotong && ' Kata kuncinya terlalu umum — pencocokan nama anak dibatasi 1.000 data teratas, persempit kata kuncinya.'}
+        </p>
+      )}
+
       {/* ==== Jatuh tempo / perlu diingatkan (semua halaman) ==== */}
       <details className={s.card} open style={{ borderLeft: '4px solid #25D366' }}>
         <summary style={{ cursor: 'pointer', fontWeight: 800, color: 'var(--lavender-d)' }}>
-          🔔 Perlu diingatkan ({jatuh.length}) · jatuh tempo ≤ {AMBANG_HARI} hari / sudah lewat
+          🔔 Perlu diingatkan ({jatuhTampil.length}) · jatuh tempo ≤ {AMBANG_HARI} hari / sudah lewat{cari ? ' · hasil pencarian' : ''}
         </summary>
-        {jatuh.length === 0 && <p className={s.muted} style={{ marginTop: 10 }}>Tidak ada langganan yang mendekati jatuh tempo. 🎉</p>}
-        {jatuh.map((j) => {
+        {jatuhTampil.length === 0 && <p className={s.muted} style={{ marginTop: 10 }}>{cari ? 'Tidak ada yang cocok dengan pencarian.' : 'Tidak ada langganan yang mendekati jatuh tempo. 🎉'}</p>}
+        {jatuhTampil.map((j) => {
           const sisa = sisaHari(j.aktif_sampai);
           const href = linkWa(j.no_wa, pesanReminder(j.nama_tampilan, j.anak, j.aktif_sampai));
           return (
@@ -160,8 +209,8 @@ export default async function Langganan({ searchParams }: { searchParams: Promis
           </div>
         );
       })}
-      {rows.length === 0 && <p className={s.muted}>Belum ada member.</p>}
-      <Pager hal={halNum} totalHal={totalHal} total={total} basePath="/admin/langganan" />
+      {rows.length === 0 && <p className={s.muted}>{cari ? 'Tidak ada member yang cocok dengan pencarian.' : 'Belum ada member.'}</p>}
+      <Pager hal={halNum} totalHal={totalHal} total={total} basePath={cari ? `/admin/langganan?q=${encodeURIComponent(q)}` : '/admin/langganan'} />
     </div>
   );
 }

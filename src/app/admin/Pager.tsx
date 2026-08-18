@@ -4,7 +4,9 @@ import s from './admin.module.css';
 
 export default function Pager({ hal, totalHal, total, basePath }: { hal: number; totalHal: number; total: number; basePath: string }) {
   if (totalHal <= 1) return null;
-  const link = (h: number) => `${basePath}?hal=${h}`;
+  // basePath boleh sudah membawa query (mis. kata kunci pencarian) — sambung dengan `&`
+  // supaya kata kuncinya tidak hilang saat pindah halaman.
+  const link = (h: number) => `${basePath}${basePath.includes('?') ? '&' : '?'}hal=${h}`;
   const gaya = { background: '#efe7fb', color: 'var(--lavender-d)' };
   return (
     <div className={s.row} style={{ justifyContent: 'center', gap: 12, margin: '16px 0 4px' }}>
