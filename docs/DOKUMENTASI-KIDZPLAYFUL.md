@@ -2,12 +2,12 @@
 
 Dokumen ini menjelaskan **seluruh alur** aplikasi KidzPlayful dari nol sampai deploy: arsitektur, tiap berkas & perannya, parameter penting, skema database, serta cara deploy ke **Vercel** (frontend) dan **Supabase** (backend).
 
-- **Aplikasi:** web app kelas bermain digital anak 0–4 tahun — game sensorik/motorik (termasuk **game Mewarnai**), kelas bermain, video, komunitas, **event offline berbayar + pendaftaran**, **toko/Store**, **Catatan Perkembangan Bermain (penilaian guru)**, dan **reminder WhatsApp**. Ada juga **REST API untuk aplikasi mobile (Flutter)**.
-> **Status dokumen (2026-08-19).** Dokumen ini adalah gambaran menyeluruh sampai sekitar migrasi 0028. Sumber yang HIDUP dan selalu diperbarui per fitur adalah [`DEVELOPER-KIDZPLAYFUL.md`](DEVELOPER-KIDZPLAYFUL.md) (kini sampai migrasi 0088, termasuk modul keuangan, sponsor, psikolog, dan analitik yang belum tercakup di sini). Bila keduanya berbeda, **DEVELOPER yang benar**.
+- **Aplikasi:** web app bermain & belajar anak 0–6 tahun. Sisi pengguna: game sensorik/motorik/kognitif & calistung (11+ mesin), **Ide Bermain** (dulu "Kelas Bermain" — materi main di rumah), Pojok Video, komunitas, **event offline berbayar + pendaftaran**, **toko/Store**, **Catatan Perkembangan Bermain** (penilaian guru), **Chat Psikolog**, artikel/blog, gamifikasi (streak/lencana/tantangan), voucher, dan **reminder WhatsApp**. Sisi bisnis: **modul Keuangan** (ledger, anggaran, aset, pajak, KPI, insight), **Sponsor**, **Langganan**, **Analitik**, dan **Akses Menu per role**. Ada juga **REST API untuk aplikasi mobile (Flutter)**.
+> **Status dokumen: LENGKAP sampai migrasi 0088 (2026-08-19).** Dokumen ini adalah gambaran menyeluruh — arsitektur, skema, alur, deploy — dan riwayat fitur berurutan waktu (§15b…§15g). Untuk detail **per halaman/menu** (file mana, reader/server-action mana, tabel mana yang disentuh) lihat [`DEVELOPER-KIDZPLAYFUL.md`](DEVELOPER-KIDZPLAYFUL.md); untuk rencana skala & prosedur operasional lihat [`INFRASTRUKTUR-KIDZPLAYFUL.md`](INFRASTRUKTUR-KIDZPLAYFUL.md) dan [`RUNBOOK-OPERASIONAL.md`](RUNBOOK-OPERASIONAL.md). Bila terjadi perbedaan, **DEVELOPER yang menang** karena dokumen itulah yang diperbarui setiap kali fitur berubah.
 
 - **Repo:** `github.com/khabibrizal/kidzplayful` · **Live:** `https://www.kidzplayful.com` (domain kustom; region Vercel `bom1` = co-located dgn Supabase `ap-south-1`).
 - **Stack:** Next.js 16 (App Router, TypeScript) + Supabase (Postgres + Auth + Storage). "Backend" = Supabase + Server Actions/Server Components Next.js (tanpa server terpisah).
-- **Peran pengguna:** Orang tua (default), **Admin** (`is_admin`), **Guru** (`is_guru`).
+- **Peran pengguna (kolom boolean di `profiles`):** Orang tua (default) · **Super User** (`is_superuser`, tertinggi) · **Admin** (`is_admin`) · **Guru** (`is_guru`) · **Investor** (`is_investor`, baca dashboard keuangan) · **Psikolog** (`is_psikolog`). Menu admin mana yang boleh dibuka tiap role diatur super user (tabel `pengaturan_menu`, migrasi 0063).
 
 ---
 
@@ -26,7 +26,8 @@ Next.js (di Vercel)                         ← "Frontend + lapisan server"
    ▼
 Supabase (cloud)                            ← "Backend"
    ├─ Auth      : akun & sesi (email+password) + reset password
-   ├─ Postgres  : tabel + RLS + trigger/function (is_admin/is_guru)
+   ├─ Postgres  : tabel + RLS + trigger/function (is_superuser/is_admin/is_guru/
+   │              is_investor/is_psikolog) + RPC agregasi (laporan, kuota, konsultasi)
    └─ Storage   : bucket 'aset' (gambar game/worksheet/event/produk/logo, bukti bayar)
 ```
 
@@ -84,24 +85,25 @@ npm run lint
 
 ## 7. Skema Database (per tabel)
 
-Migrasi `supabase/migrations/0001..0037` (jalankan berurutan di SQL Editor).
+Migrasi `supabase/migrations/0001..0088` (jalankan berurutan di SQL Editor; tidak ada CLI migrate — semuanya manual).
 
-### `profiles` (0001; +is_admin 0004; +nama_tampilan 0010; +no_wa 0015; +is_guru 0020; +alamat 0023)
-`id(PK), email, pin_ortu, is_admin, is_guru, nama_tampilan, no_wa, created_at`. RLS: profil sendiri; admin baca semua + **admin update profil** (untuk set/cabut guru). **Trigger `cegah_self_admin` (0012, diperluas 0020):** non-admin tak bisa mengubah `is_admin`/`is_guru` (hanya admin / SQL).
+### `profiles` (0001; +is_admin 0004; +nama_tampilan 0010; +no_wa 0015; +is_guru 0020; +alamat 0023; +is_investor 0052; +is_superuser 0056; +is_psikolog 0064)
+`id(PK), email, pin_ortu, is_superuser, is_admin, is_guru, is_investor, is_psikolog, nama_tampilan, no_wa, alamat, created_at`. RLS: profil sendiri; admin baca semua + **admin update profil** (untuk set/cabut role). **Trigger `cegah_self_admin` (0012; diperluas 0020, 0056, 0064):** non-admin tak bisa mengubah kolom role apa pun — `is_superuser` hanya lewat SQL Editor, sisanya lewat halaman admin.
 
-### `anak` (0001; +jenis_kelamin 0024) · `langganan` (0001) · `tema`/`paket_aset`/`hasil_main`/`video`
-- `anak.jenis_kelamin`: 'laki-laki' | 'perempuan' (opsional). `paket_aset.mesin` kini termasuk **`mewarnai`** (0025). Katalog (event/produk/kelas_bermain publik) boleh **dibaca anon** (0022) untuk cache.
+### `anak` (0001; +jenis_kelamin 0024; +streak/streak_terakhir 0042; +nama_panggilan 0071) · `langganan` (0001) · `tema`/`paket_aset`/`hasil_main`/`video`
+- `anak.jenis_kelamin`: 'laki-laki' | 'perempuan' (opsional); `anak.nama_panggilan` dipakai di **stiker event** (nama lengkap dipakai di **sertifikat**). `paket_aset.mesin` diperluas per mesin baru lewat CHECK constraint (0025 mewarnai, 0029–0037, 0074 calistung, 0080 ingatan) — **menambah mesin tanpa migrasi = INSERT paket ditolak DB**. `paket_aset.kategori_usia_id` (0079) + snapshot `usia_min/usia_max`. Katalog (event/produk/kelas_bermain publik) boleh **dibaca anon** (0022), diperluas ke tema & paket untuk halaman teaser `/coba/*` (0081).
 Profil anak, langganan trial, konten game/tema/skor/video (lihat versi sebelumnya — tetap).
 
-### `kelas_bermain` (0014; jsonb 0016; +produk_id)
-`judul`, `bahan` jsonb `[{nama, link, produk_id}]` (link toko luar / produk Store internal), `aktivitas` jsonb `[{judul, cara_membuat, langkah[]}]`, `link_ide`, `worksheet_url`, `status`.
+### `kelas_bermain` (0014; jsonb 0016; +produk_id; +tujuan/usia 0076; +fokus_area/peran_ortu 0077; +sampul_url 0083) — kini bernama tampilan **Ide Bermain**
+`judul`, `bahan` jsonb `[{nama, link, produk_id}]` (link toko luar / produk Store internal), `aktivitas` jsonb `[{judul, cara_membuat, langkah[]}]`, `link_ide`, `worksheet_url`, `status`, `tujuan`, `usia_min/usia_max`, `fokus_area text[]` (key dari master `fokus_area`), `peran_ortu`, `sampul_url` (dipakai kartu share IG & teaser), `boleh_trial` (0060).
 
 ### `favorit` (0015) · `riwayat_kelas` (0018)
 Favorit kelas & riwayat materi yang dibuka (PK gabungan ortu+kelas; RLS milik sendiri).
 
 ### `event` (0017) · `pendaftaran_event` (0017; +reminder_terkirim 0021)
-- `event`: judul, lokasi, tanggal, jam_mulai/selesai, deskripsi, gambar_url, harga_per_anak, status(tampil/arsip).
-- `pendaftaran_event`: event_id, ortu_id, anak_ids[], anak_nama[], jumlah_anak, total, bukti_url, status(menunggu/diterima/ditolak), **reminder_terkirim**. RLS: milik sendiri + admin update; **guru boleh baca** (0020).
+- `event`: judul, lokasi, tanggal, jam_mulai/selesai, deskripsi, gambar_url, harga_per_anak, status(tampil/arsip); +`sertifikat_bg_url`/`dokumentasi_url` (0026), `stiker_bg_url` (0034), **dua kelas** `baby_*`/`toddler_*` tanggal & jam (0069), `harga_pendamping` (0070), `indikator_perkembangan` jsonb (0062), `pesan_reminder` (0085), `kuota_baby/kuota_toddler/kuota_gabungan` (0086; null/0 = tanpa batas, terpakai dihitung RPC `kuota_terpakai_event`).
+- `pendaftaran_event`: event_id, ortu_id, anak_ids[], anak_nama[], jumlah_anak, total, bukti_url, status(menunggu/diterima/ditolak), **reminder_terkirim**; +`hadir_anak_ids[]` (0026, absensi per anak → dasar sertifikat), `event_asal_id`/`alasan_reschedule` (0027), `kelas`/`kelas_jadwal` (0069), `jumlah_pendamping` (0070), `alasan_tolak` (0075), `voucher_id`/`potongan_voucher` (0084), `ref_sumber`/`ref_saluran`/`ref_jenis` (0082, atribusi dari share).
+- RLS: milik sendiri + admin update; **guru boleh baca** (0020); **ortu boleh baca `event` yang pernah ia daftari walau sudah diarsipkan** (0068) — itulah yang membuat rapor & dokumentasi event lama tetap terbuka.
 
 ### `produk` / `keranjang_item` / `pesanan` / `item_pesanan` (0019) — Store
 Produk (nama, deskripsi, kategori, harga, stok, gambar, status) · keranjang DB · pesanan (status: menunggu_ongkir→…→selesai) · item snapshot. (lihat versi sebelumnya — tetap.)
@@ -116,15 +118,55 @@ Produk (nama, deskripsi, kategori, harga, stok, gambar, status) · keranjang DB 
 | unik | `(event_id, anak_id)` |
 RLS: **ortu baca catatan anaknya**, admin & **guru** baca; **guru** insert/update.
 
-**Urutan migrasi:** … → 0019 store → 0020 catatan perkembangan (+is_guru) → 0021 reminder → 0022 katalog baca anon → 0023 profil alamat → 0024 anak jenis_kelamin → 0025 mesin mewarnai → **0026 sertifikat** (kolom `event.sertifikat_bg_url`/`dokumentasi_url`, `pendaftaran_event.hadir_anak_ids`, tabel `sertifikat`) → **0027 reschedule** (`pendaftaran_event.event_asal_id`/`alasan_reschedule`) → **0028 postingan topik** (`postingan.topik`).
+### `sertifikat` (0026) · `stiker` (kolom `event.stiker_bg_url`, 0034)
+`sertifikat`: snapshot per (event, anak) — `anak_nama`, `event_judul`, `event_tanggal`, `lokasi`, `bg_url`, `dokumentasi_url`, `diterbitkan_oleh`; unik `(event_id, anak_id)` sehingga generate bersifat **idempoten**. Hanya dibuat untuk anak yang ada di `hadir_anak_ids`. Nama & link dokumentasi **dibaca ulang dari sumber aslinya** saat ditampilkan (snapshot hanya cadangan) — lihat §15g.
+
+### `penilaian_perkembangan` (0062)
+Parameter per event di `event.indikator_perkembangan` jsonb `[{area, indikator}]` (ditetapkan admin, berlaku untuk semua anak di event itu); nilai per anak di `catatan_perkembangan.penilaian` jsonb `[{area, indikator, nilai}]` (skala PAUD). Kolom lama `catatan_perkembangan.aspek` dipertahankan sebagai fallback.
+
+### Modul Keuangan (0052–0055, 0088)
+| Tabel | Isi |
+|---|---|
+| `transaksi_keuangan` | **ledger tunggal**: `arah`(masuk/keluar), `kategori`, `jumlah`, `tanggal`, `metode`, `keterangan`, `ref_tipe`/`ref_id` (pesanan/pendaftaran/langganan/aset/manual), `lampiran_url`, `pic`, `event_id` (0088 — pengeluaran untuk event tertentu). Unik `(ref_tipe, ref_id)` supaya satu sumber tak tercatat dua kali |
+| `pembayaran_langganan` | riwayat pembayaran membership (nominal, periode, metode) |
+| `aset` | aset perusahaan (harga beli, tanggal, umur manfaat, lokasi, invoice) + master `kategori_aset` (0053) |
+| `anggaran` | budget per `ym` (YYYY-MM) × kategori pengeluaran, unik `(ym, kategori)` (0054) |
+| `kategori_pengeluaran` | master kategori (`kode` = nilai stabil yang tersimpan di ledger; `bawaan` tak bisa dihapus) (0055) |
+RLS: admin penuh; **investor baca**. Semua pendapatan masuk ledger lewat helper `catatLedger` — pendaftaran event diterima, pesanan diverifikasi, langganan diaktifkan, sponsorship dibayar.
+
+### Modul Sponsor (0058)
+`sponsor` (perusahaan, PIC, kontak, NPWP, industri) + `sponsorship` (deal): `jenis` uang|barang, `nilai`, `benefit`, `status` lead→negosiasi→kesepakatan→invoice→dibayar→selesai|batal, nomor & tanggal invoice, jatuh tempo, data pembayaran, `quotation_url`/`agreement_url`/`bukti_url`. **Sponsor uang** masuk ledger (kategori `sponsorship`) saat berstatus Dibayar; **sponsor barang (in-kind)** dicatat nilainya tapi **tidak** masuk kas.
+
+### Pembatasan trial & akses menu (0059–0061, 0063, 0067)
+- `pengaturan_trial` (baris tunggal): `trial_kelas`, `trial_game`, `trial_video`, `trial_maks_anak`, plus opsi Komunitas (0061).
+- `boleh_trial` **per item** di `tema`, `paket_aset`, `kelas_bermain`, `video` (0060; default true = longgar).
+- `pengaturan_menu.akses` jsonb `{admin:[key…], investor:[…], guru:[…]}` — menu admin per role, diatur super user (0063); `pengaturan_menu.fitur` menyimpan Akses Fitur admin/guru/psikolog (0067).
+
+### Chat Psikolog (0064–0067, 0072, 0073, 0087)
+| Tabel | Isi |
+|---|---|
+| `jadwal_psikolog` | satu baris per psikolog: `hari_buka int[]` (0=Minggu), `jam_mulai`/`jam_selesai`, `maks_per_hari`, `durasi_menit` (0072), `aktif`, `nama` (denormalisasi — customer tak boleh baca `profiles` psikolog) |
+| `pendaftaran_konsultasi` | kontainer sesi: ortu, psikolog, anak (+`anak_nama` denormalisasi), `tanggal`, `jam` (0073), `keluhan`, `status` menunggu/diterima/ditolak/selesai/batal, `dimulai_pada`+`durasi_menit` (0072 → hitung mundur & auto-selesai) |
+| `pesan_konsultasi` | pesan chat (pengirim, teks, `dibaca_at`) |
+| `rekomendasi_psikolog` | rekomendasi naratif + `butir` jsonb `[{judul, isi}]` |
+| `rekomendasi_item` | rekomendasi **produk/event/materi** untuk seorang anak (0067; bisa dari psikolog maupun guru) |
+| `psikolog_profil` | master profil yang dikelola admin (0087): nama bergelar, badge, spesialisasi, foto, pendidikan S1 & profesi, no. STR, pengalaman. **Tabel terpisah dari `profiles`** karena datanya publik-ke-customer sedangkan `profiles` tidak |
+RLS 0066: psikolog boleh membaca laporan tumbuh kembang anak **ter-scope** pada anak yang punya booking diterima/selesai dengannya.
+
+### Master data & lain-lain (0078, 0079, 0082–0086)
+`fokus_area` (key stabil + label ber-emoji, dipakai form Ide Bermain) · `kategori_usia` (dipakai form Game; range di-snapshot ke `paket_aset.usia_min/max`) · atribusi share (`ref_sumber`/`ref_saluran`/`ref_jenis` di `pendaftaran_event`, 0082) · `voucher` + `voucher_redeem` (0084; tipe nominal|persen, kuota total & per user, berlaku event/produk; kolom `voucher_id`/`potongan_voucher` di `pendaftaran_event` & `pesanan`).
+
+**Urutan migrasi:** … → 0019 store → 0020 catatan perkembangan (+is_guru) → 0021 reminder → 0022 katalog baca anon → 0023 profil alamat → 0024 anak jenis_kelamin → 0025 mesin mewarnai → **0026 sertifikat** (kolom `event.sertifikat_bg_url`/`dokumentasi_url`, `pendaftaran_event.hadir_anak_ids`, tabel `sertifikat`) → **0027 reschedule** (`pendaftaran_event.event_asal_id`/`alasan_reschedule`) → **0028 postingan topik** (`postingan.topik`) → 0029–0032 mesin `dekode`/`urutan`/`jalur`/`hitung` → 0033 timer & mode tantangan → 0034 stiker nama → 0035–0037 mesin `cocokkan`/`ejakata`/`garis` → 0038 master pengaturan pembayaran → **0039 index performa** & **0040 RPC laporan** → 0041 artikel/blog → **0042 gamifikasi** (streak, lencana, tantangan) → 0043 panel gamifikasi admin → 0044 tantangan kustom → 0046 log aktivitas & analitik → 0047/0048 feedback → 0049/0050 diskon & berat produk → **0052 keuangan** → 0053 kategori aset → 0054 anggaran → 0055 kategori pengeluaran → **0056 super user** → 0057 counter terjual → **0058 sponsor** → 0059–0061 pembatasan trial → 0062 penilaian perkembangan → **0063 akses menu per role** → **0064–0067 psikolog & konsultasi** → 0068 ortu baca event terarsip → 0069 event 2 kelas → 0070 pendamping → 0071 nama panggilan → 0072/0073 durasi & jam konsultasi → 0074 mesin calistung → 0075 alasan tolak → 0076/0077 tujuan+usia & fokus/peran ortu → 0078/0079 master fokus area & kategori usia → 0080 mesin ingatan → 0081 katalog anon tema → 0082 atribusi share → 0083 sampul kelas → **0084 voucher** → 0085 pesan reminder per event → **0086 kuota event** → 0087 profil psikolog → **0088 transaksi per event**.
 
 ---
 
 ## 8. Struktur Folder & Berkas (utama)
 
 ### `src/lib/`
-- `supabase/{client,server}.ts`; `domain/*` (logika murni; total **86 unit test** vitest di `src/lib/**/__tests__`); `game/tipe.ts` (semua interface incl. `Produk`, `Pesanan`, `EventKelas`, `CatatanPerkembangan`, `SkalaPaud`).
-- **`format.ts`** — `formatTanggal`, `formatRupiah`, `STATUS_PESANAN`, **`ASPEK_PAUD`/`SKALA_PAUD`/`metaSkala`**, **`nomorWaIntl`/`linkWa`** (WA).
+- `supabase/{client,server}.ts`; `api/helpers.ts` (amplop JSON + auth Bearer REST API); `game/tipe.ts` (semua interface incl. `Produk`, `Pesanan`, `EventKelas`, `CatatanPerkembangan`, `SkalaPaud`, `Sertifikat`, `KelasBermain`).
+- `domain/*` — **logika murni & teruji** (`npm test`: **97 unit test** di `src/lib/**/__tests__`): `trial`, `gamifikasi`, `harga`, `jadwal`, `laporan`, `laporan-anak`, `reminder`, `skor`, `usia`, `anak`, `voucher`, `waktu`, `tantangan-kustom`, **`stiker`** (ukuran font nama).
+- **Kartu berbagi (canvas, tanpa dependency):** `kartu-bersama.ts` (palet, pembungkus teks `ukuranPas`, pemuat aset, ornamen) dipakai `story-card.ts` (1080×1920 IG Story) & `feed-card.ts` (1080×1080 IG Feed); `sertifikat-jpeg.ts` memakai helper yang sama untuk e-sertifikat **A4 landscape 3508×2480**.
+- Lain-lain: `format.ts` (`formatTanggal`, `formatRupiah`, `STATUS_PESANAN`, `ASPEK_PAUD`/`SKALA_PAUD`, `nomorWaIntl`/`linkWa`), `menu-admin.ts` (katalog menu + matriks akses per role), `form-reset.ts` (`usePadaResetForm`), `img.ts` (kompresi unggahan), `share.ts`/`ref.ts` (atribusi share), `slug.ts`, `youtube.ts`, `tts.ts`, `metode.ts`, `profil.ts`.
 
 ### `src/lib/data/`
 | Berkas | Isi |
@@ -136,9 +178,17 @@ RLS: **ortu baca catatan anaknya**, admin & **guru** baca; **guru** insert/updat
 | **`catatan.ts`** (getCatatanAnak, getCatatanEventSaya, getEventBerCatatan) | catatan sisi ortu |
 | **`admin-guru.ts`/`admin-guru-actions.ts`** (jadikan/cabut guru) | kelola guru |
 | **`admin-reminder.ts`/`admin-reminder-actions.ts`** (getReminderPendaftaran, tandaiReminder) | reminder WA |
+| `keuangan.ts`/`keuangan-actions.ts`, **`ledger.ts`** (`catatLedger`/`hapusLedgerRef`), `anggaran*.ts`, `kpi.ts`, `investor.ts` | modul Keuangan + dashboard investor |
+| `sponsor.ts`/`sponsor-actions.ts` | sponsor & deal sponsorship (invoice, pembayaran) |
+| `konsultasi.ts`/`konsultasi-actions.ts`, `psikolog*.ts`, `psikolog-profil.ts`, `rekomendasi-item*.ts` | Chat Psikolog: jadwal, booking, chat, rekomendasi, master profil |
+| `pengaturan-menu.ts`, `pengaturan-trial.ts`, `admin-users*.ts` | akses menu per role, pembatasan trial, kelola user & role |
+| `artikel.ts`/`artikel-admin.ts`, `aktivitas*.ts`, `atribusi.ts`, `feedback*.ts` | blog, log aktivitas & analitik, atribusi share, masukan |
+| `voucher.ts`/`voucher-actions.ts`, `kuota-event.ts`, `langganan-status.ts`, `pengaturan-bayar.ts` | voucher, kuota event, status langganan, master pembayaran |
+| `fokus-area*.ts`, `kategori-usia*.ts`, `tantangan-kustom*.ts`, `admin-anak*.ts`, `admin-konten.ts` | master data & panel konten |
+| `sertifikat.ts`/`admin-sertifikat-actions.ts`, `publik.ts` (cached), `pustaka.ts`, `skor*.ts`, `gamifikasi.ts` | sertifikat, katalog ter-cache, pustaka game, skor & gamifikasi |
 
 ### `src/components/`
-Pewi, Confetti, game/*, FavoritBtn, BeliBtn (internal/eksternal+konfirmasi), UnduhPdfBtn, EventCard/EventCarousel (tampil peserta+status per anak), ProdukCard, TambahKeranjangBtn, BottomNav (badge keranjang), **CatatanCard** (rubrik), **Logo** (`/logo.png`, transparan, `plate=false`), **SertifikatView** (e-sertifikat), **YoutubeEmbed** (embed materi).
+Pewi, Confetti, game/* (15 mesin + `GameRunner`), FavoritBtn, BeliBtn, UnduhPdfBtn, EventCard/EventCarousel, ProdukCard, TambahKeranjangBtn, BottomNav (badge keranjang), **CatatanCard**/`NilaiPerkembanganForm` (rubrik & penilaian), **Logo**, **SertifikatView** + **UnduhSertifikatBtn** (JPEG A4), **StikerSheet** (lembar stiker cetak), **YoutubeEmbed**, **ShareButton** (kartu IG Story/Feed), **InputRupiah**/**UploadNota**/**InputSandi** (form), **LaporanAnakView** (rapor, dipakai ortu & psikolog), **ChatKonsultasi**, **Terkunci** (layar konten terkunci trial).
 
 ### `src/app/` — rute (yang baru ditandai ✦)
 | Rute | Untuk |
@@ -154,7 +204,14 @@ Pewi, Confetti, game/*, FavoritBtn, BeliBtn (internal/eksternal+konfirmasi), Und
 | ✦ `/catatan/[eventId]` | Ortu lihat Catatan Perkembangan anaknya di satu event |
 | `/store`(+`/[id]`), `/keranjang`, `/pesanan`(+`/[id]`) | Toko + keranjang + pesanan |
 | ✦ `/guru`(+`/[eventId]`) | **Area Guru**: pilih event → isi rubrik catatan per anak |
-| `/admin` + sub | Dashboard admin: tema, video, kelas-bermain, langganan, laporan, komunitas, event (+Pendaftar: absensi/sertifikat/reschedule), produk, pesanan, **guru**, **reminder**, ✦ **analitik**. **Nav utama persisten + tombol Back** (`AdminNav`) di semua halaman. |
+| `/artikel`(+`/[slug]`) | Blog/artikel publik (SEO, tombol Bagikan → kartu IG Story/Feed) |
+| `/coba/kelas/[id]`, `/coba/tema/[id]` | Halaman teaser publik (boleh dibaca anon, migrasi 0081) |
+| `/konsultasi`(+`/[pendaftaranId]`) | **Chat Psikolog** sisi ortu: daftar psikolog + booking + ruang chat |
+| `/psikolog`(+`/[pendaftaranId]`, `/jadwal`) | **Area Psikolog**: antrian booking, chat, rekomendasi, atur jadwal & durasi |
+| `/sertifikat/[id]` | E-sertifikat (tampil + unduh **JPEG A4 landscape**) |
+| `/stiker-event/[id]`, `/admin/event/[id]/cetak-peserta` | Lembar stiker nama & daftar peserta siap cetak/PDF |
+| `/investor` | Dashboard investor (ringkasan keuangan, `noindex`) |
+| `/admin` + sub | Dashboard admin. Menu: analitik, event (+Pendaftar: absensi/sertifikat/reschedule/pindah kelas/cetak), produk, pesanan, **voucher**, ide bermain, fokus area, kategori usia, artikel, video, langganan, **keuangan** (transaksi, expense, anggaran, aset, pajak, KPI, insight, laporan, master), **sponsor**, anak, tantangan, pembayaran, trial, laporan, komunitas, masukan, **guru**, **psikolog**, pengguna, **reminder**, **akses menu**. **Nav utama persisten + tombol Back** (`AdminNav`); menu yang tampil difilter per role dari `pengaturan_menu` dan ditegakkan ulang di `proxy.ts`. |
 
 `globals.css` (+`@media print .no-print`), `layout.tsx` (metadata + **favicon `/logo.png`**), `proxy.ts`.
 
@@ -180,7 +237,15 @@ Ortu → lihat di /kelas-saya & /event (📋 Catatan) & Rapor anak
 
 **Reminder WA Event (semi-otomatis):** Admin → 📣 Reminder → semua event (BESOK disorot) → tiap peserta "💬 Kirim WA" (link `wa.me` + pesan H-1 siap kirim) → "tandai terkirim". Ada **filter cari nama event**. Nomor dirapikan ke `62…`.
 
-**Bottom Nav (6 tab):** 🏠 Beranda · 🎈 Kelas · 🛒 Store (badge keranjang) · 📦 Pesanan · 💬 Komunitas · 👤 Akun.
+**Chat Psikolog:** psikolog atur jadwal (hari, jam, kuota/hari, durasi sesi) → ortu pilih psikolog (profil dari master `psikolog_profil`) & booking tanggal+jam (RPC memvalidasi hari, jam, dan kuota) → admin/psikolog terima → psikolog tekan **Mulai** (hitung mundur berjalan sinkron di kedua sisi; habis → sesi `selesai` otomatis) → psikolog menulis rekomendasi + merekomendasikan produk/event/materi → semuanya tampil di Rapor anak.
+
+**Keuangan (basis kas):** semua pendapatan masuk `transaksi_keuangan` lewat `catatLedger` pada satu titik per sumber — pendaftaran event **diterima**, pesanan **diverifikasi**, langganan **diaktifkan**, sponsorship **dibayar**. Unik `(ref_tipe, ref_id)` mencegah pencatatan ganda; pembatalan memanggil `hapusLedgerRef`. Pengeluaran diinput manual (boleh dikaitkan ke sebuah event, 0088) → laporan L/R, anggaran vs realisasi, KPI, dan dashboard investor semuanya membaca ledger yang sama.
+
+**Voucher:** kode dinilai di server saat checkout/pendaftaran (tipe nominal/persen, kuota total & per user, rentang tanggal, berlaku event/produk) → potongan disimpan di `pendaftaran_event`/`pesanan` + baris `voucher_redeem`.
+
+**Pembatasan trial:** status langganan (`aktif`/`trial`/`tenggang`/`kadaluarsa`) **tidak memblokir halaman** — ia hanya menyalakan flag `batasi`, dan item yang tak ditandai `boleh_trial` tampil 🔒 dengan ajakan perpanjang.
+
+**Bottom Nav (7 tab):** 🏠 Beranda · 🎈 Ide · 🛒 Store (badge keranjang) · 📦 Pesanan · 💬 Komunitas · 🧠 Konsultasi · 👤 Akun.
 
 ---
 
@@ -188,7 +253,9 @@ Ortu → lihat di /kelas-saya & /event (📋 Catatan) & Rapor anak
 
 1. **RLS tiap tabel.** 2. Guard kode (`getAnakTerjamin`, `getAdminTerjamin`, `getGuruTerjamin`, `adminDb`, filter `.eq(..user.id)`).
    - `getAnakTerjamin` memeriksa **login + kepemilikan anak saja**; status langganan **bukan** gerbang halaman, melainkan hanya mengunci konten per item (🔒). Sebelumnya ia memantulkan diam-diam ke `/pilih-anak` dan itu terbaca sebagai "tombol rusak" — lihat `DEVELOPER-KIDZPLAYFUL.md` §3 "Redirect harus membawa alasan".
-3. **`is_admin()`/`is_guru()` + trigger** — non-admin tak bisa promote diri jadi admin/guru; admin yang mengelola role.
+3. **Fungsi SQL `is_superuser()`/`is_admin()`/`is_guru()`/`is_investor()`/`is_psikolog()` + trigger `cegah_self_admin`** — tak seorang pun bisa mempromosikan dirinya sendiri; `is_superuser` hanya lewat SQL Editor, role lain lewat halaman admin.
+3b. **Akses menu admin per role** (`pengaturan_menu`, 0063) ditegakkan **dua lapis**: `admin/layout.tsx` menyembunyikan menu yang tak diizinkan, dan `proxy.ts` (middleware) memblokir bila rutenya diketik langsung. Menu sensitif (keuangan, pengguna, pembayaran, trial, sponsor) default **hanya super user**.
+3c. **Data psikolog ter-scope** (0066): psikolog hanya bisa membaca laporan anak yang punya booking diterima/selesai dengannya — bukan seluruh anak.
 4. Total event/pesanan dihitung server; harga di-snapshot. Stok berkurang saat verifikasi.
 5. Upload user dibatasi folder `bukti/`. 6. Catatan: ortu hanya lihat catatan anaknya; guru hanya baca pendaftaran + tulis catatan.
 
@@ -196,14 +263,14 @@ Ortu → lihat di /kelas-saya & /event (📋 Catatan) & Rapor anak
 
 ## 11. Testing & Verifikasi
 
-- Unit: `npm test` (30). E2E: `npm run e2e`.
+- Unit: `npm test` (**97 tes**, vitest). E2E: `npm run e2e`. Gerbang sebelum commit: `npx tsc --noEmit` → `npx eslint` → `npm test` → `npm run build`.
 - Skrip verifikasi prod (`tools/*.mjs`): `event_m14_full.mjs`, `store_m16_check.mjs`, `catatan_m17_check.mjs`, dll. (`node tools/<nama>.mjs`).
 
 ---
 
 ## 12. Deploy — Supabase
 
-1. Buat proyek. 2. **SQL Editor** → migrasi `0001`–`0021` berurutan. 3. Auth: matikan Confirm email (dev) / atur **SMTP** (agar reset password terkirim) + **Redirect URL** `https://<domain>/reset-sandi` + Site URL. 4. API → salin URL + publishable key ke env Vercel & lokal. 5. Admin (sekali): `update public.profiles set is_admin=true where email='…';` Guru diaktifkan dari Admin → Kelola Guru. 6. Bucket `aset` (0007) + izin bukti (0017).
+1. Buat proyek. 2. **SQL Editor** → migrasi `0001`–`0088` berurutan (semua manual; verifikasi tiap kolom baru via REST `?select=<kolom>&limit=1` → 200). 3. Auth: matikan Confirm email (dev) / atur **SMTP** (agar reset password terkirim) + **Redirect URL** `https://<domain>/reset-sandi` + Site URL. 4. API → salin URL + publishable key ke env Vercel & lokal. 5. Admin (sekali): `update public.profiles set is_admin=true where email='…';` Guru diaktifkan dari Admin → Kelola Guru. 6. Bucket `aset` (0007) + izin bukti (0017).
 
 ## 13. Deploy — Vercel
 
@@ -222,6 +289,12 @@ Push GitHub → Import (Next.js) → isi 2 env var **sebelum** Deploy → tiap `
 | Input link YouTube ditolak | Ekstraksi dukung shorts/live/format lain |
 | Menu Kelas Bermain kosong (event ≠ materi) | `/kelas-saya` kini tampilkan event yang diikuti + catatan |
 | Field tak ter-reset setelah simpan (nominal, kategori, **foto nota ikut ter-submit ke entri berikutnya**) | React 19 hanya mereset field **uncontrolled** pada `<form action={serverAction}>`. `InputRupiah`/`UploadNota`/`BudgetKategoriSelect` dibuat uncontrolled + hook `usePadaResetForm` (`lib/form-reset.ts`) untuk state tampilan |
+| Fitur baru mematikan halaman yang tadinya jalan setelah deploy | Kode ter-deploy lebih dulu daripada migrasi manual sehingga kolom baru memicu `42703`. **Kolom baru wajib toleran**: query terpisah + nilai default, write retry tanpa kolom itu |
+| Mesin game baru: INSERT paket ditolak DB (error ter-redact di production) | Perluas CHECK `paket_aset_mesin_check` lewat migrasi (pola 0025…0037, 0074, 0080) |
+| Klik profil anak tidak membuka halaman anak | Guard memantulkan **diam-diam** saat langganan tak aktif / baris `langganan` hilang-ganda. Gerbang dicabut; akses dibatasi lewat kunci per konten, dan setiap `redirect()` wajib membawa alasan yang ditampilkan |
+| Dokumentasi & e-sertifikat hilang dari Rapor setelah event diarsipkan | Blok event kini juga lahir dari **kehadiran**, dan judul/tanggal/dokumentasi dibaca live dari `event` (snapshot cadangan). Policy 0068 yang mengizinkannya sudah ada sejak lama |
+| Pencarian di daftar admin "seolah datanya tidak ada" | Daftar dipaginasi sehingga pencarian **harus server-side**. Kata kunci disanitasi sebelum masuk filter PostgREST `or=(...)` |
+| Stiker terpotong di batas halaman | Chrome mengabaikan `break-inside: avoid` pada grid item, jadi stiker dipotong sendiri per 10 + `break-after: page` |
 
 ---
 
@@ -495,20 +568,111 @@ where email = '<email>';
 
 ---
 
+---
+
+## 15g. Fitur & Peningkatan (2026-07-07 s.d. 2026-08-19)
+
+Bagian ini menutup rentang **migrasi 0053–0088**. Dikelompokkan per tema (bukan per hari) supaya bisa dibaca sebagai peta modul.
+
+### Modul Keuangan — dari ledger ke BI (0053–0055, 0088)
+- **Master terpusat** `/admin/keuangan/master`: kategori aset (0053) & kategori pengeluaran (0055). `kode` kategori pengeluaran adalah **nilai stabil yang tersimpan di ledger** — logika `marketing`/`aset`/`pajak` bergantung padanya, jadi kode tidak boleh diubah sembarangan.
+- **Anggaran** (0054): budget per bulan × kategori, dibandingkan dengan realisasi + **forecast 6 bulan**. Sisa budget kategori ditampilkan langsung di form Pengeluaran & Aset supaya admin tahu sebelum menyimpan.
+- **KPI & Insight** tanpa tabel baru — dihitung dari ledger yang sudah ada.
+- **Setiap transaksi bisa diklik** → halaman detail yang membawa ke sumbernya (pesanan Store / pendaftaran event / langganan / aset / sponsorship).
+- **Pengeluaran per event** (0088): kolom `transaksi_keuangan.event_id` + dropdown filter Event, sehingga laporan bisa menjawab "event ini menghasilkan berapa, menghabiskan berapa".
+- **Revenue ikut pindah saat pendaftar direschedule** — dan itu **disengaja**: `reschedulePendaftaran` mengubah `event_id` pada baris pendaftaran yang sama, sementara seluruh jalur revenue per event bersifat **turunan**, bukan snapshot. Karena itu **jangan** menambahkan snapshot event pada baris ledger pendaftaran — justru akan mematahkan perilaku ini.
+
+### Modul Sponsor (0058)
+Pipeline lead → negosiasi → kesepakatan → invoice → dibayar → selesai. **Generate Invoice dikunci** sampai status Kesepakatan. Sponsor **uang** masuk ledger saat Dibayar; sponsor **barang (in-kind)** dicatat nilainya tapi tidak menyentuh kas.
+
+### Role, Pengguna & Akses Menu (0056, 0063, 0067)
+- Role **Super User** (0056) di atas admin; trigger anti-eskalasi diperluas ke semua kolom role.
+- Halaman **Pengguna & Role** `/admin/users` — termasuk **buat user baru** dengan role (memakai service role key, server-only).
+- **Matriks Akses Menu** `/admin/akses-menu` (0063, khusus super user): centang menu per role Admin/Investor/Guru. Menu sensitif (keuangan, pengguna, pembayaran, trial, sponsor) **default hanya super user**. Ditegakkan dua lapis: layout menyembunyikan, `proxy.ts` memblokir bila rute diketik langsung.
+- **Matriks Akses Fitur** (0067) untuk admin/guru/psikolog: chat konsultasi, memberi nilai perkembangan, rekomendasi produk/event/materi.
+
+### Pembatasan Trial per item (0059–0061)
+Dari "boleh/tidak boleh" global menjadi **per item**: admin menandai konten mana yang boleh diakses user trial (`boleh_trial` di tema, paket, kelas, video). Item yang tidak ditandai **tetap tampil** tapi terkunci 🔒 dengan ajakan perpanjang — bukan disembunyikan, supaya user tahu apa yang ia dapat bila berlangganan. Ada toggle global untuk Komunitas (0061) dan batas jumlah anak untuk user non-aktif.
+
+### Chat Psikolog (0064–0067, 0072, 0073, 0087)
+Role psikolog + jadwal (hari, jam, kuota/hari) → booking oleh ortu → chat dua arah → rekomendasi naratif + rekomendasi produk/event/materi → semuanya muncul di Rapor anak. Penyempurnaan: **durasi sesi + hitung mundur** sinkron di kedua sisi dengan peringatan 1 menit terakhir dan auto-selesai (0072), **booking menyimpan jam** dan RPC memvalidasi jam terhadap window jadwal (0073), riwayat konsultasi dikelompokkan per tanggal, dan **master profil psikolog** yang dikelola admin (0087: nama bergelar, badge, spesialisasi, foto, pendidikan S1 & profesi, no. STR, pengalaman) menggerakkan UI konsultasi berbasis kartu di sisi ortu.
+
+### Penilaian Perkembangan per event (0062)
+Admin menetapkan **Parameter (Area + Indikator) per event** (+ tombol Duplikat dari event lain), guru/admin memberi **Nilai** per anak dengan skala PAUD. Parameter di `event.indikator_perkembangan`, nilai snapshot di `catatan_perkembangan.penilaian`.
+
+### Event & pendaftaran — operasional harian
+- **Dua kelas per event** (0069): Baby & Toddler dengan tanggal/jam berbeda; kosong = gabungan. Customer memilih kelas saat mendaftar, dan jadwal kelas terpilih di-snapshot ke `kelas_jadwal`.
+- **Pendamping berbayar per event** (0070) + **kuota per kelas** (0086, null/0 = tanpa batas) dengan alert "kuota sudah penuh"; kuota terpakai dihitung RPC agar tidak salah saat daftar disaring.
+- **Alasan penolakan** (0075) tampil ke orang tua; pendaftaran ditolak tidak lagi dihitung sebagai peserta.
+- **Pesan WA manual per event** (0085) di halaman Reminder, plus pencarian nama anak/orang tua dan **jam kelas ikut disebut** di pesan.
+- Halaman **Pendaftar**: pencarian nama, grup per kelas yang bisa dilipat, **filter rentang usia (satuan bulan)**, **urutan waktu daftar (Terbaru/Terlama)**, umur anak per hari ini, waktu daftar, tombol **WA ke ortu**, **pindah kategori kelas** (Baby↔Toddler dengan penegakan kuota), **reschedule ke event lain**, absensi per anak, ekspor **CSV** & **PDF** peserta (termasuk kolom jenis kelamin), dan bukti bayar dibuka lewat **modal** (`BuktiLightbox`), bukan tab baru.
+- **Peserta & sisa kuota selalu dihitung dari seluruh pendaftaran kelas itu**, bukan dari hasil filter — dulu "sisa kuota" jadi salah setiap kali admin mencari.
+
+### E-Sertifikat, Stiker & Cetak
+- **Sertifikat diunduh sebagai JPEG A4 landscape** (3508×2480 @300dpi) lewat canvas, **bukan** dialog cetak — ukuran berkasnya jadi pasti, tidak bergantung setelan skala/margin pengguna. Seluruh teks hitam kecuali **nama anak**; nama memakai **nama lengkap** yang dibaca ulang dari tabel `anak`, sehingga **sertifikat lama pun ikut benar tanpa generate ulang**.
+- **Stiker nama**: baris kedua memakai **kategori kelas** (Baby/Toddler Class), bukan judul event; dibawa **per stiker** karena satu event bisa memuat kedua kelas. Seluruh teks **merah `#d62828`** dengan ukuran diperbesar (nama sampai 34pt), dan `ukuranNama()` (`lib/domain/stiker.ts`, teruji) mengecilkan nama panjang agar tak ada kata terpenggal atau isi yang melewati tinggi 60mm. Sapaan "Hai, aku" dihapus.
+- **Paginasi cetak**: Chrome tidak menghormati `break-inside: avoid` pada grid item, sehingga baris ke-5 dulu terpenggal. Sekarang stiker dipotong sendiri menjadi kelompok 10 dan tiap kelompok memakai `break-after: page`.
+
+### Ide Bermain & master data (0076–0079, 0083)
+Tujuan pembelajaran + rentang usia (0076), **fokus area perkembangan** + peran orang tua (0077), master **Fokus Area** (0078) & **Kategori Usia** (0079) sebagai dropdown/chips (bukan ketik manual), **gambar sampul** (0083) yang dipakai kartu share, banner detail, dan teaser publik. Isi materi dirender komponen bersama `KelasIsi` agar identik di detail, Mode Anak, dan Mode Ortu.
+
+### Mesin game baru (0074, 0080)
+Tiga mesin **calistung** — Rangkai Suku Kata, Jiplak Huruf & Angka, Hitung Benda (0074) — dan mesin **Ingatan** (memory/concentration, 0080). Hitung-Kode diperluas ke perkalian & pembagian. **Setiap mesin baru wajib migrasi yang memperluas CHECK `paket_aset_mesin_check`**; tanpa itu INSERT paket ditolak DB dan errornya ter-redact di production.
+
+### Bagikan Konten, Atribusi & kartu Instagram (0081–0083)
+- **Teaser publik** `/coba/kelas/[id]` & `/coba/tema/[id]` yang boleh dibaca anon (0081) + `ShareButton` (native share + fallback sosmed).
+- **Atribusi share** (0082): UTM disisipkan otomatis, ditangkap **first-touch** di halaman publik, disimpan saat daftar, lalu tampil sebagai kartu Atribusi di `/admin/analitik`.
+- **Kartu gambar IG** dari canvas tanpa dependency: **Story 1080×1920** dan **Feed 1080×1080**, keduanya mengambil isi dari **satu sumber** (`ShareButton.isiKartu()`) sehingga mustahil berbeda isi. Dua aturan wajib: teks memakai `ukuranPas()` (mengecil sampai muat, bukan dipotong elipsis) dan foto memakai `contain` di kartu Feed karena sampul artikel sering memuat tulisan.
+
+### Voucher (0084)
+Master voucher (nominal/persen, kuota total & per user, rentang tanggal, berlaku event/produk) + redeem di pendaftaran event dan pembelian produk. Potongan disimpan di transaksinya, ledger mencatat **nilai net**, dan kuota **dilepas kembali** bila pendaftaran ditolak atau pesanan dibatalkan.
+
+### Performa & gambar
+Cache halaman publik (`unstable_cache` + `updateTag`), pengurangan query berulang di halaman tersibuk, **kompresi gambar saat unggah** (bukti bayar 1280/0.8; dokumen/artikel/produk/banner; template sertifikat & stiker 2000/0.9) plus skrip backfill (`sharp`, dry-run default) untuk gambar lama di Storage, dan lazy-load gambar. CI GitHub Actions menjalankan typecheck + vitest + build di tiap PR & push master.
+
+### Perbaikan penting (bug nyata + pelajarannya)
+| Bug | Akar & pelajaran |
+|---|---|
+| Field tak ter-reset setelah simpan — **foto nota transaksi sebelumnya ikut ter-submit** ke entri berikutnya | React 19 hanya mereset field **uncontrolled**. Semua nilai yang ikut ter-submit dibuat uncontrolled + `usePadaResetForm` untuk state tampilan |
+| Kolom kuota (0086) mematikan halaman event sebelum migrasi dijalankan | **Kolom baru harus toleran**: baca lewat query terpisah yang mengembalikan default bila gagal, dan retry write tanpa kolom itu |
+| Daftar event **tanpa** voucher gagal | Jalur non-voucher dipisah memakai insert polos |
+| Game Ingatan: pasangan tak terdeteksi saat klik cepat | Stale closure — model pasangan dibuat eksplisit (1 baris = 1 pasangan, deteksi by id) |
+| Orang tua kehilangan akses event yang **diarsipkan**, sehingga dokumentasi & e-sertifikat hilang dari Rapor | Blok KEGIATAN dulu hanya lahir dari baris catatan/sertifikat. Kini **kehadiran** (`hadir_anak_ids`) juga memunculkan bloknya, dan judul/tanggal/dokumentasi dibaca **live** dari event (snapshot hanya cadangan) |
+| **Klik profil anak tidak membuka halaman anak** | `getAnakTerjamin` memantulkan **diam-diam** ke `/pilih-anak` saat langganan tak aktif — dan juga saat baris `langganan` hilang/ganda. Gerbang dicabut (akses dibatasi lewat kunci per konten), dan **setiap redirect kini wajib membawa alasan yang ditampilkan** |
+| Sertifikat memakai nama panggilan / tanpa link dokumentasi | Snapshot dibaca ulang dari sumbernya saat ditampilkan |
+| Deploy senyap (repo privat + Vercel Hobby) | `git push` sukses & CI hijau tapi fitur tak pernah tayang. Prosedur deteksi: `RUNBOOK-OPERASIONAL.md` RB-10 |
+
+### Penamaan: "Kelas Bermain" → "Ide Bermain"
+Label tampilan diganti di menu admin, nav bawah orang tua (`Kelas` → `Ide`), judul `/kelas-saya` & `/favorit`, layar terkunci, dan label analitik. **Yang sengaja tidak diubah**: `key: 'kelas-bermain'` di `MENU_ADMIN` (tersimpan di konfigurasi Akses Menu di database — menggantinya mencabut hak akses semua role), rute `/admin/kelas-bermain` · `/kelas-saya` · `/kelas/[id]` · `/api/kelas-bermain`, tabel `kelas_bermain`, **"Event Kelas Bermain"** (fitur berbeda), dan judul SEO/landing yang sudah terindeks.
+
 ## 15. Glosarium
 
 - `bahan` (jsonb): `[{nama, link, produk_id}]` — produk_id → Store internal.
 - `aktivitas` (jsonb): `[{judul, cara_membuat, langkah[]}]`.
 - `catatan_perkembangan.aspek` (jsonb): nilai rubrik PAUD per aspek (`BB/MB/BSH/BSB`).
-- `is_admin` / `is_guru` (profiles): penanda peran.
+- `is_superuser` / `is_admin` / `is_guru` / `is_investor` / `is_psikolog` (profiles): penanda peran. Menu admin per role disimpan di `pengaturan_menu.akses`, akses fitur di `pengaturan_menu.fitur`.
 - `harga_per_anak`, `pesanan.status`, `produk.stok`, `keranjang_item` (badge), `reminder_terkirim` (penanda WA H-1 sudah dikirim).
 - `mode_default` (anak): <2 → Mode Ortu, ≥2 → Mode Anak. `jenis_kelamin`: 'laki-laki'|'perempuan'.
 - `DataMewarnai` (butir game mewarnai): `{sumber:'template'|'svg', template?, svg?, palette[], mode:'bebas'|'sesuai'|'berkode', target?}`.
-- **`mesin`** (11 engine): `tekan-sesuai, seret-wadah, cari-pasangan, mewarnai, dekode, urutan, jalur, hitung, cocokkan, ejakata, garis` (lihat §15d).
+- **`mesin`** (15 engine): `tekan-sesuai, seret-wadah, cari-pasangan, mewarnai, dekode, urutan, jalur, hitung, cocokkan, ejakata, garis` (§15d) + calistung `sukukata, jiplak, hitung-benda` (0074) + `ingatan` (0080). **Mesin baru wajib migrasi yang memperluas CHECK `paket_aset_mesin_check`.**
 - `target_detik` (paket): Mode Tantangan — selesai ≤ target = bonus ⭐/🪙. `hasil_main.durasi_detik` = lama main per sesi (dipakai timer & Rapor).
 - `event.stiker_bg_url` / `sertifikat_bg_url` / `dokumentasi_url`: template stiker / template sertifikat / link dokumentasi per event.
 - `pengaturan_pembayaran` (baris tunggal `id=1`): master harga langganan + rekening/QRIS/WA transfer, diedit di `/admin/pengaturan-bayar`, dibaca via `getPengaturanBayar()`.
+- `boleh_trial` (tema/paket_aset/kelas_bermain/video): true = boleh diakses user trial. `dibatasiTrial(status)` = `status !== 'aktif'` → item tanpa izin tampil 🔒, **bukan** disembunyikan.
+- `transaksi_keuangan.ref_tipe`/`ref_id`: sumber baris ledger (`pesanan`|`pendaftaran`|`langganan`|`aset`|`sponsorship`|`manual`), unik berpasangan supaya satu sumber tak tercatat dua kali. `event_id` (0088) = pengeluaran untuk event tertentu.
+- `pendaftaran_event.kelas` / `kelas_jadwal`: kelas terpilih (`baby`|`toddler`|`gabungan`) + snapshot tampilan tanggal & jamnya. `hadir_anak_ids[]` = absensi per anak, dasar penerbitan sertifikat.
+- `event.kuota_baby/kuota_toddler/kuota_gabungan`: null atau 0 = **tanpa batas**; terpakai dihitung RPC `kuota_terpakai_event`.
+- `ref_sumber`/`ref_saluran`/`ref_jenis`: atribusi first-touch dari fitur Bagikan (0082).
+- `voucher.tipe`: `nominal`|`persen`; `voucher_redeem` mencatat pemakaian per (voucher, ortu, transaksi) dan kuotanya dilepas bila transaksi dibatalkan.
+- `psikolog_profil`: master profil psikolog yang dikelola admin — sengaja **terpisah** dari `profiles` karena datanya dibaca customer.
 
 ---
 
-*Mengikuti kode terkini per 2026-07-03. Sesi 2026-07-02/03: E-Sertifikat, Reschedule, pendaftaran per-anak, Rapor collapse + waktu per game, koreksi ongkir, nav admin persisten, embed YouTube materi, topik komunitas, Analitik + Vercel Analytics, logo baru, **9 engine game koding** (dekode/urutan/jalur/hitung/cocokkan/ejakata/garis + mewarnai-berkode), **timer & Mode Tantangan**, **edit paket**, **Stiker Nama F4**. Migrasi s/d 0037. Regenerasi PDF: `python tools/md2pdf.py docs/DOKUMENTASI-KIDZPLAYFUL.md` lalu cetak HTML→PDF via Chrome.*
+*Mengikuti kode terkini per **2026-08-19**, migrasi s/d **0088**. Riwayat fitur berurutan waktu ada di §15b–§15g; detail per halaman/menu di [`DEVELOPER-KIDZPLAYFUL.md`](DEVELOPER-KIDZPLAYFUL.md).*
+
+*Regenerasi HTML+PDF:*
+```bash
+python tools/md2pdf.py docs/DOKUMENTASI-KIDZPLAYFUL.md
+chrome --headless --disable-gpu --no-pdf-header-footer \
+  --print-to-pdf=docs/DOKUMENTASI-KIDZPLAYFUL.pdf docs/DOKUMENTASI-KIDZPLAYFUL.html
+```
