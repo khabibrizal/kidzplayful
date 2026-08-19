@@ -2,7 +2,7 @@
 
 > Panduan teknis untuk developer baru. Menjelaskan **per halaman/menu**: file apa yang menanganinya, function/reader/server-action apa yang dipakai, dan **endpoint backend** (tabel Supabase / RPC / storage / auth) yang disentuh. Termasuk **REST API internal** (untuk aplikasi mobile) dan infrastruktur.
 
-Terakhir diperbarui: 2026-07-31.
+Terakhir diperbarui: 2026-08-19.
 
 **Dokumen pendamping:** [`INFRASTRUKTUR-KIDZPLAYFUL.md`](INFRASTRUKTUR-KIDZPLAYFUL.md) — rencana penataan & skala infrastruktur (model kapasitas 4 tier, index/RLS/agregasi, observability, backup & DR, egress & biaya) · [`RUNBOOK-OPERASIONAL.md`](RUNBOOK-OPERASIONAL.md) — prosedur saat kejadian (backup, uji restore, DR, insiden, rilis+migrasi, rotasi kredensial).
 
@@ -39,11 +39,11 @@ src/
   components/          # komponen UI bersama (client)
   lib/
     data/              # reader (baca) + *-actions.ts (server actions)
-    domain/            # logika murni (trial, gamifikasi, harga, laporan, usia…)
+    domain/            # logika murni & teruji (trial, gamifikasi, harga, laporan, usia, stiker…)
     supabase/          # server.ts (SSR), client.ts (browser)
     api/               # helpers.ts (amplop JSON + auth Bearer untuk REST API)
     game/              # tipe & util mesin game
-supabase/migrations/   # skema DB (0001..0086), dijalankan manual di SQL Editor
+supabase/migrations/   # skema DB (0001..0088), dijalankan manual di SQL Editor
 docs/                  # dokumentasi (termasuk file ini)
 tools/md2pdf.py        # generator PDF dokumentasi
 ```
@@ -72,13 +72,24 @@ tools/md2pdf.py        # generator PDF dokumentasi
   - `BudgetKategoriSelect`: `<select>` uncontrolled; panel sisa anggaran disinkronkan kembali ke pilihan awal saat reset.
 - **Tidak berlaku untuk** komponen yang menyimpan langsung lewat server action tanpa field tersembunyi di form (mis. `UploadDok` di detail sponsor, yang menulis per `dealId`).
 
+### Redirect harus membawa alasan (WAJIB)
+- **Jangan pernah `redirect()` diam-diam ke halaman asal.** Bagi pengguna, pantulan tanpa pesan **tidak bisa dibedakan dari tombol rusak** — itulah bentuk nyata bug "klik profil anak tidak membuka halaman anak" (§8, `/main`).
+- Bila akses memang harus dibatasi, batasi lewat **kunci per konten** (`dibatasiTrial` → `boleh_trial` → 🔒 `<Terkunci>`), bukan pantulan — user tetap melihat halamannya dan tahu apa yang terkunci serta kenapa.
+- Bila memang harus memantulkan (mis. sumber daya bukan milik user), **bawa alasannya di query string** dan **tampilkan** di halaman tujuan: `redirect('/pilih-anak?galat=anak-tidak-ditemukan')` + spanduk di `/pilih-anak`.
+- Waspadai guard yang menyala karena sebab yang keliru: `.single()` pada baris yang **hilang atau ganda** akan error, dan bila hasilnya dipetakan ke "tidak berhak", user terkunci tanpa sebab. Pakai `maybeSingle()` dan bedakan "tidak ada" dari "tidak berhak".
+
+### Pencarian pada daftar terpaginasi (WAJIB server-side)
+- Daftar admin yang dipaginasi (mis. `/admin/langganan` 30/halaman) **tidak boleh** disaring di klien: hasilnya hanya mencari di halaman yang sedang terbuka, dan itu terbaca sebagai "datanya tidak ada". Kirim kata kunci sebagai `?q=` lewat `<form method="get">` biasa (bukan komponen klien) — `hal` otomatis terbuang sehingga hasil mulai dari halaman 1.
+- **Sanitasi kata kunci** sebelum masuk filter PostgREST `or=(...)`: buang `% _ , ( ) " * \`. Koma & kurung **memecah bentuk klausa** (bukan sekadar membuat hasil salah); `%`/`_` adalah wildcard ILIKE.
+- Syarat pada tabel induk **tak bisa** di-OR-kan dengan syarat pada tabel anak dalam satu query PostgREST (`anak.nama=ilike.*q*` + `!inner` bersifat AND). Kumpulkan id dari tabel anak lebih dulu, lalu gabungkan sebagai `id.in.(…)` — dengan **batas eksplisit** dan pemberitahuan di UI bila batas itu tersentuh (jangan memotong diam-diam).
+
 ### Data layer
 - **Reader** (baca) ada di `lib/data/<fitur>.ts`, memakai `createClient()` dari `@/lib/supabase/server`.
 - **Server action** (tulis) ada di `lib/data/<fitur>-actions.ts` dengan `'use server'` + guard.
 - Halaman tidak menaruh selector mentah bila bisa lewat reader; beberapa halaman melakukan query inline sederhana.
 
 ### Deploy & migrasi
-- Migrasi dijalankan **manual** di Supabase SQL Editor (urut `0001..0086`), lalu diverifikasi via REST (`?select=col&limit=1` → 200).
+- Migrasi dijalankan **manual** di Supabase SQL Editor (urut `0001..0088`), lalu diverifikasi via REST (`?select=col&limit=1` → 200).
 - Commit: `git -c commit.gpgsign=false commit` + baris `Co-Authored-By`. Push ke `master` → Vercel auto-deploy.
 - Banyak reader dibungkus `try/catch` agar fitur aman dideploy sebelum migrasinya dijalankan (mengembalikan nilai default).
 

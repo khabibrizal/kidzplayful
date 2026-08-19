@@ -21,8 +21,15 @@ li { margin:3px 0; }
 <body><h1 id="dokumentasi-teknis-kidzplayful">Dokumentasi Teknis — KidzPlayful</h1>
 <p>Dokumen ini menjelaskan <strong>seluruh alur</strong> aplikasi KidzPlayful dari nol sampai deploy: arsitektur, tiap berkas &amp; perannya, parameter penting, skema database, serta cara deploy ke <strong>Vercel</strong> (frontend) dan <strong>Supabase</strong> (backend).</p>
 <ul>
-<li><strong>Aplikasi:</strong> web app kelas bermain digital anak 0–4 tahun — game sensorik/motorik (termasuk <strong>game Mewarnai</strong>), kelas bermain, video, komunitas, <strong>event offline berbayar + pendaftaran</strong>, <strong>toko/Store</strong>, <strong>Catatan Perkembangan Bermain (penilaian guru)</strong>, dan <strong>reminder WhatsApp</strong>. Ada juga <strong>REST API untuk aplikasi mobile (Flutter)</strong>.</li>
-<li><strong>Repo:</strong> <code>github.com/khabibrizal/kidzplayful</code> · <strong>Live:</strong> <code>https://www.kidzplayful.com</code> (domain kustom; region Vercel <code>bom1</code> = co-located dgn Supabase <code>ap-south-1</code>).</li>
+<li>
+<p><strong>Aplikasi:</strong> web app kelas bermain digital anak 0–4 tahun — game sensorik/motorik (termasuk <strong>game Mewarnai</strong>), kelas bermain, video, komunitas, <strong>event offline berbayar + pendaftaran</strong>, <strong>toko/Store</strong>, <strong>Catatan Perkembangan Bermain (penilaian guru)</strong>, dan <strong>reminder WhatsApp</strong>. Ada juga <strong>REST API untuk aplikasi mobile (Flutter)</strong>.</p>
+<blockquote>
+<p><strong>Status dokumen (2026-08-19).</strong> Dokumen ini adalah gambaran menyeluruh sampai sekitar migrasi 0028. Sumber yang HIDUP dan selalu diperbarui per fitur adalah <a href="DEVELOPER-KIDZPLAYFUL.md"><code>DEVELOPER-KIDZPLAYFUL.md</code></a> (kini sampai migrasi 0088, termasuk modul keuangan, sponsor, psikolog, dan analitik yang belum tercakup di sini). Bila keduanya berbeda, <strong>DEVELOPER yang benar</strong>.</p>
+</blockquote>
+</li>
+<li>
+<p><strong>Repo:</strong> <code>github.com/khabibrizal/kidzplayful</code> · <strong>Live:</strong> <code>https://www.kidzplayful.com</code> (domain kustom; region Vercel <code>bom1</code> = co-located dgn Supabase <code>ap-south-1</code>).</p>
+</li>
 <li><strong>Stack:</strong> Next.js 16 (App Router, TypeScript) + Supabase (Postgres + Auth + Storage). "Backend" = Supabase + Server Actions/Server Components Next.js (tanpa server terpisah).</li>
 <li><strong>Peran pengguna:</strong> Orang tua (default), <strong>Admin</strong> (<code>is_admin</code>), <strong>Guru</strong> (<code>is_guru</code>).</li>
 </ul>
@@ -221,7 +228,7 @@ Profil anak, langganan trial, konten game/tema/skor/video (lihat versi sebelumny
 </tr>
 <tr>
 <td>✦ <code>/kelas-saya</code></td>
-<td>Menu 🎈 Kelas Bermain: <strong>event yang diikuti + Catatan Perkembangan</strong>, lalu riwayat materi</td>
+<td>Menu 🎈 <strong>Ide Bermain</strong> (dulu "Kelas Bermain" — label tampilan saja, rute &amp; tabel <code>kelas_bermain</code> tetap): <strong>event yang diikuti + Catatan Perkembangan</strong>, lalu riwayat materi</td>
 </tr>
 <tr>
 <td><code>/main/[anakId]</code>, <code>/ortu/[anakId]</code></td>
@@ -275,7 +282,8 @@ Ortu → lihat di /kelas-saya &amp; /event (📋 Catatan) &amp; Rapor anak
 <hr />
 <h2 id="10-keamanan">10. Keamanan</h2>
 <ol>
-<li><strong>RLS tiap tabel.</strong> 2. Guard kode (<code>getAnakTerjamin</code>, <code>getAdminTerjamin</code>, <code>getGuruTerjamin</code>, <code>adminDb</code>, filter <code>.eq(..user.id)</code>).</li>
+<li><strong>RLS tiap tabel.</strong> 2. Guard kode (<code>getAnakTerjamin</code>, <code>getAdminTerjamin</code>, <code>getGuruTerjamin</code>, <code>adminDb</code>, filter <code>.eq(..user.id)</code>).
+   - <code>getAnakTerjamin</code> memeriksa <strong>login + kepemilikan anak saja</strong>; status langganan <strong>bukan</strong> gerbang halaman, melainkan hanya mengunci konten per item (🔒). Sebelumnya ia memantulkan diam-diam ke <code>/pilih-anak</code> dan itu terbaca sebagai "tombol rusak" — lihat <code>DEVELOPER-KIDZPLAYFUL.md</code> §3 "Redirect harus membawa alasan".</li>
 <li><strong><code>is_admin()</code>/<code>is_guru()</code> + trigger</strong> — non-admin tak bisa promote diri jadi admin/guru; admin yang mengelola role.</li>
 <li>Total event/pesanan dihitung server; harga di-snapshot. Stok berkurang saat verifikasi.</li>
 <li>Upload user dibatasi folder <code>bukti/</code>. 6. Catatan: ortu hanya lihat catatan anaknya; guru hanya baca pendaftaran + tulis catatan.</li>

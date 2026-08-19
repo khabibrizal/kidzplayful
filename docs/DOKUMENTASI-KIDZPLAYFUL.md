@@ -3,6 +3,8 @@
 Dokumen ini menjelaskan **seluruh alur** aplikasi KidzPlayful dari nol sampai deploy: arsitektur, tiap berkas & perannya, parameter penting, skema database, serta cara deploy ke **Vercel** (frontend) dan **Supabase** (backend).
 
 - **Aplikasi:** web app kelas bermain digital anak 0–4 tahun — game sensorik/motorik (termasuk **game Mewarnai**), kelas bermain, video, komunitas, **event offline berbayar + pendaftaran**, **toko/Store**, **Catatan Perkembangan Bermain (penilaian guru)**, dan **reminder WhatsApp**. Ada juga **REST API untuk aplikasi mobile (Flutter)**.
+> **Status dokumen (2026-08-19).** Dokumen ini adalah gambaran menyeluruh sampai sekitar migrasi 0028. Sumber yang HIDUP dan selalu diperbarui per fitur adalah [`DEVELOPER-KIDZPLAYFUL.md`](DEVELOPER-KIDZPLAYFUL.md) (kini sampai migrasi 0088, termasuk modul keuangan, sponsor, psikolog, dan analitik yang belum tercakup di sini). Bila keduanya berbeda, **DEVELOPER yang benar**.
+
 - **Repo:** `github.com/khabibrizal/kidzplayful` · **Live:** `https://www.kidzplayful.com` (domain kustom; region Vercel `bom1` = co-located dgn Supabase `ap-south-1`).
 - **Stack:** Next.js 16 (App Router, TypeScript) + Supabase (Postgres + Auth + Storage). "Backend" = Supabase + Server Actions/Server Components Next.js (tanpa server terpisah).
 - **Peran pengguna:** Orang tua (default), **Admin** (`is_admin`), **Guru** (`is_guru`).
@@ -144,7 +146,7 @@ Pewi, Confetti, game/*, FavoritBtn, BeliBtn (internal/eksternal+konfirmasi), Und
 | `/`, `/daftar`, `/login`, `/lupa-sandi`, `/reset-sandi` | Landing + Auth (+Lupa Password). Pakai **Logo**. |
 | `/pilih-anak` | Dashboard ortu (sapaan, Favoritmu, carousel Event) + BottomNav |
 | `/favorit`, `/kelas/[id]` | Favorit + detail kelas (Unduh PDF, 🛒 Beli) |
-| ✦ `/kelas-saya` | Menu 🎈 Kelas Bermain: **event yang diikuti + Catatan Perkembangan**, lalu riwayat materi |
+| ✦ `/kelas-saya` | Menu 🎈 **Ide Bermain** (dulu "Kelas Bermain" — label tampilan saja, rute & tabel `kelas_bermain` tetap): **event yang diikuti + Catatan Perkembangan**, lalu riwayat materi |
 | `/main/[anakId]`, `/ortu/[anakId]` | Mode Anak / Mode Ortu |
 | `/anak/[anakId]`(+`/laporan`) | Kelola anak + **Rapor** (termasuk Catatan Perkembangan) |
 | `/pengaturan`, `/komunitas`(+`/[postId]`) | Akun + Forum |
@@ -185,6 +187,7 @@ Ortu → lihat di /kelas-saya & /event (📋 Catatan) & Rapor anak
 ## 10. Keamanan
 
 1. **RLS tiap tabel.** 2. Guard kode (`getAnakTerjamin`, `getAdminTerjamin`, `getGuruTerjamin`, `adminDb`, filter `.eq(..user.id)`).
+   - `getAnakTerjamin` memeriksa **login + kepemilikan anak saja**; status langganan **bukan** gerbang halaman, melainkan hanya mengunci konten per item (🔒). Sebelumnya ia memantulkan diam-diam ke `/pilih-anak` dan itu terbaca sebagai "tombol rusak" — lihat `DEVELOPER-KIDZPLAYFUL.md` §3 "Redirect harus membawa alasan".
 3. **`is_admin()`/`is_guru()` + trigger** — non-admin tak bisa promote diri jadi admin/guru; admin yang mengelola role.
 4. Total event/pesanan dihitung server; harga di-snapshot. Stok berkurang saat verifikasi.
 5. Upload user dibatasi folder `bukti/`. 6. Catatan: ortu hanya lihat catatan anaknya; guru hanya baca pendaftaran + tulis catatan.
