@@ -16,6 +16,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!valid.length) return fail('Anak tidak valid');
 
   const total = (ev.harga_per_anak ?? 0) * valid.length;
+
+  // Bukti bayar WAJIB bila ada yang harus dibayar — aturan yang sama dengan jalur web
+  // (`daftarEvent`). Alur yang sudah didokumentasikan di `docs/API-MOBILE.md` memang
+  // "unggah ke Storage dulu, lalu kirim URL-nya", jadi klien yang mengikuti dokumen tak
+  // terpengaruh. Tanpa penjagaan ini, pendaftaran berbayar bisa masuk tanpa bukti apa pun
+  // dan admin tidak punya apa-apa untuk diverifikasi.
+  if (total > 0 && !b.bukti_url?.trim()) {
+    return fail('bukti_url wajib untuk event berbayar — unggah ke Storage (folder bukti/) dulu, lalu kirim URL-nya');
+  }
+
   const { data, error } = await a.supabase.from('pendaftaran_event').insert({
     event_id: eventId, ortu_id: a.user.id,
     anak_ids: valid.map((x) => x.id), anak_nama: valid.map((x) => x.nama),

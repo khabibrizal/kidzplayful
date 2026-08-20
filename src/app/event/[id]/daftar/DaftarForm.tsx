@@ -93,7 +93,10 @@ export default function DaftarForm({ ev, anak, status = 'kadaluarsa', waNomor, b
     if (penuh) { setErr('Mohon maaf, kuota sudah penuh. Terima kasih 🙏'); return; }
     if (lebihKuota) { setErr('Mohon maaf, kuota yang tersisa tidak cukup untuk jumlah anak yang dipilih. Kurangi jumlah anaknya ya 🙏'); return; }
     if (kelasOpsi.length > 0 && !kelas) { setErr('Pilih kelas dulu.'); return; }
-    if (ev.harga_per_anak > 0 && !buktiUrl) { setErr('Unggah bukti pembayaran dulu.'); return; }
+    // Patokannya TOTAL, bukan harga per anak: bila diskon member / voucher membuat
+    // tagihannya nol, orang tua tak perlu diminta bukti apa pun. Server menegakkan
+    // aturan yang sama di `daftarEvent`, jadi keduanya tak bisa lepas sinkron.
+    if (total > 0 && !buktiUrl) { setErr('Unggah bukti pembayaran dulu.'); return; }
     setSubmitting(true); setErr('');
     try {
       const r = await daftarEvent(ev.id, [...pilih], buktiUrl, kelasOpsi.length > 0 ? kelas : null, pendamping, voucher?.id ?? null);

@@ -211,9 +211,15 @@ Pastikan sudah konfirmasi ke orang tua (tombol 💬 WA).`)) return;
             <span className={s.tag} style={{ background: '#f3f0fb', color: WARNA[p.status] }}>{p.status}</span>
           </div>
           <div className={s.row} style={{ marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            {/* Dulu semua pendaftaran tanpa bukti diberi label datar "tanpa bukti" — padahal
+                artinya bisa dua hal yang sangat berbeda. Tagihan NOL (event gratis, diskon
+                member 100%, atau voucher penuh) memang tak punya yang perlu dibuktikan;
+                sedangkan tagihan > 0 tanpa bukti adalah hal yang PERLU ditindaklanjuti. */}
             {p.bukti_url
               ? <BuktiLightbox url={p.bukti_url} />
-              : <span className={s.muted}>tanpa bukti</span>}
+              : (p.total ?? 0) > 0
+                ? <span style={{ fontSize: 12, fontWeight: 700, color: '#b3261e', background: '#fde8e6', borderRadius: 99, padding: '3px 10px' }} title="Tagihan belum nol tapi tidak ada bukti bayar — perlu ditindaklanjuti">⚠️ belum ada bukti</span>
+                : <span className={s.muted} style={{ fontSize: 12 }}>gratis · tanpa tagihan</span>}
             <button className={s.btnSm} style={{ background: '#dff5e6', color: '#1c7a43' }} onClick={() => ubah(p, 'diterima')} disabled={busyId === p.id || p.status === 'diterima'}>Terima</button>
             <button className={`${s.btnSm} ${s.danger}`} onClick={() => ubah(p, 'ditolak')} disabled={busyId === p.id || p.status === 'ditolak'}>Tolak</button>
             {waKonfirmasi(p)

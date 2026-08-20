@@ -70,6 +70,15 @@ export async function daftarEvent(eventId: string, anakIds: string[], buktiUrl: 
     potonganVoucher = rv.potongan ?? 0; vId = voucherId;
   }
   const total = Math.max(0, subtotal - potonganVoucher);
+
+  // Bukti bayar WAJIB bila memang ada yang harus dibayar. Sebelumnya pemeriksaan ini
+  // hanya ada di KLIEN (`DaftarForm`), jadi memanggil server action ini langsung —
+  // atau dari klien yang state-nya berbeda — menghasilkan pendaftaran berbayar
+  // "tanpa bukti" yang tak bisa diverifikasi admin.
+  // Patokannya `total`, bukan `harga_per_anak`: bila diskon member atau voucher membuat
+  // tagihannya nol, memang tidak ada yang perlu dibuktikan.
+  if (total > 0 && !buktiUrl?.trim()) return { ok: false, error: 'Unggah bukti pembayaran dulu ya.' };
+
   const barisPendaftaran = {
     event_id: eventId,
     ortu_id: user.id,
