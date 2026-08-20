@@ -389,7 +389,16 @@ Sub-navigasi: `KeuanganNav.tsx` (client). Semua reader read-only lewat `createCl
   4. baris ledger-nya sendiri hanya menyimpan `ref_tipe='pendaftaran'` + `ref_id`, dan `keterangan`-nya generik (`'Pendaftaran event'`) — **tidak ada nama/id event yang dibekukan**, jadi tak ada yang bisa basi.
   Konsekuensinya: pemasukan otomatis keluar dari event asal dan masuk ke event tujuan. **Jangan menambahkan snapshot event pada baris ledger pendaftaran** — itu justru akan mematahkan perilaku ini.
   - **Catatan**: `transaksi_keuangan.event_id` (0088) khusus untuk **pengeluaran**; ia TIDAK ikut pindah saat pendaftar direschedule, dan memang tidak boleh — biaya yang sudah dikeluarkan untuk event asal tetap milik event asal.
-  - **Perbaikan menyertai**: `reschedulePendaftaran` dulu tidak menghitung ulang snapshot **`kelas`/`kelas_jadwal`**, sehingga setelah pindah event kartu pendaftar masih menampilkan **jadwal event LAMA** (dan bisa menunjuk kelas yang tidak ditawarkan event tujuan). Kini keduanya dihitung ulang terhadap event tujuan: kelas dipertahankan bila ditawarkan, selain itu turun ke `gabungan`. Bandingkan dengan `pindahKelasPendaftaran` yang sejak awal sudah melakukannya.
+  - **Perbaikan menyertai**: `reschedulePendaftaran` dulu tidak menghitung ulang snapshot **`kelas`/`kelas_jadwal`**, sehingga setelah pindah event kartu pendaftar masih menampilkan **jadwal event LAMA** (dan bisa menunjuk kelas yang tidak ditawarkan event tujuan). Kini keduanya dihitung ulang terhadap event tujuan.
+
+> **⚠️ Reschedule tidak boleh MENEBAK kelas tujuan** (keluhan nyata: "anak dipindah ke kelas berikutnya, kok masuk kuota Gabungan"). Versi lama menjatuhkan pendaftaran ke `'gabungan'` setiap kali `kelas` lamanya bukan `baby`/`toddler` — dan itu **mencakup `kelas = NULL`**, yaitu semua pendaftaran yang dibuat **sebelum migrasi 0069** serta yang berasal dari event berjadwal tunggal. Dari sisi admin, kategori kelasnya seolah hilang sendiri, padahal event tujuan punya Baby & Toddler.
+>
+> Aturan sekarang di `reschedulePendaftaran(pendaftaranId, eventBaruId, alasan, kelasTujuan?)`:
+> 1. Event tujuan **tanpa** kelas terpisah → `'gabungan'` (memang tidak ada pilihan lain).
+> 2. Event tujuan **punya** kelas → pakai `kelasTujuan` dari admin, atau kelas lama bila ditawarkan. Bila **keduanya tidak ada, aksi DITOLAK** dengan pesan yang menyuruh admin memilih — bukan menebak. Ini penerapan aturan umum "jangan menebak dalam senyap" yang sama dengan aturan redirect di §3.
+> 3. **Kuota kelas tujuan ditegakkan**, meniru `pindahKelasPendaftaran` yang sejak awal melakukannya. Sebelumnya reschedule sama sekali tidak memeriksa kuota, jadi memindahkan anak ke Baby Class yang sudah penuh berhasil tanpa peringatan.
+>
+> UI-nya: panel Reschedule kini punya dropdown **kelas di event tujuan**, hanya muncul bila event tujuan memang punya kelas terpisah (`eventsAktif[].kelas` dikirim dari `page.tsx`). Nilai bawaannya kelas saat ini bila tersedia; bila pendaftarannya belum berkategori, ada **saran dari usia anak** (<24 bln = Baby) yang tetap bisa diubah admin.
 - **Endpoint**: `transaksi_keuangan`, `kategori_pengeluaran`, `anggaran`; `UploadNota` → `storage.from('aset')` (folder `nota/`, WebP).
 
 ### 🖥️ Aset — `/admin/keuangan/aset`

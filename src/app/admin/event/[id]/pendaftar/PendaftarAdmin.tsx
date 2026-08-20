@@ -15,7 +15,8 @@ function waktuDaftar(iso?: string | null): string {
   return new Date(iso).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' }) + ' WIB';
 }
 
-type EventOpsi = { id: string; judul: string; tanggal: string | null };
+// `kelas` = kelas yang DITAWARKAN event tujuan ('baby'/'toddler'); kosong = berjadwal tunggal.
+type EventOpsi = { id: string; judul: string; tanggal: string | null; kelas?: string[] };
 
 // Preset cepat, nilainya dalam BULAN. Labelnya memakai satuan yang wajar dibaca
 // (bulan untuk bayi, tahun setelahnya) supaya admin tak perlu berhitung sendiri.
@@ -44,6 +45,7 @@ export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = []
   const [cari, setCari] = useState('');
   const [rsOpen, setRsOpen] = useState<string | null>(null); // id pendaftaran yang form reschedule-nya terbuka
   const [rsEvent, setRsEvent] = useState<Record<string, string>>({});
+  const [rsKelas, setRsKelas] = useState<Record<string, string>>({});   // kelas tujuan saat reschedule
   const [rsAlasan, setRsAlasan] = useState<Record<string, string>>({});
   const [pkOpen, setPkOpen] = useState<string | null>(null);   // id pendaftaran yg panel pindah-kelas terbuka
   const [pkTarget, setPkTarget] = useState<Record<string, string>>({});
@@ -60,9 +62,16 @@ export default function PendaftarAdmin({ awal, sertMap, eventsAktif, params = []
     const alasan = (rsAlasan[p.id] ?? '').trim();
     if (!target) { flash('Pilih event tujuan.'); return; }
     if (!alasan) { flash('Isi alasan reschedule.'); return; }
+    // Kelas tujuan: nilai yang dipilih admin, atau kelas saat ini bila event tujuan
+    // memang menawarkannya. Bila keduanya kosong, server yang menolak dengan pesan jelas
+    // (jangan menebak 'gabungan' di sini — itu justru bug yang sedang diperbaiki).
+    const opsiTujuan = eventsAktif.find((e) => e.id === target)?.kelas ?? [];
+    const kelasKini = p.kelas === 'baby' || p.kelas === 'toddler' ? p.kelas : '';
+    const kelasTujuan = rsKelas[p.id] || (opsiTujuan.includes(kelasKini) ? kelasKini : '');
+    if (opsiTujuan.length > 0 && !kelasTujuan) { flash('Pilih kelas di event tujuan dulu.'); return; }
     setBusyId(p.id);
     try {
-      await reschedulePendaftaran(p.id, target, alasan);
+      await reschedulePendaftaran(p.id, target, alasan, kelasTujuan || null);
       setList((l) => l.filter((x) => x.id !== p.id)); // pindah ke event lain → hilang dari daftar event ini
       setRsOpen(null);
       flash('Reschedule berhasil ✓');
@@ -265,6 +274,38 @@ Pastikan sudah konfirmasi ke orang tua (tombol 💬 WA).`)) return;
                     <option value="">— pilih event tujuan —</option>
                     {eventsAktif.map((e) => <option key={e.id} value={e.id}>{e.judul}{e.tanggal ? ` (${e.tanggal})` : ''}</option>)}
                   </select>
+                  {/* Kelas tujuan — hanya bila event tujuan MEMANG punya kelas terpisah.
+                      Dulu bagian ini tidak ada, sehingga pendaftaran yang kelasnya belum
+                      diketahui (NULL / dari event berjadwal tunggal) mendarat di Gabungan
+                      tanpa admin pernah diberi kesempatan menentukannya. */}
+                  {(() => {
+                    const tujuan = eventsAktif.find((e) => e.id === rsEvent[p.id]);
+                    const opsi = tujuan?.kelas ?? [];
+                    if (opsi.length === 0) return null;
+                    const kelasKini = p.kelas === 'baby' || p.kelas === 'toddler' ? p.kelas : '';
+                    // Saran usia hanya dipakai bila kelas lamanya tidak diketahui: <24 bln = Baby.
+                    const umurAnak = (p.anak_ids ?? []).map((id) => umurBulanMap[id]).filter((n): n is number => n != null);
+                    const saranUsia = umurAnak.length > 0 && umurAnak.every((n) => n < 24) ? 'baby'
+                      : umurAnak.length > 0 && umurAnak.every((n) => n >= 24) ? 'toddler' : '';
+                    const bawaan = (kelasKini && opsi.includes(kelasKini)) ? kelasKini : (opsi.includes(saranUsia) ? saranUsia : '');
+                    const nilai = rsKelas[p.id] ?? bawaan;
+                    return (
+                      <>
+                        <select className={s.inp} value={nilai} onChange={(e) => setRsKelas({ ...rsKelas, [p.id]: e.target.value })} style={{ width: '100%', marginBottom: 4 }}>
+                          <option value="">— pilih kelas di event tujuan —</option>
+                          {opsi.map((k) => <option key={k} value={k}>{LABEL_KELAS[k] ?? k}</option>)}
+                          <option value="gabungan">Gabungan</option>
+                        </select>
+                        <div className={s.muted} style={{ fontSize: 11, marginBottom: 6 }}>
+                          {kelasKini
+                            ? `Kelas saat ini: ${LABEL_KELAS[kelasKini] ?? kelasKini} — dipertahankan bila tersedia di event tujuan.`
+                            : saranUsia
+                              ? `Pendaftaran ini belum punya kategori kelas; saran dari usia anak: ${LABEL_KELAS[saranUsia]}.`
+                              : 'Pendaftaran ini belum punya kategori kelas — pilih kelas tujuannya ya.'}
+                        </div>
+                      </>
+                    );
+                  })()}
                   <textarea className={s.inp} rows={2} placeholder="Alasan reschedule (mis. anak sakit)" value={rsAlasan[p.id] ?? ''} onChange={(e) => setRsAlasan({ ...rsAlasan, [p.id]: e.target.value })} style={{ width: '100%', resize: 'vertical', marginBottom: 6 }} />
                   <div className={s.row} style={{ gap: 6 }}>
                     <button className={s.btn} onClick={() => reschedule(p)} disabled={busyId === p.id}>Pindahkan</button>

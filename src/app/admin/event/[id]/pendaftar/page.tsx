@@ -16,7 +16,15 @@ export default async function PendaftarPage({ params }: { params: Promise<{ id: 
     getEventSemua(), getPesertaEvent(id), getEventBerParameter(id),
   ]);
   const kuotaEvent = await getKuotaEvent(id);
-  const eventsAktif = semua.filter((e) => e.status === 'tampil' && e.id !== id).map((e) => ({ id: e.id, judul: e.judul, tanggal: e.tanggal }));
+  // Kelas yang DITAWARKAN tiap event tujuan ikut dikirim, supaya panel reschedule bisa
+  // meminta admin memilih kelas di event tujuan — bukan menjatuhkannya ke Gabungan.
+  const eventsAktif = semua.filter((e) => e.status === 'tampil' && e.id !== id).map((e) => ({
+    id: e.id, judul: e.judul, tanggal: e.tanggal,
+    kelas: [
+      ...((e.baby_jam_mulai || e.baby_tanggal) ? ['baby'] : []),
+      ...((e.toddler_jam_mulai || e.toddler_tanggal) ? ['toddler'] : []),
+    ],
+  }));
   const paramEvent = ev?.indikator_perkembangan ?? [];
   // catatan per anak (penilaian + catatan) untuk form nilai admin
   const catatanMap: Record<string, { penilaian: BarisNilai[]; catatan: string | null }> = {};

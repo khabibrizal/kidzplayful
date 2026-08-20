@@ -231,12 +231,13 @@ export async function setKehadiran(pendaftaranId: string, anakId: string, hadir:
  * Reschedule: pindahkan sebuah pendaftaran ke event AKTIF lain (mis. anak sakit H-1
  * → ikut kelas bermain berikutnya). Pembayaran/bukti/status ikut terbawa; absensi direset.
  */
-export async function reschedulePendaftaran(pendaftaranId: string, eventBaruId: string, alasan: string): Promise<void> {
+export async function reschedulePendaftaran(pendaftaranId: string, eventBaruId: string, alasan: string, kelasTujuan?: string | null): Promise<void> {
   const s = await adminDb();
   const alsn = alasan.trim();
   if (!alsn) throw new Error('Alasan reschedule wajib diisi.');
 
-  const { data: p } = await s.from('pendaftaran_event').select('event_id,kelas').eq('id', pendaftaranId).single();
+  const { data: p } = await s.from('pendaftaran_event')
+    .select('event_id,kelas,status,jumlah_anak,anak_ids').eq('id', pendaftaranId).single();
   if (!p) throw new Error('Pendaftaran tidak ditemukan.');
   if (p.event_id === eventBaruId) throw new Error('Pilih event yang berbeda.');
 
@@ -250,9 +251,50 @@ export async function reschedulePendaftaran(pendaftaranId: string, eventBaruId: 
   // bisa menunjuk kelas yang tidak ditawarkan event tujuan.
   const adaBaby = !!(ev.baby_jam_mulai || ev.baby_tanggal);
   const adaToddler = !!(ev.toddler_jam_mulai || ev.toddler_tanggal);
-  const kelasLama = p.kelas === 'baby' || p.kelas === 'toddler' ? p.kelas : 'gabungan';
-  // Kelas dipertahankan bila event tujuan menawarkannya; kalau tidak, turun ke 'gabungan'.
-  const kelasBaru = (kelasLama === 'baby' && adaBaby) || (kelasLama === 'toddler' && adaToddler) ? kelasLama : 'gabungan';
+  const kelasLama = p.kelas === 'baby' || p.kelas === 'toddler' ? p.kelas : null;
+
+  // Penentuan kelas tujuan.
+  //
+  // Dulu baris ini diam-diam menjatuhkan pendaftaran ke 'gabungan' setiap kali `kelas`
+  // lamanya bukan baby/toddler — dan itu MENCAKUP pendaftaran yang `kelas`-nya NULL
+  // (dibuat sebelum migrasi 0069) atau yang berasal dari event berjadwal tunggal.
+  // Akibatnya anak yang menurut admin "kelas Baby" mendarat di kuota Gabungan tanpa
+  // peringatan apa pun. Sekarang: kelas lama dipertahankan bila ditawarkan, admin boleh
+  // menentukan kelas tujuan secara eksplisit, dan bila keduanya tak ada kita MENOLAK
+  // dengan pesan jelas — bukan menebak.
+  let kelasBaru: string;
+  if (!adaBaby && !adaToddler) {
+    kelasBaru = 'gabungan'; // event tujuan berjadwal tunggal → memang tidak ada kelas
+  } else {
+    const pilihan = (kelasTujuan === 'baby' || kelasTujuan === 'toddler' || kelasTujuan === 'gabungan')
+      ? kelasTujuan
+      : (kelasLama ?? null);
+    if (!pilihan) {
+      throw new Error('Event tujuan punya kelas terpisah (Baby/Toddler). Pilih kelas tujuannya dulu — pendaftaran ini belum punya kategori kelas.');
+    }
+    if (pilihan === 'baby' && !adaBaby) throw new Error('Event tujuan tidak punya Baby Class.');
+    if (pilihan === 'toddler' && !adaToddler) throw new Error('Event tujuan tidak punya Toddler Class.');
+    kelasBaru = pilihan;
+  }
+
+  // Kuota kelas tujuan ditegakkan, sama seperti `pindahKelasPendaftaran`. Baris ini masih
+  // berada di event LAIN, jadi ia belum ikut terhitung di event tujuan.
+  const kuotaTujuan = kuotaUntukKelas(await bacaKuotaEvent(s, eventBaruId), kelasBaru);
+  const nAnak = (p.jumlah_anak as number) ?? ((p.anak_ids as string[])?.length ?? 0);
+  if (kuotaTujuan != null && kuotaTujuan > 0 && p.status !== 'ditolak') {
+    const { data: rows } = await s.from('pendaftaran_event')
+      .select('kelas,jumlah_anak,anak_ids,status')
+      .eq('event_id', eventBaruId).neq('status', 'ditolak');
+    let terpakai = 0;
+    for (const r of rows ?? []) {
+      const k = (r.kelas === 'baby' || r.kelas === 'toddler') ? r.kelas : 'gabungan';
+      if (k !== kelasBaru) continue;
+      terpakai += (r.jumlah_anak as number) ?? ((r.anak_ids as string[])?.length ?? 0);
+    }
+    const sisa = Math.max(0, kuotaTujuan - terpakai);
+    if (sisa < nAnak) throw new Error(`Kuota kelas tujuan tidak cukup (sisa ${sisa} anak, dibutuhkan ${nAnak}).`);
+  }
+
   const kelasJadwal = kelasBaru === 'baby'
     ? jadwalTeks(ev.baby_tanggal ?? ev.tanggal, ev.baby_jam_mulai, ev.baby_jam_selesai)
     : kelasBaru === 'toddler'
