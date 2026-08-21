@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getPengaturanBayar } from '@/lib/data/pengaturan-bayar';
 import BayarSesi from './BayarSesi';
 import { getPsikologTersedia, getAnakSaya, getKonsultasiSaya } from '@/lib/data/konsultasi';
+import { getPratinjauKonsultasi } from '@/lib/data/konsultasi-tarif';
 import { getProfilPsikologMap } from '@/lib/data/psikolog-profil';
 import { formatTanggal, formatRupiah } from '@/lib/format';
 import BottomNav from '@/components/BottomNav';
@@ -31,9 +32,9 @@ export default async function KonsultasiPage() {
   // Gerbang "khusus member aktif" DICABUT (sub-proyek B): konsultasi kini bisa dibeli
   // per sesi oleh siapa pun — itulah permintaan yang memicu fitur ini. Yang membedakan
   // member: diskon (atau kuota gratis) dari paket anaknya, dihitung di dalam RPC booking.
-  const [psikolog, anak, sesi, profil, bayar] = await Promise.all([
+  const [psikolog, anak, sesi, profil, bayar, pratinjau] = await Promise.all([
     getPsikologTersedia(), getAnakSaya(), getKonsultasiSaya(), getProfilPsikologMap(),
-    getPengaturanBayar(),
+    getPengaturanBayar(), getPratinjauKonsultasi(),
   ]);
 
   const sekarang = new Date();
@@ -51,7 +52,7 @@ export default async function KonsultasiPage() {
       <p style={{ color: 'var(--abu)', fontSize: 12, marginBottom: 12 }}>Daftar konsultasi lalu chat dengan psikolog. Rekomendasi akan tersimpan di laporan tumbuh kembang anak. 🌿</p>
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '8px 0' }}>DAFTAR KONSULTASI BARU</div>
-      <BookingForm psikolog={psikolog} anak={anak} profil={profil} />
+      <BookingForm psikolog={psikolog} anak={anak} profil={profil} pratinjau={pratinjau} />
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '18px 0 8px' }}>KONSULTASI SAYA ({sesi.length})</div>
       {sesi.length === 0 && <p style={{ color: 'var(--abu)', fontSize: 13 }}>Belum ada konsultasi.</p>}

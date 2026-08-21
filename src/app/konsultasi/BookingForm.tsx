@@ -9,7 +9,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { daftarKonsultasi } from '@/lib/data/konsultasi-actions';
-import { formatTanggal } from '@/lib/format';
+import { formatTanggal, formatRupiah } from '@/lib/format';
+import { cekVoucher } from '@/lib/data/voucher-actions';
+import { hitungBiayaKonsultasi } from '@/lib/domain/konsultasi-biaya';
+import type { PratinjauKonsultasi } from '@/lib/data/konsultasi-tarif';
 import type { JadwalPsikolog } from '@/lib/game/tipe';
 import type { ProfilPsikolog } from '@/lib/data/psikolog-profil';
 
@@ -64,10 +67,20 @@ function BarisInfo({ ikon, judul, isi }: { ikon: string; judul: string; isi: str
   );
 }
 
-export default function BookingForm({ psikolog, anak, profil = {} }: {
+function Baris({ ket, nilai, hijau }: { ket: string; nilai: string; hijau?: boolean }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: hijau ? 'var(--mint-d)' : undefined }}>
+      <span>{ket}</span><span>{nilai}</span>
+    </div>
+  );
+}
+
+export default function BookingForm({ psikolog, anak, profil = {}, pratinjau }: {
   psikolog: JadwalPsikolog[];
   anak: { id: string; nama: string }[];
   profil?: Record<string, ProfilPsikolog>;
+  /** tarif per psikolog + sisa kuota gratis per anak (dibaca di server) */
+  pratinjau: PratinjauKonsultasi;
 }) {
   const router = useRouter();
   const [psikologId, setPsikologId] = useState('');
@@ -80,6 +93,9 @@ export default function BookingForm({ psikolog, anak, profil = {} }: {
   const [ok, setOk] = useState(false);
   const [bukaPilih, setBukaPilih] = useState(false);
   const [lengkap, setLengkap] = useState(false);
+  const [kodeVoucher, setKodeVoucher] = useState('');
+  const [voucher, setVoucher] = useState<{ id: string; kode: string; potongan: number } | null>(null);
+  const [vMsg, setVMsg] = useState('');
 
   const dipilih = psikolog.find((p) => p.psikolog_id === psikologId);
   const pr = psikologId ? profil[psikologId] : undefined;
@@ -87,6 +103,30 @@ export default function BookingForm({ psikolog, anak, profil = {} }: {
   const slots = dipilih ? buatSlot(dipilih.jam_mulai, dipilih.jam_selesai, dipilih.durasi_menit) : [];
   const adaWindow = !!(dipilih && dipilih.jam_mulai && dipilih.jam_selesai);
   const namaDari = (id: string) => profil[id]?.nama || psikolog.find((p) => p.psikolog_id === id)?.nama || 'Psikolog';
+
+  // Pratinjau biaya memakai modul yang MENIRU perhitungan RPC. Angka finalnya tetap
+  // dihitung server saat mendaftar — di sini hanya supaya orang tua tahu sebelum menekan
+  // Daftar, dan supaya kode voucher punya konteks nominal.
+  const tarifPsi = psikologId ? pratinjau.tarif[psikologId] : undefined;
+  const kuotaAnak = anakId ? pratinjau.anak[anakId] : undefined;
+  const biaya = hitungBiayaKonsultasi({
+    tarif: tarifPsi?.harga ?? 0,
+    diskonPersen: tarifPsi?.diskonPersen ?? 0,
+    member: kuotaAnak?.member ?? false,
+    sisaKuota: kuotaAnak?.sisaKuota ?? 0,
+    potonganVoucher: voucher?.potongan ?? 0,
+  });
+  // Voucher hanya masuk akal bila ada yang harus dibayar.
+  const bolehVoucher = !!psikologId && !!anakId && !biaya.dariKuota && biaya.subtotal > 0;
+
+  async function terapkanVoucher() {
+    setVMsg('');
+    if (!kodeVoucher.trim()) { setVMsg('Masukkan kode voucher.'); return; }
+    const r = await cekVoucher(kodeVoucher, 'konsultasi', biaya.subtotal);
+    if (!r.ok || !r.voucher_id) { setVoucher(null); setVMsg(r.error ?? 'Voucher tidak valid.'); return; }
+    setVoucher({ id: r.voucher_id, kode: r.kode ?? kodeVoucher.toUpperCase(), potongan: r.potongan ?? 0 });
+    setVMsg(`Voucher ${r.kode} diterapkan -${formatRupiah(r.potongan ?? 0)}`);
+  }
 
   function gantiPsikolog(id: string) {
     setPsikologId(id); setTanggal(''); setJam(''); setMsg(''); setLengkap(false); setBukaPilih(false);
@@ -96,9 +136,18 @@ export default function BookingForm({ psikolog, anak, profil = {} }: {
     if (!psikologId || !anakId || !tanggal) { setOk(false); setMsg('Lengkapi psikolog, anak, dan tanggal.'); return; }
     if (adaWindow && !jam) { setOk(false); setMsg('Pilih jam konsultasi dulu.'); return; }
     setBusy(true); setMsg(''); setOk(false);
-    const r = await daftarKonsultasi({ psikologId, anakId, tanggal, jam, keluhan });
+    // Hanya ID-nya yang dikirim; potongannya dihitung ulang di dalam RPC.
+    const r = await daftarKonsultasi({ psikologId, anakId, tanggal, jam, keluhan, voucherId: bolehVoucher ? voucher?.id ?? null : null });
     setBusy(false);
-    if (r.ok) { setOk(true); setMsg('Pendaftaran terkirim ✓ Menunggu persetujuan psikolog.'); setTanggal(''); setJam(''); setKeluhan(''); router.refresh(); }
+    if (r.ok) {
+      setOk(true);
+      // Pesannya harus jujur: sesi berbayar BELUM terdaftar sampai dibayar (0096).
+      setMsg(biaya.dariKuota || biaya.total === 0
+        ? 'Pendaftaran terkirim ✓ Menunggu persetujuan psikolog.'
+        : 'Pendaftaran terkirim ✓ Lanjutkan pembayaran di daftar bawah — slot baru aman setelah bukti transfer diunggah.');
+      setTanggal(''); setJam(''); setKeluhan(''); setKodeVoucher(''); setVoucher(null); setVMsg('');
+      router.refresh();
+    }
     else { setOk(false); setMsg(r.error ?? 'Gagal mendaftar.'); }
   }
 
@@ -228,6 +277,47 @@ export default function BookingForm({ psikolog, anak, profil = {} }: {
       )}
 
       <textarea placeholder="Keluhan / hal yang ingin dikonsultasikan (opsional)" rows={4} value={keluhan} onChange={(e) => setKeluhan(e.target.value)} style={{ ...kotak, resize: 'vertical' }} />
+
+      {psikologId && anakId && (
+        <div style={{ background: '#faf8ff', borderRadius: 14, padding: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>💳 Biaya sesi</div>
+          {biaya.dariKuota ? (
+            <div style={{ fontSize: 13, color: 'var(--mint-d)' }}>
+              🎁 <b>Gratis</b> — memakai kuota konsultasi dari paket {kuotaAnak?.paketNama ?? 'langganan'}
+              {typeof kuotaAnak?.sisaKuota === 'number' && ` (sisa ${kuotaAnak.sisaKuota} sesi)`}.
+              Voucher tidak dipakai, jadi tetap tersimpan untuk lain waktu.
+            </div>
+          ) : (
+            <>
+              <Baris ket="Tarif konsultasi" nilai={formatRupiah(tarifPsi?.harga ?? 0)} />
+              {biaya.diskonDipakai > 0 && (
+                <Baris ket={`Diskon member ${biaya.diskonDipakai}%`} nilai={`-${formatRupiah((tarifPsi?.harga ?? 0) - biaya.subtotal)}`} hijau />
+              )}
+              {voucher && bolehVoucher && <Baris ket={`Voucher ${voucher.kode}`} nilai={`-${formatRupiah(biaya.potongan)}`} hijau />}
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, borderTop: '1px solid #ece7f7', marginTop: 6, paddingTop: 6 }}>
+                <span>Total</span><span>{formatRupiah(biaya.total)}</span>
+              </div>
+              {(tarifPsi?.harga ?? 0) === 0 && (
+                <div style={{ fontSize: 11, color: 'var(--abu)', marginTop: 4 }}>Tarif belum diatur admin — nominal final dihitung ulang saat pendaftaran.</div>
+              )}
+            </>
+          )}
+
+          {bolehVoucher && (
+            <div style={{ marginTop: 10, borderTop: '1px dashed #e6e1f2', paddingTop: 10 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>🎟️ Punya kode voucher?</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input className="kp-input" placeholder="Kode voucher" value={kodeVoucher}
+                  onChange={(e) => { setKodeVoucher(e.target.value.toUpperCase()); setVoucher(null); setVMsg(''); }}
+                  style={{ flex: 1 }} />
+                <button type="button" className="kp-btn putih" onClick={terapkanVoucher}>Terapkan</button>
+              </div>
+              {vMsg && <div style={{ fontSize: 12, color: voucher ? 'var(--mint-d)' : '#c0392b', marginTop: 4 }}>{vMsg}</div>}
+              <div style={{ fontSize: 11, color: 'var(--abu)', marginTop: 4 }}>Potongan dihitung ulang di server saat pendaftaran — angka di atas pratinjau.</div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <button className="kp-btn mint" onClick={submit} disabled={busy}>{busy ? 'Mengirim…' : '📅 Daftar Konsultasi'}</button>
