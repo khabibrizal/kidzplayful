@@ -22,8 +22,11 @@ export default function SesiActions({ id, mode }: { id: string; mode: 'menunggu'
     <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
       {mode === 'menunggu' ? (
         <>
-          <button className="kp-btn mint" onClick={() => ubah('diterima')} disabled={busy} style={{ padding: '6px 14px', fontSize: 13 }}>Terima</button>
+          <button className="kp-btn mint" onClick={() => ubah('diterima')} disabled={busy} style={{ padding: '6px 14px', fontSize: 13 }}>Konfirmasi jadwal</button>
           <button className="kp-btn putih" onClick={() => ubah('ditolak')} disabled={busy} style={{ padding: '6px 14px', fontSize: 13 }}>Tolak</button>
+          {/* Untuk sesi BERBAYAR, konfirmasi jadwal belum membuka chat: sesi menunggu
+              pembayaran orang tua dulu, lalu admin memverifikasinya (migrasi 0092). */}
+          <small style={{ fontSize: 11, color: 'var(--abu)' }}>Sesi berbayar: chat terbuka setelah pembayaran diverifikasi.</small>
         </>
       ) : (
         <button className="kp-btn putih" onClick={() => ubah('selesai')} disabled={busy} style={{ padding: '6px 14px', fontSize: 13 }}>✅ Selesaikan konsultasi</button>

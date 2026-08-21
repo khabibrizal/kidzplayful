@@ -1,7 +1,7 @@
 // src/lib/domain/voucher.ts — logika voucher murni (tanpa DB), teruji.
 export interface VoucherPotongan { tipe: 'nominal' | 'persen'; nilai: number }
-export type JenisVoucher = 'event' | 'produk' | 'langganan';
-export interface VoucherValidasi { aktif: boolean; berlaku_dari: string | null; berlaku_sampai: string | null; berlaku_event: boolean; berlaku_produk: boolean; berlaku_langganan?: boolean }
+export type JenisVoucher = 'event' | 'produk' | 'langganan' | 'konsultasi';
+export interface VoucherValidasi { aktif: boolean; berlaku_dari: string | null; berlaku_sampai: string | null; berlaku_event: boolean; berlaku_produk: boolean; berlaku_langganan?: boolean; berlaku_konsultasi?: boolean }
 
 /** Potongan dari subtotal (di-clamp 0..subtotal). nominal=rupiah, persen=% (0-100). */
 export function hitungPotongan(v: VoucherPotongan, subtotal: number): number {
@@ -18,7 +18,8 @@ export function validasiVoucher(v: VoucherValidasi, ctx: { jenis: JenisVoucher; 
   if (v.berlaku_sampai && ctx.hariIni > v.berlaku_sampai) return 'Voucher sudah kadaluarsa.';
   const cocok = ctx.jenis === 'event' ? v.berlaku_event
     : ctx.jenis === 'produk' ? v.berlaku_produk
-    : !!v.berlaku_langganan;
+    : ctx.jenis === 'langganan' ? !!v.berlaku_langganan
+    : !!v.berlaku_konsultasi;
   if (!cocok) return 'Voucher tidak berlaku untuk transaksi ini.';
   return null;
 }

@@ -14,6 +14,8 @@ export default function JadwalForm({ awal }: { awal: JadwalPsikolog | null }) {
   const [jamSelesai, setJamSelesai] = useState(awal?.jam_selesai ?? '15:00');
   const [maks, setMaks] = useState(String(awal?.maks_per_hari ?? 5));
   const [durasi, setDurasi] = useState(String(awal?.durasi_menit ?? 0));
+  const [harga, setHarga] = useState(String(awal?.harga_konsultasi ?? 0));
+  const [diskon, setDiskon] = useState(awal?.diskon_langganan_persen == null ? '' : String(awal.diskon_langganan_persen));
   const [aktif, setAktif] = useState(awal?.aktif ?? true);
   const [catatan, setCatatan] = useState(awal?.catatan ?? '');
   const [busy, setBusy] = useState(false);
@@ -28,6 +30,8 @@ export default function JadwalForm({ awal }: { awal: JadwalPsikolog | null }) {
     setBusy(true); setMsg(''); setOk(false);
     const r = await simpanJadwal({
       hariBuka: hari, jamMulai, jamSelesai, maksPerHari: Number(maks) || 0, durasiMenit: Number(durasi) || 0, aktif, catatan,
+      hargaKonsultasi: Number(harga) || 0,
+      diskonMemberPersen: diskon.trim() === '' ? null : Number(diskon) || 0,
     });
     setBusy(false);
     if (r.ok) { setOk(true); setMsg('Jadwal tersimpan ✓'); router.refresh(); }
@@ -66,6 +70,19 @@ export default function JadwalForm({ awal }: { awal: JadwalPsikolog | null }) {
         </label>
       </div>
       <p style={{ fontSize: 11, color: 'var(--abu)', margin: 0 }}>Durasi 0 = tanpa batas waktu. Bila diisi, saat sesi dimulai muncul hitung mundur; 1 menit terakhir muncul peringatan, dan saat habis chat otomatis selesai.</p>
+
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <label style={{ fontSize: 12, color: 'var(--abu)' }}>Tarif / sesi (Rp)
+          <input className="kp-input" type="number" min={0} value={harga} onChange={(e) => setHarga(e.target.value)} style={{ marginBottom: 0, display: 'block', width: 150 }} />
+        </label>
+        <label style={{ fontSize: 12, color: 'var(--abu)' }}>Diskon member (%)
+          <input className="kp-input" type="number" min={0} max={100} placeholder="bawaan" value={diskon} onChange={(e) => setDiskon(e.target.value)} style={{ marginBottom: 0, display: 'block', width: 130 }} />
+        </label>
+      </div>
+      <p style={{ fontSize: 11, color: 'var(--abu)', margin: 0 }}>
+        Tarif 0 = memakai tarif bawaan yang diatur admin. Diskon member dikosongkan = ikut bawaan admin;
+        100% berarti anak yang sedang berlangganan tidak ditagih. Orang tua non-member membayar tarif penuh.
+      </p>
 
       <textarea className="kp-input" placeholder="Catatan untuk customer (opsional)" rows={2} value={catatan} onChange={(e) => setCatatan(e.target.value)} style={{ resize: 'vertical', marginBottom: 0 }} />
 

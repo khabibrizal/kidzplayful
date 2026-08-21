@@ -15,7 +15,7 @@ async function sesi() {
 
 /** Customer daftar konsultasi. Validasi kuota/hari via RPC SECURITY DEFINER. */
 export async function daftarKonsultasi(input: {
-  psikologId: string; anakId: string; tanggal: string; jam: string; keluhan: string;
+  psikologId: string; anakId: string; tanggal: string; jam: string; keluhan: string; voucherId?: string | null;
 }): Promise<{ ok: boolean; error?: string }> {
   try {
     const { s } = await sesi();
@@ -26,6 +26,9 @@ export async function daftarKonsultasi(input: {
       p_tanggal: input.tanggal,
       p_keluhan: input.keluhan ?? '',
       p_jam: input.jam ?? '',
+      // Harga, diskon member, kuota gratis paket, dan potongan voucher dihitung DI DALAM
+      // RPC (SECURITY DEFINER). Klien hanya menyebut id vouchernya — bukan nominalnya.
+      p_voucher: input.voucherId ?? null,
     });
     if (error) return { ok: false, error: error.message };
     revalidatePath('/konsultasi');
@@ -96,5 +99,27 @@ export async function batalKonsultasi(id: string): Promise<{ ok: boolean; error?
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Gagal membatalkan.' };
+  }
+}
+
+/**
+ * Unggah bukti pembayaran sesi konsultasi.
+ *
+ * Trigger `cegah_ubah_konsultasi` (0092) yang menegakkan bahwa orang tua hanya boleh
+ * menyentuh `bukti_url` — bukan nominal, bukan status. Jadi status TIDAK diubah di sini;
+ * admin/psikolog yang memverifikasi.
+ */
+export async function unggahBuktiKonsultasi(pendaftaranId: string, buktiUrl: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const { s, userId } = await sesi();
+    if (!buktiUrl.trim()) return { ok: false, error: 'Bukti pembayaran kosong.' };
+    const { error } = await s.from('pendaftaran_konsultasi')
+      .update({ bukti_url: buktiUrl.trim(), updated_at: new Date().toISOString() })
+      .eq('id', pendaftaranId).eq('ortu_id', userId).eq('status', 'menunggu_bayar');
+    if (error) return { ok: false, error: error.message };
+    revalidatePath('/konsultasi');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Gagal mengunggah bukti.' };
   }
 }

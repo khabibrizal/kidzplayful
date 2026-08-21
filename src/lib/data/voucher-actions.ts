@@ -17,7 +17,7 @@ const segarkan = () => revalidatePath('/admin/voucher');
 
 export interface VoucherInput {
   kode: string; tipe: 'nominal' | 'persen'; nilai: number;
-  berlakuEvent: boolean; berlakuProduk: boolean; berlakuLangganan: boolean;
+  berlakuEvent: boolean; berlakuProduk: boolean; berlakuLangganan: boolean; berlakuKonsultasi: boolean;
   kuotaTotal: number | null; kuotaPerUser: number | null;
   berlakuDari: string | null; berlakuSampai: string | null; aktif: boolean;
 }
@@ -29,6 +29,7 @@ function baris(i: VoucherInput) {
     kode: i.kode.trim().toUpperCase(), tipe: i.tipe, nilai,
     berlaku_event: !!i.berlakuEvent, berlaku_produk: !!i.berlakuProduk,
     berlaku_langganan: !!i.berlakuLangganan,
+    berlaku_konsultasi: !!i.berlakuKonsultasi,
     kuota_total: posInt(i.kuotaTotal), kuota_per_user: posInt(i.kuotaPerUser),
     berlaku_dari: i.berlakuDari || null, berlaku_sampai: i.berlakuSampai || null, aktif: !!i.aktif,
   };

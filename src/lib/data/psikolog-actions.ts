@@ -17,10 +17,11 @@ async function psikolog() {
 /** Simpan jadwal & kuota psikolog (upsert satu baris per psikolog). */
 export async function simpanJadwal(input: {
   hariBuka: number[]; jamMulai: string; jamSelesai: string; maksPerHari: number; durasiMenit: number; aktif: boolean; catatan: string;
+  hargaKonsultasi?: number; diskonMemberPersen?: number | null;
 }): Promise<{ ok: boolean; error?: string }> {
   try {
     const { s, id, nama } = await psikolog();
-    const { error } = await s.from('jadwal_psikolog').upsert({
+    const dasar = {
       psikolog_id: id,
       nama,
       hari_buka: input.hariBuka.filter((h) => h >= 0 && h <= 6),
@@ -31,7 +32,19 @@ export async function simpanJadwal(input: {
       aktif: input.aktif,
       catatan: input.catatan.trim() || null,
       updated_at: new Date().toISOString(),
-    }, { onConflict: 'psikolog_id' });
+    };
+    // Kolom tarif (0092) dicoba dulu; bila migrasinya belum dijalankan, simpan tanpa kolom
+    // itu supaya psikolog tetap bisa mengatur jadwalnya.
+    const denganTarif = {
+      ...dasar,
+      harga_konsultasi: Math.max(0, Math.floor(input.hargaKonsultasi ?? 0)),
+      diskon_langganan_persen: input.diskonMemberPersen == null ? null
+        : Math.min(100, Math.max(0, Math.floor(input.diskonMemberPersen))),
+    };
+    let { error } = await s.from('jadwal_psikolog').upsert(denganTarif, { onConflict: 'psikolog_id' });
+    if (error) {
+      ({ error } = await s.from('jadwal_psikolog').upsert(dasar, { onConflict: 'psikolog_id' }));
+    }
     if (error) return { ok: false, error: error.message };
     revalidatePath('/psikolog/jadwal');
     revalidatePath('/psikolog');
@@ -42,16 +55,33 @@ export async function simpanJadwal(input: {
 }
 
 /** Ubah status pendaftaran konsultasi (terima/tolak/selesai). */
+// Batas waktu membayar setelah psikolog mengonfirmasi jadwal (jam). TIDAK diekspor: berkas
+// 'use server' hanya boleh mengekspor fungsi async.
+const JAM_BATAS_BAYAR = 24;
+
 export async function setStatusKonsultasi(id: string, status: StatusKonsultasi): Promise<{ ok: boolean; error?: string }> {
   try {
     const { s } = await psikolog();
     if (!['diterima', 'ditolak', 'selesai'].includes(status)) return { ok: false, error: 'Status tidak valid.' };
     const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
-    if (status === 'diterima') patch.diverifikasi_pada = new Date().toISOString();
+    if (status === 'diterima') {
+      // Konfirmasi jadwal TIDAK otomatis membuka chat bila sesinya berbayar: sesi berbayar
+      // menunggu pembayaran dulu (migrasi 0092). Sesi bertotal 0 — anggota dengan diskon
+      // 100% atau memakai kuota gratis paketnya — langsung diterima seperti sebelumnya.
+      const { data: p } = await s.from('pendaftaran_konsultasi').select('total').eq('id', id).maybeSingle();
+      const total = (p?.total as number | undefined) ?? 0;
+      if (total > 0) {
+        patch.status = 'menunggu_bayar';
+        patch.batas_bayar = new Date(Date.now() + JAM_BATAS_BAYAR * 3600 * 1000).toISOString();
+      } else {
+        patch.diverifikasi_pada = new Date().toISOString();
+      }
+    }
     const { error } = await s.from('pendaftaran_konsultasi').update(patch).eq('id', id);
     if (error) return { ok: false, error: error.message };
     revalidatePath('/psikolog');
     revalidatePath(`/psikolog/${id}`);
+    revalidatePath('/konsultasi');
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Gagal mengubah status.' };

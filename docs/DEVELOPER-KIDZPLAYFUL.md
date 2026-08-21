@@ -679,6 +679,20 @@ Area kerja psikolog (self-guarded, pola seperti `/guru`). Role `is_psikolog` (00
 - **Komponen**: `<RekomendasiItemPicker>` (list + filter search, per jenis), `<RekomendasiItemList>` (tombol Beli→`/store`, Ikut→`/event/[id]/daftar`, Buka→`/kelas`), `<HapusItemBtn>`.
 - **Tampil ke ortu**: `/anak/[id]/laporan` & `/konsultasi/[id]` (bagian "Rekomendasi Produk/Event/Materi").
 
+### 💳 Konsultasi Bayar-Per-Sesi (migrasi 0092)
+- **Gerbang "khusus member aktif" DICABUT** dari `/konsultasi` — inilah permintaan yang memicu fitur ini: orang tua non-member pun bisa berkonsultasi. Yang membedakan member: **diskon** atau **kuota gratis** dari paket anaknya.
+- **Tarif**: `jadwal_psikolog.harga_konsultasi` (diisi psikolog di halaman Jadwal), cadangan ke `pengaturan_pembayaran.harga_konsultasi_nominal`. Diskon member: `jadwal_psikolog.diskon_langganan_persen`, cadangan ke `diskon_konsultasi_langganan_persen` (bawaan **100** = member tidak ditagih).
+- **Kuota gratis dari paket**: `paket_langganan.konsultasi_gratis_jumlah` + `_satuan` (kolomnya sudah ada sejak 0089, **baru berfungsi di 0092**). Sesi yang memakai kuota ditandai `pendaftaran_konsultasi.dari_kuota` dan bertotal 0. Kuota dihitung dari **paket ANAK yang dibooking-kan** — booking selalu untuk satu anak, jadi tak perlu aturan "paket tertinggi" di sini.
+- **Alur**: ortu booking → psikolog **Konfirmasi jadwal** → total 0 (member diskon 100% / dari kuota) langsung `diterima`; total > 0 jadi **`menunggu_bayar`** + `batas_bayar` 24 jam → ortu unggah bukti → admin **verifikasi** di `/admin/psikolog` → `diterima`, chat terbuka, `catatLedger(kategori 'konsultasi')`. Tolak → ledger dihapus & kuota voucher dilepas.
+- **Kuota harian psikolog** kini menghitung `menunggu_bayar` yang belum kedaluwarsa (`sisa_kuota_konsultasi` diperbarui), supaya tagihan yang tak dibayar tidak menyandera slot selamanya. **Tidak ada cron**: kedaluwarsa dihitung saat dibaca.
+
+> **⚠️ Uang dihitung DI DALAM RPC, bukan dikirim klien.** Policy 0065 mengizinkan ortu meng-update baris pendaftaran konsultasinya sendiri, jadi nominal yang dipercaya dari klien = konsultasi gratis bagi siapa pun yang tahu caranya. `daftar_konsultasi` (SECURITY DEFINER, signature bertambah `p_voucher`) menghitung tarif, diskon member, kuota gratis, **dan** validasi + potongan voucher seluruhnya di SQL. Klien hanya menyebut **id voucher**, bukan nominalnya.
+> Konsekuensi yang disengaja: aturan voucher jadi ada di dua tempat — TypeScript untuk pratinjau UI, SQL untuk penegakan. Yang berlaku adalah **SQL**.
+>
+> **Trigger `cegah_ubah_konsultasi`** melengkapinya: ortu hanya boleh menyentuh `bukti_url` dan membatalkan sesinya; kolom uang, `dari_kuota`, `batas_bayar`, `dibayar_pada`, dan transisi status lain hanya untuk admin/psikolog sesi itu.
+>
+> **Kategori ledger baru `konsultasi`** ditambahkan ke `KATEGORI_MASUK` & `LABEL_KATEGORI` (kategori ledger berupa teks bebas, jadi tanpa migrasi). Voucher bercakupan `konsultasi` (`voucher.berlaku_konsultasi`, `voucher_redeem.ref_tipe='konsultasi'`).
+
 ### 🧠 Konsultasi (customer) — `/konsultasi`, `/konsultasi/[pendaftaranId]`
 Sisi orang tua; **khusus member `aktif`** (gate `getStatusLangganan` → `<Terkunci fitur="Konsultasi Psikolog">`, pola Komunitas).
 - **Fungsi data** (`konsultasi.ts`): `getPsikologTersedia()` (dari `jadwal_psikolog` aktif), `getAnakSaya()`, `getKonsultasiSaya()`, `getKonsultasiAnak()`, `getPesan()`, `getRekomendasiAnak()`.

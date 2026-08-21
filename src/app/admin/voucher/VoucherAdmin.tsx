@@ -6,7 +6,7 @@ import { buatVoucher, updateVoucher, setAktifVoucher, hapusVoucher, type Voucher
 import type { Voucher } from '@/lib/data/voucher';
 import s from '../admin.module.css';
 
-const KOSONG: VoucherInput = { kode: '', tipe: 'nominal', nilai: 0, berlakuEvent: true, berlakuProduk: false, berlakuLangganan: false, kuotaTotal: null, kuotaPerUser: 1, berlakuDari: null, berlakuSampai: null, aktif: true };
+const KOSONG: VoucherInput = { kode: '', tipe: 'nominal', nilai: 0, berlakuEvent: true, berlakuProduk: false, berlakuLangganan: false, berlakuKonsultasi: false, kuotaTotal: null, kuotaPerUser: 1, berlakuDari: null, berlakuSampai: null, aktif: true };
 
 export default function VoucherAdmin({ awal }: { awal: Voucher[] }) {
   const router = useRouter();
@@ -19,7 +19,7 @@ export default function VoucherAdmin({ awal }: { awal: Voucher[] }) {
   function bukaTambah() { setEditId(null); setForm({ ...KOSONG }); }
   function bukaEdit(v: Voucher) {
     setEditId(v.id);
-    setForm({ kode: v.kode, tipe: v.tipe, nilai: v.nilai, berlakuEvent: v.berlaku_event, berlakuProduk: v.berlaku_produk, berlakuLangganan: !!v.berlaku_langganan, kuotaTotal: v.kuota_total, kuotaPerUser: v.kuota_per_user, berlakuDari: v.berlaku_dari, berlakuSampai: v.berlaku_sampai, aktif: v.aktif });
+    setForm({ kode: v.kode, tipe: v.tipe, nilai: v.nilai, berlakuEvent: v.berlaku_event, berlakuProduk: v.berlaku_produk, berlakuLangganan: !!v.berlaku_langganan, berlakuKonsultasi: !!v.berlaku_konsultasi, kuotaTotal: v.kuota_total, kuotaPerUser: v.kuota_per_user, berlakuDari: v.berlaku_dari, berlakuSampai: v.berlaku_sampai, aktif: v.aktif });
   }
   async function simpan() {
     if (!form) return; setBusy(true);
@@ -51,6 +51,7 @@ export default function VoucherAdmin({ awal }: { awal: Voucher[] }) {
             <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}><input type="checkbox" checked={form.berlakuEvent} onChange={(e) => set({ berlakuEvent: e.target.checked })} /> Pendaftaran Event</label>
             <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}><input type="checkbox" checked={form.berlakuProduk} onChange={(e) => set({ berlakuProduk: e.target.checked })} /> Beli Produk</label>
             <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}><input type="checkbox" checked={form.berlakuLangganan} onChange={(e) => set({ berlakuLangganan: e.target.checked })} /> Langganan</label>
+            <label style={{ display: 'flex', gap: 6, alignItems: 'center' }}><input type="checkbox" checked={form.berlakuKonsultasi} onChange={(e) => set({ berlakuKonsultasi: e.target.checked })} /> Konsultasi</label>
           </div>
           <div className={s.row} style={{ gap: 6, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
             <span className={s.muted} style={{ fontSize: 12 }}>Kuota total</span>
@@ -79,7 +80,7 @@ export default function VoucherAdmin({ awal }: { awal: Voucher[] }) {
           <div className={s.row}>
             <span style={{ flex: 1 }}>
               <b>{v.kode}</b> <span className={s.muted}>· {v.tipe === 'persen' ? `${v.nilai}%` : `Rp${v.nilai.toLocaleString('id-ID')}`}</span> {!v.aktif && <span className={`${s.tag} ${s.tagDraf}`}>nonaktif</span>}
-              <br /><small className={s.muted}>{[v.berlaku_event && 'Event', v.berlaku_produk && 'Produk', v.berlaku_langganan && 'Langganan'].filter(Boolean).join(' + ') || '—'} · kuota {v.kuota_total ?? '∞'}/total, {v.kuota_per_user ?? '∞'}/user{v.berlaku_sampai ? ` · s/d ${v.berlaku_sampai}` : ''}</small>
+              <br /><small className={s.muted}>{[v.berlaku_event && 'Event', v.berlaku_produk && 'Produk', v.berlaku_langganan && 'Langganan', v.berlaku_konsultasi && 'Konsultasi'].filter(Boolean).join(' + ') || '—'} · kuota {v.kuota_total ?? '∞'}/total, {v.kuota_per_user ?? '∞'}/user{v.berlaku_sampai ? ` · s/d ${v.berlaku_sampai}` : ''}</small>
             </span>
             <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)' }} onClick={() => bukaEdit(v)} disabled={busy}>Edit</button>

@@ -5,14 +5,14 @@ import { hitungPotongan, validasiVoucher, type JenisVoucher } from '@/lib/domain
 
 export interface Voucher {
   id: string; kode: string; tipe: 'nominal' | 'persen'; nilai: number;
-  berlaku_event: boolean; berlaku_produk: boolean; berlaku_langganan?: boolean;
+  berlaku_event: boolean; berlaku_produk: boolean; berlaku_langganan?: boolean; berlaku_konsultasi?: boolean;
   kuota_total: number | null; kuota_per_user: number | null;
   berlaku_dari: string | null; berlaku_sampai: string | null; aktif: boolean; created_at: string;
 }
 const COLS = 'id,kode,tipe,nilai,berlaku_event,berlaku_produk,kuota_total,kuota_per_user,berlaku_dari,berlaku_sampai,aktif,created_at';
 // Kolom 0090 dibaca dengan cadangan: voucher event/produk yang sudah jalan tak boleh mati
 // hanya karena migrasi langganan belum dijalankan.
-const COLS_090 = `${COLS},berlaku_langganan`;
+const COLS_090 = `${COLS},berlaku_langganan,berlaku_konsultasi`;
 
 async function bacaVoucher(s: SupabaseClient, kolom: 'kode' | 'id', nilaiKolom: string): Promise<Voucher | null> {
   const coba = await s.from('voucher').select(COLS_090).eq(kolom, nilaiKolom).maybeSingle();

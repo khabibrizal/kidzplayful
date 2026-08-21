@@ -3,6 +3,9 @@ import { createClient } from '@/lib/supabase/server';
 import type { JadwalPsikolog, PendaftaranKonsultasi, PesanKonsultasi, RekomendasiPsikolog } from '@/lib/game/tipe';
 
 const PCOLS = 'id,ortu_id,psikolog_id,anak_id,anak_nama,tanggal,jam,keluhan,status,diverifikasi_pada,dimulai_pada,durasi_menit,created_at';
+// Kolom pembayaran (0092) dibaca dengan CADANGAN: halaman konsultasi yang sudah jalan tak
+// boleh mati sebelum migrasinya dijalankan.
+const PCOLS_092 = `${PCOLS},harga_dasar,diskon_persen,potongan_voucher,total,bukti_url,batas_bayar,dibayar_pada,dari_kuota,alasan_tolak`;
 
 /** Daftar psikolog yang membuka jadwal (aktif). Nama dari denormalisasi jadwal. */
 export async function getPsikologTersedia(): Promise<JadwalPsikolog[]> {
@@ -25,6 +28,9 @@ export async function getKonsultasiSaya(): Promise<PendaftaranKonsultasi[]> {
   const s = await createClient();
   const { data: { user } } = await s.auth.getUser();
   if (!user) return [];
+  const coba = await s.from('pendaftaran_konsultasi').select(PCOLS_092)
+    .eq('ortu_id', user.id).order('created_at', { ascending: false });
+  if (!coba.error) return (coba.data ?? []) as unknown as PendaftaranKonsultasi[];
   const { data } = await s.from('pendaftaran_konsultasi').select(PCOLS)
     .eq('ortu_id', user.id).order('created_at', { ascending: false });
   return (data ?? []) as unknown as PendaftaranKonsultasi[];

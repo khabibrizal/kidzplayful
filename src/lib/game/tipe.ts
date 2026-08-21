@@ -300,8 +300,11 @@ export interface JadwalPsikolog {
   durasi_menit: number;       // batas durasi 1 sesi konsultasi (0 = tanpa batas)
   aktif: boolean;
   catatan: string | null;
+  harga_konsultasi?: number;             // 0092 — tarif per sesi (0 = pakai bawaan global)
+  diskon_langganan_persen?: number | null; // 0092 — null = pakai bawaan global
 }
-export type StatusKonsultasi = 'menunggu' | 'diterima' | 'ditolak' | 'selesai' | 'batal';
+// 'menunggu_bayar' = jadwal sudah dikonfirmasi psikolog, menunggu pembayaran (migrasi 0092).
+export type StatusKonsultasi = 'menunggu' | 'menunggu_bayar' | 'diterima' | 'ditolak' | 'selesai' | 'batal';
 export interface PendaftaranKonsultasi {
   id: string;
   ortu_id: string;
@@ -316,6 +319,16 @@ export interface PendaftaranKonsultasi {
   dimulai_pada: string | null;   // waktu sesi konsultasi dimulai (untuk hitung mundur)
   durasi_menit: number;          // snapshot durasi saat dimulai (0 = tanpa batas)
   created_at: string;
+  // ——— Pembayaran per sesi (migrasi 0092) ———
+  harga_dasar?: number;
+  diskon_persen?: number;
+  potongan_voucher?: number;
+  total?: number;
+  bukti_url?: string | null;
+  batas_bayar?: string | null;
+  dibayar_pada?: string | null;
+  dari_kuota?: boolean;
+  alasan_tolak?: string | null;
 }
 export interface PesanKonsultasi {
   id: string;
