@@ -5,6 +5,8 @@ import { statusLangganan } from '@/lib/domain/trial';
 import { getPengaturanBayar } from '@/lib/data/pengaturan-bayar';
 import { linkWa } from '@/lib/format';
 import AktifkanForm from './AktifkanForm';
+import PaketAnakForm, { type AnakLangganan } from './PaketAnakForm';
+import { getPaketAktif } from '@/lib/data/paket';
 import Pager from '../Pager';
 import s from '../admin.module.css';
 
@@ -17,7 +19,7 @@ const AMBANG_HARI = 7;
 type Row = {
   id: string; email: string; created_at: string;
   nama_tampilan: string | null; no_wa: string | null;
-  anak: { nama: string }[];
+  anak: { id: string; nama: string }[];
   langganan: { status: string; nominal: number; trial_mulai: string; aktif_sampai: string | null } | null;
 };
 
@@ -88,7 +90,7 @@ export default async function Langganan({ searchParams }: { searchParams: Promis
 
   let qMember = supabase
     .from('profiles')
-    .select('id,email,created_at,nama_tampilan,no_wa,anak(nama),langganan(status,nominal,trial_mulai,aktif_sampai)', { count: 'exact' });
+    .select('id,email,created_at,nama_tampilan,no_wa,anak(id,nama),langganan(status,nominal,trial_mulai,aktif_sampai)', { count: 'exact' });
   if (cari) {
     const klausa = [`nama_tampilan.ilike.%${cari}%`, `email.ilike.%${cari}%`];
     if (idOrtuDariAnak.length) klausa.push(`id.in.(${idOrtuDariAnak.join(',')})`);
@@ -107,6 +109,32 @@ export default async function Langganan({ searchParams }: { searchParams: Promis
   ]);
 
   const rows = (data ?? []) as unknown as Row[];
+
+  // Paket & periode per anak. Dibaca TOLERAN: bila migrasi 0089 belum dijalankan, panelnya
+  // memberi tahu admin ketimbang mematikan halaman ini.
+  const paketAktif = await getPaketAktif();
+  const paketNama = new Map(paketAktif.map((p) => [p.id, p.nama]));
+  const idAnak = rows.flatMap((m) => (m.anak ?? []).map((a) => a.id));
+  const langAnak = new Map<string, { paketId: string | null; aktifSampai: string | null }>();
+  if (idAnak.length > 0) {
+    const { data: la } = await supabase.from('langganan_anak')
+      .select('anak_id,paket_id,aktif_sampai').in('anak_id', idAnak);
+    for (const r of la ?? []) {
+      langAnak.set(r.anak_id as string, {
+        paketId: (r.paket_id as string | null) ?? null,
+        aktifSampai: (r.aktif_sampai as string | null) ?? null,
+      });
+    }
+  }
+  const anakUntuk = (m: Row): AnakLangganan[] => (m.anak ?? []).map((a) => {
+    const l = langAnak.get(a.id);
+    return {
+      id: a.id, nama: a.nama,
+      paketId: l?.paketId ?? null,
+      paketNama: l?.paketId ? paketNama.get(l.paketId) ?? null : null,
+      aktifSampai: l?.aktifSampai ?? null,
+    };
+  });
   const total = count ?? 0;
   const totalHal = Math.max(1, Math.ceil(total / PER_HAL));
   const now = new Date();
@@ -206,6 +234,7 @@ export default async function Langganan({ searchParams }: { searchParams: Promis
               </div>
             )}
             {st !== 'aktif' && <div style={{ marginTop: 8 }}><AktifkanForm ortuId={m.id} nominalDefault={String(bayar.harga_langganan_nominal)} /></div>}
+            <PaketAnakForm anak={anakUntuk(m)} paket={paketAktif} />
           </div>
         );
       })}

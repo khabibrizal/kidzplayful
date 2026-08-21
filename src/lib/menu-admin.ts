@@ -15,6 +15,7 @@ export const MENU_ADMIN: MenuAdmin[] = [
   { key: 'artikel', href: '/admin/artikel', label: '📝 Artikel' },
   { key: 'video', href: '/admin/video', label: '📺 Video' },
   { key: 'langganan', href: '/admin/langganan', label: '💳 Langganan' },
+  { key: 'paket', href: '/admin/paket', label: '🎟️ Paket' },
   { key: 'keuangan', href: '/admin/keuangan', label: '💼 Keuangan' },
   { key: 'sponsor', href: '/admin/sponsor', label: '🤝 Sponsor' },
   { key: 'anak', href: '/admin/anak', label: '🧒 Anak' },
@@ -46,7 +47,8 @@ export const MENU_SUPER_TETAP = ['akses-menu'];
 // menu yang bisa dikonfigurasi di matriks (kecuali dashboard & akses-menu)
 export const KEY_KONFIGURABEL = MENU_ADMIN.map((m) => m.key).filter((k) => k !== 'dashboard' && !MENU_SUPER_TETAP.includes(k));
 // default: menu sensitif hanya super user (admin pun tak dapat kecuali dicentang)
-const SENSITIF = ['keuangan', 'users', 'pengaturan-bayar', 'pengaturan-trial', 'sponsor'];
+// 'paket' ikut sensitif: paket menentukan HARGA, jangan terbuka untuk semua admin diam-diam.
+const SENSITIF = ['keuangan', 'users', 'pengaturan-bayar', 'pengaturan-trial', 'sponsor', 'paket'];
 export const DEFAULT_AKSES: AksesMenu = {
   admin: KEY_KONFIGURABEL.filter((k) => !SENSITIF.includes(k)),
   investor: [],
