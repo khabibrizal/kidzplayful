@@ -6,6 +6,8 @@ import { getPengaturanBayar } from '@/lib/data/pengaturan-bayar';
 import { linkWa } from '@/lib/format';
 import AktifkanForm from './AktifkanForm';
 import PaketAnakForm, { type AnakLangganan } from './PaketAnakForm';
+import VerifikasiTagihan from './VerifikasiTagihan';
+import { getTagihanMenunggu } from '@/lib/data/tagihan';
 import { getPaketAktif } from '@/lib/data/paket';
 import Pager from '../Pager';
 import s from '../admin.module.css';
@@ -112,7 +114,7 @@ export default async function Langganan({ searchParams }: { searchParams: Promis
 
   // Paket & periode per anak. Dibaca TOLERAN: bila migrasi 0089 belum dijalankan, panelnya
   // memberi tahu admin ketimbang mematikan halaman ini.
-  const paketAktif = await getPaketAktif();
+  const [paketAktif, tagihanMenunggu] = await Promise.all([getPaketAktif(), getTagihanMenunggu()]);
   const paketNama = new Map(paketAktif.map((p) => [p.id, p.nama]));
   const idAnak = rows.flatMap((m) => (m.anak ?? []).map((a) => a.id));
   const langAnak = new Map<string, { paketId: string | null; aktifSampai: string | null }>();
@@ -183,6 +185,8 @@ export default async function Langganan({ searchParams }: { searchParams: Promis
           {anakTerpotong && ' Kata kuncinya terlalu umum — pencocokan nama anak dibatasi 1.000 data teratas, persempit kata kuncinya.'}
         </p>
       )}
+
+      <VerifikasiTagihan daftar={tagihanMenunggu} />
 
       {/* ==== Jatuh tempo / perlu diingatkan (semua halaman) ==== */}
       <details className={s.card} open style={{ borderLeft: '4px solid #25D366' }}>

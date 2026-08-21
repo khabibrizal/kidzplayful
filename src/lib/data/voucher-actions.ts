@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { nilaiVoucherByKode, type HasilNilai } from './voucher';
+import type { JenisVoucher } from '@/lib/domain/voucher';
 
 async function adminDb() {
   const s = await createClient();
@@ -16,7 +17,7 @@ const segarkan = () => revalidatePath('/admin/voucher');
 
 export interface VoucherInput {
   kode: string; tipe: 'nominal' | 'persen'; nilai: number;
-  berlakuEvent: boolean; berlakuProduk: boolean;
+  berlakuEvent: boolean; berlakuProduk: boolean; berlakuLangganan: boolean;
   kuotaTotal: number | null; kuotaPerUser: number | null;
   berlakuDari: string | null; berlakuSampai: string | null; aktif: boolean;
 }
@@ -27,6 +28,7 @@ function baris(i: VoucherInput) {
   return {
     kode: i.kode.trim().toUpperCase(), tipe: i.tipe, nilai,
     berlaku_event: !!i.berlakuEvent, berlaku_produk: !!i.berlakuProduk,
+    berlaku_langganan: !!i.berlakuLangganan,
     kuota_total: posInt(i.kuotaTotal), kuota_per_user: posInt(i.kuotaPerUser),
     berlaku_dari: i.berlakuDari || null, berlaku_sampai: i.berlakuSampai || null, aktif: !!i.aktif,
   };
@@ -71,7 +73,7 @@ export async function hapusVoucher(id: string): Promise<{ ok: boolean; error?: s
 }
 
 /** Cek voucher saat user mengetik kode di form transaksi. */
-export async function cekVoucher(kode: string, jenis: 'event' | 'produk', subtotal: number): Promise<HasilNilai> {
+export async function cekVoucher(kode: string, jenis: JenisVoucher, subtotal: number): Promise<HasilNilai> {
   const s = await createClient();
   const { data: { user } } = await s.auth.getUser();
   if (!user) return { ok: false, error: 'Harus login.' };

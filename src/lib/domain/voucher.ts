@@ -1,6 +1,7 @@
 // src/lib/domain/voucher.ts — logika voucher murni (tanpa DB), teruji.
 export interface VoucherPotongan { tipe: 'nominal' | 'persen'; nilai: number }
-export interface VoucherValidasi { aktif: boolean; berlaku_dari: string | null; berlaku_sampai: string | null; berlaku_event: boolean; berlaku_produk: boolean }
+export type JenisVoucher = 'event' | 'produk' | 'langganan';
+export interface VoucherValidasi { aktif: boolean; berlaku_dari: string | null; berlaku_sampai: string | null; berlaku_event: boolean; berlaku_produk: boolean; berlaku_langganan?: boolean }
 
 /** Potongan dari subtotal (di-clamp 0..subtotal). nominal=rupiah, persen=% (0-100). */
 export function hitungPotongan(v: VoucherPotongan, subtotal: number): number {
@@ -11,11 +12,13 @@ export function hitungPotongan(v: VoucherPotongan, subtotal: number): number {
 }
 
 /** Validasi non-kuota (kuota dicek di server karena butuh DB). Return pesan error atau null. */
-export function validasiVoucher(v: VoucherValidasi, ctx: { jenis: 'event' | 'produk'; hariIni: string }): string | null {
+export function validasiVoucher(v: VoucherValidasi, ctx: { jenis: JenisVoucher; hariIni: string }): string | null {
   if (!v.aktif) return 'Voucher tidak aktif.';
   if (v.berlaku_dari && ctx.hariIni < v.berlaku_dari) return 'Voucher belum berlaku.';
   if (v.berlaku_sampai && ctx.hariIni > v.berlaku_sampai) return 'Voucher sudah kadaluarsa.';
-  const cocok = ctx.jenis === 'event' ? v.berlaku_event : v.berlaku_produk;
+  const cocok = ctx.jenis === 'event' ? v.berlaku_event
+    : ctx.jenis === 'produk' ? v.berlaku_produk
+    : !!v.berlaku_langganan;
   if (!cocok) return 'Voucher tidak berlaku untuk transaksi ini.';
   return null;
 }
