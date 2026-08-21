@@ -1,0 +1,16 @@
+-- 0095_revoke_anon_hari_ini_wib.sql — koreksi kebersihan hak akses dari 0094.
+--
+-- 0094 menulis `revoke all on function public.hari_ini_wib() from public;` dengan anggapan
+-- itu menutup pemanggilan lewat kunci anon. TERNYATA TIDAK: Supabase memberi EXECUTE
+-- **langsung ke peran `anon` dan `authenticated`** (default privileges pada skema public),
+-- bukan lewat PUBLIC — jadi mencabut dari PUBLIC tak mengubah apa pun. Dibuktikan dengan
+-- memanggil `/rest/v1/rpc/hari_ini_wib` memakai kunci anon: tetap HTTP 200 "2026-08-21".
+--
+-- DAMPAKNYA NOL untuk data: fungsi ini hanya mengembalikan tanggal hari ini di WIB, yang
+-- memang bukan rahasia. Migrasi ini murni kebersihan + supaya dokumentasi tak berbohong:
+-- fungsi bantu internal tak perlu bisa dipanggil pengunjung yang belum login.
+--
+-- Pelajarannya berlaku untuk SEMUA fungsi baru di repo ini: `revoke ... from public` BUKAN
+-- penjagaan di Supabase. Cabut dari `anon` secara eksplisit bila fungsi itu tak boleh
+-- dipanggil tanpa login, dan buktikan dengan memanggilnya memakai kunci anon.
+revoke execute on function public.hari_ini_wib() from anon;

@@ -19,7 +19,10 @@ create or replace function public.hari_ini_wib()
 returns date language sql stable set search_path = public as $$
   select (now() at time zone 'Asia/Jakarta')::date;
 $$;
--- Fungsi baru bisa dieksekusi PUBLIC secara bawaan; hanya butuh peran login.
+-- CATATAN (dikoreksi di 0095): baris `revoke ... from public` di bawah TIDAK menutup
+-- pemanggilan lewat kunci anon — Supabase memberi EXECUTE langsung ke peran `anon`,
+-- bukan lewat PUBLIC. Pencabutan yang benar ada di 0095. Dampaknya nol untuk data
+-- (fungsi ini cuma mengembalikan tanggal hari ini WIB), tapi jangan tiru polanya.
 revoke all on function public.hari_ini_wib() from public;
 grant execute on function public.hari_ini_wib() to authenticated;
 
