@@ -65,6 +65,7 @@ export default async function PilihAnakPage({ searchParams }: { searchParams: Pr
       <p style={{ color: 'var(--abu)', marginBottom: 16 }}>
         Status langganan: <b>{status}</b>
         {!bolehAkses(status) && ' — perpanjang untuk membuka materi & game khusus pelanggan.'}
+        {' · '}<Link href="/langganan" style={{ color: 'var(--biru-d)', fontWeight: 700 }}>Pilih paket per anak →</Link>
       </p>
 
       {/* Guard halaman anak memantulkan ke sini; dulu tanpa pesan sama sekali sehingga

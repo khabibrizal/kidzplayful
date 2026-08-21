@@ -42,6 +42,11 @@ export default async function Pengaturan() {
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '16px 0 8px' }}>LANGGANAN</div>
       <div className="kp-card">
         <p>Status: <b>{status}</b></p>
+        {/* Sejak paket bertingkat (0089/0090), langganan dipilih PER ANAK di halaman sendiri.
+            Petunjuk transfer manual di bawah dipertahankan sebagai jalur lama. */}
+        <p style={{ margin: '8px 0' }}>
+          <Link className="kp-btn" href="/langganan" style={{ display: 'inline-block' }}>🎟️ Pilih paket per anak</Link>
+        </p>
         {status !== 'aktif' && (
           <>
             <p style={{ fontSize: 14, marginTop: 8 }}>Langganan {bayar.harga_langganan_teks}. Untuk berlangganan:</p>
