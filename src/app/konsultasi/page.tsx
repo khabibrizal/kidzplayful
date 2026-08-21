@@ -12,6 +12,7 @@ import BottomNav from '@/components/BottomNav';
 import RekamAktivitas from '@/components/RekamAktivitas';
 import BookingForm from './BookingForm';
 import BatalBtn from './BatalBtn';
+import { keadaanSlot } from '@/lib/domain/konsultasi-slot';
 
 const BADGE: Record<string, { teks: string; warna: string; bg: string }> = {
   menunggu: { teks: 'Menunggu persetujuan', warna: '#b88600', bg: '#fff3d6' },
@@ -34,6 +35,8 @@ export default async function KonsultasiPage() {
     getPsikologTersedia(), getAnakSaya(), getKonsultasiSaya(), getProfilPsikologMap(),
     getPengaturanBayar(),
   ]);
+
+  const sekarang = new Date();
 
   // Kelompokkan konsultasi per tanggal (terbaru dulu) — pola seperti blok event.
   const grup = new Map<string, typeof sesi>();
@@ -62,6 +65,12 @@ export default async function KonsultasiPage() {
             {list.map((p) => {
               const b = BADGE[p.status] ?? BADGE.menunggu;
               const adaChat = p.status === 'diterima' || p.status === 'selesai';
+              // Slot psikolog baru terpakai sesudah dibayar (0096) — keadaannya WAJIB
+              // dikatakan, karena "sudah mendaftar" tanpa bayar dulu berarti belum aman.
+              const slot = keadaanSlot(
+                { status: p.status, total: p.total ?? 0, buktiUrl: p.bukti_url ?? null, batasBayar: p.batas_bayar ?? null },
+                sekarang,
+              );
               return (
                 <div key={p.id} style={{ borderTop: '1px solid #f4f1fa', paddingTop: 8 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -77,10 +86,22 @@ export default async function KonsultasiPage() {
                       {(p.diskon_persen ?? 0) > 0 && ` (sudah termasuk diskon member ${p.diskon_persen}%)`}
                     </div>
                   )}
+                  {slot === 'draft' && (
+                    <div style={{ fontSize: 12, color: '#b88600', background: '#fff3d6', borderRadius: 8, padding: '6px 10px', marginTop: 6 }}>
+                      ⏳ <b>Belum terdaftar.</b> Slot psikolog baru diamankan setelah bukti transfer diunggah —
+                      selama belum dibayar, tanggal ini masih bisa diambil orang tua lain.
+                    </div>
+                  )}
+                  {slot === 'hangus' && (
+                    <div style={{ fontSize: 12, color: '#b3261e', background: '#fde8e6', borderRadius: 8, padding: '6px 10px', marginTop: 6 }}>
+                      ⌛ <b>Batas waktu pembayaran sudah lewat</b>, jadi pesanan ini hangus dan slotnya dilepas.
+                      Silakan pesan ulang tanggalnya bila masih ingin konsultasi.
+                    </div>
+                  )}
                   {p.status === 'ditolak' && p.alasan_tolak && (
                     <div style={{ fontSize: 12, color: '#c0392b', marginTop: 4 }}>❌ {p.alasan_tolak}</div>
                   )}
-                  {p.status === 'menunggu_bayar' && (
+                  {p.status === 'menunggu_bayar' && slot !== 'hangus' && (
                     <BayarSesi id={p.id} total={p.total ?? 0} buktiUrl={p.bukti_url ?? null}
                       batasBayar={p.batas_bayar ?? null} bank={bayar.bank_teks} qris={bayar.qris_url}
                       waAdmin={bayar.wa_konsultasi || bayar.wa_nomor} namaAnak={p.anak_nama || 'Anak'} />

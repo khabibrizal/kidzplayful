@@ -113,10 +113,29 @@ export async function unggahBuktiKonsultasi(pendaftaranId: string, buktiUrl: str
   try {
     const { s, userId } = await sesi();
     if (!buktiUrl.trim()) return { ok: false, error: 'Bukti pembayaran kosong.' };
-    const { error } = await s.from('pendaftaran_konsultasi')
+
+    // Sejak 0096, MENGUNGGAH BUKTI-lah yang mengamankan slot psikolog. Dua akibatnya:
+    //   (a) batas waktu harus ditegakkan di sini juga, bukan cuma disembunyikan di UI;
+    //   (b) kuota bisa sudah penuh oleh orang tua lain yang membayar lebih dulu — trigger
+    //       `cek_slot_konsultasi` yang menolaknya, dan pesannya diteruskan apa adanya
+    //       karena sudah ditulis untuk dibaca orang tua.
+    const { data: p } = await s.from('pendaftaran_konsultasi')
+      .select('batas_bayar,bukti_url').eq('id', pendaftaranId).eq('ortu_id', userId).maybeSingle();
+    const batas = (p?.batas_bayar as string | null) ?? null;
+    if (batas && !p?.bukti_url && new Date(batas).getTime() <= Date.now()) {
+      return { ok: false, error: 'Batas waktu pembayaran sudah lewat, jadi pesanan ini hangus dan slotnya dilepas. Silakan pesan ulang tanggalnya.' };
+    }
+
+    const { data, error } = await s.from('pendaftaran_konsultasi')
       .update({ bukti_url: buktiUrl.trim(), updated_at: new Date().toISOString() })
-      .eq('id', pendaftaranId).eq('ortu_id', userId).eq('status', 'menunggu_bayar');
+      .eq('id', pendaftaranId).eq('ortu_id', userId).eq('status', 'menunggu_bayar')
+      .select('id');
     if (error) return { ok: false, error: error.message };
+    // 0 baris = statusnya bukan (lagi) 'menunggu_bayar'. Tanpa pemeriksaan ini, layar
+    // berkata "bukti tersimpan" padahal tak ada yang tersimpan.
+    if (!data || data.length === 0) {
+      return { ok: false, error: 'Sesi ini sedang tidak menunggu pembayaran — coba muat ulang halamannya.' };
+    }
     revalidatePath('/konsultasi');
     return { ok: true };
   } catch (e) {

@@ -713,6 +713,19 @@ Area kerja psikolog (self-guarded, pola seperti `/guru`). Role `is_psikolog` (00
 >
 > **Kategori ledger baru `konsultasi`** ditambahkan ke `KATEGORI_MASUK` & `LABEL_KATEGORI` (kategori ledger berupa teks bebas, jadi tanpa migrasi). Voucher bercakupan `konsultasi` (`voucher.berlaku_konsultasi`, `voucher_redeem.ref_tipe='konsultasi'`).
 
+### 🧠 Slot konsultasi baru terpakai SESUDAH dibayar (migrasi 0096)
+**Laporan pemilik:** *"anak yang tidak langganan bisa mendaftar meskipun statusnya menunggu tapi belum bayar"*. Benar — dan bukan sekadar tampilan: booking apa pun langsung berstatus `menunggu` dan **ikut dihitung `sisa_kuota_konsultasi`**, jadi siapa pun bisa **menahan slot psikolog tanpa pernah membayar**. Keputusan pemilik: **bayar dulu baru terdaftar**; yang belum dibayar hanya **draft**.
+
+- **Satu definisi "memakai slot"** — fungsi SQL `konsultasi_memakai_slot(status, total, bukti_url)`: status `diterima`, **atau** `menunggu`/`menunggu_bayar` yang **totalnya 0** (kuota gratis paket / diskon member 100% — memang tak ada yang perlu dibayar), **atau** yang **sudah punya bukti transfer**. Dipakai penghitung kuota **dan** trigger, jadi tak ada dua tafsir.
+- **RPC `daftar_konsultasi` melahirkan sesi berbayar sebagai draft** `menunggu_bayar` + `batas_bayar = now() + 24 jam`, bukan `menunggu`. Tanpa ini "bayar dulu" mustahil: orang tua dulu harus menunggu psikolog mengonfirmasi sebelum boleh membayar.
+- **Penjaga booking ganda mengabaikan draft yang sudah hangus**, supaya satu draft telantar tak mengunci orang tua dari memesan ulang tanggal yang sama.
+- **Konsekuensi yang disengaja & dinyatakan di layar:** beberapa orang tua bisa punya draft di tanggal yang sama, dan **yang lebih dulu membayar mendapat slotnya**. Karena itu kuota **diperiksa ulang tepat saat sebuah baris mulai memakai slot** oleh trigger `cek_slot_konsultasi` (BEFORE INSERT/UPDATE) — termasuk bila jalurnya `PATCH` REST langsung. Tanpa trigger itu, "bayar dulu" hanya sopan santun UI, bukan aturan. Galatnya ditulis untuk dibaca orang tua ("kuota tanggal … sudah penuh… pilih tanggal lain") dan diteruskan apa adanya oleh `unggahBuktiKonsultasi`.
+- **Keadaan slot dikatakan, bukan disembunyikan** — `lib/domain/konsultasi-slot.ts` (murni, 9 tes) memberi `aman` / `draft` / `hangus` / `tak-relevan`, dan halaman `/konsultasi` menampilkan **"Belum terdaftar — slot baru diamankan setelah bukti transfer diunggah"** serta **"batas waktu lewat → hangus, slot dilepas"**. Modul itu **kembaran** aturan SQL untuk keperluan label saja; **penegaknya tetap database** — kalau salah satu diubah, keduanya harus diubah bersama.
+- **Kadaluwarsa dievaluasi saat dibaca** (aplikasi ini tak punya cron), dan `unggahBuktiKonsultasi` menolak unggahan setelah batas waktu — bukan hanya menyembunyikan tombolnya.
+- **`setStatusKonsultasi('diterima')` tak lagi jadi pintu belakang**: sesi berbayar yang sudah ada buktinya **ditolak** dengan pesan agar diverifikasi lewat Admin → Kelola Psikolog, karena verifikasi itulah yang **mencatat pemasukan ke ledger**. Meloloskannya dari sisi psikolog akan membuat uang masuk tanpa jejak keuangan. Baris lama (dibuat sebelum 0096, berstatus `menunggu` walau berbayar) tetap bisa diminta membayar lewat tombol Terima.
+
+> **Efek pada data yang sudah ada:** booking berbayar lama yang masih `menunggu` tanpa bukti **berhenti menahan slot** begitu 0096 dijalankan — itu memang slot yang selama ini tertahan tanpa pembayaran.
+
 ### 🧠 Konsultasi (customer) — `/konsultasi`, `/konsultasi/[pendaftaranId]`
 Sisi orang tua; **khusus member `aktif`** (gate `getStatusLangganan` → `<Terkunci fitur="Konsultasi Psikolog">`, pola Komunitas).
 - **Fungsi data** (`konsultasi.ts`): `getPsikologTersedia()` (dari `jadwal_psikolog` aktif), `getAnakSaya()`, `getKonsultasiSaya()`, `getKonsultasiAnak()`, `getPesan()`, `getRekomendasiAnak()`.

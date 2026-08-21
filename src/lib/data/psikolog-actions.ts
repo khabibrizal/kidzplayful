@@ -57,11 +57,25 @@ export async function setStatusKonsultasi(id: string, status: StatusKonsultasi):
     const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
     if (status === 'diterima') {
       // Konfirmasi jadwal TIDAK otomatis membuka chat bila sesinya berbayar: sesi berbayar
-      // menunggu pembayaran dulu (migrasi 0092). Sesi bertotal 0 — anggota dengan diskon
-      // 100% atau memakai kuota gratis paketnya — langsung diterima seperti sebelumnya.
-      const { data: p } = await s.from('pendaftaran_konsultasi').select('total').eq('id', id).maybeSingle();
+      // menunggu pembayaran dulu (0092), dan sejak 0096 **slotnya pun belum terpotong**
+      // sampai bukti transfer masuk. Sesi bertotal 0 — anggota dengan diskon 100% atau
+      // memakai kuota gratis paketnya — langsung diterima seperti sebelumnya.
+      const { data: p } = await s.from('pendaftaran_konsultasi')
+        .select('status,total,bukti_url').eq('id', id).maybeSingle();
       const total = (p?.total as number | undefined) ?? 0;
+      const bukti = (p?.bukti_url as string | null) ?? null;
+      const statusKini = (p?.status as string | undefined) ?? 'menunggu';
+      if (total > 0 && bukti) {
+        // Jangan lewat sini: verifikasi pembayaran juga MENCATAT pemasukan ke ledger.
+        // Bila statusnya diloloskan dari sini, uangnya masuk tanpa jejak keuangan.
+        return { ok: false, error: 'Bukti transfer sudah ada. Pembayarannya diverifikasi di halaman Admin → Kelola Psikolog (bukan lewat tombol Terima), supaya pemasukannya ikut tercatat.' };
+      }
+      if (total > 0 && statusKini === 'menunggu_bayar') {
+        return { ok: false, error: 'Sesi ini masih menunggu pembayaran orang tua (belum ada bukti transfer), jadi slotnya belum terpotong. Belum ada yang perlu dikonfirmasi dari sisi Anda.' };
+      }
       if (total > 0) {
+        // Baris lama (dibuat sebelum 0096) lahir sebagai 'menunggu' walau berbayar:
+        // "Terima" di sini berarti menyetujui jadwalnya lalu meminta pembayaran.
         patch.status = 'menunggu_bayar';
         patch.batas_bayar = new Date(Date.now() + JAM_BATAS_BAYAR * 3600 * 1000).toISOString();
       } else {
