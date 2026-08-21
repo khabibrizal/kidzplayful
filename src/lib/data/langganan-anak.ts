@@ -71,3 +71,55 @@ export async function getHakAkun(): Promise<HakAksesAkun> {
   const hak = (anak ?? []).map((a) => hakAksesAnak(baris.get(a.id as string) ?? null, paketMap, trial, kini));
   return hakAksesAkun(hak);
 }
+
+export interface RingkasAkun {
+  /** status yang JUJUR untuk ditampilkan: 'aktif' bila ada anak berlangganan. */
+  status: 'aktif' | 'trial' | 'tenggang' | 'kadaluarsa';
+  paketTertinggi: string | null;   // nama paket tertinggi yang aktif
+  jumlahAnak: number;              // anak yang punya hak berbayar/trial
+  jumlahAktif: number;             // anak yang periodenya masih berjalan
+  aktifSampai: string | null;      // tanggal berakhir TERJAUH di antara anak
+}
+
+/**
+ * Ringkasan langganan untuk spanduk Beranda & halaman Akun.
+ *
+ * KENAPA ADA: kedua halaman itu dulu membaca baris `langganan` tingkat akun, yang **tidak
+ * pernah disentuh** alur tagihan baru (alur itu menulis `langganan_anak`). Akibatnya orang tua
+ * yang sudah berlangganan Preschool untuk anak-anaknya tetap melihat "kadaluarsa" — dan itu
+ * membuat seluruh alur berlangganan terasa tidak berfungsi. Status di sini diturunkan dari
+ * ANAK, jadi yang tampil selalu cocok dengan yang sebenarnya mereka dapat.
+ */
+export async function ringkasLanggananAkun(): Promise<RingkasAkun> {
+  const s = await createClient();
+  const { data: { user } } = await s.auth.getUser();
+  if (!user) return { status: 'kadaluarsa', paketTertinggi: null, jumlahAnak: 0, jumlahAktif: 0, aktifSampai: null };
+
+  const { data: anak } = await s.from('anak').select('id').eq('ortu_id', user.id);
+  const [baris, trial, paketMap] = await Promise.all([
+    barisLanggananAnak(user.id), konfigTrial(user.id), getPaketMap(),
+  ]);
+  const kini = new Date();
+  const hak = (anak ?? []).map((a) => hakAksesAnak(baris.get(a.id as string) ?? null, paketMap, trial, kini));
+  const akun = hakAksesAkun(hak);
+
+  const berbayar = (anak ?? []).map((a) => baris.get(a.id as string)).filter(Boolean);
+  const tanggal = berbayar.map((b) => b!.aktif_sampai).filter((d): d is string => !!d).sort();
+  const aktifSampai = tanggal.length ? tanggal[tanggal.length - 1] : null;
+  const jumlahAktif = hak.filter((h) => h.status === 'aktif').length;
+
+  // 'aktif' bila ada MINIMAL SATU anak yang periodenya berjalan; kalau tidak, pakai status
+  // trial akun seperti sebelumnya supaya pesan "masa coba" tetap muncul untuk pengguna baru.
+  const statusTerbaik = hak.reduce<'aktif' | 'trial' | 'tenggang' | 'kadaluarsa'>((t, h) => {
+    const urut = { aktif: 3, trial: 2, tenggang: 1, kadaluarsa: 0 } as const;
+    return urut[h.status] > urut[t] ? h.status : t;
+  }, 'kadaluarsa');
+
+  return {
+    status: statusTerbaik,
+    paketTertinggi: akun.paketTertinggi?.nama ?? null,
+    jumlahAnak: hak.filter((h) => h.status !== 'kadaluarsa').length,
+    jumlahAktif,
+    aktifSampai,
+  };
+}

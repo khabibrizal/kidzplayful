@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { statusLangganan } from '@/lib/domain/trial';
+import { ringkasLanggananAkun } from '@/lib/data/langganan-anak';
 import { getPengaturanBayar } from '@/lib/data/pengaturan-bayar';
 import PinForm from './PinForm';
 import AkunForm from './AkunForm';
@@ -22,6 +23,7 @@ export default async function Pengaturan() {
     getPengaturanBayar(),
   ]);
   const status = lang ? statusLangganan({ trialMulai: new Date(lang.trial_mulai + 'T00:00:00Z'), aktifSampai: lang.aktif_sampai ? new Date(lang.aktif_sampai + 'T00:00:00Z') : null }, new Date()) : 'kadaluarsa';
+  const ringkas = await ringkasLanggananAkun();
   const waText = encodeURIComponent('Halo, saya sudah transfer untuk langganan KidzPlayful. Email: ' + (user.email ?? ''));
 
   return (
@@ -41,7 +43,11 @@ export default async function Pengaturan() {
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '16px 0 8px' }}>LANGGANAN</div>
       <div className="kp-card">
-        <p>Status: <b>{status}</b></p>
+        {/* Status diturunkan dari ANAK (lihat ringkasLanggananAkun): baris `langganan` tingkat
+            akun tidak lagi menjadi sumber kebenaran sejak langganan ditagih per anak. */}
+        <p>Status: <b>{ringkas.paketTertinggi ?? status}</b>
+          {ringkas.jumlahAktif > 0 && <> · {ringkas.jumlahAktif} anak aktif{ringkas.aktifSampai ? ` s/d ${ringkas.aktifSampai}` : ''}</>}
+        </p>
         {/* Sejak paket bertingkat (0089/0090), langganan dipilih PER ANAK di halaman sendiri.
             Petunjuk transfer manual di bawah dipertahankan sebagai jalur lama. */}
         <p style={{ margin: '8px 0' }}>

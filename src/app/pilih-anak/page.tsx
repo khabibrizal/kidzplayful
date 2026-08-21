@@ -2,11 +2,12 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { statusLangganan, bolehAkses } from '@/lib/domain/trial';
+import { bolehAkses } from '@/lib/domain/trial';
 import { umurTeks } from '@/lib/domain/anak';
 import { getPendaftaranSaya } from '@/lib/data/event';
 import { getEventTampilCached } from '@/lib/data/publik';
 import { getArtikelTerbitCached } from '@/lib/data/artikel';
+import { ringkasLanggananAkun } from '@/lib/data/langganan-anak';
 import EventCarousel from '@/components/EventCarousel';
 import OnboardingChecklist from '@/components/OnboardingChecklist';
 import RekamAktivitas from '@/components/RekamAktivitas';
@@ -26,9 +27,10 @@ export default async function PilihAnakPage({ searchParams }: { searchParams: Pr
   if (role?.is_psikolog) redirect('/psikolog');
 
   // Jalankan paralel (hindari round-trip berurutan ke Supabase)
-  const [{ data: anakList }, { data: lang }, { data: prof }, events, pendaftaran, artikel, { count: jumlahAktivitas }] = await Promise.all([
+  // Baris `langganan` tingkat akun TIDAK lagi dibaca di sini — status diturunkan dari anak
+  // lewat `ringkasLanggananAkun()`, jadi satu round-trip ikut hilang.
+  const [{ data: anakList }, { data: prof }, events, pendaftaran, artikel, { count: jumlahAktivitas }] = await Promise.all([
     supabase.from('anak').select('id,nama,tanggal_lahir,mode_default,jenis_kelamin').order('created_at'),
-    supabase.from('langganan').select('trial_mulai,aktif_sampai').eq('ortu_id', user.id).single(),
     supabase.from('profiles').select('nama_tampilan').eq('id', user.id).single(),
     getEventTampilCached(),
     getPendaftaranSaya(user.id),
@@ -45,15 +47,11 @@ export default async function PilihAnakPage({ searchParams }: { searchParams: Pr
   const sisaMap: Record<string, number> = {};
   for (const ev of events) sisaMap[ev.id] = jumlahAnak - (peserta[ev.id]?.filter((p) => p.status !== 'ditolak').length ?? 0);
 
-  const status = lang
-    ? statusLangganan(
-        {
-          trialMulai: new Date(lang.trial_mulai + 'T00:00:00Z'),
-          aktifSampai: lang.aktif_sampai ? new Date(lang.aktif_sampai + 'T00:00:00Z') : null,
-        },
-        new Date(),
-      )
-    : 'kadaluarsa';
+  // Status diturunkan dari ANAK, bukan dari baris `langganan` tingkat akun: alur tagihan
+  // (0090) menulis `langganan_anak`, jadi membaca baris akun akan menampilkan "kadaluarsa"
+  // pada orang tua yang justru baru berlangganan.
+  const ringkas = await ringkasLanggananAkun();
+  const status = ringkas.status;
 
   return (
     <main className="kp-page" style={{ padding: 16, paddingBottom: 90, marginTop: 30 }}>
@@ -63,8 +61,9 @@ export default async function PilihAnakPage({ searchParams }: { searchParams: Pr
         <h1 style={{ color: 'var(--lavender-d)', fontSize: 24 }}>Hai Kak {prof?.nama_tampilan || 'Kakak'} 👋</h1>
       </div>
       <p style={{ color: 'var(--abu)', marginBottom: 16 }}>
-        Status langganan: <b>{status}</b>
-        {!bolehAkses(status) && ' — perpanjang untuk membuka materi & game khusus pelanggan.'}
+        Langganan: <b>{ringkas.paketTertinggi ?? status}</b>
+        {ringkas.jumlahAktif > 0 && ` · ${ringkas.jumlahAktif} anak aktif${ringkas.aktifSampai ? ` s/d ${ringkas.aktifSampai}` : ''}`}
+        {!bolehAkses(status) && ' — pilih paket untuk membuka materi & game khusus pelanggan.'}
         {' · '}<Link href="/langganan" style={{ color: 'var(--biru-d)', fontWeight: 700 }}>Pilih paket per anak →</Link>
       </p>
 
