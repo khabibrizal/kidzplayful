@@ -47,7 +47,11 @@ describe('ringkasBulan', () => {
       { area_skill: 'kognitif', bintang: 2, durasi_detik: 40, selesai: true },
       { area_skill: 'motorik-halus', bintang: 1, durasi_detik: 30, selesai: false },
     ],
-    catatan: [{ judulEvent: 'Kelas Sensorik', dinilai_oleh: 'Bu Ratih' }],
+    catatan: [{
+      judulEvent: 'Kelas Sensorik', dinilai_oleh: 'Bu Ratih',
+      penilaian: [{ area: 'Sensorik', indikator: 'Berani menyentuh tekstur baru', nilai: 'BSH' }],
+      catatan: 'Sudah mau mencoba pasir kinetik.',
+    }],
     event: ['Kelas Sensorik'],
     rekomendasi: 2,
   };
@@ -75,9 +79,32 @@ describe('ringkasBulan', () => {
 
   it('membawa catatan guru, event, dan jumlah rekomendasi', () => {
     const r = ringkasBulan(dasar);
-    expect(r.catatanGuru).toEqual([{ judulEvent: 'Kelas Sensorik', dinilai_oleh: 'Bu Ratih' }]);
+    expect(r.catatanGuru).toHaveLength(1);
+    expect(r.catatanGuru[0].penilaian).toEqual([{ area: 'Sensorik', indikator: 'Berani menyentuh tekstur baru', nilai: 'BSH' }]);
+    expect(r.catatanGuru[0].catatan).toBe('Sudah mau mencoba pasir kinetik.');
     expect(r.event).toEqual(['Kelas Sensorik']);
     expect(r.rekomendasi).toBe(2);
+  });
+
+  it('membawa rekomendasi psikolog & item apa adanya', () => {
+    const r = ringkasBulan({
+      ...dasar,
+      rekomendasiPsikolog: [{ judul: 'Latihan motorik', isi: 'Ajak meronce.', butir: [{ judul: 'Pagi', isi: '10 menit' }], oleh: 'Arina, M.Psi.' }],
+      rekomendasiItem: [
+        { jenis: 'produk', judul: 'Papan Meronce', catatan: null, oleh: 'Arina, M.Psi.' },
+        { jenis: 'materi', judul: 'Main Pasir', catatan: 'seminggu 2x', oleh: 'Arina, M.Psi.' },
+      ],
+    });
+    expect(r.rekomendasiPsikolog[0].butir).toEqual([{ judul: 'Pagi', isi: '10 menit' }]);
+    expect(r.rekomendasiItem.map((i) => i.jenis)).toEqual(['produk', 'materi']);
+  });
+
+  it('bulan yang HANYA berisi rekomendasi tetap layak dicetak', () => {
+    const r = ringkasBulan({
+      kegiatan: [], hasilMain: [], catatan: [], event: [], rekomendasi: 1,
+      rekomendasiItem: [{ jenis: 'event', judul: 'Kelas Musik', catatan: null, oleh: null }],
+    });
+    expect(r.adaIsi).toBe(true);
   });
 
   it('bulan kosong menghasilkan nol, bukan galat', () => {

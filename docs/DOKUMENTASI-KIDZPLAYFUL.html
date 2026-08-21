@@ -569,6 +569,15 @@ Ortu → lihat di /kelas-saya &amp; /event (📋 Catatan) &amp; Rapor anak
 </ul>
 <h3 id="rapor-anak-daftar-per-event-collapse">Rapor anak — daftar per-event (collapse)</h3>
 <p>Section catatan &amp; sertifikat digabung menjadi satu daftar <strong>collapse</strong> (<code>&lt;details&gt;</code>) per event (ringkas saat anak ikut banyak event); dibuka → detail (sertifikat, dokumentasi, kartu catatan).</p>
+<h3 id="rapor-bulanan-yang-bisa-diunduh-anakanakidraporym-migrasi-0093">Rapor bulanan yang bisa diunduh — <code>/anak/[anakId]/rapor/[ym]</code> (migrasi 0093)</h3>
+<p>Inti janji "preschool homeschooling": tiap anak punya <strong>rapor per bulan</strong>, bukan cuma statistik game.</p>
+<ul>
+<li><strong>Aktivitas mandiri tercatat per ANAK</strong> (tabel <code>kegiatan_anak</code>): Ide Bermain yang dibuka dan video yang ditonton di Mode Anak. Judulnya di-<strong>snapshot</strong>, jadi rapor lama tetap terbaca walau materinya nanti diubah atau dihapus.</li>
+<li><strong>Isi rapor</strong>: Ide Bermain &amp; video (daftar + jumlah pengulangan), sesi game/bintang/menit + area yang paling dilatih, kelas bermain yang diikuti, <strong>catatan perkembangan penuh</strong> dari guru pada event bulan itu (per indikator: <code>Area: Indikator — BB/MB/BSH/BSB</code> + catatan bebasnya), dan <strong>hasil konsultasi psikolog</strong>: rekomendasi naratif plus <strong>produk, event, dan ide bermain</strong> yang direkomendasikan psikolog. Rekomendasi difilter menurut bulan rapornya.</li>
+<li><strong>Unduh JPEG A4 landscape</strong> (1 halaman, siap dicetak/di-share ke keluarga) — mesin kanvas yang sama dengan e-sertifikat, tanpa aplikasi tambahan.</li>
+<li><strong>Haknya <code>rapor_bulanan</code> mengikuti paket ANAK itu</strong> (diatur admin di <code>/admin/paket</code>). Anak di paket tanpa hak ini tetap melihat Rapor berjalan; hanya berkas bulanannya yang terkunci.</li>
+<li>Tombol kembali di halaman rapor <strong>selalu</strong> mengarah ke halaman <strong>Perkembangan</strong> anak (bukan riwayat browser) — karena halaman itu punya deretan chip bulan.</li>
+</ul>
 <h3 id="pesanan-admin-koreksi-ongkir">Pesanan admin — koreksi ongkir</h3>
 <p>Field ongkir juga muncul saat status <strong><code>menunggu_bayar</code></strong> (nilai terisi otomatis) → admin bisa memperbaiki ongkir sebelum user bayar; total user ter-recompute. <code>setOngkir</code> <code>revalidatePath('/pesanan')</code>.</p>
 <h3 id="navigasi-admin-persisten-tombol-back">Navigasi Admin persisten + tombol Back</h3>

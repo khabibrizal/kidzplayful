@@ -342,6 +342,15 @@ Tombol **🔁 Reschedule** di kartu Pendaftar → pilih **event aktif** tujuan +
 ### Rapor anak — daftar per-event (collapse)
 Section catatan & sertifikat digabung menjadi satu daftar **collapse** (`<details>`) per event (ringkas saat anak ikut banyak event); dibuka → detail (sertifikat, dokumentasi, kartu catatan).
 
+### Rapor bulanan yang bisa diunduh — `/anak/[anakId]/rapor/[ym]` (migrasi 0093)
+Inti janji "preschool homeschooling": tiap anak punya **rapor per bulan**, bukan cuma statistik game.
+
+- **Aktivitas mandiri tercatat per ANAK** (tabel `kegiatan_anak`): Ide Bermain yang dibuka dan video yang ditonton di Mode Anak. Judulnya di-**snapshot**, jadi rapor lama tetap terbaca walau materinya nanti diubah atau dihapus.
+- **Isi rapor**: Ide Bermain & video (daftar + jumlah pengulangan), sesi game/bintang/menit + area yang paling dilatih, kelas bermain yang diikuti, **catatan perkembangan penuh** dari guru pada event bulan itu (per indikator: `Area: Indikator — BB/MB/BSH/BSB` + catatan bebasnya), dan **hasil konsultasi psikolog**: rekomendasi naratif plus **produk, event, dan ide bermain** yang direkomendasikan psikolog. Rekomendasi difilter menurut bulan rapornya.
+- **Unduh JPEG A4 landscape** (1 halaman, siap dicetak/di-share ke keluarga) — mesin kanvas yang sama dengan e-sertifikat, tanpa aplikasi tambahan.
+- **Haknya `rapor_bulanan` mengikuti paket ANAK itu** (diatur admin di `/admin/paket`). Anak di paket tanpa hak ini tetap melihat Rapor berjalan; hanya berkas bulanannya yang terkunci.
+- Tombol kembali di halaman rapor **selalu** mengarah ke halaman **Perkembangan** anak (bukan riwayat browser) — karena halaman itu punya deretan chip bulan.
+
 ### Pesanan admin — koreksi ongkir
 Field ongkir juga muncul saat status **`menunggu_bayar`** (nilai terisi otomatis) → admin bisa memperbaiki ongkir sebelum user bayar; total user ter-recompute. `setOngkir` `revalidatePath('/pesanan')`.
 

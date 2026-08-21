@@ -53,7 +53,33 @@ export function bulanTerakhir(sekarang: Date, n: number): string[] {
 
 export interface KegiatanRingkas { jenis: 'ide-bermain' | 'video'; judul: string | null; waktu: string }
 export interface HasilMainRingkas { area_skill: string | null; bintang: number | null; durasi_detik: number | null; selesai: boolean | null }
-export interface CatatanRingkas { judulEvent: string; dinilai_oleh: string | null }
+/** Satu baris penilaian: area + indikator + kode skala PAUD (BB/MB/BSH/BSB). */
+export interface NilaiRingkas { area: string; indikator: string; nilai: string }
+
+export interface CatatanRingkas {
+  judulEvent: string;
+  dinilai_oleh: string | null;
+  /** isi penilaian per indikator — inilah "catatan perkembangan" yang sesungguhnya */
+  penilaian: NilaiRingkas[];
+  /** catatan bebas dari guru */
+  catatan: string | null;
+}
+
+/** Rekomendasi naratif psikolog dari sesi konsultasi. */
+export interface RekomendasiRingkas {
+  judul: string | null;
+  isi: string | null;
+  butir: { judul: string | null; isi: string | null }[];
+  oleh: string | null;
+}
+
+/** Rekomendasi item: produk / event / ide bermain (materi). */
+export interface ItemRingkas {
+  jenis: 'produk' | 'event' | 'materi';
+  judul: string | null;
+  catatan: string | null;
+  oleh: string | null;
+}
 
 export interface RingkasanBulan {
   totalKegiatan: number;
@@ -68,7 +94,12 @@ export interface RingkasanBulan {
   areaTerbanyak: string | null;
   catatanGuru: CatatanRingkas[];
   event: string[];
+  /** jumlah sesi konsultasi pada periode ini */
   rekomendasi: number;
+  /** rekomendasi naratif psikolog pada periode ini */
+  rekomendasiPsikolog: RekomendasiRingkas[];
+  /** produk / event / ide bermain yang direkomendasikan pada periode ini */
+  rekomendasiItem: ItemRingkas[];
   /** true bila bulan itu punya sesuatu untuk ditampilkan */
   adaIsi: boolean;
 }
@@ -89,6 +120,8 @@ export function ringkasBulan(input: {
   catatan: CatatanRingkas[];
   event: string[];
   rekomendasi: number;
+  rekomendasiPsikolog?: RekomendasiRingkas[];
+  rekomendasiItem?: ItemRingkas[];
 }): RingkasanBulan {
   const keg = input.kegiatan ?? [];
   const ide = keg.filter((k) => k.jenis === 'ide-bermain');
@@ -121,6 +154,12 @@ export function ringkasBulan(input: {
     catatanGuru: input.catatan ?? [],
     event: input.event ?? [],
     rekomendasi: Math.max(0, Math.floor(input.rekomendasi || 0)),
-    adaIsi: keg.length > 0 || main.length > 0 || (input.catatan ?? []).length > 0 || (input.event ?? []).length > 0,
+    rekomendasiPsikolog: input.rekomendasiPsikolog ?? [],
+    rekomendasiItem: input.rekomendasiItem ?? [],
+    // Rekomendasi psikolog & item ikut dihitung: bulan tanpa kegiatan mandiri tapi berisi
+    // hasil konsultasi TETAP layak dicetak sebagai rapor.
+    adaIsi: keg.length > 0 || main.length > 0 || (input.catatan ?? []).length > 0
+      || (input.event ?? []).length > 0 || (input.rekomendasiPsikolog ?? []).length > 0
+      || (input.rekomendasiItem ?? []).length > 0,
   };
 }

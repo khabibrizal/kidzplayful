@@ -23,8 +23,14 @@ export interface IsiRapor {
   daftarIdeBermain: { judul: string; jumlah: number }[];
   daftarVideo: { judul: string; jumlah: number }[];
   event: string[];
-  catatanGuru: { judulEvent: string; dinilai_oleh: string | null }[];
+  catatanGuru: {
+    judulEvent: string; dinilai_oleh: string | null;
+    penilaian: { area: string; indikator: string; nilai: string }[];
+    catatan: string | null;
+  }[];
   rekomendasi: number;
+  rekomendasiPsikolog: { judul: string | null; isi: string | null; butir: { judul: string | null; isi: string | null }[]; oleh: string | null }[];
+  rekomendasiItem: { jenis: 'produk' | 'event' | 'materi'; judul: string | null; catatan: string | null }[];
 }
 
 export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
@@ -85,8 +91,14 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
   });
   ctx.textAlign = 'left';
 
-  // Dua kolom isi
+  // ——— Dua kolom isi ———
+  //
+  // Pembagiannya SENGAJA: kolom kiri untuk daftar pendek (kegiatan, area, event), kolom kanan
+  // sepenuhnya untuk dua bagian panjang — catatan perkembangan & hasil konsultasi. Versi
+  // pertama menaruh semuanya di kanan, dan hasilnya bagian konsultasi TIDAK IKUT TERCETAK
+  // sementara kolom kiri kosong separuh. Itu ditemukan dari memeriksa gambarnya, bukan kodenya.
   const kiriX = 140, kananX = W / 2 + 40, kolomL = W / 2 - 220;
+  const BATAS_BAWAH = H - 240;
   let yK = 1160, yR = 1160;
 
   const judulBagian = (teks: string, x: number, y: number) => {
@@ -94,44 +106,108 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
     ctx.fillText(teks, x, y);
     return y + 70;
   };
-  const barisTeks = (teks: string, x: number, y: number, lebar: number) => {
-    const { px, baris } = ukuranPas(ctx, teks, lebar, 2, (p) => `500 ${p}px ${fTeks}`, 46, 34);
+  const barisTeks = (teks: string, x: number, y: number, lebar: number, maksBaris = 2) => {
+    const { px, baris } = ukuranPas(ctx, teks, lebar, maksBaris, (p) => `500 ${p}px ${fTeks}`, 44, 32);
     ctx.fillStyle = HITAM; ctx.font = `500 ${px}px ${fTeks}`;
-    for (const b of baris) { ctx.fillText(b, x, y); y += Math.round(px * 1.3); }
-    return y + 8;
+    for (const b of baris) { ctx.fillText(b, x, y); y += Math.round(px * 1.28); }
+    return y + 6;
   };
 
+  // ——— KOLOM KIRI: daftar pendek ———
   yK = judulBagian('🎈 Ide Bermain di rumah', kiriX, yK);
   if (isi.daftarIdeBermain.length === 0) yK = barisTeks('Belum ada kegiatan tercatat bulan ini.', kiriX, yK, kolomL);
   else for (const it of isi.daftarIdeBermain.slice(0, 8)) {
-    yK = barisTeks(`• ${it.judul}${it.jumlah > 1 ? ` (${it.jumlah}×)` : ''}`, kiriX, yK, kolomL);
-    if (yK > H - 520) break;
+    yK = barisTeks(`• ${it.judul}${it.jumlah > 1 ? ` (${it.jumlah}×)` : ''}`, kiriX, yK, kolomL, 1);
+    if (yK > BATAS_BAWAH - 500) break;
   }
 
-  yK += 30;
+  yK += 26;
   yK = judulBagian('📺 Video yang ditonton', kiriX, yK);
   if (isi.daftarVideo.length === 0) yK = barisTeks('—', kiriX, yK, kolomL);
   else for (const it of isi.daftarVideo.slice(0, 5)) {
-    yK = barisTeks(`• ${it.judul}${it.jumlah > 1 ? ` (${it.jumlah}×)` : ''}`, kiriX, yK, kolomL);
-    if (yK > H - 400) break;
+    yK = barisTeks(`• ${it.judul}${it.jumlah > 1 ? ` (${it.jumlah}×)` : ''}`, kiriX, yK, kolomL, 1);
+    if (yK > BATAS_BAWAH - 300) break;
   }
 
-  yR = judulBagian('🌱 Area yang paling dilatih', kananX, yR);
-  yR = barisTeks(isi.areaTerbanyak ? isi.areaTerbanyak : 'Belum ada data', kananX, yR, kolomL);
-  yR = barisTeks(`Total ⭐ ${isi.bintang} bintang terkumpul`, kananX, yR, kolomL);
+  yK += 26;
+  yK = judulBagian('🌱 Area yang paling dilatih', kiriX, yK);
+  yK = barisTeks(isi.areaTerbanyak ?? 'Belum ada data', kiriX, yK, kolomL, 1);
+  yK = barisTeks(`Total ⭐ ${isi.bintang} bintang terkumpul`, kiriX, yK, kolomL, 1);
 
-  yR += 30;
-  yR = judulBagian('🎈 Kelas bermain yang diikuti', kananX, yR);
-  if (isi.event.length === 0) yR = barisTeks('—', kananX, yR, kolomL);
-  else for (const e of isi.event.slice(0, 5)) yR = barisTeks(`• ${e}`, kananX, yR, kolomL);
-
-  yR += 30;
-  yR = judulBagian('📝 Catatan guru', kananX, yR);
-  if (isi.catatanGuru.length === 0) yR = barisTeks('—', kananX, yR, kolomL);
-  else for (const c of isi.catatanGuru.slice(0, 4)) {
-    yR = barisTeks(`• ${c.judulEvent}${c.dinilai_oleh ? ` — ${c.dinilai_oleh}` : ''}`, kananX, yR, kolomL);
+  yK += 26;
+  yK = judulBagian('🎈 Kelas bermain yang diikuti', kiriX, yK);
+  if (isi.event.length === 0) yK = barisTeks('—', kiriX, yK, kolomL, 1);
+  else for (const e of isi.event.slice(0, 5)) {
+    yK = barisTeks(`• ${e}`, kiriX, yK, kolomL, 1);
+    if (yK > BATAS_BAWAH) break;
   }
-  if (isi.rekomendasi > 0) yR = barisTeks(`🧠 ${isi.rekomendasi} rekomendasi psikolog bulan ini`, kananX, yR, kolomL);
+
+  // ——— KOLOM KANAN, bagian 1: catatan perkembangan ———
+  // Diberi PLAFON agar bagian konsultasi di bawahnya dijamin kebagian ruang. Sisa yang tak
+  // termuat disebut jumlahnya — tidak dihilangkan diam-diam.
+  const adaKonsultasi = isi.rekomendasiPsikolog.length > 0 || isi.rekomendasiItem.length > 0 || isi.rekomendasi > 0;
+  const plafonCatatan = adaKonsultasi ? 1160 + (BATAS_BAWAH - 1160) * 0.55 : BATAS_BAWAH;
+
+  yR = judulBagian('📝 Catatan perkembangan', kananX, yR);
+  if (isi.catatanGuru.length === 0) yR = barisTeks('—', kananX, yR, kolomL, 1);
+  else {
+    let dicetak = 0;
+    for (const c of isi.catatanGuru) {
+      if (yR > plafonCatatan - 90) break;
+      yR = barisTeks(`• ${c.judulEvent}${c.dinilai_oleh ? ` — ${c.dinilai_oleh}` : ''}`, kananX, yR, kolomL, 1);
+      for (const n of c.penilaian) {
+        if (yR > plafonCatatan - 40) break;
+        yR = barisTeks(`${n.area}: ${n.indikator} — ${n.nilai}`, kananX + 26, yR, kolomL - 26);
+      }
+      if (c.catatan && yR < plafonCatatan - 40) yR = barisTeks(`"${c.catatan}"`, kananX + 26, yR, kolomL - 26);
+      dicetak += 1;
+    }
+    if (dicetak < isi.catatanGuru.length) {
+      yR = barisTeks(`…dan ${isi.catatanGuru.length - dicetak} catatan lain — lihat di aplikasi`, kananX, yR, kolomL, 1);
+    }
+  }
+
+  // ——— KOLOM KANAN, bagian 2: hasil konsultasi psikolog ———
+  if (adaKonsultasi) {
+    // Daftar item (produk / event / ide bermain) DIJAMIN kebagian ruang: tingginya dicadangkan
+    // dulu, lalu bagian naratif di atasnya dibatasi sisa ruangnya. Tanpa cadangan ini, blok
+    // rekomendasi item hilang total begitu rekomendasi naratifnya panjang — dan itu justru
+    // bagian yang paling ditunggu orang tua.
+    const MAKS_ITEM = 4;
+    const nItem = Math.min(isi.rekomendasiItem.length, MAKS_ITEM);
+    const cadanganItem = nItem > 0 ? 70 + nItem * 60 + (isi.rekomendasiItem.length > MAKS_ITEM ? 60 : 0) : 0;
+    const plafonNaratif = BATAS_BAWAH - cadanganItem;
+
+    yR = Math.max(yR + 26, plafonCatatan);
+    yR = judulBagian('🧠 Hasil konsultasi psikolog', kananX, yR);
+    if (isi.rekomendasi > 0) yR = barisTeks(`${isi.rekomendasi} sesi konsultasi bulan ini`, kananX, yR, kolomL, 1);
+    let naratifDicetak = 0;
+    for (const x of isi.rekomendasiPsikolog) {
+      if (yR > plafonNaratif - 80) break;
+      yR = barisTeks(`• ${x.judul || 'Rekomendasi'}${x.oleh ? ` — ${x.oleh}` : ''}`, kananX, yR, kolomL, 1);
+      if (x.isi && yR < plafonNaratif - 40) yR = barisTeks(x.isi, kananX + 26, yR, kolomL - 26);
+      for (const b of x.butir) {
+        if (yR > plafonNaratif - 40) break;
+        yR = barisTeks(`– ${b.judul ? `${b.judul}: ` : ''}${b.isi ?? ''}`, kananX + 26, yR, kolomL - 26, 1);
+      }
+      naratifDicetak += 1;
+    }
+    if (naratifDicetak < isi.rekomendasiPsikolog.length) {
+      yR = barisTeks(`…dan ${isi.rekomendasiPsikolog.length - naratifDicetak} rekomendasi lain — lihat di aplikasi`, kananX, yR, kolomL, 1);
+    }
+
+    if (nItem > 0) {
+      yR = Math.max(yR + 8, plafonNaratif);
+      yR = barisTeks('🎁 Direkomendasikan:', kananX, yR, kolomL, 1);
+      for (const it of isi.rekomendasiItem.slice(0, MAKS_ITEM)) {
+        const label = it.jenis === 'materi' ? 'ide bermain' : it.jenis;
+        yR = barisTeks(`• ${it.judul ?? '—'} (${label})${it.catatan ? ` · ${it.catatan}` : ''}`, kananX + 26, yR, kolomL - 26, 1);
+      }
+      if (isi.rekomendasiItem.length > MAKS_ITEM) {
+        barisTeks(`…dan ${isi.rekomendasiItem.length - MAKS_ITEM} rekomendasi lain`, kananX + 26, yR, kolomL - 26, 1);
+      }
+    }
+  }
 
   // Kaki
   ctx.textAlign = 'center';

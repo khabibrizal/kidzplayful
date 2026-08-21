@@ -7,7 +7,9 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getKegiatanAnak } from '@/lib/data/kegiatan';
 import { getHakAnak } from '@/lib/data/langganan-anak';
-import { getKonsultasiAnak } from '@/lib/data/konsultasi';
+import { getKonsultasiAnak, getRekomendasiAnak } from '@/lib/data/konsultasi';
+import { getRekomendasiItemAnak } from '@/lib/data/rekomendasi-item';
+import { metaSkala } from '@/lib/format';
 import { getCatatanAnak } from '@/lib/data/catatan';
 import { rentangBulan, labelBulan, ringkasBulan, bulanTerakhir } from '@/lib/domain/laporan-bulanan';
 import { getEventInfoBanyak } from '@/lib/data/event';
@@ -45,7 +47,7 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
   }
 
   const rentang = rentangBulan(ym);
-  const [kegiatan, { data: main }, catatanSemua, konsultasi] = await Promise.all([
+  const [kegiatan, { data: main }, catatanSemua, konsultasi, rekPsi, rekItem] = await Promise.all([
     getKegiatanAnak(anakId, rentang),
     // Kolom waktunya `tanggal` (migrasi 0002), bukan `created_at`/`dibuat_at` — memakai nama
     // yang salah akan gagal SENYAP dan membuat sesi game selalu 0.
@@ -53,6 +55,8 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
       .eq('anak_id', anakId).gte('tanggal', rentang.dari).lt('tanggal', rentang.sampai),
     getCatatanAnak(anakId),
     getKonsultasiAnak(anakId),
+    getRekomendasiAnak(anakId),
+    getRekomendasiItemAnak(anakId),
   ]);
 
   // Catatan guru & event pada periode ini. `catatan_perkembangan` tak punya tanggal event,
@@ -65,12 +69,29 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
     return tgl ? dalamPeriode(tgl) : (x.c.created_at >= rentang.dari && x.c.created_at < rentang.sampai);
   });
 
+  // Rekomendasi psikolog & item disaring dengan `created_at` (waktu diberikannya), bukan
+  // tanggal sesi: rekomendasi sering ditulis setelah chat selesai.
+  const dalamRentang = (iso?: string | null) => !!iso && iso >= rentang.dari && iso < rentang.sampai;
+
   const r = ringkasBulan({
     kegiatan,
     hasilMain: (main ?? []) as { area_skill: string | null; bintang: number | null; durasi_detik: number | null; selesai: boolean | null }[],
-    catatan: catatanBulan.map((x) => ({ judulEvent: x.judulEvent, dinilai_oleh: x.c.dinilai_oleh ?? null })),
+    catatan: catatanBulan.map((x) => ({
+      judulEvent: x.judulEvent,
+      dinilai_oleh: x.c.dinilai_oleh ?? null,
+      penilaian: (x.c.penilaian ?? []).map((n) => ({ area: n.area, indikator: n.indikator, nilai: n.nilai })),
+      catatan: x.c.catatan ?? null,
+    })),
     event: [...new Set(catatanBulan.map((x) => x.judulEvent))],
     rekomendasi: konsultasi.filter((k) => k.tanggal >= rentang.dari.slice(0, 10) && k.tanggal < rentang.sampai.slice(0, 10)).length,
+    rekomendasiPsikolog: rekPsi.filter((x) => dalamRentang(x.created_at)).map((x) => ({
+      judul: x.judul ?? null, isi: x.isi ?? null,
+      butir: (x.butir ?? []).map((b) => ({ judul: b.judul ?? null, isi: b.isi ?? null })),
+      oleh: x.dinilai_oleh ?? null,
+    })),
+    rekomendasiItem: rekItem.filter((x) => dalamRentang(x.created_at)).map((x) => ({
+      jenis: x.jenis, judul: x.judul ?? null, catatan: x.catatan ?? null, oleh: x.pemberi_nama ?? null,
+    })),
   });
 
   const namaArea = r.areaTerbanyak ? (LABEL_AREA[r.areaTerbanyak] ?? r.areaTerbanyak) : null;
@@ -144,22 +165,82 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
             </>
           )}
 
-          {(r.event.length > 0 || r.catatanGuru.length > 0) && (
+          {/* Catatan perkembangan LENGKAP dari event yang diikuti bulan ini — bukan cuma
+              judul & penilainya. Inilah yang orang tua cari di rapor. */}
+          {r.catatanGuru.length > 0 && (
             <>
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '12px 0 6px' }}>🎈 KELAS BERMAIN & CATATAN GURU</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '12px 0 6px' }}>📝 CATATAN PERKEMBANGAN</div>
+              {r.catatanGuru.map((c, i) => (
+                <div key={i} className="kp-card" style={{ marginBottom: 8 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>🎈 {c.judulEvent}</div>
+                  {c.dinilai_oleh && <div style={{ fontSize: 12, color: 'var(--abu)' }}>dinilai {c.dinilai_oleh}</div>}
+                  {c.penilaian.length > 0 && (
+                    <div style={{ marginTop: 8 }}>
+                      {c.penilaian.map((n, j) => {
+                        const m = metaSkala(n.nilai);
+                        return (
+                          <div key={j} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'flex-start', margin: '4px 0' }}>
+                            <span style={{ fontSize: 13, flex: 1 }}>
+                              <b style={{ color: 'var(--lavender-d)' }}>{n.area}</b> · {n.indikator}
+                            </span>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: m.warna, background: m.bg, borderRadius: 99, padding: '2px 8px', whiteSpace: 'nowrap' }}>
+                              {m.kode}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {c.catatan && <p style={{ fontSize: 13, marginTop: 8, marginBottom: 0 }}>💬 {c.catatan}</p>}
+                </div>
+              ))}
+            </>
+          )}
+
+          {r.event.length > 0 && r.catatanGuru.length === 0 && (
+            <>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '12px 0 6px' }}>🎈 KELAS BERMAIN YANG DIIKUTI</div>
               <div className="kp-card">
                 {r.event.map((e) => <div key={e} style={{ fontSize: 13, margin: '3px 0' }}>• {e}</div>)}
-                {r.catatanGuru.map((c, i) => (
-                  <div key={i} style={{ fontSize: 12, color: 'var(--abu)', margin: '3px 0' }}>
-                    📝 {c.judulEvent}{c.dinilai_oleh ? ` — dinilai ${c.dinilai_oleh}` : ''}
-                  </div>
-                ))}
               </div>
             </>
           )}
 
-          {r.rekomendasi > 0 && (
-            <p style={{ fontSize: 13, marginTop: 10 }}>🧠 {r.rekomendasi} sesi konsultasi psikolog pada periode ini.</p>
+          {/* Hasil konsultasi psikolog: rekomendasi naratif + produk/event/ide bermain. */}
+          {(r.rekomendasiPsikolog.length > 0 || r.rekomendasiItem.length > 0 || r.rekomendasi > 0) && (
+            <>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '12px 0 6px' }}>🧠 HASIL KONSULTASI PSIKOLOG</div>
+              {r.rekomendasi > 0 && (
+                <p style={{ fontSize: 12, color: 'var(--abu)', margin: '0 0 6px' }}>{r.rekomendasi} sesi konsultasi pada periode ini.</p>
+              )}
+              {r.rekomendasiPsikolog.map((x, i) => (
+                <div key={i} className="kp-card" style={{ marginBottom: 8 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>{x.judul || 'Rekomendasi psikolog'}</div>
+                  {x.oleh && <div style={{ fontSize: 12, color: 'var(--abu)' }}>oleh {x.oleh}</div>}
+                  {x.isi && <p style={{ fontSize: 13, marginTop: 6, marginBottom: 0 }}>{x.isi}</p>}
+                  {x.butir.length > 0 && (
+                    <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 13 }}>
+                      {x.butir.map((b, j) => (
+                        <li key={j} style={{ margin: '2px 0' }}>{b.judul ? <b>{b.judul}: </b> : null}{b.isi}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))}
+              {r.rekomendasiItem.length > 0 && (
+                <div className="kp-card">
+                  <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>🎁 Direkomendasikan untuk {nama}</div>
+                  {r.rekomendasiItem.map((it, i) => (
+                    <div key={i} style={{ fontSize: 13, margin: '3px 0' }}>
+                      {it.jenis === 'produk' ? '🛍️' : it.jenis === 'event' ? '🎈' : '📚'} {it.judul ?? '—'}
+                      <span style={{ color: 'var(--abu)', fontSize: 12 }}>
+                        {' '}({it.jenis === 'materi' ? 'ide bermain' : it.jenis}){it.catatan ? ` · ${it.catatan}` : ''}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
 
           <div style={{ marginTop: 16 }}>
@@ -170,6 +251,7 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
               areaTerbanyak: namaArea,
               daftarIdeBermain: r.daftarIdeBermain, daftarVideo: r.daftarVideo,
               event: r.event, catatanGuru: r.catatanGuru, rekomendasi: r.rekomendasi,
+              rekomendasiPsikolog: r.rekomendasiPsikolog, rekomendasiItem: r.rekomendasiItem,
             }} />
           </div>
         </>
