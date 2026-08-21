@@ -62,8 +62,13 @@ export default function PaketAnakForm(
     setBusy(a.id); setPesan('');
     const r = await hentikanPaketAnak(a.id);
     setBusy(null);
-    if (r.ok) { setPesan(`${a.nama}: dihentikan ✓`); router.refresh(); }
-    else setPesan(r.error ?? 'Gagal');
+    if (r.ok) {
+      // Pesannya menyebut apa yang BENAR-BENAR tersimpan (dibaca kembali dari DB), bukan
+      // sekadar "berhasil". Kalau barisnya sudah berbunyi begini tapi tombol Hentikan
+      // belum hilang, berarti yang basi adalah tampilannya — bukan datanya.
+      setPesan(`${a.nama}: dihentikan ✓ (aktif s/d ${r.aktifSampai ?? '—'}${r.paketKosong ? ', paket dikosongkan' : ', PAKET MASIH TERISI — laporkan ini'})`);
+      router.refresh();
+    } else setPesan(r.error ?? 'Gagal');
   }
 
   return (

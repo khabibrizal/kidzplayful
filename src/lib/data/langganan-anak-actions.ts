@@ -74,7 +74,9 @@ export async function setPaketAnak(
  * `paket_berikutnya_id` tidak disentuh: itu pilihan orang tua untuk periode depan dan tak
  * memberi hak apa pun sampai ada tagihan yang diverifikasi.
  */
-export async function hentikanPaketAnak(anakId: string): Promise<{ ok: boolean; error?: string }> {
+export async function hentikanPaketAnak(
+  anakId: string,
+): Promise<{ ok: boolean; error?: string; aktifSampai?: string; paketKosong?: boolean }> {
   try {
     const s = await adminDb();
     const { data, error } = await s.from('langganan_anak')
@@ -84,15 +86,24 @@ export async function hentikanPaketAnak(anakId: string): Promise<{ ok: boolean; 
         updated_at: new Date().toISOString(),
       })
       .eq('anak_id', anakId)
-      .select('anak_id');
+      // Baca kembali keadaan SESUDAH tulis, bukan menggemakan apa yang dikirim: kalau
+      // sebuah trigger atau policy menahan sesuatu, di sinilah kelihatannya. Nilai ini
+      // ditampilkan ke admin supaya "tombolnya tak hilang" bisa langsung dibedakan
+      // antara "tulisannya gagal" dan "layarnya belum ter-refresh".
+      .select('anak_id,paket_id,aktif_sampai');
     if (error) return { ok: false, error: error.message };
     // 0 baris = tak ada langganan yang dihentikan. Dulu tetap dilaporkan "dihentikan",
     // sehingga admin percaya sesuatu berubah padahal tidak.
     if (!data || data.length === 0) {
       return { ok: false, error: 'Anak ini belum punya baris langganan — tak ada yang dihentikan.' };
     }
+    const baris = data[0] as { paket_id: string | null; aktif_sampai: string | null };
     revalidatePath('/admin/langganan'); revalidatePath('/pilih-anak'); revalidatePath('/langganan');
-    return { ok: true };
+    return {
+      ok: true,
+      aktifSampai: baris.aktif_sampai ?? undefined,
+      paketKosong: baris.paket_id === null,
+    };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Gagal.' };
   }
