@@ -10,8 +10,8 @@ describe('ringkasanLangganan', () => {
     const r = ringkasanLangganan([
       { trial_mulai: '2026-06-18', aktif_sampai: null, nominal: 0 },     // trial
       { trial_mulai: '2026-05-01', aktif_sampai: '2026-12-31', nominal: 35000 }, // aktif
-      { trial_mulai: '2026-06-01', aktif_sampai: null, nominal: 0 },     // 2026-06-15 trial end -> +3 tenggang = 18 -> 20 kadaluarsa
-    ], now);
+      { trial_mulai: '2026-06-01', aktif_sampai: null, nominal: 0 },     // trial 14 hari: habis 06-15, +3 tenggang = 06-18 -> pada 06-20 kadaluarsa
+    ], now, { trialHari: 14 });
     expect(r.aktif).toBe(1);
     expect(r.trial).toBe(1);
     expect(r.kadaluarsa).toBe(1);

@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { ringkasanLangganan, type BarisLangganan } from '@/lib/domain/laporan';
+import { getPengaturanTrial } from '@/lib/data/pengaturan-trial';
 import s from '../admin.module.css';
 
 function rupiah(n: number) { return 'Rp ' + n.toLocaleString('id-ID'); }
@@ -20,7 +21,10 @@ export default async function Laporan() {
     supabase.rpc('laporan_engagement'),
   ]);
 
-  const r = ringkasanLangganan((lang ?? []) as unknown as BarisLangganan[], new Date());
+  // Lama trial mengikuti setelan pemilik, supaya angka di laporan sama dengan yang
+  // dialami orang tua di aplikasi.
+  const cfgTrial = await getPengaturanTrial();
+  const r = ringkasanLangganan((lang ?? []) as unknown as BarisLangganan[], new Date(), { trialHari: cfgTrial.trial_hari });
 
   const e = (eng ?? {}) as { total_sesi?: number; total_detik?: number; mesin_populer?: string | null; tema_populer?: string | null };
   const totalSesi = e.total_sesi ?? 0;

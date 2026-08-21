@@ -370,3 +370,37 @@ export interface Pesanan {
   created_at: string;
   item?: ItemPesanan[];
 }
+
+// ——— Langganan bertingkat & per anak (migrasi 0089) ———
+// Hak akses adalah DATA di baris paket, bukan cabang if di kode: pemilik mengubah
+// fasilitas/harga dari /admin/paket tanpa deploy.
+export type SatuanKuota = 'bulan' | 'langganan';
+
+export interface AturanKeluarga { min_anak: number; persen?: number; nominal?: number }
+
+export interface PaketLangganan {
+  id: string;
+  kode: string;                 // 'basic' | 'preschool' — STABIL (tersimpan di peta diskon)
+  nama: string;
+  deskripsi: string | null;
+  benefit: string[];
+  harga_bulanan: number;        // per ANAK per bulan
+  diskon_keluarga: AturanKeluarga[];
+  akses_ide_bermain: boolean;
+  akses_game: boolean;
+  akses_video: boolean;
+  akses_komunitas: boolean;
+  worksheet: boolean;
+  konsultasi_gratis_jumlah: number;
+  konsultasi_gratis_satuan: SatuanKuota;
+  rapor_bulanan: boolean;
+  urutan: number;               // makin besar = makin tinggi
+  aktif: boolean;
+}
+
+export interface BarisLanggananAnak {
+  anak_id: string;
+  paket_id: string | null;
+  paket_berikutnya_id: string | null;
+  aktif_sampai: string | null;  // 'YYYY-MM-DD'
+}
