@@ -5,7 +5,11 @@ import type { Video } from '@/lib/game/tipe';
 
 const MAKS_TONTON = 2;
 
-export default function VideoPojok({ video, onKeluar, batasi = false, onTerkunci }: { video: Video[]; onKeluar: () => void; batasi?: boolean; onTerkunci?: () => void }) {
+export default function VideoPojok({ video, onKeluar, batasi = false, onTerkunci, onTonton }: {
+  video: Video[]; onKeluar: () => void; batasi?: boolean; onTerkunci?: () => void;
+  /** dipanggil sekali saat sebuah video mulai diputar (untuk rapor anak) */
+  onTonton?: (v: Video) => void;
+}) {
   const [aktif, setAktif] = useState<Video | null>(null);
   const [ditonton, setDitonton] = useState(0);
   const terkunci = (v: Video) => batasi && v.boleh_trial === false;
@@ -41,7 +45,7 @@ export default function VideoPojok({ video, onKeluar, batasi = false, onTerkunci
       {video.map((v) => {
         const kunci = terkunci(v);
         return (
-          <button key={v.id} className="kp-card" onClick={() => (kunci ? onTerkunci?.() : setAktif(v))}
+          <button key={v.id} className="kp-card" onClick={() => { if (kunci) { onTerkunci?.(); return; } setAktif(v); onTonton?.(v); }}
             style={{ display: 'flex', gap: 12, alignItems: 'center', textAlign: 'left', border: 'none', cursor: 'pointer', opacity: kunci ? 0.7 : 1 }}>
             <span style={{ fontSize: 30 }}>{kunci ? '🔒' : '▶'}</span>
             <span><b>{v.judul}</b><br /><small style={{ color: 'var(--abu)' }}>{kunci ? 'khusus pelanggan' : `${Math.round(v.durasi_detik / 60)} menit`}</small></span>

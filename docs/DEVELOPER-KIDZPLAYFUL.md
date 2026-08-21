@@ -722,6 +722,17 @@ Sisi orang tua; **khusus member `aktif`** (gate `getStatusLangganan` → `<Terku
 >
 > Jalur ke sertifikat & catatan **tidak** bergantung status event: semua sumber blok (`sertifikat`, `catatan_perkembangan`, `hadir_anak_ids`) di-query tanpa filter status, dan pembacaan `event` untuk ortu peserta dijamin policy 0068. Jadi rapor anak tetap utuh walau event diarsipkan.
 
+### 📄 Rapor Bulanan & Aktivitas Mandiri — `/anak/[anakId]/rapor/[ym]` (migrasi 0093)
+- **Masalah yang diselesaikan**: rapor sudah memuat game, catatan guru, sertifikat, dan konsultasi — tapi **Ide Bermain yang dikerjakan di rumah dan video yang ditonton sama sekali tak tercatat per anak**, padahal itu inti homeschooling.
+- **Kenapa tabel baru `kegiatan_anak`, bukan `riwayat_kelas`**: tabel itu berkunci `(ortu_id, kelas_id)` dan hanya menyimpan waktu **terakhir** — bukan per anak, bukan riwayat. `aktivitas` (0046) juga tak cukup: isinya hanya nama fitur untuk analitik, tanpa rujukan materi.
+- **Kolom**: `anak_id`, `ortu_id`, `jenis` (`ide-bermain`|`video`), `ref_id`, `judul` (**snapshot** — rapor tetap terbaca bila materinya diubah/dihapus), `waktu`. RLS: ortu pemilik + admin/guru + `boleh_lihat_laporan_anak` (0066). **Tanpa UPDATE/DELETE untuk ortu** — rapor tak boleh bisa "dirapikan" belakangan.
+- **Titik pencatatan**: `MenuAnak` saat materi Ide Bermain dibuka (di samping `catatRiwayatKelas` yang sudah ada) dan saat video diputar (`VideoPojok` kini punya prop `onTonton`). `catatKegiatan` **menelan galatnya sendiri**: pencatatan rapor tak boleh menggagalkan aktivitas anak.
+  - **Sengaja belum dicatat**: Mode Ortu menampilkan semua materi terbuka sekaligus (tak ada "dibuka"), dan `/kelas/[id]` tak punya konteks anak sehingga kegiatan tak bisa diatribusikan.
+- **Agregasi** di `lib/domain/laporan-bulanan.ts` (murni, 12 tes): `rentangBulan`, `labelBulan`, `bulanTerakhir`, `ringkasBulan`. Semua batas waktu memakai **WIB** — kegiatan malam tanggal 31 tak boleh pindah bulan.
+- **Rapor bulanan** dirender di halaman + **Unduh JPEG A4 landscape** (`lib/rapor-jpeg.ts`, memakai ulang `kartu-bersama.ts`: `ukuranPas`, `muatGambar`, `siapkanFont` — tanpa dependensi baru). Haknya `raporBulanan` dari **paket ANAK itu**; anak paket lain tetap melihat rapor berjalan, hanya berkas bulanannya terkunci.
+
+> **⚠️ `hasil_main` memakai kolom `tanggal`**, bukan `created_at`/`dibuat_at` (migrasi 0002). Nama kolom yang salah pada `select`/filter **gagal SENYAP** lewat PostgREST — query mengembalikan error yang mudah diabaikan dan rapornya menampilkan 0 sesi tanpa tanda apa pun. Ini sempat terjadi saat sub-proyek C dibuat.
+
 ### 🏅 Sertifikat & Stiker — `/sertifikat/[id]`, `/stiker-event/[id]`
 - **Fungsi data**: `getSertifikat(id)` (`sertifikat.ts`); stiker (**guard admin** `getAdminTerjamin`): `getEventAdmin(id)`, `getPendaftaranByEvent(id)`.
 - **Komponen**: `SertifikatView`, `StikerSheet`, `UnduhPdfBtn` (stiker & peserta), **`UnduhSertifikatBtn`** (sertifikat).

@@ -7,6 +7,9 @@ import { laporanAnak, type BarisHasil } from '@/lib/domain/laporan-anak';
 import { getCatatanAnak } from '@/lib/data/catatan';
 import { getSertifikatAnak } from '@/lib/data/sertifikat';
 import { getGamifikasiAnak } from '@/lib/data/gamifikasi';
+import { getKegiatanAnak } from '@/lib/data/kegiatan';
+import { getHakAnak } from '@/lib/data/langganan-anak';
+import { bulanTerakhir, labelBulan } from '@/lib/domain/laporan-bulanan';
 import { getEventIdHadirAnak, getEventInfoBanyak } from '@/lib/data/event';
 import { formatTanggal } from '@/lib/format';
 import CatatanCard from '@/components/CatatanCard';
@@ -23,12 +26,14 @@ function Stat({ b, l }: { b: string; l: string }) {
 export default async function LaporanAnakView({ anakId, tampilkanSertifikat = true }: { anakId: string; tampilkanSertifikat?: boolean }) {
   const supabase = await createClient();
   const { data: anak } = await supabase.from('anak').select('nama').eq('id', anakId).maybeSingle();
-  const [{ data: rows }, catatan, sertifikat, gami, idHadir] = await Promise.all([
+  const [{ data: rows }, catatan, sertifikat, gami, idHadir, kegiatan, hak] = await Promise.all([
     supabase.from('hasil_main').select('mesin,area_skill,bintang,durasi_detik,selesai').eq('anak_id', anakId),
     getCatatanAnak(anakId),
     getSertifikatAnak(anakId),
     getGamifikasiAnak(anakId),
     getEventIdHadirAnak(anakId),
+    getKegiatanAnak(anakId),
+    getHakAnak(anakId),
   ]);
   const r = laporanAnak((rows ?? []) as unknown as BarisHasil[]);
   const maxArea = Math.max(1, ...Object.values(r.perArea));
@@ -68,6 +73,16 @@ export default async function LaporanAnakView({ anakId, tampilkanSertifikat = tr
     if (!judulBaik(b.judul)) b.judul = b.sertifikat[0]?.event_judul || 'Kelas Bermain';
   }
   const blokEvent = [...blokMap.values()].sort((a, b) => (b.tanggal ?? '').localeCompare(a.tanggal ?? ''));
+
+  // Kegiatan mandiri dikelompokkan per bulan WIB (bukan UTC): kegiatan malam tanggal 31 tak
+  // boleh pindah ke bulan berikutnya.
+  const grupKeg = new Map<string, typeof kegiatan>();
+  for (const k of kegiatan) {
+    const wib = new Date(new Date(k.waktu).getTime() + 7 * 3600 * 1000);
+    const ym = `${wib.getUTCFullYear()}-${String(wib.getUTCMonth() + 1).padStart(2, '0')}`;
+    const arr = grupKeg.get(ym); if (arr) arr.push(k); else grupKeg.set(ym, [k]);
+  }
+  const perBulanKegiatan = [...grupKeg.entries()].sort((a, b) => b[0].localeCompare(a[0]));
 
   return (
     <>
@@ -116,6 +131,58 @@ export default async function LaporanAnakView({ anakId, tampilkanSertifikat = tr
             </div>
           ))}
         </>
+      )}
+
+      {/* ——— Aktivitas mandiri di rumah (migrasi 0093) ———
+          Ide Bermain & video yang dikerjakan anak — inti homeschooling, dan sebelumnya sama
+          sekali tak tercatat per anak. */}
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '18px 0 8px' }}>🏠 AKTIVITAS MANDIRI</div>
+      {kegiatan.length === 0 ? (
+        <p style={{ color: 'var(--abu)', fontSize: 13 }}>
+          Belum ada catatan. Setiap Ide Bermain yang dibuka dan video yang ditonton {namaAnak} di Mode Anak akan tercatat di sini.
+        </p>
+      ) : (
+        <>
+          <div style={{ display: 'flex', gap: 10, marginBottom: 8 }}>
+            <Stat b={String(kegiatan.filter((k) => k.jenis === 'ide-bermain').length)} l="Ide Bermain" />
+            <Stat b={String(kegiatan.filter((k) => k.jenis === 'video').length)} l="Video" />
+          </div>
+          {perBulanKegiatan.map(([ym, list]) => (
+            <details key={ym} className="kp-card" style={{ padding: 12, marginBottom: 8 }} open={ym === perBulanKegiatan[0]?.[0]}>
+              <summary style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 700 }}>
+                <span>🗓️ {labelBulan(ym)}</span>
+                <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--abu)' }}>{list.length} kegiatan ▾</span>
+              </summary>
+              <div style={{ marginTop: 8 }}>
+                {list.slice(0, 40).map((k) => (
+                  <div key={k.id} style={{ fontSize: 13, display: 'flex', justifyContent: 'space-between', gap: 8, margin: '3px 0' }}>
+                    <span>{k.jenis === 'video' ? '📺' : '🎈'} {k.judul ?? 'Tanpa judul'}</span>
+                    <span style={{ color: 'var(--abu)', fontSize: 12 }}>{formatTanggal(k.waktu.slice(0, 10))}</span>
+                  </div>
+                ))}
+                {list.length > 40 && <div style={{ fontSize: 12, color: 'var(--abu)', marginTop: 4 }}>…dan {list.length - 40} kegiatan lain</div>}
+              </div>
+            </details>
+          ))}
+        </>
+      )}
+
+      {/* Rapor bulanan yang bisa diunduh — hak `raporBulanan` dari paket anak ini. */}
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '18px 0 8px' }}>📄 RAPOR BULANAN</div>
+      {hak.raporBulanan ? (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {bulanTerakhir(new Date(), 3).map((ym) => (
+            <Link key={ym} href={`/anak/${anakId}/rapor/${ym}`} className="kp-btn putih" style={{ display: 'inline-block' }}>
+              {labelBulan(ym)}
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <p style={{ color: 'var(--abu)', fontSize: 13 }}>
+          Rapor bulanan yang bisa diunduh tersedia pada paket yang menyertakannya
+          {hak.paket ? ` — paket ${hak.paket.nama} belum termasuk.` : '.'}{' '}
+          <Link href="/langganan" style={{ color: 'var(--biru-d)' }}>Lihat paket →</Link>
+        </p>
       )}
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '18px 0 8px' }}>KEGIATAN (EVENT)</div>

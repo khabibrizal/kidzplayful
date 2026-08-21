@@ -835,6 +835,19 @@ Konsekuensi yang disengaja: aturan voucher jadi ada di dua tempat — TypeScript
 </ol>
 <p>Jalur ke sertifikat &amp; catatan <strong>tidak</strong> bergantung status event: semua sumber blok (<code>sertifikat</code>, <code>catatan_perkembangan</code>, <code>hadir_anak_ids</code>) di-query tanpa filter status, dan pembacaan <code>event</code> untuk ortu peserta dijamin policy 0068. Jadi rapor anak tetap utuh walau event diarsipkan.</p>
 </blockquote>
+<h3 id="rapor-bulanan-aktivitas-mandiri-anakanakidraporym-migrasi-0093">📄 Rapor Bulanan &amp; Aktivitas Mandiri — <code>/anak/[anakId]/rapor/[ym]</code> (migrasi 0093)</h3>
+<ul>
+<li><strong>Masalah yang diselesaikan</strong>: rapor sudah memuat game, catatan guru, sertifikat, dan konsultasi — tapi <strong>Ide Bermain yang dikerjakan di rumah dan video yang ditonton sama sekali tak tercatat per anak</strong>, padahal itu inti homeschooling.</li>
+<li><strong>Kenapa tabel baru <code>kegiatan_anak</code>, bukan <code>riwayat_kelas</code></strong>: tabel itu berkunci <code>(ortu_id, kelas_id)</code> dan hanya menyimpan waktu <strong>terakhir</strong> — bukan per anak, bukan riwayat. <code>aktivitas</code> (0046) juga tak cukup: isinya hanya nama fitur untuk analitik, tanpa rujukan materi.</li>
+<li><strong>Kolom</strong>: <code>anak_id</code>, <code>ortu_id</code>, <code>jenis</code> (<code>ide-bermain</code>|<code>video</code>), <code>ref_id</code>, <code>judul</code> (<strong>snapshot</strong> — rapor tetap terbaca bila materinya diubah/dihapus), <code>waktu</code>. RLS: ortu pemilik + admin/guru + <code>boleh_lihat_laporan_anak</code> (0066). <strong>Tanpa UPDATE/DELETE untuk ortu</strong> — rapor tak boleh bisa "dirapikan" belakangan.</li>
+<li><strong>Titik pencatatan</strong>: <code>MenuAnak</code> saat materi Ide Bermain dibuka (di samping <code>catatRiwayatKelas</code> yang sudah ada) dan saat video diputar (<code>VideoPojok</code> kini punya prop <code>onTonton</code>). <code>catatKegiatan</code> <strong>menelan galatnya sendiri</strong>: pencatatan rapor tak boleh menggagalkan aktivitas anak.</li>
+<li><strong>Sengaja belum dicatat</strong>: Mode Ortu menampilkan semua materi terbuka sekaligus (tak ada "dibuka"), dan <code>/kelas/[id]</code> tak punya konteks anak sehingga kegiatan tak bisa diatribusikan.</li>
+<li><strong>Agregasi</strong> di <code>lib/domain/laporan-bulanan.ts</code> (murni, 12 tes): <code>rentangBulan</code>, <code>labelBulan</code>, <code>bulanTerakhir</code>, <code>ringkasBulan</code>. Semua batas waktu memakai <strong>WIB</strong> — kegiatan malam tanggal 31 tak boleh pindah bulan.</li>
+<li><strong>Rapor bulanan</strong> dirender di halaman + <strong>Unduh JPEG A4 landscape</strong> (<code>lib/rapor-jpeg.ts</code>, memakai ulang <code>kartu-bersama.ts</code>: <code>ukuranPas</code>, <code>muatGambar</code>, <code>siapkanFont</code> — tanpa dependensi baru). Haknya <code>raporBulanan</code> dari <strong>paket ANAK itu</strong>; anak paket lain tetap melihat rapor berjalan, hanya berkas bulanannya terkunci.</li>
+</ul>
+<blockquote>
+<p><strong>⚠️ <code>hasil_main</code> memakai kolom <code>tanggal</code></strong>, bukan <code>created_at</code>/<code>dibuat_at</code> (migrasi 0002). Nama kolom yang salah pada <code>select</code>/filter <strong>gagal SENYAP</strong> lewat PostgREST — query mengembalikan error yang mudah diabaikan dan rapornya menampilkan 0 sesi tanpa tanda apa pun. Ini sempat terjadi saat sub-proyek C dibuat.</p>
+</blockquote>
 <h3 id="sertifikat-stiker-sertifikatid-stiker-eventid">🏅 Sertifikat &amp; Stiker — <code>/sertifikat/[id]</code>, <code>/stiker-event/[id]</code></h3>
 <ul>
 <li><strong>Fungsi data</strong>: <code>getSertifikat(id)</code> (<code>sertifikat.ts</code>); stiker (<strong>guard admin</strong> <code>getAdminTerjamin</code>): <code>getEventAdmin(id)</code>, <code>getPendaftaranByEvent(id)</code>.</li>

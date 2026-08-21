@@ -11,6 +11,7 @@ import FavoritBtn from '@/components/FavoritBtn';
 import KelasIsi from '@/components/KelasIsi';
 import Sampul from '@/components/Sampul';
 import { catatRiwayatKelas } from '@/lib/data/riwayat-actions';
+import { catatKegiatan } from '@/lib/data/kegiatan-actions';
 import { waktuHabis, kunciHari, sisaDetik } from '@/lib/domain/waktu';
 import Pewi from '@/components/ui/Pewi';
 import Logo from '@/components/Logo';
@@ -137,7 +138,8 @@ export default function MenuAnak({
           <div className="kp-chip">📺 Pojok Video</div>
           <div className="kp-coin">🪙 {koin}</div>
         </div>
-        <VideoPojok video={video} batasi={batasi} onKeluar={() => setLayar('menu')} onTerkunci={() => setKunciFitur('Pojok Video')} />
+        <VideoPojok video={video} batasi={batasi} onKeluar={() => setLayar('menu')} onTerkunci={() => setKunciFitur('Pojok Video')}
+          onTonton={(v) => { catatKegiatan(anak.id, 'video', v.id, v.judul).catch(() => {}); }} />
       </div>
     );
   }
@@ -158,7 +160,14 @@ export default function MenuAnak({
           <div className={s.menu}>
             {kelasList.map((k, i) => {
               const kunci = terkunci(k.boleh_trial);
-              const buka = () => { if (kunci) { setKunciFitur('Materi Ide Bermain'); return; } setKelasDipilih(k); setLayar('kelas-detail'); catatRiwayatKelas(k.id).catch(() => {}); };
+              const buka = () => {
+                if (kunci) { setKunciFitur('Materi Ide Bermain'); return; }
+                setKelasDipilih(k); setLayar('kelas-detail');
+                catatRiwayatKelas(k.id).catch(() => {});
+                // Rapor per ANAK (migrasi 0093) — `riwayat_kelas` tak bisa dipakai karena
+                // berkunci (ortu, kelas) dan hanya menyimpan waktu terakhir.
+                catatKegiatan(anak.id, 'ide-bermain', k.id, k.judul).catch(() => {});
+              };
               return (
                 <div key={k.id} className={`kp-tile ${['mint', 'lavender', 'biru'][i % 3]}`}
                   role="button" tabIndex={0} onClick={buka}
