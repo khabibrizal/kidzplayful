@@ -392,6 +392,8 @@ export interface PaketLangganan {
   akses_video: boolean;
   akses_komunitas: boolean;
   worksheet: boolean;
+  worksheet_kuota_jumlah: number;      // 0 = tanpa batas
+  worksheet_kuota_satuan: SatuanKuota;
   konsultasi_gratis_jumlah: number;
   konsultasi_gratis_satuan: SatuanKuota;
   rapor_bulanan: boolean;

@@ -6,6 +6,7 @@ import type { KelasBermain } from '@/lib/game/tipe';
 import KelasIsi from '@/components/KelasIsi';
 import { rekamRiwayat } from '@/lib/data/riwayat-kelas';
 import { getHakAkun } from '@/lib/data/langganan-anak';
+import { getStatusWorksheet } from '@/lib/data/worksheet';
 import Terkunci from '@/components/Terkunci';
 import TombolKembali from '@/components/TombolKembali';
 import { getLabelFokusArea } from '@/lib/data/fokus-area';
@@ -20,9 +21,10 @@ export default async function KelasDetailPage({ params }: { params: Promise<{ id
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const [{ data }, status, labelMaster] = await Promise.all([
+  const [{ data }, status, ws, labelMaster] = await Promise.all([
     supabase.from('kelas_bermain').select(COLS_089).eq('id', id).eq('status', 'aktif').maybeSingle(),
     getHakAkun(),
+    getStatusWorksheet(),
     getLabelFokusArea(),
   ]);
   // Cadangan bila kolom 0089 belum ada.
@@ -43,7 +45,7 @@ export default async function KelasDetailPage({ params }: { params: Promise<{ id
         <TombolKembali fallback="/pilih-anak" style={{ color: 'var(--abu)', fontSize: 13 }} />
       </div>
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 24, margin: '10px 0 6px' }}>🎈 {kelas.judul}</h1>
-      <KelasIsi kelas={kelas} labelArea={labelMaster} bagikanUrl={`/coba/kelas/${kelas.id}`} bolehWorksheet={!!status.paketTertinggi?.worksheet} />
+      <KelasIsi kelas={kelas} labelArea={labelMaster} bagikanUrl={`/coba/kelas/${kelas.id}`} bolehWorksheet={ws.boleh} sisaWorksheet={ws.sisa} worksheetTanpaBatas={ws.tanpaBatas} />
     </main>
   );
 }

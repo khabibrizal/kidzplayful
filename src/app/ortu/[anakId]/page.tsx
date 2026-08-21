@@ -5,6 +5,7 @@ import { getAnakTerjamin } from '@/lib/data/anak';
 import { getKelasAktifCached } from '@/lib/data/publik';
 import { getVideoByKategori } from '@/lib/data/video';
 import { getHakAnak } from '@/lib/data/langganan-anak';
+import { getStatusWorksheet } from '@/lib/data/worksheet';
 import { getLabelFokusArea } from '@/lib/data/fokus-area';
 import KelasIsi from '@/components/KelasIsi';
 import Terkunci from '@/components/Terkunci';
@@ -14,8 +15,8 @@ import TombolKembali from '@/components/TombolKembali';
 export default async function ModeOrtu({ params }: { params: Promise<{ anakId: string }> }) {
   const { anakId } = await params;
   const anak = await getAnakTerjamin(anakId);
-  const [kelasList0, videoBaby0, status, labelArea] = await Promise.all([
-    getKelasAktifCached(), getVideoByKategori('baby'), getHakAnak(anakId), getLabelFokusArea(),
+  const [kelasList0, videoBaby0, status, labelArea, wsKuota] = await Promise.all([
+    getKelasAktifCached(), getVideoByKategori('baby'), getHakAnak(anakId), getLabelFokusArea(), getStatusWorksheet(),
   ]);
   // trial: item tetap TAMPIL tapi yang tak ditandai "boleh trial" akan terkunci (🔒)
   // Hak per ANAK (migrasi 0089), bukan per akun.
@@ -46,7 +47,7 @@ export default async function ModeOrtu({ params }: { params: Promise<{ anakId: s
         ) : (
         <div key={k.id} className="kp-card" style={{ marginBottom: 12 }}>
           <b>🎈 {k.judul}</b>
-          <KelasIsi kelas={k} labelArea={labelArea} bagikanUrl={`/coba/kelas/${k.id}`} bolehWorksheet={status.worksheet} />
+          <KelasIsi kelas={k} labelArea={labelArea} bagikanUrl={`/coba/kelas/${k.id}`} bolehWorksheet={status.worksheet && wsKuota.boleh} sisaWorksheet={wsKuota.sisa} worksheetTanpaBatas={wsKuota.tanpaBatas} />
         </div>
         )
       ))}

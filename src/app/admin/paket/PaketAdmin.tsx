@@ -10,7 +10,8 @@ import s from '../admin.module.css';
 const KOSONG: InputPaket = {
   kode: '', nama: '', deskripsi: '', benefit: [''], hargaBulanan: 0, diskonKeluarga: [],
   aksesIdeBermain: true, aksesGame: true, aksesVideo: true, aksesKomunitas: true,
-  worksheet: false, konsultasiJumlah: 0, konsultasiSatuan: 'bulan', raporBulanan: false,
+  worksheet: false, worksheetKuota: 0, worksheetSatuan: 'bulan',
+  konsultasiJumlah: 0, konsultasiSatuan: 'bulan', raporBulanan: false,
   urutan: 10, aktif: true,
 };
 
@@ -20,6 +21,7 @@ const dariPaket = (p: PaketLangganan): InputPaket => ({
   hargaBulanan: p.harga_bulanan, diskonKeluarga: p.diskon_keluarga ?? [],
   aksesIdeBermain: p.akses_ide_bermain, aksesGame: p.akses_game, aksesVideo: p.akses_video,
   aksesKomunitas: p.akses_komunitas, worksheet: p.worksheet,
+  worksheetKuota: p.worksheet_kuota_jumlah ?? 0, worksheetSatuan: p.worksheet_kuota_satuan ?? 'bulan',
   konsultasiJumlah: p.konsultasi_gratis_jumlah, konsultasiSatuan: p.konsultasi_gratis_satuan,
   raporBulanan: p.rapor_bulanan, urutan: p.urutan, aktif: p.aktif,
 });
@@ -78,8 +80,7 @@ function Form({ nilai, set, kodeTerkunci }: { nilai: InputPaket; set: (v: InputP
         <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>👨‍👩‍👧‍👦 Diskon keluarga</div>
         <div className={s.muted} style={{ fontSize: 11, marginBottom: 6 }}>
           Berlaku bila jumlah anak yang dilanggankan mencapai batasnya. Aturan dengan batas TERBESAR yang
-          terpenuhi yang dipakai. Isi <b>persen ATAU nominal</b> — bukan keduanya: bila keduanya terisi,
-          yang berlaku hanya <b>persen</b>, dan nominalnya akan dibuang saat disimpan.
+          terpenuhi yang dipakai. Tiap aturan memakai <b>satu jenis</b> potongan: persen <b>atau</b> rupiah.
         </div>
         {nilai.diskonKeluarga.map((r, i) => (
           <div key={i} className={s.row} style={{ gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
@@ -87,17 +88,23 @@ function Form({ nilai, set, kodeTerkunci }: { nilai: InputPaket; set: (v: InputP
             <input className={s.inp} type="number" min={2} value={r.min_anak}
               onChange={(e) => ubahAturan(i, { min_anak: Number(e.target.value) || 2 })} style={{ width: 70, marginBottom: 0 }} />
             <span className={s.muted} style={{ fontSize: 12 }}>anak →</span>
-            <input className={s.inp} type="number" min={0} max={100} placeholder="%" value={r.persen ?? ''}
-              onChange={(e) => ubahAturan(i, e.target.value === ''
-                ? { persen: undefined }
-                : { persen: Number(e.target.value), nominal: undefined })}
-              style={{ width: 80, marginBottom: 0 }} />
-            <span className={s.muted} style={{ fontSize: 12 }}>atau</span>
-            <input className={s.inp} type="number" min={0} placeholder="Rp" value={r.nominal ?? ''}
-              onChange={(e) => ubahAturan(i, e.target.value === ''
-                ? { nominal: undefined }
-                : { nominal: Number(e.target.value), persen: undefined })}
-              style={{ width: 120, marginBottom: 0 }} />
+            {/* Jenis potongan dipilih EKSPLISIT, lalu satu field nilai — supaya mustahil
+                mengisi persen dan rupiah sekaligus (dulu bisa, dan rupiahnya diam-diam
+                tak berlaku karena rumusnya mendahulukan persen). */}
+            <select className={s.inp} value={r.nominal != null ? 'nominal' : 'persen'} style={{ width: 110, marginBottom: 0 }}
+              onChange={(e) => ubahAturan(i, e.target.value === 'persen'
+                ? { persen: r.nominal ?? 0, nominal: undefined }
+                : { nominal: r.persen ?? 0, persen: undefined })}>
+              <option value="persen">Persen (%)</option>
+              <option value="nominal">Rupiah</option>
+            </select>
+            {r.nominal != null
+              ? <input className={s.inp} type="number" min={0} placeholder="Rp" value={r.nominal}
+                  onChange={(e) => ubahAturan(i, { nominal: Number(e.target.value) || 0, persen: undefined })}
+                  style={{ width: 130, marginBottom: 0 }} />
+              : <input className={s.inp} type="number" min={0} max={100} placeholder="%" value={r.persen ?? ''}
+                  onChange={(e) => ubahAturan(i, { persen: Number(e.target.value) || 0, nominal: undefined })}
+                  style={{ width: 90, marginBottom: 0 }} />}
             <button type="button" className={s.btnSm} style={{ background: '#eee' }}
               onClick={() => ubah('diskonKeluarga', nilai.diskonKeluarga.filter((_, j) => j !== i))}>✕</button>
           </div>
@@ -116,6 +123,20 @@ function Form({ nilai, set, kodeTerkunci }: { nilai: InputPaket; set: (v: InputP
           <Sakelar label="Unduh worksheet" on={nilai.worksheet} set={(v) => ubah('worksheet', v)} />
           <Sakelar label="Rapor bulanan" on={nilai.raporBulanan} set={(v) => ubah('raporBulanan', v)} />
         </div>
+      </div>
+
+      <div className={s.row} style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <span style={{ fontSize: 12, fontWeight: 700 }}>📄 Kuota unduh worksheet</span>
+        <input className={s.inp} type="number" min={0} value={nilai.worksheetKuota} disabled={!nilai.worksheet}
+          onChange={(e) => ubah('worksheetKuota', Number(e.target.value) || 0)} style={{ width: 80, marginBottom: 0 }} />
+        <select className={s.inp} value={nilai.worksheetSatuan} disabled={!nilai.worksheet}
+          onChange={(e) => ubah('worksheetSatuan', e.target.value as SatuanKuota)} style={{ width: 190, marginBottom: 0 }}>
+          <option value="bulan">unduhan per bulan</option>
+          <option value="langganan">unduhan sekali per langganan</option>
+        </select>
+        <span className={s.muted} style={{ fontSize: 11 }}>
+          {!nilai.worksheet ? 'aktifkan "Unduh worksheet" dulu' : nilai.worksheetKuota === 0 ? '0 = tanpa batas' : ''}
+        </span>
       </div>
 
       <div className={s.row} style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -190,7 +211,7 @@ export default function PaketAdmin({ awal }: { awal: PaketLangganan[] }) {
               {!p.aktif && <span className={`${s.tag} ${s.tagDraf}`} style={{ marginLeft: 6 }}>nonaktif</span>}
               <br /><small className={s.muted}>
                 {formatRupiah(p.harga_bulanan)} / anak / bulan · urutan {p.urutan}
-                {p.worksheet ? ' · worksheet' : ''}{p.rapor_bulanan ? ' · rapor bulanan' : ''}
+                {p.worksheet ? ` · worksheet ${(p.worksheet_kuota_jumlah ?? 0) === 0 ? 'tanpa batas' : `${p.worksheet_kuota_jumlah}/${p.worksheet_kuota_satuan}`}` : ''}{p.rapor_bulanan ? ' · rapor bulanan' : ''}
                 {p.konsultasi_gratis_jumlah > 0 ? ` · ${p.konsultasi_gratis_jumlah} konsultasi/${p.konsultasi_gratis_satuan}` : ''}
               </small>
               {(p.diskon_keluarga?.length ?? 0) > 0 && (

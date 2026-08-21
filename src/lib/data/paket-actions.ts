@@ -28,6 +28,8 @@ export interface InputPaket {
   aksesVideo: boolean;
   aksesKomunitas: boolean;
   worksheet: boolean;
+  worksheetKuota: number;              // 0 = tanpa batas
+  worksheetSatuan: SatuanKuota;
   konsultasiJumlah: number;
   konsultasiSatuan: SatuanKuota;
   raporBulanan: boolean;
@@ -71,6 +73,8 @@ function baris(i: InputPaket) {
     akses_video: i.aksesVideo,
     akses_komunitas: i.aksesKomunitas,
     worksheet: i.worksheet,
+    worksheet_kuota_jumlah: Math.max(0, Math.floor(i.worksheetKuota || 0)),
+    worksheet_kuota_satuan: i.worksheetSatuan,
     konsultasi_gratis_jumlah: Math.max(0, Math.floor(i.konsultasiJumlah || 0)),
     konsultasi_gratis_satuan: i.konsultasiSatuan,
     rapor_bulanan: i.raporBulanan,

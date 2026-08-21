@@ -9,6 +9,7 @@ const paket = (kode: string, urutan: number, harga: number, keluarga: AturanKelu
   id: `id-${kode}`, kode, nama: kode, deskripsi: null, benefit: [], harga_bulanan: harga,
   diskon_keluarga: keluarga, akses_ide_bermain: true, akses_game: true, akses_video: true,
   akses_komunitas: true, worksheet: false, konsultasi_gratis_jumlah: 0,
+  worksheet_kuota_jumlah: 0, worksheet_kuota_satuan: 'bulan',
   konsultasi_gratis_satuan: 'bulan', rapor_bulanan: false, urutan, aktif: true,
 });
 

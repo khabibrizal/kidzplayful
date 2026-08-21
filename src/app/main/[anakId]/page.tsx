@@ -10,6 +10,7 @@ import { getLabelFokusArea } from '@/lib/data/fokus-area';
 import { getFavoritIds } from '@/lib/data/favorit';
 import { getGamifikasiAnak } from '@/lib/data/gamifikasi';
 import { getHakAnak } from '@/lib/data/langganan-anak';
+import { getStatusWorksheet } from '@/lib/data/worksheet';
 import RekamAktivitas from '@/components/RekamAktivitas';
 import MenuAnak from './MenuAnak';
 
@@ -22,7 +23,7 @@ export default async function MainPage({ params, searchParams }: { params: Promi
   const { data: { user: u } } = await supabase.auth.getUser();
 
   // Ambil semua data sisanya paralel (+ status langganan untuk gating trial)
-  const [video0, pustaka0, kelasList0, favIds, { data: prof }, gami, status, labelArea] = await Promise.all([
+  const [video0, pustaka0, kelasList0, favIds, { data: prof }, gami, status, labelArea, wsKuota] = await Promise.all([
     getVideoByKategori(kategoriUsia(umur)),
     getPustaka(),
     getKelasAktifCached(),
@@ -31,6 +32,7 @@ export default async function MainPage({ params, searchParams }: { params: Promi
     getGamifikasiAnak(anakId),
     getHakAnak(anakId),
     getLabelFokusArea(),
+    getStatusWorksheet(),
   ]);
 
   // gating trial: item tetap TAMPIL untuk user non-aktif, tapi yang tak ditandai
@@ -56,7 +58,9 @@ export default async function MainPage({ params, searchParams }: { params: Promi
       kelasList={kelasList0}
       favIds={favIds}
       gamiAwal={gami}
-      bolehWorksheet={status.worksheet}
+      bolehWorksheet={status.worksheet && wsKuota.boleh}
+      sisaWorksheet={wsKuota.sisa}
+      worksheetTanpaBatas={wsKuota.tanpaBatas}
       batasi={batasi}
       labelArea={labelArea}
     />
