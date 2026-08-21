@@ -35,9 +35,11 @@ const STATUS_TEKS: Record<Tagihan['status'], string> = {
   ditolak: 'Ditolak',
 };
 
-export default function PilihPaketForm({ anak, paket, tagihan, bank, qris, waAdmin }: {
+export default function PilihPaketForm({ anak, paket, tagihan, bank, qris, waAdmin, hariIni }: {
   anak: AnakPaket[]; paket: PaketLangganan[]; tagihan: Tagihan[];
   bank: string; qris: string; waAdmin: string;
+  /** tanggal hari ini (WIB, 'YYYY-MM-DD') — dihitung di SERVER, bukan dari jam browser */
+  hariIni: string;
 }) {
   const router = useRouter();
   const [pilihan, setPilihan] = useState<Record<string, string>>({});
@@ -141,41 +143,67 @@ export default function PilihPaketForm({ anak, paket, tagihan, bank, qris, waAdm
         ))}
       </div>
 
-      {/* ——— Pilih per anak ——— */}
-      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '8px 0' }}>PILIH PAKET TIAP ANAK</div>
-      {anak.map((a) => (
+      {/* ——— Pilih per anak ———
+          Anak yang MASIH AKTIF tidak diberi dropdown pemilihan paket (permintaan pemilik):
+          paketnya sudah berjalan, jadi yang relevan hanya "mau paket apa mulai periode
+          berikutnya". Untuk membayar periode berikutnya lebih awal ada centang "Perpanjang",
+          yang memakai paket berikutnya bila sudah dipilih — kalau tidak, paket yang sekarang.
+          Tanpa centang itu, orang tua yang masih aktif tak punya cara memperpanjang dan
+          langganannya akan sempat terputus dulu. */}
+      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '8px 0' }}>PAKET TIAP ANAK</div>
+      {anak.map((a) => {
+        const aktif = !!a.aktifSampai && a.aktifSampai >= hariIni;
+        const paketPerpanjangan = a.paketBerikutnyaId ?? a.paketId;
+        const namaPerpanjangan = paket.find((p) => p.id === paketPerpanjangan)?.nama ?? a.paketNama;
+        return (
         <div key={a.id} className="kp-card" style={{ padding: 12, marginBottom: 8 }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <span style={{ flex: 1, minWidth: 140 }}>
               <b>🧒 {a.nama}</b>
               <br /><small style={{ color: 'var(--abu)' }}>
-                {a.aktifSampai ? `${a.paketNama ?? 'Paket'} · aktif s/d ${a.aktifSampai}` : 'belum berlangganan'}
+                {aktif
+                  ? `${a.paketNama ?? 'Paket'} · aktif s/d ${a.aktifSampai}`
+                  : a.aktifSampai ? `masa aktif berakhir ${a.aktifSampai}` : 'belum berlangganan'}
               </small>
             </span>
-            <select className="kp-input" value={pilihan[a.id] ?? ''} style={{ width: 170 }}
-              onChange={(e) => setPilihan({ ...pilihan, [a.id]: e.target.value })}>
-              <option value="">— tidak ikut —</option>
-              {paket.map((p) => <option key={p.id} value={p.id}>{p.nama}</option>)}
-            </select>
-          </div>
 
-          {/* Turun/naik kelas untuk periode berikutnya — hanya relevan bila sedang aktif. */}
-          {a.aktifSampai && (
-            <div style={{ marginTop: 8, borderTop: '1px dashed #eee', paddingTop: 8, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <small style={{ color: 'var(--abu)', flex: 1, minWidth: 150 }}>
-                Paket mulai periode berikutnya
-                {a.paketBerikutnyaId && <> — <b>{paket.find((p) => p.id === a.paketBerikutnyaId)?.nama}</b></>}
-              </small>
-              <select className="kp-input" value={a.paketBerikutnyaId ?? ''} style={{ width: 170 }}
-                disabled={sibuk === a.id}
-                onChange={(e) => simpanBerikutnya(a.id, e.target.value)}>
-                <option value="">lanjut paket sekarang</option>
+            {aktif ? (
+              <span className="kp-chip" style={{ background: 'var(--mint)' }}>✓ Sedang aktif</span>
+            ) : (
+              <select className="kp-input" value={pilihan[a.id] ?? ''} style={{ width: 170 }}
+                onChange={(e) => setPilihan({ ...pilihan, [a.id]: e.target.value })}>
+                <option value="">— tidak ikut —</option>
                 {paket.map((p) => <option key={p.id} value={p.id}>{p.nama}</option>)}
               </select>
-            </div>
+            )}
+          </div>
+
+          {aktif && (
+            <>
+              <div style={{ marginTop: 8, borderTop: '1px dashed #eee', paddingTop: 8, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <small style={{ color: 'var(--abu)', flex: 1, minWidth: 150 }}>
+                  Paket mulai periode berikutnya
+                  {a.paketBerikutnyaId && <> — <b>{paket.find((p) => p.id === a.paketBerikutnyaId)?.nama}</b></>}
+                </small>
+                <select className="kp-input" value={a.paketBerikutnyaId ?? ''} style={{ width: 170 }}
+                  disabled={sibuk === a.id}
+                  onChange={(e) => simpanBerikutnya(a.id, e.target.value)}>
+                  <option value="">lanjut paket sekarang</option>
+                  {paket.map((p) => <option key={p.id} value={p.id}>{p.nama}</option>)}
+                </select>
+              </div>
+              {paketPerpanjangan && (
+                <label style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 6, fontSize: 12, color: 'var(--abu)' }}>
+                  <input type="checkbox" checked={!!pilihan[a.id]}
+                    onChange={(e) => setPilihan({ ...pilihan, [a.id]: e.target.checked ? paketPerpanjangan : '' })} />
+                  Perpanjang sekarang ({namaPerpanjangan}) — masa aktif ditambah dari {a.aktifSampai}
+                </label>
+              )}
+            </>
           )}
         </div>
-      ))}
+        );
+      })}
 
       {/* ——— Rincian ——— */}
       {item.length > 0 && (

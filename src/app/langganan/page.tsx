@@ -5,6 +5,7 @@ import { getPaketAktif } from '@/lib/data/paket';
 import { barisLanggananAnak } from '@/lib/data/langganan-anak';
 import { getTagihanSaya } from '@/lib/data/tagihan';
 import { getPengaturanBayar } from '@/lib/data/pengaturan-bayar';
+import { tanggalWIB } from '@/lib/domain/gamifikasi';
 import BottomNav from '@/components/BottomNav';
 import TombolKembali from '@/components/TombolKembali';
 import RekamAktivitas from '@/components/RekamAktivitas';
@@ -64,6 +65,7 @@ export default async function LanggananPage() {
           bank={bayar.bank_teks}
           qris={bayar.qris_url}
           waAdmin={bayar.wa_nomor}
+          hariIni={tanggalWIB()}
         />
       )}
       <BottomNav />
