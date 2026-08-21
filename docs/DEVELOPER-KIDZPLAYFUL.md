@@ -249,6 +249,19 @@ Fitur share dari halaman detail agar orang non-login jadi aware & mendaftar.
 >
 > `dibatasiTrial` **masih dipakai di dua tempat dan itu disengaja**: batas jumlah anak untuk yang belum berlangganan (`api/anak`, `pilih-anak/actions`) memakai `trial_maks_anak`, karena keputusan pemiliknya adalah **tanpa batas anak per paket**.
 
+### 🧾 Pilih Paket & Tagihan — `/langganan` (migrasi 0090)
+- **File**: `app/langganan/page.tsx` → `PilihPaketForm.tsx`. Reader `lib/data/tagihan.ts`; action `tagihan-actions.ts` (ortu) & `tagihan-admin-actions.ts` (admin).
+- **Bentuk tagihan**: induk `tagihan_langganan` + **baris item per anak** `tagihan_langganan_item` (`anak_id`, `paket_id`, `harga` snapshot). Bukan satu kolom rincian — admin harus bisa melihat "siapa dapat paket apa, berapa" saat verifikasi, dan **paket campur** (kakak Preschool, bayi Basic) tak perlu perlakuan khusus.
+- **Hitungan uang** ada di `lib/domain/langganan-harga.ts` (murni, 13 tes): `subtotal = Σ harga paket × bulan` → **diskon keluarga** (aturan bertingkat, `min_anak` terbesar yang terpenuhi) → **voucher** (dihitung dari nilai SETELAH diskon keluarga) → total (tak pernah minus). Modul yang sama dipakai **layar pratinjau dan server**, jadi tak ada dua rumus.
+- **Diskon keluarga pada paket campur** memakai aturan dari **paket tertinggi di tagihan itu**, dan aturan yang dipakai **ditulis di layar**. Alternatifnya (menghitung per kelompok paket) lebih adil secara matematis tapi sulit dijelaskan ke orang tua dan sulit diverifikasi manual.
+- **Alur**: buat tagihan → transfer (`getPengaturanBayar`: rekening + QRIS) → unggah bukti (`kompresGambar` 1280/0.8 → folder `bukti/`) → admin **verifikasi** → tiap item diaktifkan. Bisa dibatalkan selama `menunggu_bayar`, dan kuota vouchernya dilepas.
+- **Turun/naik kelas**: `langganan_anak.paket_berikutnya_id` disetel orang tua (`setPaketBerikutnya`) dan **berlaku saat perpanjangan** — hak periode berjalan tak berubah karena sudah dibayar. Naik kelas di tengah periode = bayar satu bulan penuh, **tanpa prorata**, dinyatakan terbuka di layar.
+- **Verifikasi admin memanggil `setPaketAnak` (A1)**, bukan menulis `langganan_anak` langsung — supaya aturan "perpanjang dari `max(hari ini, aktif_sampai)`" hanya ada di satu tempat. Ledger dicatat sebesar **total net** (kategori `membership`, `ref_tipe='tagihan_langganan'`); penolakan menghapus baris ledger **dan** melepas kuota voucher.
+
+> **⚠️ Kolom uang & status tagihan dilindungi TRIGGER, bukan hanya policy.** RLS Postgres tak bisa membatasi per kolom, jadi `cegah_ubah_tagihan` + `cegah_ubah_langganan_anak` (0090) menegakkan bahwa orang tua **hanya** boleh menyentuh `bukti_url` (plus transisi `menunggu_bayar → menunggu_verifikasi`) dan `paket_berikutnya_id`. Tanpa itu, ia bisa `PATCH` lewat REST dengan `{"total":0}` atau `{"status":"diterima"}` dan berlangganan tanpa membayar. Polanya meniru `cegah_self_admin` (0056).
+>
+> **Voucher langganan**: `voucher.berlaku_langganan` + `voucher_redeem.ref_tipe='langganan'`. Cakupan `jenis` di `domain/voucher.ts` kini `'event' | 'produk' | 'langganan'`, dan kolom barunya dibaca **dengan cadangan** supaya voucher event/produk yang sudah jalan tak mati sebelum migrasi 0090 dijalankan.
+
 ### 💳 Langganan — `/admin/langganan`
 - **File**: `admin/langganan/page.tsx` (query inline + `Pager.tsx`) → `AktifkanForm.tsx`. Util `@/lib/domain/trial` (`statusLangganan`), `@/lib/format` (`linkWa`), `@/lib/metode` (`METODE_BAYAR`).
 - **Fungsi data**: query inline `profiles` (member + embed anak & langganan) & `langganan` (jatuh tempo ≤ 7 hari untuk tombol WA pengingat); `getPengaturanBayar()` (nominal default).
