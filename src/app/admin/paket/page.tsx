@@ -1,10 +1,11 @@
 // src/app/admin/paket/page.tsx — master paket langganan (Basic / Preschool / dst).
 import { getPaketSemua } from '@/lib/data/paket';
+import { getPengaturanBayar } from '@/lib/data/pengaturan-bayar';
 import PaketAdmin from './PaketAdmin';
 import s from '../admin.module.css';
 
 export default async function AdminPaketPage() {
-  const list = await getPaketSemua();
+  const [list, bayar] = await Promise.all([getPaketSemua(), getPengaturanBayar()]);
   return (
     <div>
       <div className={s.head} style={{ marginTop: 8 }}><h1>🎟️ Paket Langganan</h1></div>
@@ -19,7 +20,7 @@ export default async function AdminPaketPage() {
           Belum ada paket terbaca — jalankan migrasi <b>0089_paket_langganan.sql</b> dulu di Supabase SQL Editor.
         </p>
       )}
-      <PaketAdmin awal={list} />
+      <PaketAdmin awal={list} diskonMemberKonsultasi={bayar.diskon_konsultasi_langganan_persen} />
     </div>
   );
 }

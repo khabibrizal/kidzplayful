@@ -49,6 +49,11 @@ export default async function PengaturanBayarPage({ searchParams }: { searchPara
 
         <label className={s.section}>Diskon member untuk konsultasi (%)</label>
         <input className={s.inp} name="diskon_konsultasi" defaultValue={cfg.diskon_konsultasi_langganan_persen} inputMode="numeric" style={{ width: '100%' }} placeholder="100 = member tidak ditagih" />
+        <p className={s.muted} style={{ fontSize: 11, marginTop: 4 }}>
+          Berlaku untuk sesi <b>setelah kuota gratis paket habis</b>. Bila diisi <b>100</b>, sesi setelah kuota habis pun
+          tetap gratis — artinya kuota konsultasi pada paket tidak akan pernah menahan apa pun. Isi lebih kecil dari 100
+          (mis. 50) bila Anda ingin kuotanya benar-benar berarti.
+        </p>
 
         <label className={s.section}>WA Admin Konsultasi (opsional)</label>
         <input className={s.inp} name="wa_konsultasi" defaultValue={cfg.wa_konsultasi} inputMode="numeric" style={{ width: '100%' }} placeholder="kosongkan = pakai WA umum" />

@@ -154,7 +154,12 @@ function Form({ nilai, set, kodeTerkunci }: { nilai: InputPaket; set: (v: InputP
   );
 }
 
-export default function PaketAdmin({ awal }: { awal: PaketLangganan[] }) {
+export default function PaketAdmin({ awal, diskonMemberKonsultasi = 100 }: {
+  awal: PaketLangganan[];
+  /** diskon member konsultasi bawaan (dari master Pembayaran) — dipakai untuk memperingatkan
+   *  kuota konsultasi yang tak akan pernah berlaku. */
+  diskonMemberKonsultasi?: number;
+}) {
   const router = useRouter();
   const [baru, setBaru] = useState<InputPaket>(KOSONG);
   const [bukaTambah, setBukaTambah] = useState(false);
@@ -214,6 +219,14 @@ export default function PaketAdmin({ awal }: { awal: PaketLangganan[] }) {
                 {p.worksheet ? ` · worksheet ${(p.worksheet_kuota_jumlah ?? 0) === 0 ? 'tanpa batas' : `${p.worksheet_kuota_jumlah}/${p.worksheet_kuota_satuan}`}` : ''}{p.rapor_bulanan ? ' · rapor bulanan' : ''}
                 {p.konsultasi_gratis_jumlah > 0 ? ` · ${p.konsultasi_gratis_jumlah} konsultasi/${p.konsultasi_gratis_satuan}` : ''}
               </small>
+              {/* Kuota konsultasi hanya BERARTI bila diskon member < 100%. Dengan diskon 100%,
+                  sesi ke-7 pun tetap gratis, jadi kuotanya tak pernah menahan apa pun. */}
+              {p.konsultasi_gratis_jumlah > 0 && diskonMemberKonsultasi >= 100 && (
+                <><br /><small style={{ color: '#b26a00' }}>
+                  ⚠ Kuota {p.konsultasi_gratis_jumlah} konsultasi tidak akan pernah berlaku: diskon member konsultasi masih <b>100%</b>,
+                  jadi sesi setelah kuota habis pun tetap gratis. Turunkan diskonnya di menu <b>Pembayaran</b> agar kuota ini berarti.
+                </small></>
+              )}
               {(p.diskon_keluarga?.length ?? 0) > 0 && (
                 <><br /><small className={s.muted}>👨‍👩‍👧‍👦 {p.diskon_keluarga.map((r) => `≥${r.min_anak} anak: ${r.persen ? `${r.persen}%` : formatRupiah(r.nominal ?? 0)}`).join(' · ')}</small></>
               )}
