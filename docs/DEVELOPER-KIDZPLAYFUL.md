@@ -260,6 +260,11 @@ Fitur share dari halaman detail agar orang non-login jadi aware & mendaftar.
 
 > **⚠️ Kolom uang & status tagihan dilindungi TRIGGER, bukan hanya policy.** RLS Postgres tak bisa membatasi per kolom, jadi `cegah_ubah_tagihan` + `cegah_ubah_langganan_anak` (0090) menegakkan bahwa orang tua **hanya** boleh menyentuh `bukti_url` (plus transisi `menunggu_bayar → menunggu_verifikasi`) dan `paket_berikutnya_id`. Tanpa itu, ia bisa `PATCH` lewat REST dengan `{"total":0}` atau `{"status":"diterima"}` dan berlangganan tanpa membayar. Polanya meniru `cegah_self_admin` (0056).
 >
+> **Nominal DIBUKTIKAN ULANG saat verifikasi.** Policy INSERT `tagihan_langganan` hanya memastikan `ortu_id = auth.uid()` — jadi orang tua **bisa** memasukkan baris tagihan langsung lewat REST dengan angka karangan, dan trigger 0090 hanya menjaga UPDATE. Verifikasi adalah satu-satunya titik di mana uang dicatat & hak akses diberikan, jadi `verifikasiTagihan` menghitung ulang `subtotal`, diskon keluarga, dan potongan voucher lalu **menolak bila tidak cocok** dengan yang tersimpan.
+> Dasarnya **harga snapshot di rincian** (`tagihan_langganan_item.harga`), **bukan** harga master saat ini — kalau memakai harga master, mengubah harga paket akan membuat tagihan lama yang sah ikut ditolak padahal orang tua sudah membayar harga yang berlaku saat itu. Aturan diskon keluarga tetap dari master. Snapshot harga yang tak wajar tetap terlihat admin karena rinciannya ditampilkan per anak di antrean.
+>
+> **Tagihan bertotal nol**: `subtotal = 0` berarti **harga paket belum diatur admin** (paket di-seed Rp 0) → `buatTagihan` menolak dengan pesan jelas, supaya orang tua tidak terjebak menunggu bukti transfer yang tak ada nominalnya. Tapi `total = 0` dengan subtotal > 0 memang sah (diskon + voucher menutup semuanya) → tagihan langsung berstatus `menunggu_verifikasi` tanpa bukti, dan layarnya berkata "tidak ada yang perlu ditransfer".
+>
 > **Voucher langganan**: `voucher.berlaku_langganan` + `voucher_redeem.ref_tipe='langganan'`. Cakupan `jenis` di `domain/voucher.ts` kini `'event' | 'produk' | 'langganan'`, dan kolom barunya dibaca **dengan cadangan** supaya voucher event/produk yang sudah jalan tak mati sebelum migrasi 0090 dijalankan.
 
 ### 💳 Langganan — `/admin/langganan`

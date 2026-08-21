@@ -276,7 +276,9 @@ export default function PilihPaketForm({ anak, paket, tagihan, bank, qris, waAdm
 
               {t.status === 'menunggu_verifikasi' && (
                 <div style={{ marginTop: 8, fontSize: 12, color: 'var(--abu)' }}>
-                  Bukti sudah kami terima. Admin akan memverifikasi, biasanya di hari yang sama 🌿
+                  {t.total <= 0
+                    ? 'Tidak ada yang perlu ditransfer — diskon menutup seluruh tagihan. Menunggu verifikasi admin 🌿'
+                    : 'Bukti sudah kami terima. Admin akan memverifikasi, biasanya di hari yang sama 🌿'}
                   {linkWa(waAdmin, `Halo Admin KidzPlayful 🙏 Saya sudah transfer ${formatRupiah(t.total)} untuk langganan (${t.item.map((i) => i.anak_nama).join(', ')}) dan sudah unggah buktinya. Mohon diproses ya, terima kasih.`) && (
                     <><br /><a className="kp-btn putih" style={{ display: 'inline-block', marginTop: 6 }}
                       href={linkWa(waAdmin, `Halo Admin KidzPlayful 🙏 Saya sudah transfer ${formatRupiah(t.total)} untuk langganan (${t.item.map((i) => i.anak_nama).join(', ')}) dan sudah unggah buktinya. Mohon diproses ya, terima kasih.`)!}

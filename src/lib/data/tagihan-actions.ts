@@ -72,9 +72,20 @@ export async function buatTagihan(input: {
       voucher: voucherTipe ? { tipe: voucherTipe, nilai: voucherNilai } : null,
     });
 
+    // Subtotal nol = HARGA PAKET BELUM DIATUR admin (paket di-seed dengan harga 0). Jangan
+    // membuat tagihan Rp 0 — orang tua akan terjebak: tak ada yang bisa ditransfer, tapi
+    // tagihannya menunggu bukti pembayaran.
+    if (hasil.subtotal <= 0) {
+      return { ok: false, error: 'Harga paket belum ditetapkan. Hubungi admin KidzPlayful dulu ya 🙏' };
+    }
+
+    // Total nol dengan subtotal > 0 memang sah (diskon keluarga + voucher menutup semuanya).
+    // Tak ada yang perlu ditransfer, jadi langsung masuk antrean verifikasi admin tanpa bukti.
+    const statusAwal = hasil.total <= 0 ? 'menunggu_verifikasi' : 'menunggu_bayar';
+
     const { data: tagihan, error } = await s.from('tagihan_langganan').insert({
       ortu_id: user.id,
-      status: 'menunggu_bayar',
+      status: statusAwal,
       subtotal: hasil.subtotal,
       diskon_keluarga: hasil.diskonKeluarga,
       voucher_id: voucherId,
