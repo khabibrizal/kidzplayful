@@ -8,6 +8,11 @@ import { getPendaftaranSaya } from '@/lib/data/event';
 import { getEventTampilCached } from '@/lib/data/publik';
 import { getArtikelTerbitCached } from '@/lib/data/artikel';
 import { ringkasLanggananAkun } from '@/lib/data/langganan-anak';
+import { getKuotaAnakSaya, type KuotaAnak } from '@/lib/data/kuota-anak';
+import { tanggalWIB } from '@/lib/domain/gamifikasi';
+import { tambahHari } from '@/lib/domain/entitlement';
+import { getStatusWorksheet, type StatusWorksheet } from '@/lib/data/worksheet';
+import { labelKuotaKonsultasi } from '@/lib/domain/kuota-konsultasi';
 import EventCarousel from '@/components/EventCarousel';
 import OnboardingChecklist from '@/components/OnboardingChecklist';
 import RekamAktivitas from '@/components/RekamAktivitas';
@@ -39,11 +44,17 @@ export default async function PilihAnakPage({ searchParams }: { searchParams: Pr
   ]);
   const statusEvent = pendaftaran.statusMap;
   const peserta = pendaftaran.pesertaMap;
+  // Kuota per anak (konsultasi) & kuota akun (worksheet) — supaya orang tua tak perlu
+  // masuk ke halaman konsultasi/materi hanya untuk tahu sisa haknya.
+  const [kuotaAnak, worksheet] = await Promise.all([getKuotaAnakSaya(), getStatusWorksheet()]);
+
   const jumlahAnak = (anakList ?? []).length;
   const anak0 = (anakList ?? [])[0];
   const gameHref = anak0 ? (anak0.mode_default === 'ortu' ? `/pilih-game/${anak0.id}` : `/main/${anak0.id}`) : null;
-  // batas tanggal lahir: maksimal kemarin (WIB) — tidak boleh hari ini/masa depan
-  const maksTgl = new Date(Date.now() + 7 * 3600 * 1000 - 86400000).toISOString().slice(0, 10);
+  // batas tanggal lahir: maksimal kemarin (WIB) — tidak boleh hari ini/masa depan.
+  // Dihitung lewat helper WIB, bukan `Date.now()` langsung: `react-hooks/purity`
+  // melarang panggilan tak-murni di badan komponen (termasuk Server Component).
+  const maksTgl = tambahHari(tanggalWIB(), -1);
   const sisaMap: Record<string, number> = {};
   for (const ev of events) sisaMap[ev.id] = jumlahAnak - (peserta[ev.id]?.filter((p) => p.status !== 'ditolak').length ?? 0);
 
@@ -96,6 +107,7 @@ export default async function PilihAnakPage({ searchParams }: { searchParams: Pr
             <span style={{ fontSize: 30 }}>{a.jenis_kelamin === 'laki-laki' ? '👦' : a.jenis_kelamin === 'perempuan' ? '👧' : '🧒'}</span>
             <span><b>{a.nama}</b><br /><small style={{ color: 'var(--abu)' }}>{a.tanggal_lahir ? `${umurTeks(new Date(a.tanggal_lahir + 'T00:00:00Z'), new Date())} · ` : ''}mode {a.mode_default}</small></span>
           </a>
+          <KuotaBaris kuota={kuotaAnak[a.id]} worksheet={worksheet} />
           <a href={`/pilih-game/${a.id}`} style={{ display: 'inline-block', marginTop: 8, fontSize: 12, color: 'var(--biru-d)' }}>🎯 Pilih game (orang tua)</a>
           <a href={`/anak/${a.id}`} style={{ display: 'inline-block', marginTop: 8, marginLeft: 12, fontSize: 12, color: 'var(--biru-d)' }}>⚙️ Kelola</a>
         </div>
@@ -136,5 +148,45 @@ export default async function PilihAnakPage({ searchParams }: { searchParams: Pr
 
       <BottomNav />
     </main>
+  );
+}
+
+
+/**
+ * Sisa kuota yang ditampilkan di kartu anak.
+ *
+ * Dua angka ini **cakupannya berbeda**, dan itu WAJIB terbaca di layar supaya orang tua
+ * tak salah hitung:
+ *   • Konsultasi gratis → milik ANAK ini (paketnya sendiri).
+ *   • Unduh worksheet   → milik AKUN, dipakai bersama semua anak (haknya dari paket
+ *     tertinggi di akun). Menampilkannya seolah milik satu anak akan membuat orang tua
+ *     mengira punya 3 unduhan × jumlah anak.
+ */
+function KuotaBaris({ kuota, worksheet }: {
+  kuota?: KuotaAnak;
+  worksheet: StatusWorksheet;
+}) {
+  const k = kuota;
+  const kons = k?.konsultasi;
+  const wsTeks = !worksheet.boleh
+    ? 'tidak termasuk paket'
+    : worksheet.tanpaBatas
+      ? 'tanpa batas'
+      : `${worksheet.sisa ?? 0} unduhan tersisa ${worksheet.satuan === 'bulan' ? 'bulan ini' : 'selama langganan'}`;
+
+  return (
+    <div style={{ marginTop: 8, borderTop: '1px dashed #ece7f7', paddingTop: 6, fontSize: 12, color: 'var(--abu)', lineHeight: 1.6 }}>
+      <div>
+        🧠 Konsultasi:{' '}
+        <b style={{ color: kons?.sisa ? 'var(--mint-d)' : 'inherit' }}>
+          {kons ? labelKuotaKonsultasi(kons) : 'belum berlangganan'}
+        </b>
+      </div>
+      <div>
+        📄 Worksheet: <b style={{ color: worksheet.boleh ? 'var(--mint-d)' : 'inherit' }}>{wsTeks}</b>
+        {worksheet.boleh && !worksheet.tanpaBatas && <span> · kuota akun, dipakai bersama</span>}
+      </div>
+      {k?.member && k.aktifSampai && <div>🎟️ Paket {k.paketNama} · s/d {k.aktifSampai}</div>}
+    </div>
   );
 }
