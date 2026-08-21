@@ -78,7 +78,8 @@ function Form({ nilai, set, kodeTerkunci }: { nilai: InputPaket; set: (v: InputP
         <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 4 }}>👨‍👩‍👧‍👦 Diskon keluarga</div>
         <div className={s.muted} style={{ fontSize: 11, marginBottom: 6 }}>
           Berlaku bila jumlah anak yang dilanggankan mencapai batasnya. Aturan dengan batas TERBESAR yang
-          terpenuhi yang dipakai. Isi persen <b>atau</b> nominal.
+          terpenuhi yang dipakai. Isi <b>persen ATAU nominal</b> — bukan keduanya: bila keduanya terisi,
+          yang berlaku hanya <b>persen</b>, dan nominalnya akan dibuang saat disimpan.
         </div>
         {nilai.diskonKeluarga.map((r, i) => (
           <div key={i} className={s.row} style={{ gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
@@ -87,11 +88,15 @@ function Form({ nilai, set, kodeTerkunci }: { nilai: InputPaket; set: (v: InputP
               onChange={(e) => ubahAturan(i, { min_anak: Number(e.target.value) || 2 })} style={{ width: 70, marginBottom: 0 }} />
             <span className={s.muted} style={{ fontSize: 12 }}>anak →</span>
             <input className={s.inp} type="number" min={0} max={100} placeholder="%" value={r.persen ?? ''}
-              onChange={(e) => ubahAturan(i, { persen: e.target.value === '' ? undefined : Number(e.target.value) })}
+              onChange={(e) => ubahAturan(i, e.target.value === ''
+                ? { persen: undefined }
+                : { persen: Number(e.target.value), nominal: undefined })}
               style={{ width: 80, marginBottom: 0 }} />
             <span className={s.muted} style={{ fontSize: 12 }}>atau</span>
             <input className={s.inp} type="number" min={0} placeholder="Rp" value={r.nominal ?? ''}
-              onChange={(e) => ubahAturan(i, { nominal: e.target.value === '' ? undefined : Number(e.target.value) })}
+              onChange={(e) => ubahAturan(i, e.target.value === ''
+                ? { nominal: undefined }
+                : { nominal: Number(e.target.value), persen: undefined })}
               style={{ width: 120, marginBottom: 0 }} />
             <button type="button" className={s.btnSm} style={{ background: '#eee' }}
               onClick={() => ubah('diskonKeluarga', nilai.diskonKeluarga.filter((_, j) => j !== i))}>✕</button>

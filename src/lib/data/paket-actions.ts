@@ -35,14 +35,25 @@ export interface InputPaket {
   aktif: boolean;
 }
 
-/** Bersihkan aturan diskon keluarga: minimal 2 anak, dan buang baris tanpa nilai. */
+/**
+ * Bersihkan aturan diskon keluarga: minimal 2 anak, buang baris tanpa nilai.
+ *
+ * PENTING: bila persen DAN nominal sama-sama terisi, nominalnya dibuang. Rumus di
+ * `domain/langganan-harga.ts` memakai persen bila ada, jadi menyimpan keduanya membuat
+ * nominal itu tersimpan tapi tak pernah berlaku — admin akan mengira diskonnya berlaku
+ * padahal tidak. Yang tersimpan harus sama dengan yang berlaku.
+ */
 function bersihkanAturan(rows: AturanKeluarga[]): AturanKeluarga[] {
   return rows
-    .map((r) => ({
-      min_anak: Math.max(2, Math.floor(Number(r.min_anak) || 0)),
-      persen: r.persen != null ? Math.min(100, Math.max(0, Math.floor(Number(r.persen) || 0))) : undefined,
-      nominal: r.nominal != null ? Math.max(0, Math.floor(Number(r.nominal) || 0)) : undefined,
-    }))
+    .map((r) => {
+      const persen = r.persen != null ? Math.min(100, Math.max(0, Math.floor(Number(r.persen) || 0))) : 0;
+      const nominal = r.nominal != null ? Math.max(0, Math.floor(Number(r.nominal) || 0)) : 0;
+      const min_anak = Math.max(2, Math.floor(Number(r.min_anak) || 0));
+      // persen menang; nominal hanya dipakai bila persennya kosong/0.
+      return persen > 0
+        ? { min_anak, persen }
+        : nominal > 0 ? { min_anak, nominal } : { min_anak };
+    })
     .filter((r) => (r.persen ?? 0) > 0 || (r.nominal ?? 0) > 0)
     .sort((a, b) => a.min_anak - b.min_anak);
 }
