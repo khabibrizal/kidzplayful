@@ -3,6 +3,22 @@ export interface VoucherPotongan { tipe: 'nominal' | 'persen'; nilai: number }
 export type JenisVoucher = 'event' | 'produk' | 'langganan' | 'konsultasi';
 export interface VoucherValidasi { aktif: boolean; berlaku_dari: string | null; berlaku_sampai: string | null; berlaku_event: boolean; berlaku_produk: boolean; berlaku_langganan?: boolean; berlaku_konsultasi?: boolean }
 
+export interface CakupanVoucher {
+  berlaku_event?: boolean; berlaku_produk?: boolean;
+  berlaku_langganan?: boolean; berlaku_konsultasi?: boolean;
+}
+
+/**
+ * true bila voucher punya MINIMAL SATU cakupan.
+ *
+ * Dijadikan fungsi murni & diuji karena pemeriksaan ini pernah tertinggal: saat cakupan
+ * Langganan (0090) & Konsultasi (0092) ditambahkan, validasi di server masih hanya menyebut
+ * Event/Produk, sehingga voucher yang sudah memilih Langganan ditolak seolah kosong.
+ */
+export function adaCakupan(v: CakupanVoucher): boolean {
+  return !!(v.berlaku_event || v.berlaku_produk || v.berlaku_langganan || v.berlaku_konsultasi);
+}
+
 /** Potongan dari subtotal (di-clamp 0..subtotal). nominal=rupiah, persen=% (0-100). */
 export function hitungPotongan(v: VoucherPotongan, subtotal: number): number {
   const sub = Math.max(0, Math.floor(subtotal || 0));

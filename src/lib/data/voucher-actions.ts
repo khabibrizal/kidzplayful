@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { nilaiVoucherByKode, type HasilNilai } from './voucher';
-import type { JenisVoucher } from '@/lib/domain/voucher';
+import { adaCakupan, type JenisVoucher } from '@/lib/domain/voucher';
 
 async function adminDb() {
   const s = await createClient();
@@ -39,7 +39,14 @@ function validasiInput(i: VoucherInput): string | null {
   if (!i.kode.trim()) return 'Kode voucher wajib diisi.';
   if (i.tipe !== 'nominal' && i.tipe !== 'persen') return 'Tipe potongan tidak valid.';
   if (!(i.nilai > 0)) return 'Nilai potongan harus > 0.';
-  if (!i.berlakuEvent && !i.berlakuProduk) return 'Pilih minimal satu jenis transaksi (Event/Produk).';
+  // Cakupan diperiksa lewat `adaCakupan` (murni & teruji) supaya menambah cakupan baru
+  // tak lagi bisa membuat pemeriksaan ini tertinggal — itu yang dulu terjadi.
+  if (!adaCakupan({
+    berlaku_event: i.berlakuEvent, berlaku_produk: i.berlakuProduk,
+    berlaku_langganan: i.berlakuLangganan, berlaku_konsultasi: i.berlakuKonsultasi,
+  })) {
+    return 'Pilih minimal satu cakupan: Event, Produk, Langganan, atau Konsultasi.';
+  }
   return null;
 }
 
