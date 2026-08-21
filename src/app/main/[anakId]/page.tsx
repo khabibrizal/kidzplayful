@@ -9,7 +9,7 @@ import { getKelasAktifCached } from '@/lib/data/publik';
 import { getLabelFokusArea } from '@/lib/data/fokus-area';
 import { getFavoritIds } from '@/lib/data/favorit';
 import { getGamifikasiAnak } from '@/lib/data/gamifikasi';
-import { getStatusLangganan, dibatasiTrial } from '@/lib/data/langganan-status';
+import { getHakAnak } from '@/lib/data/langganan-anak';
 import RekamAktivitas from '@/components/RekamAktivitas';
 import MenuAnak from './MenuAnak';
 
@@ -29,13 +29,16 @@ export default async function MainPage({ params, searchParams }: { params: Promi
     getFavoritIds(),
     supabase.from('profiles').select('pin_ortu').eq('id', u!.id).single(),
     getGamifikasiAnak(anakId),
-    getStatusLangganan(supabase, u!.id),
+    getHakAnak(anakId),
     getLabelFokusArea(),
   ]);
 
   // gating trial: item tetap TAMPIL untuk user non-aktif, tapi yang tak ditandai
   // "boleh trial" akan terkunci (🔒) di UI. Data dikirim penuh + flag `batasi`.
-  const batasi = dibatasiTrial(status);
+  // Hak akses kini milik ANAK, bukan akun: satu akun bisa punya anak Preschool dan anak
+  // Basic. `batasi` = anak ini belum punya hak penuh atas game, jadi item yang tak ditandai
+  // `boleh_trial` tampil terkunci.
+  const batasi = !status.game;
   // CATATAN: pustaka kosong TIDAK lagi memantulkan ke `/pilih-anak`. Pantulan itu diam-diam
   // (klik kartu anak seolah tak berfungsi) padahal Mode Anak masih berguna tanpa game —
   // masih ada Ide Bermain, Pojok Video, koin & lencana. `MenuAnak` sendiri sudah punya
@@ -53,6 +56,7 @@ export default async function MainPage({ params, searchParams }: { params: Promi
       kelasList={kelasList0}
       favIds={favIds}
       gamiAwal={gami}
+      bolehWorksheet={status.worksheet}
       batasi={batasi}
       labelArea={labelArea}
     />

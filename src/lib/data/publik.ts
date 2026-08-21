@@ -12,26 +12,51 @@ const E = 'id,judul,lokasi,tanggal,jam_mulai,jam_selesai,deskripsi,gambar_url,ha
 const P = 'id,nama,deskripsi,kategori,harga,diskon_trial_persen,diskon_langganan_persen,berat_gram,stok,terjual,gambar_url,status';
 const K = 'id,judul,sampul_url,tujuan,fokus_area,peran_ortu,usia_min,usia_max,aktivitas,bahan,link_ide,worksheet_url,status,boleh_trial';
 
+// Kolom migrasi 0089. Dibaca dengan CADANGAN: bila migrasinya belum dijalankan, `select`
+// dengan kolom ini gagal 42703 — dan katalog tidak boleh mati hanya karena itu.
+const E_089 = `${E},diskon_paket`;
+const P_089 = `${P},diskon_paket`;
+const K_089 = `${K},worksheet_terbuka`;
+
+/**
+ * Coba `select` dengan kolom baru; bila gagal (mis. 42703 karena migrasi 0089 belum
+ * dijalankan), ulangi tanpa kolom itu. `ambil` menerima daftar kolom dan mengembalikan
+ * hasil query yang sudah tersaring & terurut.
+ */
+async function pilihToleran<T>(
+  ambil: (cols: string) => PromiseLike<{ data: unknown; error: unknown }>,
+  colsBaru: string,
+  colsLama: string,
+): Promise<T[]> {
+  const coba = await ambil(colsBaru);
+  if (!coba.error) return ((coba.data ?? []) as T[]);
+  const lagi = await ambil(colsLama);
+  return ((lagi.data ?? []) as T[]);
+}
+
 export const getEventTampilCached = unstable_cache(
   async (): Promise<EventKelas[]> => {
-    const { data } = await anon.from('event').select(E).eq('status', 'tampil').order('tanggal', { ascending: true });
-    return (data ?? []) as unknown as EventKelas[];
+    return pilihToleran<EventKelas>(
+      (cols) => anon.from('event').select(cols).eq('status', 'tampil').order('tanggal', { ascending: true }),
+      E_089, E);
   },
   ['katalog-event'], { tags: ['katalog'], revalidate: 60 },
 );
 
 export const getProdukTampilCached = unstable_cache(
   async (): Promise<Produk[]> => {
-    const { data } = await anon.from('produk').select(P).eq('status', 'tampil').order('created_at', { ascending: false });
-    return (data ?? []) as unknown as Produk[];
+    return pilihToleran<Produk>(
+      (cols) => anon.from('produk').select(cols).eq('status', 'tampil').order('created_at', { ascending: false }),
+      P_089, P);
   },
   ['katalog-produk'], { tags: ['katalog'], revalidate: 60 },
 );
 
 export const getKelasAktifCached = unstable_cache(
   async (): Promise<KelasBermain[]> => {
-    const { data } = await anon.from('kelas_bermain').select(K).eq('status', 'aktif').order('created_at', { ascending: false });
-    return (data ?? []) as unknown as KelasBermain[];
+    return pilihToleran<KelasBermain>(
+      (cols) => anon.from('kelas_bermain').select(cols).eq('status', 'aktif').order('created_at', { ascending: false }),
+      K_089, K);
   },
   ['katalog-kelas'], { tags: ['katalog'], revalidate: 60 },
 );

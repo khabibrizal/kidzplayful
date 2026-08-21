@@ -29,3 +29,31 @@ export function hargaEventUntuk(ev: EventHarga, status: string): number {
 // untuk tampilan
 export const persenTrial = (p: ProdukHarga) => clampPersen(p.diskon_trial_persen);
 export const persenLangganan = (p: ProdukHarga) => clampPersen(p.diskon_langganan_persen);
+
+// ——— Diskon per PAKET (migrasi 0089) ———
+//
+// Sumber persen: peta `diskon_paket` pada item ({kode paket: persen}). Bila paket tidak ada di
+// peta — termasuk saat kolomnya belum ada karena migrasi belum dijalankan — dipakai kolom lama
+// `diskon_langganan_persen`, sehingga data yang sekarang tetap berlaku. Bukan pelanggan = 0.
+//
+// Catatan: nilai 0 yang MEMANG ditulis admin di peta berarti "paket ini sengaja tanpa diskon"
+// dan tidak boleh jatuh ke kolom lama — karena itu keberadaan kunci diperiksa, bukan
+// kebenaran nilainya.
+type ItemDiskon = { diskon_paket?: Record<string, number> | null; diskon_langganan_persen?: number | null };
+
+export function persenUntukPaket(item: ItemDiskon, paketKode: string | null): number {
+  if (!paketKode) return 0;
+  const peta = item.diskon_paket ?? null;
+  const ada = !!peta && Object.prototype.hasOwnProperty.call(peta, paketKode);
+  return clampPersen(ada ? peta![paketKode] : item.diskon_langganan_persen);
+}
+
+export function hargaEventUntukPaket(ev: { harga_per_anak: number } & ItemDiskon, paketKode: string | null): number {
+  const persen = persenUntukPaket(ev, paketKode);
+  return persen > 0 ? Math.round((ev.harga_per_anak * (100 - persen)) / 100) : ev.harga_per_anak;
+}
+
+export function hargaProdukUntukPaket(p: { harga: number } & ItemDiskon, paketKode: string | null): number {
+  const persen = persenUntukPaket(p, paketKode);
+  return persen > 0 ? Math.round((p.harga * (100 - persen)) / 100) : p.harga;
+}

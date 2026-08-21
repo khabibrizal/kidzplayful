@@ -4,7 +4,7 @@ import Pewi from '@/components/ui/Pewi';
 import { getAnakTerjamin } from '@/lib/data/anak';
 import { getKelasAktifCached } from '@/lib/data/publik';
 import { getVideoByKategori } from '@/lib/data/video';
-import { getStatusSaya, dibatasiTrial } from '@/lib/data/langganan-status';
+import { getHakAnak } from '@/lib/data/langganan-anak';
 import { getLabelFokusArea } from '@/lib/data/fokus-area';
 import KelasIsi from '@/components/KelasIsi';
 import Terkunci from '@/components/Terkunci';
@@ -15,10 +15,11 @@ export default async function ModeOrtu({ params }: { params: Promise<{ anakId: s
   const { anakId } = await params;
   const anak = await getAnakTerjamin(anakId);
   const [kelasList0, videoBaby0, status, labelArea] = await Promise.all([
-    getKelasAktifCached(), getVideoByKategori('baby'), getStatusSaya(), getLabelFokusArea(),
+    getKelasAktifCached(), getVideoByKategori('baby'), getHakAnak(anakId), getLabelFokusArea(),
   ]);
   // trial: item tetap TAMPIL tapi yang tak ditandai "boleh trial" akan terkunci (🔒)
-  const batasi = dibatasiTrial(status);
+  // Hak per ANAK (migrasi 0089), bukan per akun.
+  const batasi = !status.ideBermain;
   const kelasList = kelasList0;
   const videoBaby = videoBaby0;
   const terkunci = (b?: boolean) => batasi && b === false;
@@ -45,7 +46,7 @@ export default async function ModeOrtu({ params }: { params: Promise<{ anakId: s
         ) : (
         <div key={k.id} className="kp-card" style={{ marginBottom: 12 }}>
           <b>🎈 {k.judul}</b>
-          <KelasIsi kelas={k} labelArea={labelArea} bagikanUrl={`/coba/kelas/${k.id}`} />
+          <KelasIsi kelas={k} labelArea={labelArea} bagikanUrl={`/coba/kelas/${k.id}`} bolehWorksheet={status.worksheet} />
         </div>
         )
       ))}

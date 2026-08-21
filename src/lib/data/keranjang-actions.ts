@@ -3,8 +3,8 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { getJumlahKeranjang } from './keranjang';
-import { getStatusLangganan } from './langganan-status';
-import { hargaProdukUntuk } from '@/lib/domain/harga';
+import { getHakAkun } from './langganan-anak';
+import { hargaProdukUntukPaket } from '@/lib/domain/harga';
 import { nilaiVoucherById } from './voucher';
 
 /** Untuk badge keranjang di bottom nav (dipanggil dari Client). */
@@ -53,7 +53,7 @@ export async function checkout(input: { penerima: string; noHp: string; alamat: 
 
   const { data: items } = await s
     .from('keranjang_item')
-    .select('qty, produk:produk_id(id,nama,harga,diskon_trial_persen,diskon_langganan_persen,stok,status)')
+    .select('qty, produk:produk_id(id,nama,harga,diskon_trial_persen,diskon_langganan_persen,diskon_paket,stok,status)')
     .eq('ortu_id', user.id);
   const list = (items ?? []).map((r) => ({ qty: r.qty, p: Array.isArray(r.produk) ? r.produk[0] : r.produk })).filter((x) => x.p);
   if (!list.length) throw new Error('Keranjang kosong.');
@@ -61,9 +61,11 @@ export async function checkout(input: { penerima: string; noHp: string; alamat: 
     if (it.p.status !== 'tampil') throw new Error(`"${it.p.nama}" tidak tersedia.`);
     if (it.qty > it.p.stok) throw new Error(`Stok "${it.p.nama}" tinggal ${it.p.stok}.`);
   }
-  // harga aktual sesuai status langganan (aktif=diskon langganan, selain itu=diskon trial)
-  const status = await getStatusLangganan(s, user.id);
-  const hargaItem = (p: typeof list[number]['p']) => hargaProdukUntuk(p, status);
+  // Harga aktual mengikuti PAKET TERTINGGI di akun (migrasi 0089). Keranjang tidak punya
+  // konteks anak, jadi tak mungkin memakai dua tarif sekaligus; memilih yang tertinggi adalah
+  // satu-satunya aturan yang tak pernah merugikan pelanggan.
+  const akun = await getHakAkun();
+  const hargaItem = (p: typeof list[number]['p']) => hargaProdukUntukPaket(p, akun.diskonKode);
   const subtotal = list.reduce((a, it) => a + hargaItem(it.p) * it.qty, 0);
 
   let potonganVoucher = 0; let vId: string | null = null;

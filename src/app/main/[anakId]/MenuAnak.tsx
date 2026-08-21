@@ -22,11 +22,13 @@ import s from './main.module.css';
 type Layar = 'menu' | 'kelas' | 'kelas-detail' | 'daftar' | 'pustaka' | 'video' | 'main' | 'istirahat';
 
 export default function MenuAnak({
-  anak, pustaka, pinTersimpan, video, paketAwal, kelasList, favIds, gamiAwal, batasi = false, labelArea = {},
+  anak, pustaka, pinTersimpan, video, paketAwal, kelasList, favIds, gamiAwal, batasi = false, labelArea = {}, bolehWorksheet = false,
 }: {
   anak: { id: string; nama: string; koin: number; batas_menit: number };
   pustaka: TemaLengkap[]; pinTersimpan: string | null; video: Video[]; paketAwal?: string; kelasList: KelasBermain[]; favIds: string[];
   gamiAwal: GamifikasiAnak; batasi?: boolean; labelArea?: Record<string, string>;
+  /** Worksheet = fasilitas paket berhak; bawaan false agar lupa memasang = mengunci. */
+  bolehWorksheet?: boolean;
 }) {
   const router = useRouter();
   const [kunciFitur, setKunciFitur] = useState<string | null>(null);
@@ -185,7 +187,7 @@ export default function MenuAnak({
         </div>
         <div style={{ flex: 1, overflow: 'auto', padding: '6px 2px' }}>
           <h2 style={{ marginBottom: 10 }}>{kelas.judul}</h2>
-          <KelasIsi kelas={kelas} labelArea={labelArea} bagikanUrl={`/coba/kelas/${kelas.id}`} />
+          <KelasIsi kelas={kelas} labelArea={labelArea} bagikanUrl={`/coba/kelas/${kelas.id}`} bolehWorksheet={bolehWorksheet} />
         </div>
       </div>
     );

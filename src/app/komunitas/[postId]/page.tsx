@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getPostingan } from '@/lib/data/komunitas';
-import { getStatusLangganan, dibatasiTrial } from '@/lib/data/langganan-status';
+import { getHakAkun } from '@/lib/data/langganan-anak';
 import { getPengaturanTrial } from '@/lib/data/pengaturan-trial';
 import KomentarForm from './KomentarForm';
 import LaporBtn from '../LaporBtn';
@@ -16,8 +16,9 @@ export default async function DetailPost({ params }: { params: Promise<{ postId:
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const [status, cfg] = await Promise.all([getStatusLangganan(supabase, user.id), getPengaturanTrial()]);
-  if (dibatasiTrial(status) && !cfg.trial_komunitas) {
+  const [akun, cfg] = await Promise.all([getHakAkun(), getPengaturanTrial()]);
+  // Komunitas tak punya konteks anak → paket tertinggi di akun yang menentukan.
+  if (!akun.komunitas && !cfg.trial_komunitas) {
     return <main style={{ maxWidth: 480, margin: '20px auto', padding: 16 }}><Terkunci fitur="Komunitas" /></main>;
   }
 

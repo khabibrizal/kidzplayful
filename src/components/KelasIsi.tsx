@@ -13,8 +13,15 @@ const LABEL_FALLBACK: Record<string, string> = {
   kemandirian: '🌟 Kemandirian', kreativitas: '🎨 Kreativitas',
 };
 
-export default function KelasIsi({ kelas, labelArea = {}, bagikan = true, bagikanUrl }: {
+export default function KelasIsi({ kelas, labelArea = {}, bagikan = true, bagikanUrl, bolehWorksheet = false }: {
   kelas: KelasBermain; labelArea?: Record<string, string>; bagikan?: boolean; bagikanUrl?: string;
+  /**
+   * Worksheet adalah fasilitas paket berhak (migrasi 0089). BAWAANNYA `false`: pemanggil yang
+   * lupa memasang hak akan MENGUNCI, bukan membuka — lupa memasang penjaga tidak boleh
+   * berarti fasilitas berbayar dibagikan gratis. Materi dengan `worksheet_terbuka` tetap
+   * terbuka untuk semua sebagai contoh.
+   */
+  bolehWorksheet?: boolean;
 }) {
   const LABEL = { ...LABEL_FALLBACK, ...labelArea };
   const adaInfo = !!(kelas.tujuan || (kelas.fokus_area?.length ?? 0) > 0 || kelas.peran_ortu || kelas.usia_min != null);
@@ -98,7 +105,12 @@ export default function KelasIsi({ kelas, labelArea = {}, bagikan = true, bagika
       )}
       <div className="no-print" style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {kelas.link_ide && !youtubeId(kelas.link_ide) && <a className="kp-btn" style={{ display: 'inline-block' }} href={kelas.link_ide} target="_blank">Lihat ide ▶</a>}
-        {kelas.worksheet_url && <a className="kp-btn putih" style={{ display: 'inline-block' }} href={kelas.worksheet_url} target="_blank">📄 Worksheet</a>}
+        {kelas.worksheet_url && (
+          bolehWorksheet || kelas.worksheet_terbuka
+            ? <a className="kp-btn putih" style={{ display: 'inline-block' }} href={kelas.worksheet_url} target="_blank">📄 Worksheet</a>
+            : <span className="kp-btn putih" style={{ display: 'inline-block', opacity: 0.6, cursor: 'not-allowed' }}
+                title="Unduh worksheet tersedia di paket Preschool">🔒 Worksheet (Preschool)</span>
+        )}
         {bagikanUrl && <ShareButton url={bagikanUrl} title={kelas.judul} text={`Materi kelas bermain "${kelas.judul}" di KidzPlayful`} jenis="kelas" gambar={kelas.sampul_url ?? undefined} label="Bagikan" />}
         {bagikan && <Link className="kp-btn putih" style={{ display: 'inline-block' }} href={`/komunitas?topik=${encodeURIComponent(kelas.judul)}`}>💬 Bagikan pengalaman</Link>}
       </div>

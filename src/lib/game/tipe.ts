@@ -175,6 +175,7 @@ export interface KelasBermain {
   aktivitas: AktivitasItem[];
   link_ide: string | null;
   worksheet_url: string | null;
+  worksheet_terbuka?: boolean;   // 0089 — true = worksheet boleh diunduh semua paket (contoh gratis)
   status: 'aktif' | 'nonaktif';
   boleh_trial?: boolean;
 }

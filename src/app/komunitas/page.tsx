@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getFeed, getTopikOptions } from '@/lib/data/komunitas';
-import { getStatusLangganan, dibatasiTrial } from '@/lib/data/langganan-status';
+import { getHakAkun } from '@/lib/data/langganan-anak';
 import { getPengaturanTrial } from '@/lib/data/pengaturan-trial';
 import Compose from './Compose';
 import RekamAktivitas from '@/components/RekamAktivitas';
@@ -20,8 +20,9 @@ export default async function Komunitas({ searchParams }: { searchParams: Promis
   if (!user) redirect('/login');
 
   // gating trial: fitur Komunitas bisa dimatikan admin untuk user belum berlangganan
-  const [status, cfg] = await Promise.all([getStatusLangganan(supabase, user.id), getPengaturanTrial()]);
-  if (dibatasiTrial(status) && !cfg.trial_komunitas) {
+  const [akun, cfg] = await Promise.all([getHakAkun(), getPengaturanTrial()]);
+  // Komunitas tak punya konteks anak → paket tertinggi di akun yang menentukan.
+  if (!akun.komunitas && !cfg.trial_komunitas) {
     return <main className="kp-page-narrow" style={{ padding: 16, marginTop: 20 }}><Terkunci fitur="Komunitas" /><BottomNav /></main>;
   }
 

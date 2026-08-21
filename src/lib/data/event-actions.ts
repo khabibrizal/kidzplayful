@@ -2,12 +2,29 @@
 'use server';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-import { getStatusLangganan } from './langganan-status';
 import { getKuotaTerpakai } from './event';
 import { bacaKuotaEvent, kuotaUntukKelas } from './kuota-event';
-import { hargaEventUntuk } from '@/lib/domain/harga';
+import { hargaEventUntukPaket } from '@/lib/domain/harga';
+import { getHakAkun } from './langganan-anak';
 import { nilaiVoucherById } from './voucher';
 import { jadwalTeks } from '@/lib/domain/jadwal';
+
+type BarisEventHarga = {
+  harga_per_anak: number | null;
+  harga_pendamping: number | null;
+  diskon_langganan_persen: number | null;
+  status: string;
+  tanggal: string | null;
+  jam_mulai: string | null;
+  jam_selesai: string | null;
+  baby_tanggal: string | null;
+  baby_jam_mulai: string | null;
+  baby_jam_selesai: string | null;
+  toddler_tanggal: string | null;
+  toddler_jam_mulai: string | null;
+  toddler_jam_selesai: string | null;
+  diskon_paket?: Record<string, number> | null;   // migrasi 0089 (opsional)
+};
 
 // Mengembalikan {ok,error} (bukan throw) agar pesan validasi tampil jelas di production.
 export async function daftarEvent(eventId: string, anakIds: string[], buktiUrl: string | null, kelas: string | null = null, jumlahPendamping: number = 0, voucherId: string | null = null): Promise<{ ok: boolean; error?: string }> {
@@ -16,9 +33,16 @@ export async function daftarEvent(eventId: string, anakIds: string[], buktiUrl: 
   if (!user) return { ok: false, error: 'Tidak terautentikasi' };
   if (!anakIds.length) return { ok: false, error: 'Pilih minimal 1 anak dulu — pendamping tidak bisa didaftarkan tanpa anak.' };
 
-  const { data: ev } = await s.from('event')
-    .select('harga_per_anak,harga_pendamping,diskon_langganan_persen,status,tanggal,jam_mulai,jam_selesai,baby_tanggal,baby_jam_mulai,baby_jam_selesai,toddler_tanggal,toddler_jam_mulai,toddler_jam_selesai')
-    .eq('id', eventId).maybeSingle();
+  const KOLOM_EV = 'harga_per_anak,harga_pendamping,diskon_langganan_persen,status,tanggal,jam_mulai,jam_selesai,baby_tanggal,baby_jam_mulai,baby_jam_selesai,toddler_tanggal,toddler_jam_mulai,toddler_jam_selesai';
+  // Coba dengan kolom 0089; bila migrasinya belum dijalankan, ulangi tanpa kolom itu —
+  // pendaftaran event tidak boleh mati hanya karena kolom diskon baru belum ada.
+  let ev: BarisEventHarga | null = null;
+  {
+    const coba = await s.from('event').select(`${KOLOM_EV},diskon_paket`).eq('id', eventId).maybeSingle();
+    ev = coba.error
+      ? ((await s.from('event').select(KOLOM_EV).eq('id', eventId).maybeSingle()).data as unknown as BarisEventHarga | null)
+      : (coba.data as unknown as BarisEventHarga | null);
+  }
   if (!ev || ev.status !== 'tampil') return { ok: false, error: 'Event tidak tersedia.' };
 
   // Tentukan kelas terpilih + snapshot jadwal
@@ -59,9 +83,16 @@ export async function daftarEvent(eventId: string, anakIds: string[], buktiUrl: 
     if (baru.length > sisa) return { ok: false, error: 'Mohon maaf, kuota yang tersisa tidak cukup untuk jumlah anak yang dipilih. Kurangi jumlah anaknya ya 🙏' };
   }
 
-  const status = await getStatusLangganan(s, user.id);
+  // Diskon mengikuti PAKET TERTINGGI di akun (migrasi 0089): satu pendaftaran tak bisa
+  // memakai dua tarif sekaligus. `diskon_paket` per event menang; bila paketnya tak ada di
+  // peta itu (atau kolomnya belum ada karena migrasi belum jalan), dipakai kolom lama.
+  const akun = await getHakAkun();
   const nPendamping = Math.max(0, Math.floor(jumlahPendamping || 0));
-  const subtotal = hargaEventUntuk({ harga_per_anak: ev.harga_per_anak ?? 0, diskon_langganan_persen: ev.diskon_langganan_persen ?? null }, status) * baru.length
+  const subtotal = hargaEventUntukPaket({
+    harga_per_anak: ev.harga_per_anak ?? 0,
+    diskon_paket: ev.diskon_paket ?? null,
+    diskon_langganan_persen: ev.diskon_langganan_persen ?? null,
+  }, akun.diskonKode) * baru.length
     + nPendamping * (ev.harga_pendamping ?? 0);
   let potonganVoucher = 0; let vId: string | null = null;
   if (voucherId) {
