@@ -12,7 +12,6 @@ import { getCatatanAnak } from '@/lib/data/catatan';
 import { rentangBulan, labelBulan, ringkasBulan, bulanTerakhir } from '@/lib/domain/laporan-bulanan';
 import { getEventInfoBanyak } from '@/lib/data/event';
 import Terkunci from '@/components/Terkunci';
-import TombolKembali from '@/components/TombolKembali';
 import UnduhRaporBtn from '@/components/UnduhRaporBtn';
 
 const LABEL_AREA: Record<string, string> = {
@@ -38,7 +37,7 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
   if (!hak.raporBulanan) {
     return (
       <main className="kp-page-narrow" style={{ padding: 16, marginTop: 20 }}>
-        <TombolKembali fallback={`/anak/${anakId}/laporan`} style={{ color: 'var(--abu)', fontSize: 13 }} />
+        <Link href={`/anak/${anakId}/laporan`} style={{ color: 'var(--abu)', fontSize: 13, textDecoration: 'none' }}>← Perkembangan</Link>
         <h1 style={{ color: 'var(--lavender-d)', fontSize: 20, margin: '8px 0 12px' }}>📄 Rapor {periode}</h1>
         <Terkunci fitur="Rapor Bulanan" />
       </main>
@@ -79,7 +78,10 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
 
   return (
     <main className="kp-page-narrow" style={{ padding: 16, paddingBottom: 60, marginTop: 20 }}>
-      <TombolKembali fallback={`/anak/${anakId}/laporan`} style={{ color: 'var(--abu)', fontSize: 13 }} />
+      {/* Tujuan TETAP ke halaman Perkembangan, bukan `router.back()`: halaman ini punya chip
+          pindah bulan, jadi riwayat browser akan membawa ke rapor bulan sebelumnya —
+          bukan ke tempat orang tua datang. Labelnya juga menyebut tujuannya. */}
+      <Link href={`/anak/${anakId}/laporan`} style={{ color: 'var(--abu)', fontSize: 13, textDecoration: 'none' }}>← Perkembangan</Link>
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 22, margin: '8px 0 2px' }}>📄 Rapor {periode}</h1>
       <p style={{ color: 'var(--abu)', fontSize: 13, marginBottom: 12 }}>{nama}</p>
 
