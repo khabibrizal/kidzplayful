@@ -89,3 +89,43 @@ export async function simpanProfilPsikolog(inp: InputProfilPsikolog): Promise<{ 
     return { ok: false, error: e instanceof Error ? e.message : 'Gagal menyimpan profil.' };
   }
 }
+
+/**
+ * Tetapkan tarif konsultasi seorang psikolog — **khusus admin**.
+ *
+ * Permintaan pemilik: psikolog TIDAK mengisi tarifnya sendiri. Kolomnya tetap di
+ * `jadwal_psikolog` (dibaca RPC booking), tapi hanya jalur ini yang menulisnya; `simpanJadwal`
+ * milik psikolog sengaja tak menyebut kolom itu sehingga nilainya tak tertimpa.
+ *
+ * Upsert: baris jadwal bisa belum ada bila psikolognya belum mengatur jadwal. Baris yang
+ * terbentuk berisi tarif saja — `hari_buka` masih kosong, jadi belum bisa dibooking sampai
+ * psikolognya membuka jadwal sendiri.
+ */
+export async function setTarifKonsultasi(
+  psikologId: string, harga: number, diskonPersen: number | null,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const s = await createClient();
+    const { data: { user } } = await s.auth.getUser();
+    if (!user) return { ok: false, error: 'Tidak terautentikasi' };
+    const { data: prof } = await s.from('profiles').select('is_admin,is_superuser').eq('id', user.id).single();
+    if (!prof?.is_admin && !prof?.is_superuser) return { ok: false, error: 'Bukan admin' };
+
+    const { data: p } = await s.from('profiles').select('nama_tampilan').eq('id', psikologId).single();
+    const { error } = await s.from('jadwal_psikolog').upsert({
+      psikolog_id: psikologId,
+      nama: (p?.nama_tampilan as string | null) ?? null,
+      harga_konsultasi: Math.max(0, Math.floor(harga || 0)),
+      diskon_langganan_persen: diskonPersen == null ? null : Math.min(100, Math.max(0, Math.floor(diskonPersen))),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'psikolog_id' });
+    if (error) return { ok: false, error: error.message };
+
+    revalidatePath('/admin/psikolog');
+    revalidatePath('/konsultasi');
+    revalidatePath('/psikolog/jadwal');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Gagal menyimpan tarif.' };
+  }
+}

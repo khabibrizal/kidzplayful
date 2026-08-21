@@ -47,8 +47,20 @@ export async function simpanPengaturanBayar(formData: FormData) {
   };
   const { error } = await supabase.from('pengaturan_pembayaran').update(patch).eq('id', 1);
   if (error) throw new Error(error.message);
+
+  // Kolom konsultasi (0092) disimpan TERPISAH & toleran: bila migrasinya belum dijalankan,
+  // pengaturan pembayaran yang lama tetap tersimpan.
+  try {
+    const persen = Number(String(formData.get('diskon_konsultasi') ?? '').replace(/[^0-9]/g, ''));
+    await supabase.from('pengaturan_pembayaran').update({
+      harga_konsultasi_nominal: Number(String(formData.get('harga_konsultasi') ?? '').replace(/[^0-9]/g, '')) || 0,
+      diskon_konsultasi_langganan_persen: Number.isFinite(persen) ? Math.min(100, Math.max(0, persen)) : 100,
+      wa_konsultasi: String(formData.get('wa_konsultasi') ?? '').replace(/[^0-9]/g, ''),
+    }).eq('id', 1);
+  } catch { /* migrasi 0092 belum dijalankan */ }
   revalidatePath('/admin/pengaturan-bayar');
   revalidatePath('/pengaturan');
+  revalidatePath('/konsultasi');
 }
 
 export async function simpanMenuAkses(akses: { admin: string[]; investor: string[]; guru: string[] }): Promise<void> {

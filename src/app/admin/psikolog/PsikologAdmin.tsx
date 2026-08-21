@@ -7,6 +7,8 @@ import { createClient } from '@/lib/supabase/client';
 import { kompresGambar } from '@/lib/img';
 import { jadikanPsikolog, cabutPsikolog, simpanProfilPsikolog } from '@/lib/data/admin-psikolog-actions';
 import type { PsikologRow } from '@/lib/data/admin-psikolog';
+import { setTarifKonsultasi } from '@/lib/data/admin-psikolog-actions';
+import { formatRupiah } from '@/lib/format';
 import type { ProfilPsikolog } from '@/lib/data/psikolog-profil';
 import s from '../admin.module.css';
 
@@ -33,6 +35,11 @@ function drafDari(p: PsikologRow, prof?: ProfilPsikolog): Draf {
 
 export default function PsikologAdmin({ awal, profil }: { awal: PsikologRow[]; profil: Record<string, ProfilPsikolog> }) {
   const [list, setList] = useState<PsikologRow[]>(awal);
+  // Tarif diatur ADMIN di sini (permintaan pemilik: psikolog tidak mengisi tarifnya sendiri).
+  const [tarif, setTarif] = useState<Record<string, string>>(() =>
+    Object.fromEntries(awal.map((p) => [p.id, String(p.harga_konsultasi ?? 0)])));
+  const [diskonM, setDiskonM] = useState<Record<string, string>>(() =>
+    Object.fromEntries(awal.map((p) => [p.id, p.diskon_langganan_persen == null ? '' : String(p.diskon_langganan_persen)])));
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -54,6 +61,14 @@ export default function PsikologAdmin({ awal, profil }: { awal: PsikologRow[]; p
     try { await jadikanPsikolog(email); flash('Psikolog diaktifkan ✓ (segarkan halaman untuk melihat daftar)'); setEmail(''); }
     catch (e) { flash(e instanceof Error ? e.message : 'Gagal'); }
     finally { setLoading(false); }
+  }
+
+  async function simpanTarif(p: PsikologRow) {
+    setBusyId(p.id);
+    const d = (diskonM[p.id] ?? '').trim();
+    const r = await setTarifKonsultasi(p.id, Number(tarif[p.id]) || 0, d === '' ? null : Number(d) || 0);
+    setBusyId(null);
+    flash(r.ok ? 'Tarif konsultasi tersimpan ✓' : (r.error ?? 'Gagal'));
   }
 
   async function cabut(p: PsikologRow) {
@@ -127,6 +142,26 @@ export default function PsikologAdmin({ awal, profil }: { awal: PsikologRow[]; p
                 {terbuka ? '▾ Tutup' : '✏️ Profil'}
               </button>
               <button className={`${s.btnSm} ${s.danger}`} onClick={() => cabut(p)} disabled={busyId === p.id}>Cabut</button>
+            </div>
+
+            {/* Tarif konsultasi — DIISI ADMIN. Psikolog hanya mengatur jadwal & durasinya. */}
+            <div className={s.row} style={{ gap: 6, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              <span className={s.muted} style={{ fontSize: 12, fontWeight: 700 }}>💳 Tarif / sesi</span>
+              <input className={s.inp} type="number" min={0} value={tarif[p.id] ?? '0'}
+                onChange={(e) => setTarif({ ...tarif, [p.id]: e.target.value })}
+                style={{ width: 130, marginBottom: 0 }} placeholder="0 = bawaan" />
+              <span className={s.muted} style={{ fontSize: 12 }}>diskon member</span>
+              <input className={s.inp} type="number" min={0} max={100} value={diskonM[p.id] ?? ''}
+                onChange={(e) => setDiskonM({ ...diskonM, [p.id]: e.target.value })}
+                style={{ width: 100, marginBottom: 0 }} placeholder="% bawaan" />
+              <button className={s.btnSm} style={{ background: '#dff5e6', color: '#1c7a43' }}
+                onClick={() => simpanTarif(p)} disabled={busyId === p.id}>
+                {busyId === p.id ? '…' : 'Simpan tarif'}
+              </button>
+              <span className={s.muted} style={{ fontSize: 11 }}>
+                {Number(tarif[p.id]) > 0 ? `= ${formatRupiah(Number(tarif[p.id]))}` : 'pakai tarif bawaan di menu Pembayaran'}
+                {p.ada_jadwal === false && ' · psikolog belum membuka jadwal'}
+              </span>
             </div>
 
             {terbuka && (

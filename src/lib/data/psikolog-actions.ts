@@ -17,7 +17,6 @@ async function psikolog() {
 /** Simpan jadwal & kuota psikolog (upsert satu baris per psikolog). */
 export async function simpanJadwal(input: {
   hariBuka: number[]; jamMulai: string; jamSelesai: string; maksPerHari: number; durasiMenit: number; aktif: boolean; catatan: string;
-  hargaKonsultasi?: number; diskonMemberPersen?: number | null;
 }): Promise<{ ok: boolean; error?: string }> {
   try {
     const { s, id, nama } = await psikolog();
@@ -33,18 +32,10 @@ export async function simpanJadwal(input: {
       catatan: input.catatan.trim() || null,
       updated_at: new Date().toISOString(),
     };
-    // Kolom tarif (0092) dicoba dulu; bila migrasinya belum dijalankan, simpan tanpa kolom
-    // itu supaya psikolog tetap bisa mengatur jadwalnya.
-    const denganTarif = {
-      ...dasar,
-      harga_konsultasi: Math.max(0, Math.floor(input.hargaKonsultasi ?? 0)),
-      diskon_langganan_persen: input.diskonMemberPersen == null ? null
-        : Math.min(100, Math.max(0, Math.floor(input.diskonMemberPersen))),
-    };
-    let { error } = await s.from('jadwal_psikolog').upsert(denganTarif, { onConflict: 'psikolog_id' });
-    if (error) {
-      ({ error } = await s.from('jadwal_psikolog').upsert(dasar, { onConflict: 'psikolog_id' }));
-    }
+    // Tarif konsultasi TIDAK disentuh di sini (permintaan pemilik): tarif hanya diatur
+    // ADMIN di /admin/psikolog. Karena upsert ini hanya menyebut kolom jadwal, nilai
+    // `harga_konsultasi`/`diskon_langganan_persen` yang sudah diisi admin tetap utuh.
+    const { error } = await s.from('jadwal_psikolog').upsert(dasar, { onConflict: 'psikolog_id' });
     if (error) return { ok: false, error: error.message };
     revalidatePath('/psikolog/jadwal');
     revalidatePath('/psikolog');

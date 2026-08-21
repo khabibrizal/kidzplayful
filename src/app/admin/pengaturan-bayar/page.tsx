@@ -42,6 +42,17 @@ export default async function PengaturanBayarPage({ searchParams }: { searchPara
         <label className={s.section}>WA Admin Store (opsional)</label>
         <input className={s.inp} name="wa_store" defaultValue={cfg.wa_store} inputMode="numeric" style={{ width: '100%' }} placeholder="kosongkan = pakai WA umum" />
 
+        {/* Konsultasi psikolog (0092). Tarif PER PSIKOLOG diisi di menu Psikolog — nilai di
+            sini dipakai bila tarif psikolog itu masih 0. Psikolog tidak mengisi tarifnya. */}
+        <label className={s.section}>Tarif konsultasi bawaan (Rp / sesi)</label>
+        <input className={s.inp} name="harga_konsultasi" defaultValue={cfg.harga_konsultasi_nominal} inputMode="numeric" style={{ width: '100%' }} placeholder="0" />
+
+        <label className={s.section}>Diskon member untuk konsultasi (%)</label>
+        <input className={s.inp} name="diskon_konsultasi" defaultValue={cfg.diskon_konsultasi_langganan_persen} inputMode="numeric" style={{ width: '100%' }} placeholder="100 = member tidak ditagih" />
+
+        <label className={s.section}>WA Admin Konsultasi (opsional)</label>
+        <input className={s.inp} name="wa_konsultasi" defaultValue={cfg.wa_konsultasi} inputMode="numeric" style={{ width: '100%' }} placeholder="kosongkan = pakai WA umum" />
+
         <div style={{ marginTop: 14 }}><button className={s.btn} type="submit">💾 Simpan</button></div>
       </form>
     </div>
