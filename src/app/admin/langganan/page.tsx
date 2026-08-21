@@ -9,6 +9,7 @@ import PaketAnakForm, { type AnakLangganan } from './PaketAnakForm';
 import VerifikasiTagihan from './VerifikasiTagihan';
 import { getTagihanMenunggu } from '@/lib/data/tagihan';
 import { getPaketAktif } from '@/lib/data/paket';
+import { tanggalWIB } from '@/lib/domain/gamifikasi';
 import Pager from '../Pager';
 import s from '../admin.module.css';
 
@@ -238,7 +239,7 @@ export default async function Langganan({ searchParams }: { searchParams: Promis
               </div>
             )}
             {st !== 'aktif' && <div style={{ marginTop: 8 }}><AktifkanForm ortuId={m.id} nominalDefault={String(bayar.harga_langganan_nominal)} /></div>}
-            <PaketAnakForm anak={anakUntuk(m)} paket={paketAktif} />
+            <PaketAnakForm anak={anakUntuk(m)} paket={paketAktif} hariIni={tanggalWIB()} />
           </div>
         );
       })}

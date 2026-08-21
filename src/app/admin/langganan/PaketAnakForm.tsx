@@ -16,7 +16,27 @@ export interface AnakLangganan {
   aktifSampai: string | null;
 }
 
-export default function PaketAnakForm({ anak, paket }: { anak: AnakLangganan[]; paket: PaketLangganan[] }) {
+/**
+ * Keterangan status yang JUJUR untuk satu anak.
+ *
+ * Dulu barisnya selalu berbunyi "<paket> · s/d <tanggal>" selama `aktifSampai` terisi —
+ * termasuk sesudah dihentikan — sehingga tombol Hentikan tampak tak berfungsi. Sekarang
+ * tanggal yang sudah lewat ditulis apa adanya, dan paket yang kosong berarti dihentikan.
+ * `hariIni` datang dari server (WIB) supaya tak ada `new Date()` di badan komponen.
+ */
+function ketStatus(a: AnakLangganan, hariIni: string): { teks: string; aktif: boolean } {
+  if (!a.aktifSampai) return { teks: 'belum berlangganan', aktif: false };
+  const aktif = a.aktifSampai >= hariIni;
+  if (!a.paketNama) return { teks: `dihentikan · berakhir ${a.aktifSampai}`, aktif: false };
+  return {
+    teks: aktif ? `${a.paketNama} · s/d ${a.aktifSampai}` : `${a.paketNama} · berakhir ${a.aktifSampai}`,
+    aktif,
+  };
+}
+
+export default function PaketAnakForm(
+  { anak, paket, hariIni }: { anak: AnakLangganan[]; paket: PaketLangganan[]; hariIni: string },
+) {
   const router = useRouter();
   const [pilih, setPilih] = useState<Record<string, string>>({});
   const [bulan, setBulan] = useState<Record<string, string>>({});
@@ -38,11 +58,11 @@ export default function PaketAnakForm({ anak, paket }: { anak: AnakLangganan[]; 
   }
 
   async function hentikan(a: AnakLangganan) {
-    if (!confirm(`Hentikan langganan ${a.nama} hari ini?`)) return;
+    if (!confirm(`Hentikan langganan ${a.nama} SEKARANG? Hak paketnya (worksheet, kuota konsultasi, diskon member) langsung dicabut — tanpa masa tenggang.`)) return;
     setBusy(a.id); setPesan('');
     const r = await hentikanPaketAnak(a.id);
     setBusy(null);
-    if (r.ok) { setPesan(`${a.nama}: dihentikan`); router.refresh(); }
+    if (r.ok) { setPesan(`${a.nama}: dihentikan ✓`); router.refresh(); }
     else setPesan(r.error ?? 'Gagal');
   }
 
@@ -50,11 +70,13 @@ export default function PaketAnakForm({ anak, paket }: { anak: AnakLangganan[]; 
     <div style={{ marginTop: 8, borderTop: '1px dashed #e6e0f2', paddingTop: 8 }}>
       <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>🎟️ Paket per anak</div>
       {anak.length === 0 && <div className={s.muted} style={{ fontSize: 12 }}>Belum ada profil anak.</div>}
-      {anak.map((a) => (
+      {anak.map((a) => {
+        const st = ketStatus(a, hariIni);
+        return (
         <div key={a.id} className={s.row} style={{ gap: 6, marginBottom: 6, flexWrap: 'wrap', alignItems: 'center' }}>
           <span style={{ minWidth: 130, fontSize: 13 }}>
             <b>{a.nama}</b>
-            <br /><small className={s.muted}>{a.paketNama ? `${a.paketNama} · s/d ${a.aktifSampai}` : 'belum berlangganan'}</small>
+            <br /><small className={s.muted}>{st.teks}</small>
           </span>
           <select className={s.inp} value={pilih[a.id] ?? a.paketId ?? ''}
             onChange={(e) => setPilih({ ...pilih, [a.id]: e.target.value })} style={{ width: 150, marginBottom: 0 }}>
@@ -65,13 +87,16 @@ export default function PaketAnakForm({ anak, paket }: { anak: AnakLangganan[]; 
             onChange={(e) => setBulan({ ...bulan, [a.id]: e.target.value })} style={{ width: 70, marginBottom: 0 }} />
           <button className={s.btnSm} style={{ background: '#dff5e6', color: '#1c7a43' }}
             onClick={() => aktifkan(a)} disabled={busy === a.id || !(pilih[a.id] ?? a.paketId)}>
-            {busy === a.id ? '…' : (a.aktifSampai ? 'Perpanjang' : 'Aktifkan')}
+            {busy === a.id ? '…' : (st.aktif ? 'Perpanjang' : 'Aktifkan')}
           </button>
-          {a.aktifSampai && (
+          {/* Hentikan hanya untuk yang MASIH aktif — kalau tidak, tombolnya menjanjikan
+              perubahan yang tak akan terjadi. */}
+          {st.aktif && (
             <button className={`${s.btnSm} ${s.danger}`} onClick={() => hentikan(a)} disabled={busy === a.id}>Hentikan</button>
           )}
         </div>
-      ))}
+        );
+      })}
       {/* Perpanjangan dihitung dari tanggal berakhir yang ada, jadi membayar lebih awal
           TIDAK menghanguskan sisa hari. */}
       <div className={s.muted} style={{ fontSize: 11 }}>Perpanjangan menambah dari tanggal berakhir yang ada — sisa hari tidak hangus.</div>

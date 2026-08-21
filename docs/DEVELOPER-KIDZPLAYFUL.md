@@ -249,6 +249,21 @@ Fitur share dari halaman detail agar orang non-login jadi aware & mendaftar.
 >
 > `dibatasiTrial` **masih dipakai di dua tempat dan itu disengaja**: batas jumlah anak untuk yang belum berlangganan (`api/anak`, `pilih-anak/actions`) memakai `trial_maks_anak`, karena keputusan pemiliknya adalah **tanpa batas anak per paket**.
 
+> **🐞 Bug "Hentikan langganan anak tidak berhasil" — 21 Agu 2026 (migrasi 0094).** Laporan pemilik: menekan **Hentikan** di `/admin/langganan` tampak tak berpengaruh, halaman ortu menyebut anaknya berhenti, **tapi konsultasi online tetap bisa dipakai gratis**. Ada **tiga** sebab terpisah, dan ketiganya nyata:
+>
+> 1. **`hentikanPaketAnak` menyetel `aktif_sampai = hari ini`.** Di sisi SQL (`la.aktif_sampai >= current_date` dalam RPC `daftar_konsultasi`) hari itu **masih dihitung aktif**, jadi anak itu tetap memakai **kuota konsultasi gratis** dan **diskon member**. Sekarang periodenya diakhiri **kemarin (WIB)**.
+> 2. **`paket_id` dibiarkan terisi**, sehingga anak itu jatuh ke **masa tenggang** (`TENGGANG_HARI = 3`) yang mengembalikan **hak paket PENUH**. Penghentian oleh admin bukan kelupaan bayar, jadi `paket_id` kini **dikosongkan** — tanpa paket, cabang tenggang di `hakAksesAnak` tak berlaku dan statusnya langsung `kadaluarsa`. Riwayat pembayaran tetap utuh di `pembayaran_langganan`/`tagihan_langganan`; `langganan_anak` menyimpan keadaan **sekarang**, bukan riwayat.
+> 3. **Batas hari berbeda antara TypeScript dan SQL.** `hakAksesAnak` membandingkan `Date` dengan `aktif_sampai + 'T00:00:00Z'`, jadi langganan yang berakhir **hari ini** dianggap habis sejak **07:00 WIB** — hari terakhir yang sudah dibayar hilang dan statusnya turun ke `tenggang`; sementara SQL menganggapnya masih aktif. Kini keduanya memakai **tanggal WIB**: `tanggalWIB(sekarang) <= aktif_sampai` di TypeScript, dan `public.hari_ini_wib()` (fungsi baru di 0094, `stable`, execute dicabut dari `public`) di SQL. Masa berlaku **voucher** di RPC yang sama ikut dipindah ke WIB — tanggalnya diisi admin dalam WIB.
+>
+> Tambahan yang ikut diperbaiki karena berasal dari akar yang sama:
+> - **`.update().eq(...)` tanpa baris yang cocok BUKAN error** — aksi lama tetap menjawab `{ok:true}` sehingga admin diberi tahu "dihentikan" padahal tak ada apa pun yang berubah. Sekarang memakai `.select('anak_id')` dan melaporkan *"belum punya baris langganan — tak ada yang dihentikan"*.
+> - **Label admin yang menyesatkan**: barisnya selalu berbunyi `"<paket> · s/d <tanggal>"` selama `aktifSampai` terisi, termasuk sesudah dihentikan. Kini ada `ketStatus()`: `s/d` (aktif) · `berakhir` (lewat) · `dihentikan · berakhir …` (paket kosong) · `belum berlangganan`. Tombol **Hentikan** hanya muncul untuk yang **masih aktif**, dan tombol hijau berbunyi Perpanjang/Aktifkan sesuai keadaan nyata — bukan sekadar "ada tanggal".
+> - **`setPaketAnak` memakai tanggal WIB** sebagai dasar perpanjangan; dengan `new Date()` mentah, aktivasi antara 00:00–07:00 WIB memberi periode **kurang satu hari**.
+>
+> **Daya gigit tesnya diuji, bukan diasumsikan** (`domain/__tests__/entitlement.test.ts`, 18 tes): dua mutasi yang mengembalikan perilaku lama — batas hari dibuat eksklusif lagi, dan syarat `paketAnak` pada cabang tenggang dilepas — masing-masing menjatuhkan 2 dan 4 tes. Salah satu tes sengaja mendokumentasikan **bentuk baris hasil penghentian versi lama** supaya tak ada yang "menyederhanakannya" kembali.
+>
+> **Catatan operasional:** anak yang sudah dihentikan **sebelum** perbaikan ini masih menyimpan `paket_id` lama, jadi tekan **Hentikan** sekali lagi setelah rilis untuk benar-benar mencabutnya.
+
 ### 🧾 Pilih Paket & Tagihan — `/langganan` (migrasi 0090)
 - **File**: `app/langganan/page.tsx` → `PilihPaketForm.tsx`. Reader `lib/data/tagihan.ts`; action `tagihan-actions.ts` (ortu) & `tagihan-admin-actions.ts` (admin).
 - **Bentuk tagihan**: induk `tagihan_langganan` + **baris item per anak** `tagihan_langganan_item` (`anak_id`, `paket_id`, `harga` snapshot). Bukan satu kolom rincian — admin harus bisa melihat "siapa dapat paket apa, berapa" saat verifikasi, dan **paket campur** (kakak Preschool, bayi Basic) tak perlu perlakuan khusus.

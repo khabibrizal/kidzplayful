@@ -6,9 +6,9 @@
 // boolean seperti itu mustahil benar. Semua hak sekarang DATA dari baris paket; berkas ini
 // hanya memilih paket mana yang berlaku untuk seorang anak pada suatu waktu.
 import { statusLangganan, type StatusLangganan } from './trial';
+import { tanggalWIB } from './gamifikasi';
 import type { PaketLangganan, BarisLanggananAnak, SatuanKuota } from '@/lib/game/tipe';
 
-const HARI = 24 * 60 * 60 * 1000;
 
 export interface KonfigTrial {
   trialMulai: string | null;   // 'YYYY-MM-DD' dari langganan AKUN (trial milik akun, bukan anak)
@@ -35,6 +35,18 @@ export const HAK_KOSONG: Omit<HakAksesAnak, 'status' | 'paket'> = {
 };
 
 const tgl = (s: string | null): Date | null => (s ? new Date(s + 'T00:00:00Z') : null);
+
+/**
+ * Geser tanggal 'YYYY-MM-DD' sebanyak n hari (boleh negatif).
+ *
+ * Dipakai bersama oleh aturan tenggang di sini dan oleh `hentikanPaketAnak` — satu
+ * implementasi supaya "hari terakhir" tak pernah berbeda antara keduanya.
+ */
+export function tambahHari(ymd: string, n: number): string {
+  const t = new Date(ymd + 'T00:00:00Z');
+  t.setUTCDate(t.getUTCDate() + n);
+  return t.toISOString().slice(0, 10);
+}
 
 function dariPaket(p: PaketLangganan): Omit<HakAksesAnak, 'status' | 'paket'> {
   return {
@@ -63,18 +75,29 @@ export function hakAksesAnak(
   trial: KonfigTrial,
   sekarang: Date,
 ): HakAksesAnak {
-  const aktifSampai = tgl(baris?.aktif_sampai ?? null);
+  const aktifSampai = baris?.aktif_sampai ?? null;
   const paketAnak = baris?.paket_id ? paketMap.get(baris.paket_id) ?? null : null;
 
   // Sudah pernah berbayar → statusnya ditentukan periode anak itu sendiri.
+  //
+  // Perbandingannya memakai TANGGAL WIB, bukan `Date` vs tengah malam UTC. Versi lama
+  // (`sekarang <= aktif_sampai` dengan aktif_sampai = 00:00 UTC) membuat langganan yang
+  // berakhir HARI INI langsung dianggap habis sejak jam 07:00 WIB — hari terakhir yang
+  // sudah dibayar hilang, dan statusnya turun ke 'tenggang' padahal masih aktif. Di sisi
+  // SQL (`aktif_sampai >= current_date` di RPC konsultasi) hari itu justru masih dihitung
+  // aktif, jadi kedua sisi sempat menjawab beda untuk anak yang sama.
   if (aktifSampai) {
-    if (sekarang <= aktifSampai) {
+    const hariIni = tanggalWIB(sekarang);
+    if (hariIni <= aktifSampai) {
       return paketAnak
         ? { status: 'aktif', paket: paketAnak, ...dariPaket(paketAnak) }
         : { status: 'aktif', paket: null, ...HAK_KOSONG };
     }
-    const akhirTenggang = new Date(aktifSampai.getTime() + trial.tenggangHari * HARI);
-    if (sekarang <= akhirTenggang && paketAnak) {
+    // Tenggang hanya berlaku bila paketnya masih tercatat. Penghentian oleh admin
+    // MENGOSONGKAN `paket_id`, jadi hak berbayarnya putus saat itu juga — tenggang
+    // adalah kemurahan untuk yang lupa memperpanjang, bukan untuk yang dihentikan.
+    const akhirTenggang = tambahHari(aktifSampai, trial.tenggangHari);
+    if (hariIni <= akhirTenggang && paketAnak) {
       return { status: 'tenggang', paket: paketAnak, ...dariPaket(paketAnak) };
     }
     return { status: 'kadaluarsa', paket: null, ...HAK_KOSONG };

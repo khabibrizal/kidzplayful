@@ -1,7 +1,7 @@
 // src/lib/domain/__tests__/entitlement.test.ts
 // Matriks hak akses diuji di sini, BUKAN dengan memeriksa 7 halaman satu per satu.
 import { describe, it, expect } from 'vitest';
-import { hakAksesAnak, hakAksesAkun, HAK_KOSONG } from '../entitlement';
+import { hakAksesAnak, hakAksesAkun, HAK_KOSONG, tambahHari } from '../entitlement';
 import type { PaketLangganan, BarisLanggananAnak } from '@/lib/game/tipe';
 
 const paket = (kode: string, urutan: number, lebih: Partial<PaketLangganan> = {}): PaketLangganan => ({
@@ -65,6 +65,56 @@ describe('hakAksesAnak', () => {
     const h = hakAksesAnak(baris({ paket_id: PRESCHOOL.id, aktif_sampai: '2026-06-01' }), map, trial, kini);
     expect(h.status).toBe('kadaluarsa');
     expect(h).toMatchObject({ ...HAK_KOSONG, status: 'kadaluarsa', paket: null });
+  });
+
+  // ---- Regresi: batas hari & penghentian oleh admin -----------------------
+  //
+  // Keduanya lahir dari satu laporan: admin menekan "Hentikan", halaman ortu menyebut
+  // langganannya berhenti, TAPI konsultasi online masih gratis memakai kuota paket.
+
+  it('hari TERAKHIR periode masih aktif sepanjang hari WIB', () => {
+    // 21 Agu 2026 pukul 23:00 WIB = 16:00 UTC. Aturan lama (Date vs 00:00 UTC) sudah
+    // menyebut ini 'tenggang' sejak pagi — sehari yang sudah dibayar hilang.
+    const h = hakAksesAnak(baris({ paket_id: PRESCHOOL.id, aktif_sampai: '2026-08-21' }),
+      map, trial, new Date('2026-08-21T16:00:00Z'));
+    expect(h.status).toBe('aktif');
+    expect(h.worksheet).toBe(true);
+  });
+
+  it('sehari sesudah periode habis baru masuk tenggang', () => {
+    const h = hakAksesAnak(baris({ paket_id: PRESCHOOL.id, aktif_sampai: '2026-08-21' }),
+      map, trial, new Date('2026-08-22T16:00:00Z'));
+    expect(h.status).toBe('tenggang');
+  });
+
+  it('dihentikan admin (paket dikosongkan) = kadaluarsa SEKARANG, tanpa tenggang', () => {
+    // Inilah bentuk baris sesudah `hentikanPaketAnak`: aktif_sampai = kemarin, paket_id null.
+    const kini = new Date('2026-08-21T05:00:00Z');            // 12:00 WIB
+    const h = hakAksesAnak(baris({ paket_id: null, aktif_sampai: tambahHari('2026-08-21', -1) }),
+      map, trial, kini);
+    expect(h.status).toBe('kadaluarsa');
+    expect(h.konsultasiGratis).toEqual({ jumlah: 0, satuan: 'bulan' });
+    expect(h.worksheet).toBe(false);
+    // Trial akun TIDAK boleh menyalakannya kembali: baris berbayar sudah ada.
+    const masihTrial = { ...trial, trialMulai: '2026-08-01' };
+    expect(hakAksesAnak(baris({ paket_id: null, aktif_sampai: '2026-08-20' }), map, masihTrial, kini).status)
+      .toBe('kadaluarsa');
+  });
+
+  it('penghentian versi LAMA (aktif_sampai hari ini, paket tetap) memang tak mencabut apa pun', () => {
+    // Dokumentasi bug: perilaku lama membiarkan hak paket penuh — hari ini masih aktif,
+    // lalu 3 hari tenggang. Ditulis sebagai tes supaya tak ada yang "menyederhanakan"
+    // hentikanPaketAnak kembali ke bentuk itu.
+    const h = hakAksesAnak(baris({ paket_id: PRESCHOOL.id, aktif_sampai: '2026-08-21' }),
+      map, trial, new Date('2026-08-21T05:00:00Z'));
+    expect(h.status).toBe('aktif');
+    expect(h.konsultasiGratis.jumlah).toBe(1);
+  });
+
+  it('tambahHari menyeberangi bulan & tahun', () => {
+    expect(tambahHari('2026-08-01', -1)).toBe('2026-07-31');
+    expect(tambahHari('2026-01-01', -1)).toBe('2025-12-31');
+    expect(tambahHari('2026-08-21', 3)).toBe('2026-08-24');
   });
 
   it('paket_id yang tak ada di master jatuh ke hak kosong, bukan melempar', () => {
