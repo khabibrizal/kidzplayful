@@ -231,6 +231,24 @@ Fitur share dari halaman detail agar orang non-login jadi aware & mendaftar.
 - **Server action**: `buatVideo`, `hapusVideo`, **`setBolehTrialVideo`** (toggle Trial ✓/✗) (`admin-konten.ts`); parse YouTube ID via `ekstrakYoutubeId`.
 - **Endpoint**: `video` (+`boleh_trial`).
 
+### 🎟️ Paket Langganan — `/admin/paket` (migrasi 0089)
+- **File**: `admin/paket/page.tsx` → `PaketAdmin.tsx`. Reader `lib/data/paket.ts`, action `paket-actions.ts`.
+- **Model**: langganan **ditagih per ANAK** dan **statusnya menempel pada anak** (`langganan_anak`), bukan akun. Satu akun boleh punya anak Preschool dan anak Basic sekaligus.
+- **Semua hak akses adalah DATA** di baris `paket_langganan` (`akses_ide_bermain`, `akses_game`, `akses_video`, `akses_komunitas`, `worksheet`, `rapor_bulanan`, `konsultasi_gratis_jumlah` + `_satuan`), plus `harga_bulanan` (per anak) dan `diskon_keluarga jsonb` (aturan bertingkat `[{min_anak,persen|nominal}]`). Mengubah harga/fasilitas **tidak perlu deploy**.
+- **`kode` paket tidak boleh diubah** setelah dipakai: nilainya tersimpan di peta `diskon_paket` tiap event & produk. `updatePaket` sengaja membuang `kode` dari payload.
+- **Menu `paket` masuk daftar `SENSITIF`** di `menu-admin.ts` → bawaannya hanya super user, karena menyangkut harga.
+
+> **⚠️ SATU tempat keputusan hak akses: `lib/domain/entitlement.ts`.** Sebelum 0089, akses ditentukan `dibatasiTrial(status)` yang tersebar di 7 halaman dan hanya mengenal dua keadaan. Dengan paket berjenjang + status per anak, cabang boolean seperti itu mustahil benar. Aturannya sekarang:
+> - **`hakAksesAnak(baris, paketMap, trial, sekarang)`** — periode berbayar anak → bila belum pernah bayar, masa trial AKUN (trial memang milik akun) → tenggang memakai paket terakhir → selebihnya kadaluarsa. Dipakai `/main`, `/ortu`, `/pilih-game` lewat `getHakAnak(anakId)`.
+> - **`hakAksesAkun(hakAnak[])`** — untuk fitur **tanpa konteks anak** (diskon event & produk, Komunitas, detail materi): memakai **paket TERTINGGI** (`urutan` terbesar) di antara anak yang aktif. Satu keranjang tak bisa memakai dua tarif, dan memilih yang tertinggi adalah satu-satunya aturan yang tak pernah merugikan pelanggan — **wajib ditulis di UI**, jangan disembunyikan.
+> - **Gagal baca master paket → hak KOSONG**, bukan lemparan galat: kegagalan tidak boleh membuka fasilitas berbayar, juga tidak boleh mematikan halaman.
+> - **Fasilitas berbayar default TERKUNCI**: prop `bolehWorksheet` di `KelasIsi` berbawaan `false`, sehingga pemanggil yang lupa memasang hak akan mengunci — bukan membocorkan. Materi bertanda `kelas_bermain.worksheet_terbuka` tetap terbuka untuk semua sebagai contoh gratis.
+> - **Diskon per paket**: `persenUntukPaket(item, kodePaket)` membaca peta `diskon_paket` per item; `0` yang **ditulis admin** berarti "sengaja tanpa diskon" dan tidak jatuh ke kolom lama `diskon_langganan_persen`. Peta dipilih ketimbang kolom per paket supaya paket ketiga tak butuh migrasi.
+> - **Lama trial jadi setelan** (`pengaturan_trial.trial_hari`, bawaan **30**) dan paket acuannya `trial_paket_id` (Basic). `TRIAL_HARI` di `domain/trial.ts` kini hanya cadangan; `statusLangganan`/`computeTrialEnd`/`ringkasanLangganan` menerimanya sebagai parameter.
+> - **Semua kolom 0089 dibaca TOLERAN** (coba dengan kolom baru, ulangi tanpa kolom itu bila gagal) di `publik.ts`, `kelas/[id]`, `event-actions`, `pengaturan-trial` — kode tayang sebelum migrasi manual dijalankan.
+>
+> `dibatasiTrial` **masih dipakai di dua tempat dan itu disengaja**: batas jumlah anak untuk yang belum berlangganan (`api/anak`, `pilih-anak/actions`) memakai `trial_maks_anak`, karena keputusan pemiliknya adalah **tanpa batas anak per paket**.
+
 ### 💳 Langganan — `/admin/langganan`
 - **File**: `admin/langganan/page.tsx` (query inline + `Pager.tsx`) → `AktifkanForm.tsx`. Util `@/lib/domain/trial` (`statusLangganan`), `@/lib/format` (`linkWa`), `@/lib/metode` (`METODE_BAYAR`).
 - **Fungsi data**: query inline `profiles` (member + embed anak & langganan) & `langganan` (jatuh tempo ≤ 7 hari untuk tombol WA pengingat); `getPengaturanBayar()` (nominal default).
@@ -239,6 +257,7 @@ Fitur share dari halaman detail agar orang non-login jadi aware & mendaftar.
   - **Sanitasi wajib**: kata kunci dibersihkan dari `% _ , ( ) " * \` sebelum masuk `or=(...)`. Koma dan kurung **memecah bentuk klausa `or`** (bukan sekadar hasil salah), sedangkan `%`/`_` adalah wildcard ILIKE. Karakter itu **dibuang**, bukan di-escape — kata kunci nama tak pernah membutuhkannya. Bentuk ketiga query sudah diuji langsung ke PostgREST produksi (semuanya `200`, bukan `400`).
   - **Batas 1.000** id anak (`BATAS_ANAK`) agar kata kunci super umum tidak meledakkan panjang URL; bila batas itu tersentuh, halaman **mengatakannya** ("persempit kata kuncinya") alih-alih memotong diam-diam.
   - Blok **🔔 Perlu diingatkan** ikut disaring dengan kata kunci yang sama (di JS — daftarnya kecil & sudah termuat penuh) supaya kedua bagian halaman konsisten. `Pager` kini menyambung `hal` dengan `&` bila `basePath` sudah membawa query, jadi kata kunci tidak hilang saat pindah halaman.
+- **Panel paket per anak** (0089): tiap kartu member memuat daftar anaknya + dropdown paket + jumlah bulan → `setPaketAnak` (`langganan-anak-actions.ts`). Inilah yang membuat paket sudah berlaku sebelum halaman pilih-paket mandiri (sub-proyek A2) ada. **Perpanjangan dihitung dari `max(hari ini, aktif_sampai)`** — memperbaiki perilaku `aktifkanLangganan` yang menyetel `hari ini + 1 bulan` sehingga membayar lebih awal menghanguskan sisa hari.
 - **Server action**: `aktifkanLangganan` (`admin-bisnis.ts`).
 - **Endpoint**: `profiles`, `langganan`, `anak` (pencarian), `pengaturan_pembayaran`; `aktifkanLangganan` → `langganan` (update +1 bln), `pembayaran_langganan` (insert), `catatLedger` (kategori `membership`).
 
