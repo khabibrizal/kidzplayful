@@ -66,7 +66,13 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
   };
   const terpakaiBulanIni = form ? [...new Set(terpakai(form.bulanKurikulum))].sort((a, b) => a - b) : [];
 
-  function bukaTambah() { setEditId(null); setForm(structuredClone(KOSONG)); }
+  function bukaTambah() {
+    setEditId(null);
+    // Materi baru langsung diberi urutan BEBAS di bulan 1. `KOSONG` memakai urutan 0, dan
+    // dengan posisi kurikulum yang unik (0102) itu akan bentrok begitu bulan 1 slot 0
+    // sudah terisi — admin tak semestinya menabrak galat untuk hal yang bisa ditebak.
+    setForm({ ...structuredClone(KOSONG), urutan: urutanBebas(1) });
+  }
   function bukaEdit(k: KelasBermain) {
     setEditId(k.id);
     setForm({
