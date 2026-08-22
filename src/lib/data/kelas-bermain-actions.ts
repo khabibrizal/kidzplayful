@@ -47,6 +47,21 @@ async function adminDb() {
   if (!prof?.is_admin) throw new Error('Bukan admin');
   return s;
 }
+/**
+ * Terjemahkan galat Postgres jadi kalimat yang bisa ditindaklanjuti admin.
+ *
+ * Yang paling penting: pelanggaran kunci unik posisi kurikulum (0102). Pesan mentahnya
+ * ("duplicate key value violates unique constraint …") tak memberi tahu apa yang harus
+ * diperbaiki, padahal jawabannya sederhana: pindahkan urutannya.
+ */
+function pesanGalat(e: { code?: string; message?: string }): string {
+  const pesan = e?.message ?? 'Gagal menyimpan.';
+  if (e?.code === '23505' && /kelas_kurikulum_posisi/.test(pesan)) {
+    return 'Posisi kurikulum itu sudah dipakai tema AKTIF lain. Satu bulan + urutan hanya boleh dimiliki satu tema — ubah urutannya, atau nonaktifkan tema yang menempatinya.';
+  }
+  return pesan;
+}
+
 function row(i: KelasInput) {
   return {
     judul: i.judul.trim() || 'Tanpa judul',
@@ -95,11 +110,12 @@ export async function buatKelas(i: KelasInput): Promise<{ ok: boolean; error?: s
     const s = await adminDb();
     if (!i.judul.trim()) return { ok: false, error: 'Judul wajib diisi.' };
     const coba = await s.from('kelas_bermain').insert({ ...row(i), ...row098(i) }).select(COLS_098).single();
-    if (!coba.error) return { ok: true, kelas: coba.data as unknown as KelasBermain };
-    if (!kolom098Hilang(coba.error)) return { ok: false, error: coba.error.message };
+    if (!coba.error) { updateTag('katalog'); return { ok: true, kelas: coba.data as unknown as KelasBermain }; }
+    if (!kolom098Hilang(coba.error)) return { ok: false, error: pesanGalat(coba.error) };
     // Migrasi 0098 belum jalan → simpan tanpa kolom kurikulum, jangan gagalkan materinya.
     const { data, error } = await s.from('kelas_bermain').insert(row(i)).select(COLS).single();
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: pesanGalat(error) };
+    updateTag('katalog');
     return { ok: true, kelas: data as unknown as KelasBermain };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Gagal menyimpan.' };
@@ -109,10 +125,11 @@ export async function updateKelas(id: string, i: KelasInput): Promise<{ ok: bool
   try {
     const s = await adminDb();
     const coba = await s.from('kelas_bermain').update({ ...row(i), ...row098(i) }).eq('id', id).select(COLS_098).single();
-    if (!coba.error) return { ok: true, kelas: coba.data as unknown as KelasBermain };
-    if (!kolom098Hilang(coba.error)) return { ok: false, error: coba.error.message };
+    if (!coba.error) { updateTag('katalog'); return { ok: true, kelas: coba.data as unknown as KelasBermain }; }
+    if (!kolom098Hilang(coba.error)) return { ok: false, error: pesanGalat(coba.error) };
     const { data, error } = await s.from('kelas_bermain').update(row(i)).eq('id', id).select(COLS).single();
-    if (error) return { ok: false, error: error.message };
+    if (error) return { ok: false, error: pesanGalat(error) };
+    updateTag('katalog');
     return { ok: true, kelas: data as unknown as KelasBermain };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Gagal menyimpan.' };
@@ -121,12 +138,16 @@ export async function updateKelas(id: string, i: KelasInput): Promise<{ ok: bool
 export async function toggleStatusKelas(id: string, statusBaru: 'aktif' | 'nonaktif'): Promise<void> {
   const s = await adminDb();
   const { error } = await s.from('kelas_bermain').update({ status: statusBaru }).eq('id', id);
-  if (error) throw new Error(error.message);
+  // Mengaktifkan kembali bisa DITOLAK bila posisi kurikulumnya sudah diambil tema lain
+  // (indeks unik 0102 hanya berlaku untuk yang aktif) — pesannya harus menyebutkan itu.
+  if (error) throw new Error(pesanGalat(error));
+  updateTag('katalog');
 }
 export async function hapusKelas(id: string): Promise<void> {
   const s = await adminDb();
   const { error } = await s.from('kelas_bermain').delete().eq('id', id);
   if (error) throw new Error(error.message);
+  updateTag('katalog');
 }
 export async function setBolehTrialKelas(id: string, boleh: boolean): Promise<void> {
   const s = await adminDb();

@@ -53,6 +53,19 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
   }
   const peringatanBulan = [...perBulan.entries()].filter(([, n]) => n !== 4).sort((a, b) => a[0] - b[0]);
 
+  // Posisi kurikulum yang sudah dipakai tema AKTIF lain (materi yang sedang diedit tak
+  // dihitung — ia berhak mempertahankan posisinya sendiri).
+  const terpakai = (bulan: number) => list
+    .filter((k) => k.status === 'aktif' && k.id !== editId && (k.bulan_kurikulum ?? 1) === bulan)
+    .map((k) => k.urutan ?? 0);
+  const urutanBebas = (bulan: number) => {
+    const ada = new Set(terpakai(bulan));
+    let u = 0;
+    while (ada.has(u)) u++;
+    return u;
+  };
+  const terpakaiBulanIni = form ? [...new Set(terpakai(form.bulanKurikulum))].sort((a, b) => a - b) : [];
+
   function bukaTambah() { setEditId(null); setForm(structuredClone(KOSONG)); }
   function bukaEdit(k: KelasBermain) {
     setEditId(k.id);
@@ -260,12 +273,28 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
           <div className={s.row} style={{ gap: 6, alignItems: 'center' }}>
             <span className={s.muted} style={{ fontSize: 12 }}>📚 Kurikulum bulan ke-</span>
             <input className={s.inp} type="number" min={1} value={form.bulanKurikulum}
-              onChange={(e) => setForm({ ...form, bulanKurikulum: Number(e.target.value) })} style={{ width: 70, marginBottom: 0 }} />
+              onChange={(e) => {
+                const bulan = Number(e.target.value);
+                // Saat pindah bulan, urutan otomatis melompat ke slot BEBAS pertama —
+                // posisi kurikulum bersifat unik (0102), dan menabraknya hanya berujung
+                // galat saat menyimpan.
+                setForm({ ...form, bulanKurikulum: bulan, urutan: urutanBebas(bulan) });
+              }} style={{ width: 70, marginBottom: 0 }} />
             <span className={s.muted} style={{ fontSize: 12 }}>· urutan</span>
             <input className={s.inp} type="number" min={0} value={form.urutan}
               onChange={(e) => setForm({ ...form, urutan: Number(e.target.value) })} style={{ width: 70, marginBottom: 0 }} />
             <span className={s.muted} style={{ fontSize: 11 }}>tampil setelah anak masuk bulan itu</span>
           </div>
+          {/* Posisi yang sudah dipakai tema AKTIF lain — ditunjukkan SEBELUM menyimpan,
+              supaya admin tak perlu menabrak galat untuk mengetahuinya. */}
+          {terpakaiBulanIni.length > 0 && (
+            <div className={s.muted} style={{ fontSize: 11 }}>
+              Urutan yang sudah dipakai di bulan {form.bulanKurikulum}: {terpakaiBulanIni.join(', ')}
+              {terpakaiBulanIni.includes(form.urutan) && (
+                <b style={{ color: '#b3261e' }}> — urutan {form.urutan} bentrok, ganti dulu.</b>
+              )}
+            </div>
+          )}
 
           {/* FOKUS AREA + PERAN ORTU */}
           <div className={s.muted} style={{ margin: '10px 0 4px', fontSize: 12 }}>🧩 Fokus area perkembangan (bisa pilih lebih dari satu — kelola daftarnya di menu 🧩 Fokus Area):</div>
