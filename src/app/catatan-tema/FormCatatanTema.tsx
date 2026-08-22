@@ -39,12 +39,13 @@ export default function FormCatatanTema({ anakId, anakNama, kelasId, kelasJudul,
     <div className="kp-card" style={{ marginTop: 10 }}>
       <b style={{ fontSize: 15 }}>🍎 Catatan untuk {anakNama} — {kelasJudul}</b>
       <p style={{ fontSize: 12, color: 'var(--abu)', margin: '4px 0 8px' }}>
-        Catatan ini tampil di rapor anak beserta nama &amp; peran Anda. Menyimpan ulang hanya
-        menimpa catatan Anda sendiri — catatan penulis lain tidak tersentuh.
+        Penilaian Anda berlaku <b>untuk tema ini secara keseluruhan</b>, bukan per aktivitas —
+        rincian per aktivitas sudah diisi orang tua di atas. Catatan ini tampil di rapor anak
+        beserta nama &amp; peran Anda; menyimpan ulang hanya menimpa catatan Anda sendiri.
       </p>
 
       <textarea className="kp-input" rows={5} value={catatan} onChange={(e) => setCatatan(e.target.value)}
-        placeholder={`Bagaimana ${anakNama} mengerjakan tema ini? Apa yang menonjol, apa yang masih perlu didampingi?`}
+        placeholder={`Tanggapan Anda atas isian orang tua & hasil game ${anakNama} pada tema ini — apa yang menonjol, apa yang masih perlu didampingi?`}
         style={{ width: '100%', resize: 'vertical' }} />
 
       <div style={{ fontSize: 12, fontWeight: 700, margin: '8px 0 4px' }}>📊 Penilaian per indikator <span style={{ fontWeight: 400, color: 'var(--abu)' }}>(opsional)</span></div>

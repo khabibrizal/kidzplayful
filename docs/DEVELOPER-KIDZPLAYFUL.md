@@ -793,11 +793,15 @@ Sisi orang tua. **Gerbang "khusus member aktif" sudah DICABUT** (sub-proyek B): 
 
 #### Catatan tema oleh admin/guru/psikolog (0099)
 
-- Tabel **terpisah** `catatan_tema`, bukan menumpang `evaluasi_kurikulum`: checklist orang tua dan catatan naratif profesional berbeda bentuk, penulis, dan **bobot sebagai bukti**. Satu tabel berarti satu baris yang ditimpa siapa pun yang menyimpan terakhir.
-- **unique (anak_id, kelas_id, `penulis_id`)** → guru & psikolog bisa menulis pada tema yang sama tanpa saling menimpa. Policy tulis mensyaratkan `penulis_id = auth.uid()`: tanpa itu guru bisa menulis **atas nama** psikolog, dan rapor menyebut nama penulis.
-- **Rute BERSAMA `/catatan-tema` di luar `/admin`.** Matriks Akses Menu hanya punya dimensi **admin/investor/guru** (`AksesMenu` & `menuUntukRole`) — **tidak ada psikolog** — jadi mendaftarkannya sebagai menu admin justru menutup akses orang yang diminta ikut mengisi. Ditautkan dari dashboard admin, `/guru`, dan `/psikolog`.
-- **Daftar anak dibangun berbeda per peran**, karena hak bacanya memang berbeda: admin → tabel `anak` (0006); psikolog → `pendaftaran_konsultasi` miliknya yang diterima/selesai (cakupan identik dengan `boleh_lihat_laporan_anak`, 0066, jadi daftarnya tak pernah memuat anak yang nanti ditolak RLS); guru → snapshot `pendaftaran_event`, sebab **guru tidak punya policy select pada tabel `anak`**. Cakupan sempit itu **ditulis di layar** supaya daftar pendek tak terbaca sebagai data hilang.
-- Form hanya memuat catatan **milik sendiri**; tulisan penulis lain tampil read-only sebagai konteks. Skala penilaian memakai `SKALA_PAUD` dari `lib/format` apa adanya — daftar baru akan membuat rapor menampilkan dua skala untuk hal yang sama.
+**Konsepnya: RESPONS, bukan penilaian mandiri.** Catatan Tema adalah tanggapan guru/psikolog atas **evaluasi yang sudah diisi orang tua** — bukan tempat menilai tema mana pun. Karena itu halaman `/catatan-tema`:
+
+- **hanya mendaftar tema yang sudah dievaluasi orang tua** untuk anak itu (`evaluasi_kurikulum` peran `ortu`), lengkap dengan posisi kurikulumnya (Bulan ke-N · Minggu ke-M) dan tanggal pengisian. Belum ada evaluasi → belum ada yang perlu ditanggapi, dan itu dikatakan;
+- menampilkan **isian orang tua apa adanya, per aktivitas** (read-only) sebagai konteks;
+- menampilkan **hasil game** yang menempel pada aktivitas tema itu (`hasil_main.paket_id`, kolom 0044): dimainkan berapa kali, bintang, berapa kali selesai, waktu tercepat, terakhir main. Game yang **tak pernah dimainkan ditulis "— belum dimainkan"**, BUKAN nol: nol berarti "sudah main tapi tak dapat apa-apa", dan dua hal itu tak boleh terlihat sama. Waktu tercepat hanya dihitung dari sesi yang **selesai** — sesi yang ditinggal di tengah punya durasi kecil dan akan tampak sebagai rekor palsu;
+- **penilaiannya PER TEMA**, bukan per aktivitas — rincian per aktivitas memang sudah diisi orang tua, dan formnya menyatakan itu.
+
+> **Migrasi 0100 — guru boleh membaca `hasil_main`.** Tanpa itu laporan game selalu kosong untuk guru dan catatannya jadi tebakan. Tabel itu sebelumnya hanya terbuka untuk ortu pemilik (0002), admin (0006), dan psikolog yang menangani anak itu (0066). Cakupan guru dibuat seluas hak guru yang sudah ada (`pendaftaran_event`, `catatan_perkembangan`, `evaluasi_kurikulum`) — semua anak, sebab guru di aplikasi ini peran internal, bukan wali kelas per rombongan. **Hanya SELECT**: guru tak boleh mengubah skor anak.
+
 
 #### Di rapor
 
