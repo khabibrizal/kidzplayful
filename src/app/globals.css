@@ -58,6 +58,15 @@ input,select,textarea,button{max-width:100%}
 .kp-tile.mint{background:var(--mint-d);box-shadow:0 7px 0 #4fae87}
 .kp-tile.lavender{background:var(--lavender-d);box-shadow:0 7px 0 #7d63b8}
 .kp-tile.biru{background:var(--biru-d);box-shadow:0 7px 0 #4f93d8}
+/* Varian RAPAT untuk daftar panjang (Main Hari Ini, Game Edukasi, daftar permainan).
+   Tombol menu utama tetap besar — di sana hanya ada 4 tombol dan ukurannya memang untuk
+   jari anak; di daftar berisi 10 item, tinggi yang sama membuat halaman terasa boros. */
+.kp-tile.rapat{padding:11px 18px;font-size:17px;border-radius:20px;box-shadow:0 5px 0 rgba(0,0,0,.12)}
+.kp-tile.rapat .emo{font-size:30px}
+.kp-tile.rapat small{font-size:11px}
+.kp-tile.rapat.mint{box-shadow:0 5px 0 #4fae87}
+.kp-tile.rapat.lavender{box-shadow:0 5px 0 #7d63b8}
+.kp-tile.rapat.biru{box-shadow:0 5px 0 #4f93d8}
 
 /* splash & reward gradients */
 .kp-splash{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px;background:linear-gradient(170deg,#e9dcff,#d4ecff);border-radius:0}

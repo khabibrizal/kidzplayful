@@ -249,7 +249,7 @@ export default function MenuAnak({
                 catatKegiatan(anak.id, 'ide-bermain', k.id, k.judul).catch(() => {});
               };
               return (
-                <div key={k.id} className={`kp-tile ${['mint', 'lavender', 'biru'][i % 3]}`}
+                <div key={k.id} className={`kp-tile rapat ${['mint', 'lavender', 'biru'][i % 3]}`}
                   role="button" tabIndex={0} onClick={buka}
                   onKeyDown={(e) => { if (e.key === 'Enter') buka(); }}
                   style={{ position: 'relative', cursor: 'pointer', opacity: kunci ? 0.7 : 1 }}>
@@ -311,7 +311,7 @@ export default function MenuAnak({
           {hTema.baris.map((t, i) => {
             const kunci = terkunci(t.tema.boleh_trial);
             return (
-              <button key={t.tema.id} className={`kp-tile ${['mint', 'lavender', 'biru'][i % 3]}`} style={{ opacity: kunci ? 0.7 : 1 }}
+              <button key={t.tema.id} className={`kp-tile rapat ${['mint', 'lavender', 'biru'][i % 3]}`} style={{ opacity: kunci ? 0.7 : 1 }}
                 onClick={() => { if (kunci) { setKunciFitur('Game Edukasi'); return; } setTemaTerpilih(t); setLayar('daftar'); }}>
                 <span className="emo">{kunci ? '🔒' : <Sampul value={t.tema.sampul} size={40} />}</span><div>{t.tema.nama}<small>{kunci ? 'khusus pelanggan' : `${t.paket.length} permainan`}</small></div>
               </button>
@@ -339,7 +339,7 @@ export default function MenuAnak({
           hal={hGame.hal} totalHal={hGame.totalHal} total={hGame.total} adaFilter={hGame.adaFilter} label="permainan" />
         <div className={s.menu}>
           {hGame.baris.map((p, i) => (
-            <button key={p.id} className={`kp-tile ${['mint', 'lavender', 'biru'][i % 3]}`} onClick={() => mulaiGame(p, temaTerpilih)}>
+            <button key={p.id} className={`kp-tile rapat ${['mint', 'lavender', 'biru'][i % 3]}`} onClick={() => mulaiGame(p, temaTerpilih)}>
               <span className="emo">🎯</span><div>{p.judul}</div>
             </button>
           ))}
