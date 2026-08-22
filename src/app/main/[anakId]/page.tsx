@@ -12,13 +12,17 @@ import { getGamifikasiAnak } from '@/lib/data/gamifikasi';
 import { getHakAnak } from '@/lib/data/langganan-anak';
 import { getBulanKurikulumAnak } from '@/lib/data/kurikulum';
 import { kelompokTema } from '@/lib/domain/kurikulum';
+import { pathInternal } from '@/lib/nav';
 import { getStatusWorksheet } from '@/lib/data/worksheet';
 import RekamAktivitas from '@/components/RekamAktivitas';
 import MenuAnak from './MenuAnak';
 
-export default async function MainPage({ params, searchParams }: { params: Promise<{ anakId: string }>; searchParams: Promise<{ paket?: string }> }) {
+export default async function MainPage({ params, searchParams }: { params: Promise<{ anakId: string }>; searchParams: Promise<{ paket?: string; kembali?: string }> }) {
   const { anakId } = await params;
-  const { paket: paketAwal } = await searchParams;
+  const { paket: paketAwal, kembali } = await searchParams;
+  // Tujuan `kembali` DIVALIDASI di server: parameter tujuan yang menerima URL apa pun
+  // adalah lubang open redirect (lihat `lib/nav.ts`).
+  const kembaliUrl = pathInternal(kembali);
   const anak = await getAnakTerjamin(anakId); // guard (login + langganan)
   const umur = umurTahun(new Date(anak.tanggal_lahir + 'T00:00:00Z'), new Date());
   const supabase = await createClient();
@@ -63,6 +67,7 @@ export default async function MainPage({ params, searchParams }: { params: Promi
       pinTersimpan={prof?.pin_ortu ?? null}
       video={video0}
       paketAwal={paketAwal}
+      kembaliUrl={kembaliUrl}
       kelasList={kelasTerbuka}
       favIds={favIds}
       gamiAwal={gami}

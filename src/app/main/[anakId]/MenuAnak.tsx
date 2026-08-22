@@ -1,7 +1,6 @@
 // src/app/main/[anakId]/MenuAnak.tsx
 'use client';
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { KelasBermain, Paket, TemaLengkap, Video } from '@/lib/game/tipe';
 import GameRunner from '@/components/game/GameRunner';
@@ -23,10 +22,17 @@ import s from './main.module.css';
 type Layar = 'menu' | 'kelas' | 'kelas-detail' | 'daftar' | 'pustaka' | 'video' | 'main' | 'istirahat';
 
 export default function MenuAnak({
-  anak, pustaka, pinTersimpan, video, paketAwal, kelasList, favIds, gamiAwal, batasi = false, labelArea = {}, bolehWorksheet = false, sisaWorksheet, worksheetTanpaBatas,
+  anak, pustaka, pinTersimpan, video, paketAwal, kembaliUrl, kelasList, favIds, gamiAwal, batasi = false, labelArea = {}, bolehWorksheet = false, sisaWorksheet, worksheetTanpaBatas,
 }: {
   anak: { id: string; nama: string; koin: number; batas_menit: number };
-  pustaka: TemaLengkap[]; pinTersimpan: string | null; video: Video[]; paketAwal?: string; kelasList: KelasBermain[]; favIds: string[];
+  pustaka: TemaLengkap[]; pinTersimpan: string | null; video: Video[]; paketAwal?: string;
+  /**
+   * Tujuan tombol keluar bila game dibuka lewat deep-link dari sebuah aktivitas Ide
+   * Bermain (0098). Sudah divalidasi `pathInternal()` di sisi server — komponen ini
+   * tak boleh menerima URL sembarangan.
+   */
+  kembaliUrl?: string | null;
+  kelasList: KelasBermain[]; favIds: string[];
   gamiAwal: GamifikasiAnak; batasi?: boolean; labelArea?: Record<string, string>;
   sisaWorksheet?: number | null; worksheetTanpaBatas?: boolean;
   /** Worksheet = fasilitas paket berhak; bawaan false agar lupa memasang = mengunci. */
@@ -49,6 +55,13 @@ export default function MenuAnak({
   const [aktif, setAktif] = useState<Paket | null>(() => awal?.p ?? null);
   const [temaTerpilih, setTemaTerpilih] = useState<TemaLengkap | null>(() => awal?.t ?? mingguIni);
   const [pinUntuk, setPinUntuk] = useState<null | 'keluar'>(null);
+  /**
+   * Hanya berlaku untuk game yang MEMANG dibuka dari aktivitas (deep-link `?paket=`),
+   * dan hanya SEKALI: sesudah pulang, keluar dari game berikutnya kembali ke daftar game
+   * seperti biasa — kalau tidak, anak akan terlempar keluar dari Mode Anak setiap selesai
+   * bermain.
+   */
+  const [pulangKe, setPulangKe] = useState<string | null>(() => (awal && kembaliUrl ? kembaliUrl : null));
   const [kelasDipilih, setKelasDipilih] = useState<KelasBermain | null>(null);
   const [terpakai, setTerpakai] = useState(0);
   const [kunci] = useState(() => kunciHari(anak.id, new Date()));
@@ -118,14 +131,20 @@ export default function MenuAnak({
   }
 
   if (layar === 'main' && aktif && temaTerpilih) {
+    // Dua jalan keluar (tombol ← dan GameRunner) HARUS satu perilaku; kalau dipisah,
+    // salah satunya akan lupa pulang ke aktivitas asalnya.
+    const keluarGame = () => {
+      if (pulangKe) { setPulangKe(null); router.push(pulangKe); return; }
+      setLayar('daftar');
+    };
     return (
       <div className={s.wrap}>
         <div className={s.top}>
-          <button className="kp-lock" aria-label="Kembali" onClick={() => setLayar('daftar')}>←</button>
+          <button className="kp-lock" aria-label="Kembali" onClick={keluarGame}>←</button>
           <div className="kp-coin">🪙 {koin}</div>
         </div>
         <GameRunner paket={aktif} anakId={anak.id} temaId={temaTerpilih.tema.id}
-          onKeluar={() => setLayar('daftar')} onKoin={setKoin} onGamifikasi={terapkanGami} />
+          onKeluar={keluarGame} onKoin={setKoin} onGamifikasi={terapkanGami} />
       </div>
     );
   }
