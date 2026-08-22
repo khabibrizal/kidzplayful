@@ -1,5 +1,11 @@
 -- 0102_kurikulum_posisi_unik.sql — satu posisi kurikulum hanya milik satu tema.
 --
+-- ⚠️ DIGANTI OLEH 0103. Keunikan di sini dihitung GLOBAL `(bulan_kurikulum, urutan)`,
+-- dan itu keliru: kategori Bayi & Prasekolah adalah kurikulum berbeda yang berhak
+-- sama-sama punya Bulan 1 Minggu 1. 0103 membuang indeks yang dibuat di sini dan
+-- menggantinya dengan yang per kategori. Bila 0102 BELUM pernah dijalankan, lewati saja
+-- — jalankan 0101 lalu langsung 0103; menjalankan 0102 dulu tetap aman, hanya sia-sia.
+--
 -- Keputusan pemilik: bila bulan ke-1 urutan ke-1 sudah terisi, tema lain tak boleh memakai
 -- posisi yang sama. Tanpa ini, "Minggu ke-N" yang diturunkan dari urutan (lihat
 -- `posisiTema` di domain/kurikulum.ts) jadi ambigu — dua tema akan mengaku minggu yang sama
