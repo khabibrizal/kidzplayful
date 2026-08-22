@@ -103,6 +103,39 @@ export function temaTerkunci<T extends TemaKurikulum>(list: T[], bulanAnak: numb
     .sort(urut);
 }
 
+/**
+ * Satu bulan kurikulum berisi paling banyak 4 tema — satu per minggu. Urutan 1..4 ADALAH
+ * minggunya; tak ada urutan ke-5, yang kelima pindah ke bulan berikutnya urutan 1.
+ */
+export const MAKS_URUTAN_BULAN = 4;
+
+/**
+ * Posisi kurikulum berikutnya yang masih kosong, DI DALAM SATU KATEGORI USIA.
+ *
+ * Penomoran dihitung per kategori, bukan global: kategori Bayi dan Prasekolah masing-masing
+ * punya bulan 1 minggu 1 sendiri. Menggabungkannya akan membuat kurikulum bayi "menghabiskan"
+ * slot milik prasekolah, padahal keduanya kurikulum yang berbeda.
+ *
+ * Slot dicari dari yang PALING AWAL yang masih kosong (bulan 1 dulu, lalu urutan 1..4), jadi
+ * lubang bekas tema yang dihapus terisi kembali — bukan ditinggalkan menganga sampai
+ * penomorannya melompat.
+ */
+export function posisiBerikutnya(
+  dipakai: { bulan_kurikulum?: number | null; urutan?: number | null }[],
+  maks = MAKS_URUTAN_BULAN,
+): { bulan: number; urutan: number } {
+  const m = Math.max(1, Math.floor(maks) || MAKS_URUTAN_BULAN);
+  const set = new Set(
+    (dipakai ?? []).map((d) => `${Math.max(1, Math.floor(Number(d.bulan_kurikulum) || 1))}:${Math.floor(Number(d.urutan) || 0)}`),
+  );
+  for (let bulan = 1; bulan <= 600; bulan++) {          // 50 tahun kurikulum — batas waras
+    for (let urutan = 1; urutan <= m; urutan++) {
+      if (!set.has(`${bulan}:${urutan}`)) return { bulan, urutan };
+    }
+  }
+  return { bulan: 1, urutan: 1 };
+}
+
 /** Bentuk tema yang dibutuhkan untuk mencocokkan usia. */
 export interface TemaUsia { usia_min?: number | null; usia_max?: number | null }
 
@@ -149,6 +182,12 @@ export function posisiTema<T extends TemaKurikulum>(
   if (!tema) return null;
   const bulan = Math.floor(Number(tema.bulan_kurikulum) || 0);
   if (bulan < 1) return null;   // materi lama tanpa bulan → tak punya posisi kurikulum
+  // Sejak posisinya dijadikan unik & bernomor 1..4 per kategori, URUTAN ITULAH minggunya —
+  // tak perlu lagi diturunkan dari indeks. Menurunkannya dari indeks membuat dua tema di
+  // bulan yang sama saling menggeser nomor minggu hanya karena satu di antaranya dihapus.
+  const u = Math.floor(Number(tema.urutan) || 0);
+  if (u >= 1) return { bulan, minggu: u };
+  // Materi lama yang urutannya masih 0: jatuh ke penomoran menurut posisi di bulannya.
   const sebulan = semua
     .filter((k) => Math.floor(Number(k.bulan_kurikulum) || 0) === bulan)
     .sort((a, b) => (a.urutan ?? 0) - (b.urutan ?? 0) || a.id.localeCompare(b.id));

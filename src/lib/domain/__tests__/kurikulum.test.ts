@@ -1,6 +1,6 @@
 // src/lib/domain/__tests__/kurikulum.test.ts
 import { describe, it, expect } from 'vitest';
-import { bulanKurikulumAnak, statusTema, kelompokTema, ringkasEvaluasi, susunHasilEvaluasi, posisiTema, evaluasiPerAktivitas, temaTerkunci, cocokUsia } from '../kurikulum';
+import { bulanKurikulumAnak, statusTema, kelompokTema, ringkasEvaluasi, susunHasilEvaluasi, posisiTema, evaluasiPerAktivitas, temaTerkunci, cocokUsia, posisiBerikutnya, MAKS_URUTAN_BULAN } from '../kurikulum';
 
 const tema = (bulan: number, judul = `T${bulan}`) => ({ id: judul, judul, bulan_kurikulum: bulan, urutan: 0 });
 
@@ -114,20 +114,30 @@ describe('susunHasilEvaluasi', () => {
 
 describe('posisiTema', () => {
   const semua = [
-    { id: 'a', judul: 'A', bulan_kurikulum: 1, urutan: 0 },
-    { id: 'b', judul: 'B', bulan_kurikulum: 1, urutan: 1 },
-    { id: 'c', judul: 'C', bulan_kurikulum: 2, urutan: 0 },
-    { id: 'd', judul: 'D', bulan_kurikulum: 1, urutan: 2 },
+    { id: 'a', judul: 'A', bulan_kurikulum: 1, urutan: 1 },
+    { id: 'b', judul: 'B', bulan_kurikulum: 1, urutan: 2 },
+    { id: 'c', judul: 'C', bulan_kurikulum: 2, urutan: 1 },
+    { id: 'd', judul: 'D', bulan_kurikulum: 1, urutan: 4 },
   ];
 
-  it('minggu diturunkan dari urutan DI DALAM bulannya', () => {
+  it('URUTAN itulah minggunya (1..4) — bukan diturunkan dari indeks', () => {
+    // Diturunkan dari indeks, menghapus satu tema akan menggeser nomor minggu tema lain.
     expect(posisiTema(semua, 'a')).toEqual({ bulan: 1, minggu: 1 });
     expect(posisiTema(semua, 'b')).toEqual({ bulan: 1, minggu: 2 });
-    expect(posisiTema(semua, 'd')).toEqual({ bulan: 1, minggu: 3 });
+    expect(posisiTema(semua, 'd')).toEqual({ bulan: 1, minggu: 4 });
   });
 
   it('tiap bulan memulai hitungan minggu dari 1 lagi', () => {
     expect(posisiTema(semua, 'c')).toEqual({ bulan: 2, minggu: 1 });
+  });
+
+  it('materi lama berurutan 0 jatuh ke penomoran menurut posisinya di bulan itu', () => {
+    const lama = [
+      { id: 'x', judul: 'X', bulan_kurikulum: 1, urutan: 0 },
+      { id: 'y', judul: 'Y', bulan_kurikulum: 1, urutan: 0 },
+    ];
+    expect(posisiTema(lama, 'x')?.minggu).toBe(1);
+    expect(posisiTema(lama, 'y')?.minggu).toBe(2);
   });
 
   it('materi lama tanpa bulan tak punya posisi kurikulum', () => {
@@ -212,5 +222,42 @@ describe('cocokUsia', () => {
 
   it('umur tak sah (tanggal lahir belum diisi) tidak menyaring', () => {
     expect(cocokUsia(t35, NaN)).toBe(true);
+  });
+});
+
+describe('posisiBerikutnya', () => {
+  const pos = (bulan: number, urutan: number) => ({ bulan_kurikulum: bulan, urutan });
+
+  it('kategori kosong dimulai dari bulan 1 urutan 1', () => {
+    expect(posisiBerikutnya([])).toEqual({ bulan: 1, urutan: 1 });
+  });
+
+  it('mengisi urutan berikutnya di bulan yang sama', () => {
+    expect(posisiBerikutnya([pos(1, 1)])).toEqual({ bulan: 1, urutan: 2 });
+    expect(posisiBerikutnya([pos(1, 1), pos(1, 2), pos(1, 3)])).toEqual({ bulan: 1, urutan: 4 });
+  });
+
+  it('TIDAK ADA urutan ke-5 — yang kelima pindah ke bulan berikutnya urutan 1', () => {
+    expect(MAKS_URUTAN_BULAN).toBe(4);
+    expect(posisiBerikutnya([pos(1, 1), pos(1, 2), pos(1, 3), pos(1, 4)])).toEqual({ bulan: 2, urutan: 1 });
+  });
+
+  it('melanjutkan ke bulan 3 saat bulan 1 & 2 penuh', () => {
+    const penuh = [1, 2].flatMap((b) => [1, 2, 3, 4].map((u) => pos(b, u)));
+    expect(posisiBerikutnya(penuh)).toEqual({ bulan: 3, urutan: 1 });
+  });
+
+  it('mengisi LUBANG bekas tema yang dihapus, bukan melompat ke ujung', () => {
+    expect(posisiBerikutnya([pos(1, 1), pos(1, 3), pos(1, 4), pos(2, 1)])).toEqual({ bulan: 1, urutan: 2 });
+  });
+
+  it('materi lama berurutan 0 tak dianggap memakai slot 1', () => {
+    // Urutan 0 adalah nilai bawaan lama, bukan minggu ke-0.
+    expect(posisiBerikutnya([{ bulan_kurikulum: 1, urutan: 0 }])).toEqual({ bulan: 1, urutan: 1 });
+  });
+
+  it('daftar null / bulan kosong tidak melempar', () => {
+    expect(posisiBerikutnya(null as unknown as [])).toEqual({ bulan: 1, urutan: 1 });
+    expect(posisiBerikutnya([{ bulan_kurikulum: null, urutan: 1 }])).toEqual({ bulan: 1, urutan: 2 });
   });
 });

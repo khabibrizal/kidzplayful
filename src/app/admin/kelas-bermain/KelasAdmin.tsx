@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { buatKelas, updateKelas, toggleStatusKelas, hapusKelas, setBolehTrialKelas, type KelasInput } from '@/lib/data/kelas-bermain-actions';
 import type { KelasBermain } from '@/lib/game/tipe';
 import { kompresGambar } from '@/lib/img';
+import { posisiBerikutnya, MAKS_URUTAN_BULAN } from '@/lib/domain/kurikulum';
 import s from '../admin.module.css';
 
 const KOSONG: KelasInput = {
@@ -36,6 +37,9 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
   const [q, setQ] = useState('');
   const [form, setForm] = useState<KelasInput | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
+  // Kategori saat form DIBUKA. Dipakai membedakan "kategori diganti" (posisi dihitung ulang
+  // di kategori baru) dari "kategori dikembalikan" (posisi materi ini dipertahankan).
+  const [awalKategori, setAwalKategori] = useState('');
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [toast, setToast] = useState('');
@@ -45,36 +49,44 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
   function flash(msg: string) { setToast(msg); setTimeout(() => setToast(''), 2200); }
   const tampil = list.filter((k) => k.judul.toLowerCase().includes(q.toLowerCase()));
   // Dihitung dari materi AKTIF saja: materi nonaktif tak tampil ke orang tua, jadi tak
-  // ikut memenuhi kuota 4 tema sebulan.
-  const perBulan = new Map<number, number>();
+  // ikut memenuhi kuota 4 tema sebulan. Dikelompokkan PER KATEGORI USIA — kurikulum Bayi
+  // dan Prasekolah berjalan sendiri-sendiri, jadi "bulan 1 sudah 4 tema" pada yang satu
+  // tak berarti apa pun bagi yang lain.
+  const namaKategori = (id: string) => kategoriOpsi.find((x) => x.id === id)?.nama ?? 'tanpa kategori usia';
+  const perBulan = new Map<string, number>();
   for (const k of list) {
     if (k.status !== 'aktif' || typeof k.bulan_kurikulum !== 'number') continue;
-    perBulan.set(k.bulan_kurikulum, (perBulan.get(k.bulan_kurikulum) ?? 0) + 1);
+    const kunci = `${k.kategori_usia_id ?? ''}|${k.bulan_kurikulum}`;
+    perBulan.set(kunci, (perBulan.get(kunci) ?? 0) + 1);
   }
-  const peringatanBulan = [...perBulan.entries()].filter(([, n]) => n !== 4).sort((a, b) => a[0] - b[0]);
+  const peringatanBulan = [...perBulan.entries()]
+    .map(([kunci, n]) => { const [kat, bl] = kunci.split('|'); return { kat, bulan: Number(bl), n }; })
+    .filter((x) => x.n !== MAKS_URUTAN_BULAN)
+    .sort((x, y) => namaKategori(x.kat).localeCompare(namaKategori(y.kat)) || x.bulan - y.bulan);
 
-  // Posisi kurikulum yang sudah dipakai tema AKTIF lain (materi yang sedang diedit tak
-  // dihitung — ia berhak mempertahankan posisinya sendiri).
-  const terpakai = (bulan: number) => list
-    .filter((k) => k.status === 'aktif' && k.id !== editId && (k.bulan_kurikulum ?? 1) === bulan)
-    .map((k) => k.urutan ?? 0);
-  const urutanBebas = (bulan: number) => {
-    const ada = new Set(terpakai(bulan));
-    let u = 0;
-    while (ada.has(u)) u++;
-    return u;
-  };
-  const terpakaiBulanIni = form ? [...new Set(terpakai(form.bulanKurikulum))].sort((a, b) => a - b) : [];
+  // Posisi kurikulum dihitung PER KATEGORI USIA, bukan global (materi yang sedang diedit
+  // tak dihitung — ia berhak mempertahankan posisinya sendiri).
+  const dipakaiKategori = (kategoriId: string) => list.filter((k) =>
+    k.status === 'aktif' && k.id !== editId && (k.kategori_usia_id ?? '') === kategoriId);
+  const posisiOtomatis = (kategoriId: string) => posisiBerikutnya(dipakaiKategori(kategoriId));
+  const terpakaiBulanIni = form
+    ? [...new Set(dipakaiKategori(form.kategoriUsiaId)
+        .filter((k) => (k.bulan_kurikulum ?? 1) === form.bulanKurikulum)
+        .map((k) => k.urutan ?? 0))].sort((a, b) => a - b)
+    : [];
 
   function bukaTambah() {
     setEditId(null);
-    // Materi baru langsung diberi urutan BEBAS di bulan 1. `KOSONG` memakai urutan 0, dan
-    // dengan posisi kurikulum yang unik (0102) itu akan bentrok begitu bulan 1 slot 0
-    // sudah terisi — admin tak semestinya menabrak galat untuk hal yang bisa ditebak.
-    setForm({ ...structuredClone(KOSONG), urutan: urutanBebas(1) });
+    setAwalKategori('');
+    // Posisi materi baru ditetapkan begitu KATEGORI dipilih — sebelum itu belum ada
+    // kurikulum yang bisa dihitung. Yang disiapkan di sini hanya posisi untuk materi
+    // "tanpa kategori", supaya form tak pernah terbuka di slot yang sudah terisi.
+    const p = posisiOtomatis('');
+    setForm({ ...structuredClone(KOSONG), bulanKurikulum: p.bulan, urutan: p.urutan });
   }
   function bukaEdit(k: KelasBermain) {
     setEditId(k.id);
+    setAwalKategori(k.kategori_usia_id ?? '');
     setForm({
       judul: k.judul,
       sampulUrl: k.sampul_url ?? '',
@@ -251,11 +263,18 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
           <div className={s.row} style={{ gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
             <span className={s.muted} style={{ fontSize: 12 }}>👶 Kategori usia:</span>
             <select className={s.inp} value={form.kategoriUsiaId} onChange={(e) => {
-              const k = kategoriOpsi.find((x) => x.id === e.target.value);
+              const id = e.target.value;
+              const k = kategoriOpsi.find((x) => x.id === id);
+              // Pindah kategori = pindah KURIKULUM, jadi posisinya dihitung ulang di sana.
+              // Kembali ke kategori asal saat MENGEDIT mengembalikan posisi materi itu
+              // sendiri — menggesernya hanya karena dropdown disentuh akan mengacak
+              // penomoran yang sudah benar.
+              const p = editId && id === awalKategori ? null : posisiOtomatis(id);
               setForm({
                 ...form,
-                kategoriUsiaId: e.target.value,
+                kategoriUsiaId: id,
                 ...(k ? { usiaMin: k.usia_min, usiaMax: k.usia_max } : {}),
+                ...(p ? { bulanKurikulum: p.bulan, urutan: p.urutan } : {}),
               });
             }} style={{ flex: 1, minWidth: 200, marginBottom: 0 }}>
               <option value="">— pilih kategori —</option>
@@ -276,28 +295,36 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
 
           {/* KURIKULUM: bulan keberapa tema ini terbuka untuk seorang anak. Ditulis
               eksplisit, bukan diturunkan dari urutan — lihat 0098. */}
-          <div className={s.row} style={{ gap: 6, alignItems: 'center' }}>
-            <span className={s.muted} style={{ fontSize: 12 }}>📚 Kurikulum bulan ke-</span>
-            <input className={s.inp} type="number" min={1} value={form.bulanKurikulum}
-              onChange={(e) => {
-                const bulan = Number(e.target.value);
-                // Saat pindah bulan, urutan otomatis melompat ke slot BEBAS pertama —
-                // posisi kurikulum bersifat unik (0102), dan menabraknya hanya berujung
-                // galat saat menyimpan.
-                setForm({ ...form, bulanKurikulum: bulan, urutan: urutanBebas(bulan) });
-              }} style={{ width: 70, marginBottom: 0 }} />
-            <span className={s.muted} style={{ fontSize: 12 }}>· urutan</span>
-            <input className={s.inp} type="number" min={0} value={form.urutan}
-              onChange={(e) => setForm({ ...form, urutan: Number(e.target.value) })} style={{ width: 70, marginBottom: 0 }} />
+          {/* Posisi kurikulum DIISI OTOMATIS mengikuti kategori usia: bulan 1 minggu 1..4,
+              lalu bulan 2 minggu 1, dst. Tetap bisa digeser manual bila admin memang ingin
+              menaruh tema di slot tertentu — nilainya dijepit 1..4 di server juga. */}
+          <div className={s.row} style={{ gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span className={s.muted} style={{ fontSize: 12 }}>📚 Posisi kurikulum:</span>
+            <b style={{ fontSize: 13 }}>Bulan ke-{form.bulanKurikulum} · Minggu ke-{form.urutan}</b>
+            <button type="button" className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)' }}
+              onClick={() => { const p = posisiOtomatis(form.kategoriUsiaId); setForm({ ...form, bulanKurikulum: p.bulan, urutan: p.urutan }); }}>
+              ↻ Posisi otomatis
+            </button>
             <span className={s.muted} style={{ fontSize: 11 }}>tampil setelah anak masuk bulan itu</span>
+          </div>
+          <div className={s.row} style={{ gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span className={s.muted} style={{ fontSize: 11 }}>geser manual:</span>
+            <input className={s.inp} type="number" min={1} aria-label="Bulan kurikulum" value={form.bulanKurikulum}
+              onChange={(e) => setForm({ ...form, bulanKurikulum: Math.max(1, Math.floor(Number(e.target.value)) || 1) })}
+              style={{ width: 66, marginBottom: 0 }} />
+            <span className={s.muted} style={{ fontSize: 11 }}>bulan · minggu</span>
+            <input className={s.inp} type="number" min={1} max={MAKS_URUTAN_BULAN} aria-label="Minggu ke- (1-4)" value={form.urutan}
+              onChange={(e) => setForm({ ...form, urutan: Math.min(MAKS_URUTAN_BULAN, Math.max(1, Math.floor(Number(e.target.value)) || 1)) })}
+              style={{ width: 66, marginBottom: 0 }} />
+            <span className={s.muted} style={{ fontSize: 11 }}>maksimal {MAKS_URUTAN_BULAN} minggu/bulan</span>
           </div>
           {/* Posisi yang sudah dipakai tema AKTIF lain — ditunjukkan SEBELUM menyimpan,
               supaya admin tak perlu menabrak galat untuk mengetahuinya. */}
           {terpakaiBulanIni.length > 0 && (
             <div className={s.muted} style={{ fontSize: 11 }}>
-              Urutan yang sudah dipakai di bulan {form.bulanKurikulum}: {terpakaiBulanIni.join(', ')}
+              Minggu yang sudah dipakai di {namaKategori(form.kategoriUsiaId)} bulan {form.bulanKurikulum}: {terpakaiBulanIni.join(', ')}
               {terpakaiBulanIni.includes(form.urutan) && (
-                <b style={{ color: '#b3261e' }}> — urutan {form.urutan} bentrok, ganti dulu.</b>
+                <b style={{ color: '#b3261e' }}> — minggu {form.urutan} bentrok, tekan “Posisi otomatis”.</b>
               )}
             </div>
           )}
@@ -400,9 +427,9 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
       {/* "4 tema per bulan" adalah aturan ISI, bukan hukum kode: memaksanya di kode akan
           menyembunyikan tema ke-5 tanpa jejak. Jadi bulan yang tak berisi 4 diperingatkan
           di sini, dan admin yang memutuskan. */}
-      {peringatanBulan.map(([b, n]) => (
-        <div key={b} className={s.muted} style={{ fontSize: 12, color: '#b88600' }}>
-          ⚠️ Bulan {b}: {n} tema aktif (kurikulum dirancang 4 tema/bulan)
+      {peringatanBulan.map((x) => (
+        <div key={`${x.kat}|${x.bulan}`} className={s.muted} style={{ fontSize: 12, color: '#b88600' }}>
+          ⚠️ {namaKategori(x.kat)} · bulan {x.bulan}: {x.n} tema aktif (kurikulum dirancang {MAKS_URUTAN_BULAN} tema/bulan)
         </div>
       ))}
       {tampil.map((k) => (
@@ -410,7 +437,7 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
           <div className={s.row}>
             <span style={{ flex: 1 }}><b>{k.judul}</b> {k.status === 'nonaktif' && <span className={`${s.tag} ${s.tagDraf}`}>nonaktif</span>}
               {k.boleh_trial === false && <span className={`${s.tag} ${s.tagDraf}`} style={{ marginLeft: 4 }}>🔒 non-trial</span>}
-              <br /><small className={s.muted}>👶 {k.usia_min ?? 0}–{k.usia_max ?? 6} th{typeof k.bulan_kurikulum === 'number' ? ` · 📚 bulan ke-${k.bulan_kurikulum}` : ''}</small>
+              <br /><small className={s.muted}>👶 {k.usia_min ?? 0}–{k.usia_max ?? 6} th{typeof k.bulan_kurikulum === 'number' ? ` · 📚 bulan ke-${k.bulan_kurikulum} minggu ke-${k.urutan ?? 1}` : ''}</small>
             </span>
           </div>
           <div className={s.row} style={{ marginTop: 8, flexWrap: 'wrap' }}>

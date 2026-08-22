@@ -2,6 +2,7 @@
 import { updateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import type { KelasBermain } from '@/lib/game/tipe';
+import { MAKS_URUTAN_BULAN } from '@/lib/domain/kurikulum';
 
 export interface BahanInput { nama: string; link: string; produkId: string }
 export interface AktivitasInput {
@@ -57,7 +58,7 @@ async function adminDb() {
 function pesanGalat(e: { code?: string; message?: string }): string {
   const pesan = e?.message ?? 'Gagal menyimpan.';
   if (e?.code === '23505' && /kelas_kurikulum_posisi/.test(pesan)) {
-    return 'Posisi kurikulum itu sudah dipakai tema AKTIF lain. Satu bulan + urutan hanya boleh dimiliki satu tema — ubah urutannya, atau nonaktifkan tema yang menempatinya.';
+    return 'Posisi itu sudah dipakai tema AKTIF lain PADA KATEGORI USIA YANG SAMA (0103). Satu kategori + bulan + minggu hanya boleh dimiliki satu tema — tekan “Posisi otomatis”, atau nonaktifkan tema yang menempatinya.';
   }
   return pesan;
 }
@@ -96,7 +97,10 @@ function row(i: KelasInput) {
 function row098(i: KelasInput) {
   return {
     bulan_kurikulum: Math.max(1, Math.floor(Number(i.bulanKurikulum) || 1)),
-    urutan: Math.max(0, Math.floor(Number(i.urutan) || 0)),
+    // Urutan = MINGGU ke-1..4. Dijepit di server juga, bukan hanya di form: satu bulan
+    // kurikulum berisi empat minggu, dan angka di luarnya akan memunculkan "Minggu ke-7"
+    // di rapor anak — rapor tak boleh menyebut minggu yang tak ada.
+    urutan: Math.min(MAKS_URUTAN_BULAN, Math.max(1, Math.floor(Number(i.urutan) || 1))),
     // 0101 — dipisahkan bersama kolom baru lain supaya bisa dibuang saat retry bila
     // migrasinya belum jalan. '' → null: "belum dipilih" harus jadi ketiadaan, bukan
     // string kosong yang nanti dikira id.

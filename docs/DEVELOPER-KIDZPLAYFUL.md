@@ -767,7 +767,7 @@ Sisi orang tua. **Gerbang "khusus member aktif" sudah DICABUT** (sub-proyek B): 
 >
 > Jalur ke sertifikat & catatan **tidak** bergantung status event: semua sumber blok (`sertifikat`, `catatan_perkembangan`, `hadir_anak_ids`) di-query tanpa filter status, dan pembacaan `event` untuk ortu peserta dijamin policy 0068. Jadi rapor anak tetap utuh walau event diarsipkan.
 
-### 🎓 Kurikulum bulanan, evaluasi & catatan tema (migrasi 0098–0099)
+### 🎓 Kurikulum bulanan, evaluasi & catatan tema (migrasi 0098–0103)
 
 **Masalah yang diselesaikan.** Ide Bermain dulu adalah **kumpulan materi lepas**: semuanya tampil sekaligus, tak berurutan, tak dinilai siapa pun, dan tak meninggalkan jejak di rapor. Orang tua mengerjakan aktivitas di rumah lalu tak punya bukti anaknya berkembang — dan tak punya alasan menunggu bulan depan.
 
@@ -779,6 +779,14 @@ Sisi orang tua. **Gerbang "khusus member aktif" sudah DICABUT** (sub-proyek B): 
 - Akibatnya **daftar tema tak bisa lagi tingkat akun**: `/kelas-saya` dan `/kelas/[id]` diberi `?anak=` + `PemilihAnak` yang **selalu terlihat**, judulnya menyebut nama anak, dan tema terkunci menyebut sebabnya ("terbuka saat langganan Bima masuk bulan ke-4"). Tanpa itu, perbedaan kakak–adik terbaca sebagai kerusakan.
 - **Tema tanpa `bulan_kurikulum` dianggap TERBUKA** (materi lama / migrasi belum jalan). Default yang salah arah di sini akan mengunci konten yang tadinya jalan — dan itu terbaca sebagai fitur dicabut.
 - Mode Anak **tidak** menampilkan judul bulan depan sama sekali: judul-saja adalah bahasa untuk orang tua; bagi anak ia cuma pintu yang tak bisa dibuka.
+
+#### Posisi kurikulum: unik PER KATEGORI USIA (0101–0103)
+
+- Sebuah tema menempati satu slot **Bulan ke-N · Minggu ke-M** (`kelas_bermain.bulan_kurikulum`, `urutan`). `urutan` **adalah minggu**, bernilai **1..4** — `posisiTema()` menurunkan "Minggu ke-M" langsung dari sana, jadi angka di luar 1..4 akan memunculkan "Minggu ke-7" di rapor anak.
+- **Keunikannya dihitung per kategori usia, bukan global.** Bayi dan Prasekolah adalah **kurikulum yang berbeda**: keduanya berhak punya Bulan 1 Minggu 1 sendiri. Indeks `kelas_kurikulum_posisi_kategori` (0103) memakai `coalesce(kategori_usia_id, uuid nol)` supaya materi **tanpa** kategori pun tetap satu kelompok — tanpa `coalesce`, tiap `NULL` dianggap unik dan aturannya bocor untuk mereka. Hanya berlaku pada tema **aktif**, supaya tema lama bisa "diparkir" (nonaktif) dan slotnya dipakai penggantinya.
+- **⚠️ 0102 sempat memasang indeks GLOBAL dan itu keliru** — dua kategori saling merebut slot. 0103 membuang indeks itu, **menomori ulang per kategori** (`bulan = ((n-1)/4)+1`, `urutan = ((n-1)%4)+1`), lalu memasang indeks yang benar. Versi pertama 0102 bahkan **gagal** dengan `Key (bulan_kurikulum, urutan)=(1, 0) is duplicated`, karena semua materi lama memakai nilai bawaan `(1, 0)`: indeks unik tak bisa dipasang sebelum datanya dirapikan.
+- **Form admin mengisi posisinya sendiri.** `posisiBerikutnya()` (murni & diuji) mencari slot bebas pertama dalam kategori itu — 1,2,3,4 lalu **pindah bulan**, tak pernah ada minggu ke-5. Dihitung ulang saat **kategori diganti**; saat mengedit, memilih kembali kategori asal **tidak** menggeser posisi materi itu. Nilainya masih bisa digeser manual, tapi dijepit 1..4 **di server juga** (`kelas-bermain-actions.ts`) — form bukan tempat menegakkan aturan data.
+- Peringatan "bulan ini tak berisi 4 tema" juga dikelompokkan per kategori: "bulan 1 sudah 4 tema" pada Bayi tak berarti apa pun bagi Prasekolah.
 
 #### Evaluasi per aktivitas (0098)
 
