@@ -4,7 +4,13 @@ import { createClient } from '@/lib/supabase/server';
 import type { KelasBermain } from '@/lib/game/tipe';
 
 export interface BahanInput { nama: string; link: string; produkId: string }
-export interface AktivitasInput { judul: string; caraMembuat: string; langkah: string[]; catatanOrtu: string }
+export interface AktivitasInput {
+  judul: string; caraMembuat: string; langkah: string[]; catatanOrtu: string;
+  /** 0098 — kalimat checklist evaluasi (boleh kosong = aktivitas tanpa evaluasi) */
+  evaluasi: string[];
+  /** 0098 — id `paket_aset`; '' = tanpa game (admin boleh tidak memilih) */
+  gamePaketId: string;
+}
 export interface KelasInput {
   judul: string;
   tujuan: string;
@@ -17,8 +23,19 @@ export interface KelasInput {
   aktivitas: AktivitasInput[];
   linkIde: string;
   worksheetUrl: string | null;
+  /** 0098 — tema ini milik bulan ke-N kurikulum */
+  bulanKurikulum: number;
+  /** 0098 — urutan tampil di dalam bulan itu */
+  urutan: number;
 }
 const COLS = 'id,judul,sampul_url,tujuan,fokus_area,peran_ortu,usia_min,usia_max,aktivitas,bahan,link_ide,worksheet_url,status';
+const COLS_098 = `${COLS},bulan_kurikulum,urutan`;
+/** Galat karena kolom 0098 belum ada. `evaluasi`/`game_paket_id` TIDAK ikut: keduanya di
+ *  dalam jsonb `aktivitas`, jadi tak pernah memicu galat kolom. */
+function kolom098Hilang(e: { code?: string; message?: string } | null): boolean {
+  if (!e) return false;
+  return e.code === '42703' || /bulan_kurikulum|urutan/.test(e.message ?? '');
+}
 
 async function adminDb() {
   const s = await createClient();
@@ -47,9 +64,22 @@ function row(i: KelasInput) {
         cara_membuat: a.caraMembuat.trim() || null,
         langkah: a.langkah.filter((l) => l.trim()),
         catatan_ortu: a.catatanOrtu.trim() || null,
+        // Butir kosong dibuang: kalimat kosong akan muncul sebagai checklist tanpa teks
+        // di halaman orang tua.
+        evaluasi: (a.evaluasi ?? []).map((x) => x.trim()).filter(Boolean),
+        // '' → null, supaya "tanpa game" tersimpan sebagai ketiadaan, bukan string kosong
+        // yang nanti dikira id.
+        game_paket_id: a.gamePaketId?.trim() || null,
       })),
     link_ide: i.linkIde.trim() || null,
     worksheet_url: i.worksheetUrl?.trim() || null,
+  };
+}
+/** Kolom 0098 dipisah supaya bisa dibuang saat retry bila migrasinya belum jalan. */
+function row098(i: KelasInput) {
+  return {
+    bulan_kurikulum: Math.max(1, Math.floor(Number(i.bulanKurikulum) || 1)),
+    urutan: Math.max(0, Math.floor(Number(i.urutan) || 0)),
   };
 }
 // buat/update MENGEMBALIKAN {ok,error,kelas} (bukan throw) agar pesan error DB
@@ -58,6 +88,10 @@ export async function buatKelas(i: KelasInput): Promise<{ ok: boolean; error?: s
   try {
     const s = await adminDb();
     if (!i.judul.trim()) return { ok: false, error: 'Judul wajib diisi.' };
+    const coba = await s.from('kelas_bermain').insert({ ...row(i), ...row098(i) }).select(COLS_098).single();
+    if (!coba.error) return { ok: true, kelas: coba.data as unknown as KelasBermain };
+    if (!kolom098Hilang(coba.error)) return { ok: false, error: coba.error.message };
+    // Migrasi 0098 belum jalan → simpan tanpa kolom kurikulum, jangan gagalkan materinya.
     const { data, error } = await s.from('kelas_bermain').insert(row(i)).select(COLS).single();
     if (error) return { ok: false, error: error.message };
     return { ok: true, kelas: data as unknown as KelasBermain };
@@ -68,6 +102,9 @@ export async function buatKelas(i: KelasInput): Promise<{ ok: boolean; error?: s
 export async function updateKelas(id: string, i: KelasInput): Promise<{ ok: boolean; error?: string; kelas?: KelasBermain }> {
   try {
     const s = await adminDb();
+    const coba = await s.from('kelas_bermain').update({ ...row(i), ...row098(i) }).eq('id', id).select(COLS_098).single();
+    if (!coba.error) return { ok: true, kelas: coba.data as unknown as KelasBermain };
+    if (!kolom098Hilang(coba.error)) return { ok: false, error: coba.error.message };
     const { data, error } = await s.from('kelas_bermain').update(row(i)).eq('id', id).select(COLS).single();
     if (error) return { ok: false, error: error.message };
     return { ok: true, kelas: data as unknown as KelasBermain };

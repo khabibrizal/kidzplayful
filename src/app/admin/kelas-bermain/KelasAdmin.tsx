@@ -16,12 +16,19 @@ const KOSONG: KelasInput = {
   usiaMin: 0,
   usiaMax: 6,
   bahan: [{ nama: '', link: '', produkId: '' }],
-  aktivitas: [{ judul: '', caraMembuat: '', langkah: [''], catatanOrtu: '' }],
+  aktivitas: [{ judul: '', caraMembuat: '', langkah: [''], catatanOrtu: '', evaluasi: [], gamePaketId: '' }],
   linkIde: '',
   worksheetUrl: null,
+  bulanKurikulum: 1,
+  urutan: 0,
 };
 
-export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [] }: { awal: KelasBermain[]; produkOpsi?: { id: string; nama: string }[]; areaOpsi?: { key: string; label: string }[] }) {
+export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiGame = [] }: {
+  awal: KelasBermain[];
+  produkOpsi?: { id: string; nama: string }[];
+  areaOpsi?: { key: string; label: string }[];
+  opsiGame?: { id: string; judul: string; area_skill: string; tema: string }[];
+}) {
   const [list, setList] = useState<KelasBermain[]>(awal);
   const [q, setQ] = useState('');
   const [form, setForm] = useState<KelasInput | null>(null);
@@ -34,6 +41,14 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [] }: { a
 
   function flash(msg: string) { setToast(msg); setTimeout(() => setToast(''), 2200); }
   const tampil = list.filter((k) => k.judul.toLowerCase().includes(q.toLowerCase()));
+  // Dihitung dari materi AKTIF saja: materi nonaktif tak tampil ke orang tua, jadi tak
+  // ikut memenuhi kuota 4 tema sebulan.
+  const perBulan = new Map<number, number>();
+  for (const k of list) {
+    if (k.status !== 'aktif' || typeof k.bulan_kurikulum !== 'number') continue;
+    perBulan.set(k.bulan_kurikulum, (perBulan.get(k.bulan_kurikulum) ?? 0) + 1);
+  }
+  const peringatanBulan = [...perBulan.entries()].filter(([, n]) => n !== 4).sort((a, b) => a[0] - b[0]);
 
   function bukaTambah() { setEditId(null); setForm(structuredClone(KOSONG)); }
   function bukaEdit(k: KelasBermain) {
@@ -48,10 +63,17 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [] }: { a
       usiaMax: k.usia_max ?? 6,
       bahan: k.bahan?.length ? k.bahan.map((b) => ({ nama: b.nama, link: b.link ?? '', produkId: b.produk_id ?? '' })) : [{ nama: '', link: '', produkId: '' }],
       aktivitas: k.aktivitas?.length
-        ? k.aktivitas.map((a) => ({ judul: a.judul, caraMembuat: a.cara_membuat ?? '', langkah: a.langkah?.length ? a.langkah : [''], catatanOrtu: a.catatan_ortu ?? '' }))
-        : [{ judul: '', caraMembuat: '', langkah: [''], catatanOrtu: '' }],
+        ? k.aktivitas.map((a) => ({
+          judul: a.judul, caraMembuat: a.cara_membuat ?? '',
+          langkah: a.langkah?.length ? a.langkah : [''], catatanOrtu: a.catatan_ortu ?? '',
+          evaluasi: a.evaluasi ?? [], gamePaketId: a.game_paket_id ?? '',
+        }))
+        : [{ judul: '', caraMembuat: '', langkah: [''], catatanOrtu: '', evaluasi: [], gamePaketId: '' }],
       linkIde: k.link_ide ?? '',
       worksheetUrl: k.worksheet_url,
+      // Materi lama belum punya kolom 0098 → bawaan bulan ke-1, bukan 0 (bulan 0 tak ada).
+      bulanKurikulum: k.bulan_kurikulum ?? 1,
+      urutan: k.urutan ?? 0,
     });
   }
 
@@ -63,11 +85,25 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [] }: { a
   function tambahBahan() { if (form) setForm({ ...form, bahan: [...form.bahan, { nama: '', link: '', produkId: '' }] }); }
   function hapusBahan(i: number) { if (form) setForm({ ...form, bahan: form.bahan.filter((_, j) => j !== i) }); }
 
-  function setAkt(ai: number, patch: Partial<{ judul: string; caraMembuat: string; catatanOrtu: string }>) {
+  function setAkt(ai: number, patch: Partial<{ judul: string; caraMembuat: string; catatanOrtu: string; gamePaketId: string }>) {
     if (!form) return;
     setForm({ ...form, aktivitas: form.aktivitas.map((a, j) => (j === ai ? { ...a, ...patch } : a)) });
   }
-  function tambahAktivitas() { if (form) setForm({ ...form, aktivitas: [...form.aktivitas, { judul: '', caraMembuat: '', langkah: [''], catatanOrtu: '' }] }); }
+  function tambahAktivitas() { if (form) setForm({ ...form, aktivitas: [...form.aktivitas, { judul: '', caraMembuat: '', langkah: [''], catatanOrtu: '', evaluasi: [], gamePaketId: '' }] }); }
+  // Baris evaluasi mengikuti pola `langkah` yang sudah ada di berkas ini — sengaja tidak
+  // membuat pola baru untuk hal yang sama.
+  function setEvaluasi(ai: number, ei: number, val: string) {
+    if (!form) return;
+    setForm({ ...form, aktivitas: form.aktivitas.map((a, j) => (j === ai ? { ...a, evaluasi: a.evaluasi.map((x, k) => (k === ei ? val : x)) } : a)) });
+  }
+  function tambahEvaluasi(ai: number) {
+    if (!form) return;
+    setForm({ ...form, aktivitas: form.aktivitas.map((a, j) => (j === ai ? { ...a, evaluasi: [...a.evaluasi, ''] } : a)) });
+  }
+  function hapusEvaluasi(ai: number, ei: number) {
+    if (!form) return;
+    setForm({ ...form, aktivitas: form.aktivitas.map((a, j) => (j === ai ? { ...a, evaluasi: a.evaluasi.filter((_, k) => k !== ei) } : a)) });
+  }
   function hapusAktivitas(ai: number) { if (form) setForm({ ...form, aktivitas: form.aktivitas.filter((_, j) => j !== ai) }); }
   function setLangkah(ai: number, li: number, val: string) {
     if (!form) return;
@@ -190,6 +226,18 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [] }: { a
             <span className={s.muted} style={{ fontSize: 11 }}>tahun</span>
           </div>
 
+          {/* KURIKULUM: bulan keberapa tema ini terbuka untuk seorang anak. Ditulis
+              eksplisit, bukan diturunkan dari urutan — lihat 0098. */}
+          <div className={s.row} style={{ gap: 6, alignItems: 'center' }}>
+            <span className={s.muted} style={{ fontSize: 12 }}>📚 Kurikulum bulan ke-</span>
+            <input className={s.inp} type="number" min={1} value={form.bulanKurikulum}
+              onChange={(e) => setForm({ ...form, bulanKurikulum: Number(e.target.value) })} style={{ width: 70, marginBottom: 0 }} />
+            <span className={s.muted} style={{ fontSize: 12 }}>· urutan</span>
+            <input className={s.inp} type="number" min={0} value={form.urutan}
+              onChange={(e) => setForm({ ...form, urutan: Number(e.target.value) })} style={{ width: 70, marginBottom: 0 }} />
+            <span className={s.muted} style={{ fontSize: 11 }}>tampil setelah anak masuk bulan itu</span>
+          </div>
+
           {/* FOKUS AREA + PERAN ORTU */}
           <div className={s.muted} style={{ margin: '10px 0 4px', fontSize: 12 }}>🧩 Fokus area perkembangan (bisa pilih lebih dari satu — kelola daftarnya di menu 🧩 Fokus Area):</div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -245,6 +293,28 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [] }: { a
               ))}
               <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => tambahLangkah(ai)}>+ langkah</button>
               <textarea className={s.inp} placeholder="💡 Catatan untuk orang tua (mis. dampingi anak saat menggunting) — tampil di halaman user" rows={2} value={a.catatanOrtu} onChange={(e) => setAkt(ai, { catatanOrtu: e.target.value })} style={{ width: '100%', resize: 'vertical', marginTop: 8 }} />
+
+              {/* BUTIR EVALUASI: kalimat yang nanti dicentang orang tua & masuk rapor. */}
+              <div className={s.muted} style={{ margin: '8px 0 4px', fontWeight: 700 }}>📋 Butir evaluasi</div>
+              {a.evaluasi.map((ev, ei) => (
+                <div key={ei} className={s.row} style={{ marginTop: 4 }}>
+                  <span className={s.muted}>•</span>
+                  <input className={s.inp} value={ev} placeholder="mis. Anak mau memegang manik tanpa dibantu"
+                    onChange={(e) => setEvaluasi(ai, ei, e.target.value)} style={{ flex: 1, marginBottom: 0 }} />
+                  <button className={s.btnSm} style={{ background: '#eee' }} onClick={() => hapusEvaluasi(ai, ei)} title="Hapus butir">✕</button>
+                </div>
+              ))}
+              <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)', marginTop: 6 }} onClick={() => tambahEvaluasi(ai)}>+ butir evaluasi</button>
+
+              {/* GAME: OPSIONAL — pilihan pertama sengaja "tanpa game". */}
+              <div className={s.muted} style={{ margin: '10px 0 4px', fontWeight: 700 }}>🎮 Game untuk aktivitas ini <span style={{ fontWeight: 400 }}>(opsional)</span></div>
+              <select className={s.inp} value={a.gamePaketId} onChange={(e) => setAkt(ai, { gamePaketId: e.target.value })} style={{ width: '100%', marginBottom: 0 }}>
+                <option value="">— tanpa game —</option>
+                {opsiGame.map((g) => <option key={g.id} value={g.id}>{g.tema} · {g.judul} ({g.area_skill})</option>)}
+              </select>
+              {opsiGame.length === 0 && (
+                <div className={s.muted} style={{ fontSize: 11, marginTop: 4 }}>Belum ada game disetujui untuk dipilih.</div>
+              )}
             </div>
           ))}
           <button className={s.btnSm} style={{ background: '#dff5e6', color: '#1c7a43', marginTop: 8 }} onClick={tambahAktivitas}>+ tambah aktivitas</button>
@@ -263,12 +333,20 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [] }: { a
       )}
 
       <div className={s.section}>Daftar ({tampil.length})</div>
+      {/* "4 tema per bulan" adalah aturan ISI, bukan hukum kode: memaksanya di kode akan
+          menyembunyikan tema ke-5 tanpa jejak. Jadi bulan yang tak berisi 4 diperingatkan
+          di sini, dan admin yang memutuskan. */}
+      {peringatanBulan.map(([b, n]) => (
+        <div key={b} className={s.muted} style={{ fontSize: 12, color: '#b88600' }}>
+          ⚠️ Bulan {b}: {n} tema aktif (kurikulum dirancang 4 tema/bulan)
+        </div>
+      ))}
       {tampil.map((k) => (
         <div key={k.id} className={s.card} style={{ opacity: k.status === 'nonaktif' ? 0.55 : 1 }}>
           <div className={s.row}>
             <span style={{ flex: 1 }}><b>{k.judul}</b> {k.status === 'nonaktif' && <span className={`${s.tag} ${s.tagDraf}`}>nonaktif</span>}
               {k.boleh_trial === false && <span className={`${s.tag} ${s.tagDraf}`} style={{ marginLeft: 4 }}>🔒 non-trial</span>}
-              <br /><small className={s.muted}>👶 {k.usia_min ?? 0}–{k.usia_max ?? 6} th</small>
+              <br /><small className={s.muted}>👶 {k.usia_min ?? 0}–{k.usia_max ?? 6} th{typeof k.bulan_kurikulum === 'number' ? ` · 📚 bulan ke-${k.bulan_kurikulum}` : ''}</small>
             </span>
           </div>
           <div className={s.row} style={{ marginTop: 8, flexWrap: 'wrap' }}>
