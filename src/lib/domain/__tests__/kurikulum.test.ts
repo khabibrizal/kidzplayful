@@ -1,6 +1,6 @@
 // src/lib/domain/__tests__/kurikulum.test.ts
 import { describe, it, expect } from 'vitest';
-import { bulanKurikulumAnak, statusTema, kelompokTema, ringkasEvaluasi } from '../kurikulum';
+import { bulanKurikulumAnak, statusTema, kelompokTema, ringkasEvaluasi, susunHasilEvaluasi } from '../kurikulum';
 
 const tema = (bulan: number, judul = `T${bulan}`) => ({ id: judul, judul, bulan_kurikulum: bulan, urutan: 0 });
 
@@ -73,5 +73,41 @@ describe('ringkasEvaluasi', () => {
       { aktivitas: 'A', butir: '2', tercapai: false },
       { aktivitas: 'A', butir: '3', tercapai: false },
     ]).persen).toBe(33);
+  });
+});
+
+describe('susunHasilEvaluasi', () => {
+  const aktivitas = [
+    { judul: 'Meronce', evaluasi: ['Memegang manik', 'Menyelesaikan 5 manik'] },
+    { judul: 'Menjepit', evaluasi: ['Menjepit pompom'] },
+  ];
+
+  it('kalimatnya diambil dari MATERI, klien hanya menyebut indeks yang dicentang', () => {
+    expect(susunHasilEvaluasi(aktivitas, { '0': [1] })).toEqual([
+      { aktivitas: 'Meronce', butir: 'Memegang manik', tercapai: false },
+      { aktivitas: 'Meronce', butir: 'Menyelesaikan 5 manik', tercapai: true },
+      { aktivitas: 'Menjepit', butir: 'Menjepit pompom', tercapai: false },
+    ]);
+  });
+
+  it('indeks yang menunjuk butir tak ada diabaikan, bukan menambah baris karangan', () => {
+    // Materi berubah sejak layar dibuka; klien mengirim indeks 9 yang sudah tak ada.
+    const h = susunHasilEvaluasi(aktivitas, { '0': [9], '7': [0] });
+    expect(h).toHaveLength(3);
+    expect(h.every((x) => !x.tercapai)).toBe(true);
+  });
+
+  it('butir kosong tak pernah jadi baris rapor', () => {
+    expect(susunHasilEvaluasi([{ judul: 'A', evaluasi: ['  ', 'nyata'] }], { '0': [1] }))
+      .toEqual([{ aktivitas: 'A', butir: 'nyata', tercapai: true }]);
+  });
+
+  it('aktivitas tanpa judul diberi nama urut, bukan kosong', () => {
+    expect(susunHasilEvaluasi([{ judul: '', evaluasi: ['x'] }], {})[0].aktivitas).toBe('Aktivitas 1');
+  });
+
+  it('materi tanpa evaluasi menghasilkan daftar kosong (bukan galat)', () => {
+    expect(susunHasilEvaluasi([{ judul: 'A' }], { '0': [0] })).toEqual([]);
+    expect(susunHasilEvaluasi(null, null)).toEqual([]);
   });
 });

@@ -60,6 +60,33 @@ export function kelompokTema<T extends TemaKurikulum>(list: T[], bulanAnak: numb
   };
 }
 
+/** Bentuk aktivitas yang dibutuhkan untuk menyusun hasil evaluasi. */
+export interface AktivitasEvaluasi { judul?: string | null; evaluasi?: string[] | null }
+
+/**
+ * Susun hasil checklist dari materi + daftar indeks yang dicentang klien.
+ *
+ * Kalimat butirnya SELALU datang dari `aktivitas` (sumber server), tak pernah dari klien:
+ * rapor adalah dokumen yang ditunjukkan ke orang lain, jadi isinya harus berasal dari
+ * materi. Indeks yang menunjuk ke butir tak ada diabaikan diam-diam — itu bukan galat
+ * pengguna, melainkan materi yang berubah sejak layar dibuka.
+ */
+export function susunHasilEvaluasi(
+  aktivitas: AktivitasEvaluasi[] | null | undefined,
+  dicentang: Record<string, number[]> | null | undefined,
+): ButirEvaluasi[] {
+  const out: ButirEvaluasi[] = [];
+  (aktivitas ?? []).forEach((a, ai) => {
+    const centang = new Set(dicentang?.[String(ai)] ?? []);
+    (a?.evaluasi ?? []).forEach((butir, bi) => {
+      const teks = (butir ?? '').trim();
+      if (!teks) return;   // butir kosong tak pernah jadi baris rapor
+      out.push({ aktivitas: (a?.judul ?? '').trim() || `Aktivitas ${ai + 1}`, butir: teks, tercapai: centang.has(bi) });
+    });
+  });
+  return out;
+}
+
 export function ringkasEvaluasi(hasil: ButirEvaluasi[] | null | undefined): { total: number; tercapai: number; persen: number } {
   const h = hasil ?? [];
   const tercapai = h.filter((x) => x.tercapai).length;
