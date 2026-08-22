@@ -34,8 +34,10 @@ export async function setPaketAnak(
     // dijalankan, kolomnya tak ada dan aktivasi TIDAK boleh gagal karenanya.
     let bulanLama: number | null = null;
     const coba = await s.from('langganan_anak')
-      .select('aktif_sampai,bulan_kurikulum').eq('anak_id', anakId).maybeSingle();
-    let lama = coba.data as { aktif_sampai?: string | null; bulan_kurikulum?: number | null } | null;
+      .select('aktif_sampai,bulan_kurikulum,kurikulum_mulai').eq('anak_id', anakId).maybeSingle();
+    let lama = coba.data as {
+      aktif_sampai?: string | null; bulan_kurikulum?: number | null; kurikulum_mulai?: string | null;
+    } | null;
     let eBaca = coba.error;
     if (!eBaca) {
       bulanLama = Math.max(0, Math.floor(Number(lama?.bulan_kurikulum) || 0));
@@ -66,15 +68,20 @@ export async function setPaketAnak(
       aktif_sampai: aktifSampai, updated_at: new Date().toISOString(),
     };
     if (bulanLama !== null) baris.bulan_kurikulum = bulanLama + tambah;
+    // Jam kurikulum (0104) dimulai SEKALI, pada aktivasi pertama. Perpanjangan tak boleh
+    // mengulangnya dari awal — kalau diulang, anak yang sudah berjalan 5 bulan terlempar
+    // kembali ke bulan ke-1 setiap kali membayar.
+    if (bulanLama !== null && !lama?.kurikulum_mulai) baris.kurikulum_mulai = hariIni;
 
     const { error } = await s.from('langganan_anak').upsert(baris, { onConflict: 'anak_id' });
     if (error) {
       // Kolom 0098 belum ada → ulangi tanpa penghitung. Aktivasi langganan tak boleh
       // gagal hanya karena fitur kurikulum belum dimigrasikan.
-      if (bulanLama === null || !/bulan_kurikulum/.test(error.message)) {
+      if (bulanLama === null || !/bulan_kurikulum|kurikulum_mulai/.test(error.message)) {
         return { ok: false, error: error.message };
       }
       delete baris.bulan_kurikulum;
+      delete baris.kurikulum_mulai;
       const ulang = await s.from('langganan_anak').upsert(baris, { onConflict: 'anak_id' });
       if (ulang.error) return { ok: false, error: ulang.error.message };
     }

@@ -5,6 +5,8 @@
 // yang ada hanya per anak, supaya tak ada jalan pintas yang menggabungkan kohort.
 import { createClient } from '@/lib/supabase/server';
 import { bulanKurikulumAnak } from '@/lib/domain/kurikulum';
+import { konteksKurikulum, type KonteksKurikulum, type BracketUsia } from '@/lib/domain/siklus-kurikulum';
+import { tanggalWIB } from '@/lib/domain/gamifikasi';
 import type { EvaluasiKurikulum } from '@/lib/game/tipe';
 
 /**
@@ -18,6 +20,48 @@ export async function getBulanKurikulumAnak(anakId: string): Promise<number> {
     .select('bulan_kurikulum').eq('anak_id', anakId).maybeSingle();
   if (error) return bulanKurikulumAnak(0);
   return bulanKurikulumAnak((data?.bulan_kurikulum as number | null) ?? 0);
+}
+
+/**
+ * Konteks kurikulum SEORANG ANAK: siklus berjalan, kategori usia yang dibekukan untuk
+ * siklus itu, dan bulan ke-berapa ia berada di dalam kategori tersebut.
+ *
+ * Semuanya DITURUNKAN dari tiga hal tersimpan — tanggal lahir anak, `kurikulum_mulai`
+ * (0104), dan `bulan_kurikulum` (jumlah bulan yang sudah dibayar) — plus master kategori
+ * usia. Tak ada penghitung yang perlu dinaikkan berkala, jadi tak ada cron yang bisa gagal
+ * diam-diam dan tak ada penulisan saat halaman dirender.
+ *
+ * Semua pembacaan TOLERAN. Kolom `kurikulum_mulai` (0104) dan `bulan_kurikulum` (0098)
+ * dibaca dengan cadangan, dan bila keduanya tak ada, `siklusBerjalan` memakai perilaku lama
+ * (siklus = bulan dibayar) — kurikulum yang gagal dibaca tak boleh MENGUNCI tema yang
+ * tadinya sudah terbuka.
+ */
+export async function getKonteksKurikulumAnak(anakId: string): Promise<KonteksKurikulum> {
+  const s = await createClient();
+  const hariIni = tanggalWIB();
+
+  const [anakQ, katQ] = await Promise.all([
+    s.from('anak').select('tanggal_lahir').eq('id', anakId).maybeSingle(),
+    s.from('kategori_usia').select('id,usia_min,usia_max'),
+  ]);
+  const lahir = (anakQ.data?.tanggal_lahir as string | null) ?? null;
+  const kategori = ((katQ.data ?? []) as unknown as BracketUsia[]);
+
+  // `kurikulum_mulai` belum ada bila 0104 belum dijalankan → ulangi tanpa kolom itu.
+  let mulai: string | null = null;
+  let bulanDibayar = 0;
+  const baru = await s.from('langganan_anak')
+    .select('bulan_kurikulum,kurikulum_mulai').eq('anak_id', anakId).maybeSingle();
+  if (!baru.error) {
+    mulai = (baru.data?.kurikulum_mulai as string | null) ?? null;
+    bulanDibayar = Math.max(0, Math.floor(Number(baru.data?.bulan_kurikulum) || 0));
+  } else {
+    const lama = await s.from('langganan_anak')
+      .select('bulan_kurikulum').eq('anak_id', anakId).maybeSingle();
+    bulanDibayar = lama.error ? 0 : Math.max(0, Math.floor(Number(lama.data?.bulan_kurikulum) || 0));
+  }
+
+  return konteksKurikulum({ lahir, mulai, hariIni, bulanDibayar, kategori });
 }
 
 /** Bulan kurikulum untuk BANYAK anak sekaligus (peta anakId → bulan). */

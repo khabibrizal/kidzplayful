@@ -780,6 +780,28 @@ Sisi orang tua. **Gerbang "khusus member aktif" sudah DICABUT** (sub-proyek B): 
 - **Tema tanpa `bulan_kurikulum` dianggap TERBUKA** (materi lama / migrasi belum jalan). Default yang salah arah di sini akan mengunci konten yang tadinya jalan — dan itu terbaca sebagai fitur dicabut.
 - Mode Anak **tidak** menampilkan judul bulan depan sama sekali: judul-saja adalah bahasa untuk orang tua; bagi anak ia cuma pintu yang tak bisa dibuka.
 
+#### Jam kurikulum: siklus kalender, kategori beku, nomor bulan per kategori (0104)
+
+**Tiga kekeliruan yang diperbaiki**, semuanya ditemukan saat memeriksa skenario "anak join 3th11bl lalu ulang tahun di tengah siklus":
+
+| Dulu | Sekarang |
+|---|---|
+| Nomor bulan = `langganan_anak.bulan_kurikulum` = **jumlah bulan dibayar**. Bayar 12 bulan → `+12` seketika → 48 tema terbuka sehari | Nomor bulan = **siklus kalender**, dibatasi bulan yang dibayar: `min(bulan kalender lewat + 1, bulan dibayar)` |
+| Umur dihitung ulang **setiap render** → ulang tahun di tengah bulan langsung mengganti daftar tema | Umur dihitung pada **AWAL siklus berjalan** → daftar tema beku sepanjang siklus |
+| Satu penghitung bulan per anak, **bukan per kategori** → naik ke kategori berikutnya membuka semua bulan ≤ penghitung sekaligus | Nomor bulan dihitung **per kategori**; kategori baru dimulai dari **bulan ke-1** |
+
+**Semuanya DITURUNKAN, tak ada penghitung berkala.** Yang tersimpan hanya `langganan_anak.kurikulum_mulai` (0104, tanggal WIB siklus pertama, diisi sekali di `setPaketAnak`) dan `bulan_kurikulum` (kini berarti **batas bulan yang sudah dibayar**, bukan nomor bulan yang tampil). Dari keduanya `domain/siklus-kurikulum.ts` menghitung siklus, kategori beku, dan bulan-dalam-kategori. Tak ada cron yang bisa gagal diam-diam, dan tak ada penulisan saat halaman dirender.
+
+- `siklusBerjalan()` — `min(kalender, dibayar)` **menahan dari dua arah**, dan keduanya perlu: tanpa batas kalender pelanggan tahunan membuka 12 bulan sekaligus; tanpa batas bayar, anak yang berhenti berlangganan tetap naik tiap bulan.
+- `konteksKurikulum()` — menelusuri siklus 1..n dan menghitung umur di **awal tiap siklus**. Karena umur hanya bertambah, siklus dalam satu kategori selalu berurutan, jadi jumlah siklus di sebuah kategori = nomor bulan di kategori itu. Hasilnya juga memberi `maksBulan` per kategori, yang membuat **tema kategori LAMA tetap terbuka selamanya** (keputusan pemilik) tanpa menyimpan apa pun.
+- `statusTemaBracket()` — dua jalur, supaya materi lama tak ikut mati: tema **ber-kategori** digerbangi per kategori; tema **tanpa kategori** (sebelum 0101) tetap memakai rentang usianya tapi dicocokkan dengan **umur beku**, dan digerbangi oleh siklus keseluruhan.
+- `tambahBulan()` **menjepit akhir bulan**: 31 Jan + 1 bulan = 28 Feb, bukan 3 Mar. `Date.setUTCMonth` meluber, dan luberan itu menggeser siklus seorang anak maju sehari tiap beberapa bulan tanpa pernah dikoreksi.
+- Rentang kategori **bertumpuk** (data live: 1–3 th dan 3–6 th sama-sama memuat usia 3) diselesaikan dengan memilih yang **paling sempit**, seri dipecah `usia_min` lalu `id` — deterministik, tak berubah hanya karena urutan baris dari basis data berubah.
+
+> **⚠️ Cadangan pra-migrasi yang SENGAJA tidak netral:** bila `kurikulum_mulai` belum ada (0104 belum jalan), `siklusBerjalan` memakai **perilaku lama** (siklus = bulan dibayar), BUKAN siklus 1. Memilih 1 akan mengunci tema bulan ke-2+ untuk anak yang tadinya sudah membukanya — dan konten yang mendadak terkunci terbaca sebagai fitur dicabut, bukan sebagai migrasi yang belum dijalankan. Ada tesnya.
+
+> **Batas yang diketahui:** pembekuan butuh `kurikulum_mulai`, dan itu baru terisi pada aktivasi berbayar pertama. Anak **trial/Basic** tak punya baris `langganan_anak`, jadi bagi mereka umur dihitung dari hari ini — mereka toh selalu di bulan ke-1. Backfill 0104 memakai `updated_at` sebagai perkiraan tanggal mulai, sebab `langganan_anak` tak punya `created_at`.
+
 #### Posisi kurikulum: unik PER KATEGORI USIA (0101–0103)
 
 - Sebuah tema menempati satu slot **Bulan ke-N · Minggu ke-M** (`kelas_bermain.bulan_kurikulum`, `urutan`). `urutan` **adalah minggu**, bernilai **1..4** — `posisiTema()` menurunkan "Minggu ke-M" langsung dari sana, jadi angka di luar 1..4 akan memunculkan "Minggu ke-7" di rapor anak.

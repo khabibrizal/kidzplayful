@@ -10,9 +10,9 @@ import { getStatusWorksheet } from '@/lib/data/worksheet';
 import Terkunci from '@/components/Terkunci';
 import TombolKembali from '@/components/TombolKembali';
 import { getLabelFokusArea } from '@/lib/data/fokus-area';
-import { getBulanKurikulumAnak, getEvaluasiTema } from '@/lib/data/kurikulum';
-import { statusTema, cocokUsia } from '@/lib/domain/kurikulum';
-import { umurTahun } from '@/lib/domain/anak';
+import { getKonteksKurikulumAnak, getEvaluasiTema } from '@/lib/data/kurikulum';
+import { cocokUsia } from '@/lib/domain/kurikulum';
+import { statusTemaBracket } from '@/lib/domain/siklus-kurikulum';
 import PemilihAnak from '@/components/PemilihAnak';
 
 const COLS = 'id,judul,sampul_url,tujuan,fokus_area,peran_ortu,usia_min,usia_max,aktivitas,bahan,link_ide,worksheet_url,status,boleh_trial';
@@ -49,14 +49,15 @@ export default async function KelasDetailPage(
   // berguna; pemilihnya selalu terlihat sehingga orang tua bisa berpindah.
   const anakSaya = (anakList ?? []) as { id: string; nama: string; tanggal_lahir?: string | null }[];
   const anakDipilih = anakSaya.find((a) => a.id === anakParam) ?? anakSaya[0] ?? null;
-  const bulanAnak = anakDipilih ? await getBulanKurikulumAnak(anakDipilih.id) : 1;
-  const st = statusTema(kelas, bulanAnak);
+  const ktx = anakDipilih ? await getKonteksKurikulumAnak(anakDipilih.id) : null;
+  const bulanAnak = ktx?.bulanDalamBracket ?? 1;
+  const st = ktx ? statusTemaBracket(kelas, ktx) : 'terbuka';
   // Usia: di halaman ini materi TIDAK diblokir — orang tua boleh membukanya sengaja
   // (mis. menyiapkan untuk kakaknya). Yang perlu ada hanyalah peringatan, supaya tak
   // salah kira materi ini memang untuk anak yang sedang dipilih.
-  const umurAnak = anakDipilih?.tanggal_lahir
-    ? umurTahun(new Date(anakDipilih.tanggal_lahir + 'T00:00:00Z'), new Date())
-    : NaN;
+  // Umur BEKU (awal siklus), bukan umur hari ini — supaya peringatannya sejalan dengan
+  // daftar tema di halaman lain, yang juga memakai umur beku.
+  const umurAnak = ktx?.umurBeku ?? NaN;
   const luarUsia = anakDipilih ? !cocokUsia(kelas, umurAnak) : false;
   const evaluasi = anakDipilih ? await getEvaluasiTema(anakDipilih.id, kelas.id, 'ortu') : null;
 

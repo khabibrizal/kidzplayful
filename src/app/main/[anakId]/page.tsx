@@ -10,8 +10,8 @@ import { getLabelFokusArea } from '@/lib/data/fokus-area';
 import { getFavoritIds } from '@/lib/data/favorit';
 import { getGamifikasiAnak } from '@/lib/data/gamifikasi';
 import { getHakAnak } from '@/lib/data/langganan-anak';
-import { getBulanKurikulumAnak, getEvaluasiAnak } from '@/lib/data/kurikulum';
-import { kelompokTema, temaTerkunci, cocokUsia } from '@/lib/domain/kurikulum';
+import { getKonteksKurikulumAnak, getEvaluasiAnak } from '@/lib/data/kurikulum';
+import { kelompokTemaBracket } from '@/lib/domain/siklus-kurikulum';
 import { pathInternal } from '@/lib/nav';
 import { getStatusWorksheet } from '@/lib/data/worksheet';
 import RekamAktivitas from '@/components/RekamAktivitas';
@@ -51,7 +51,11 @@ export default async function MainPage({ params, searchParams }: { params: Promi
   // dibuang. Versi sebelumnya menyaringnya habis, dan akibatnya pemilik melihat 5 tema aktif
   // di admin tapi hanya 4 di halaman pengguna — tak bisa dibedakan dari data hilang. Aturan
   // repo ini pun membatasi konten dengan kunci (🔒), bukan dengan menyembunyikan.
-  const bulanAnak = await getBulanKurikulumAnak(anakId);
+  // Konteks kurikulum: siklus berjalan + kategori usia yang DIBEKUKAN untuk siklus itu
+  // (0104). Umur tidak lagi dihitung dari hari ini — ulang tahun di tengah bulan tak boleh
+  // mengganti daftar tema yang sedang dikerjakan anak.
+  const ktx = await getKonteksKurikulumAnak(anakId);
+  const bulanAnak = ktx.bulanDalamBracket;
   // Checklist milik peran 'ortu' — penilaian guru/psikolog punya barisnya sendiri dan
   // tampil di rapor, bukan di layar anak.
   const evaluasiAnak = await getEvaluasiAnak(anakId);
@@ -59,12 +63,11 @@ export default async function MainPage({ params, searchParams }: { params: Promi
     evaluasiAnak.filter((e) => e.peran === 'ortu')
       .map((e) => [e.kelas_id, { hasil: e.hasil, peran: e.peran, updated_at: e.updated_at }]),
   );
-  // Tema disaring menurut USIA anak (`kelas_bermain.usia_min/max` vs umurnya hari ini).
-  // Rentang usia diisi admin justru supaya materi 5–6 th tak muncul di layar anak 2 th;
-  // menampilkannya hanya membuat anak membuka sesuatu yang belum bisa ia kerjakan.
-  const kelasUsia = kelasList0.filter((k) => cocokUsia(k, umur));
-  const grupTema = kelompokTema(kelasUsia, bulanAnak);
-  const daftarTerkunci = temaTerkunci(kelasUsia, bulanAnak);
+  // Penggerbangan per KATEGORI USIA yang dibekukan: tema kategori berjalan digerbangi per
+  // bulan di dalam kategori itu, tema kategori LAMA yang sudah dilalui tetap terbuka, dan
+  // yang belum waktunya tetap TAMPIL tapi terkunci.
+  const grupTema = kelompokTemaBracket(kelasList0, ktx);
+  const daftarTerkunci = grupTema.terkunci;
   const idTerkunci = daftarTerkunci.map((k) => k.id);
   const kelasTerbuka = [...grupTema.bulanIni, ...grupTema.sudahTerbuka, ...daftarTerkunci];
   // CATATAN: pustaka kosong TIDAK lagi memantulkan ke `/pilih-anak`. Pantulan itu diam-diam

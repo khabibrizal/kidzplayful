@@ -9,9 +9,8 @@ import RekamAktivitas from '@/components/RekamAktivitas';
 import BottomNav from '@/components/BottomNav';
 import PemilihAnak from '@/components/PemilihAnak';
 import { getKelasAktifCached } from '@/lib/data/publik';
-import { getBulanKurikulumAnak } from '@/lib/data/kurikulum';
-import { kelompokTema, temaTerkunci, cocokUsia } from '@/lib/domain/kurikulum';
-import { umurTahun } from '@/lib/domain/anak';
+import { getKonteksKurikulumAnak } from '@/lib/data/kurikulum';
+import { kelompokTemaBracket } from '@/lib/domain/siklus-kurikulum';
 
 const STATUS: Record<string, { teks: string; warna: string; bg: string }> = {
   menunggu: { teks: 'Menunggu verifikasi', warna: '#b88600', bg: '#fff3d6' },
@@ -34,15 +33,14 @@ export default async function KelasSayaPage({ searchParams }: { searchParams: Pr
   // selalu terlihat.
   const anakSaya = (anakList ?? []) as { id: string; nama: string; tanggal_lahir?: string | null }[];
   const anakDipilih = anakSaya.find((a) => a.id === anakParam) ?? anakSaya[0] ?? null;
-  const bulanAnak = anakDipilih ? await getBulanKurikulumAnak(anakDipilih.id) : 1;
-  // Saring menurut usia anak terpilih; selisihnya disebut, tidak disembunyikan diam-diam.
-  const umurAnak = anakDipilih?.tanggal_lahir
-    ? umurTahun(new Date(anakDipilih.tanggal_lahir + 'T00:00:00Z'), new Date())
-    : NaN;
-  const kelasUsia = kelasSemua.filter((k) => cocokUsia(k, umurAnak));
-  const diluarUsia = kelasSemua.length - kelasUsia.length;
-  const grup = kelompokTema(kelasUsia, bulanAnak);
-  const terkunciList = anakDipilih ? temaTerkunci(kelasUsia, bulanAnak) : [];
+  // Konteks kurikulum anak terpilih: kategori usianya DIBEKUKAN per siklus (0104).
+  const ktx = anakDipilih ? await getKonteksKurikulumAnak(anakDipilih.id) : null;
+  const bulanAnak = ktx?.bulanDalamBracket ?? 1;
+  const umurAnak = ktx?.umurBeku ?? NaN;
+  const grup = ktx
+    ? kelompokTemaBracket(kelasSemua, ktx)
+    : { bulanIni: kelasSemua, sudahTerbuka: [], bulanDepan: [], terkunci: [] };
+  const terkunciList = grup.terkunci;
   const tautan = (id: string) => (anakDipilih ? `/kelas/${id}?anak=${anakDipilih.id}` : `/kelas/${id}`);
 
   return (
@@ -56,10 +54,13 @@ export default async function KelasSayaPage({ searchParams }: { searchParams: Pr
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '0 0 8px' }}>
             📚 KURIKULUM {anakDipilih ? anakDipilih.nama.toUpperCase() : ''} · BULAN KE-{bulanAnak}
           </div>
-          {diluarUsia > 0 && (
+          {/* Tak ada lagi tema yang DISEMBUNYIKAN: yang belum waktunya tetap tampil dalam
+              keadaan terkunci di bagian bawah. Yang perlu dijelaskan hanyalah acuan usianya
+              — umur pada AWAL siklus, bukan umur hari ini. */}
+          {terkunciList.length > 0 && (
             <div style={{ fontSize: 12, color: 'var(--abu)', margin: '-4px 0 8px' }}>
-              {diluarUsia} tema disembunyikan karena di luar rentang usia {anakDipilih?.nama ?? 'anak'}
-              {Number.isFinite(umurAnak) ? ` (${umurAnak} th)` : ''}.
+              {terkunciList.length} tema masih terkunci untuk {anakDipilih?.nama ?? 'anak'}
+              {Number.isFinite(umurAnak) ? ` — usia ${umurAnak} th pada awal siklus ini` : ''}.
             </div>
           )}
 
