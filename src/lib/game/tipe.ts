@@ -161,6 +161,14 @@ export interface AktivitasItem {
   cara_membuat: string | null;
   langkah: string[];          // urutan cara bermain
   catatan_ortu?: string | null; // catatan/tips untuk orang tua
+  /**
+   * 0098 — kalimat checklist evaluasi, diinput admin dan boleh berbeda tiap aktivitas.
+   * Disimpan di jsonb (bukan tabel) karena jumlah butirnya tak seragam. Opsional: materi
+   * lama tak punya field ini, dan UI harus tetap normal tanpanya.
+   */
+  evaluasi?: string[];
+  /** 0098 — game (`paket_aset`) yang admin nilai cocok. null/absen = aktivitas tanpa game. */
+  game_paket_id?: string | null;
 }
 export interface KelasBermain {
   id: string;
@@ -176,8 +184,23 @@ export interface KelasBermain {
   link_ide: string | null;
   worksheet_url: string | null;
   worksheet_terbuka?: boolean;   // 0089 — true = worksheet boleh diunduh semua paket (contoh gratis)
+  bulan_kurikulum?: number;      // 0098 — tema ini milik bulan ke-N kurikulum (absen = dianggap terbuka)
+  urutan?: number;               // 0098 — urutan tampil di dalam bulan itu
   status: 'aktif' | 'nonaktif';
   boleh_trial?: boolean;
+}
+
+/** 0098 — satu butir checklist evaluasi yang TERSIMPAN (snapshot kalimatnya). */
+export interface ButirEvaluasiTersimpan { aktivitas: string; butir: string; tercapai: boolean }
+
+/** 0098 — hasil checklist satu tema untuk satu anak, per PERAN penilai. */
+export interface EvaluasiKurikulum {
+  kelas_id: string;
+  hasil: ButirEvaluasiTersimpan[];
+  catatan: string | null;
+  dinilai_oleh: string | null;
+  peran: 'ortu' | 'guru' | 'psikolog' | 'admin';
+  updated_at: string;
 }
 
 export interface EventKelas {

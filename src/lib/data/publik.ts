@@ -17,6 +17,9 @@ const K = 'id,judul,sampul_url,tujuan,fokus_area,peran_ortu,usia_min,usia_max,ak
 const E_089 = `${E},diskon_paket`;
 const P_089 = `${P},diskon_paket`;
 const K_089 = `${K},worksheet_terbuka`;
+// Kolom migrasi 0098 (kurikulum bulanan). URUTANNYA pun ikut berubah, jadi ini tak cukup
+// ditangani `pilihToleran` yang hanya menukar daftar kolom — lihat `getKelasAktifCached`.
+const K_098 = `${K_089},bulan_kurikulum,urutan`;
 
 /**
  * Coba `select` dengan kolom baru; bila gagal (mis. 42703 karena migrasi 0089 belum
@@ -54,6 +57,13 @@ export const getProdukTampilCached = unstable_cache(
 
 export const getKelasAktifCached = unstable_cache(
   async (): Promise<KelasBermain[]> => {
+    // Urutan kurikulum: bulan lalu urutan di dalam bulan. Bila kolom 0098 belum ada,
+    // `order('bulan_kurikulum')` ikut gagal — bukan hanya `select`-nya — jadi cadangannya
+    // memakai urutan lama (created_at). Tema tanpa `bulan_kurikulum` dianggap TERBUKA oleh
+    // `statusTema`, sehingga katalog tetap utuh sampai migrasinya dijalankan.
+    const baru = await anon.from('kelas_bermain').select(K_098).eq('status', 'aktif')
+      .order('bulan_kurikulum', { ascending: true }).order('urutan', { ascending: true });
+    if (!baru.error) return (baru.data ?? []) as unknown as KelasBermain[];
     return pilihToleran<KelasBermain>(
       (cols) => anon.from('kelas_bermain').select(cols).eq('status', 'aktif').order('created_at', { ascending: false }),
       K_089, K);
