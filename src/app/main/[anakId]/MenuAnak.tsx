@@ -22,7 +22,7 @@ import s from './main.module.css';
 type Layar = 'menu' | 'kelas' | 'kelas-detail' | 'daftar' | 'pustaka' | 'video' | 'main' | 'istirahat';
 
 export default function MenuAnak({
-  anak, pustaka, pinTersimpan, video, paketAwal, kembaliUrl, kelasList, favIds, gamiAwal, batasi = false, labelArea = {}, bolehWorksheet = false, sisaWorksheet, worksheetTanpaBatas,
+  anak, pustaka, pinTersimpan, video, paketAwal, kembaliUrl, kelasList, favIds, gamiAwal, batasi = false, labelArea = {}, bolehWorksheet = false, sisaWorksheet, worksheetTanpaBatas, evaluasiPerKelas = {},
 }: {
   anak: { id: string; nama: string; koin: number; batas_menit: number };
   pustaka: TemaLengkap[]; pinTersimpan: string | null; video: Video[]; paketAwal?: string;
@@ -33,6 +33,12 @@ export default function MenuAnak({
    */
   kembaliUrl?: string | null;
   kelasList: KelasBermain[]; favIds: string[];
+  /**
+   * Hasil checklist evaluasi anak ini per kelas (0098). BUG yang diperbaiki: Mode Anak
+   * dulu merender `KelasIsi` tanpa `anakId` sama sekali, sehingga checklist mati dan
+   * tombol game tak pernah muncul — padahal inilah tempat anak membuka materi.
+   */
+  evaluasiPerKelas?: Record<string, { hasil: { aktivitas: string; butir: string; tercapai: boolean }[]; peran: string; updated_at: string }>;
   gamiAwal: GamifikasiAnak; batasi?: boolean; labelArea?: Record<string, string>;
   sisaWorksheet?: number | null; worksheetTanpaBatas?: boolean;
   /** Worksheet = fasilitas paket berhak; bawaan false agar lupa memasang = mengunci. */
@@ -216,7 +222,12 @@ export default function MenuAnak({
         </div>
         <div style={{ flex: 1, overflow: 'auto', padding: '6px 2px' }}>
           <h2 style={{ marginBottom: 10 }}>{kelas.judul}</h2>
-          <KelasIsi kelas={kelas} labelArea={labelArea} bagikanUrl={`/coba/kelas/${kelas.id}`} bolehWorksheet={bolehWorksheet} sisaWorksheet={sisaWorksheet} worksheetTanpaBatas={worksheetTanpaBatas} />
+          <KelasIsi kelas={kelas} labelArea={labelArea} bagikanUrl={`/coba/kelas/${kelas.id}`} bolehWorksheet={bolehWorksheet} sisaWorksheet={sisaWorksheet} worksheetTanpaBatas={worksheetTanpaBatas}
+            anakId={anak.id} anakNama={anak.nama}
+            evaluasiAwal={evaluasiPerKelas[kelas.id]?.hasil ?? []}
+            evaluasiPeran={evaluasiPerKelas[kelas.id]?.peran ?? null}
+            evaluasiWaktu={evaluasiPerKelas[kelas.id]?.updated_at ?? null}
+            kembaliUrl={`/main/${anak.id}`} />
         </div>
       </div>
     );

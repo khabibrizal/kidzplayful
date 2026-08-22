@@ -10,7 +10,7 @@ import { getLabelFokusArea } from '@/lib/data/fokus-area';
 import { getFavoritIds } from '@/lib/data/favorit';
 import { getGamifikasiAnak } from '@/lib/data/gamifikasi';
 import { getHakAnak } from '@/lib/data/langganan-anak';
-import { getBulanKurikulumAnak } from '@/lib/data/kurikulum';
+import { getBulanKurikulumAnak, getEvaluasiAnak } from '@/lib/data/kurikulum';
 import { kelompokTema } from '@/lib/domain/kurikulum';
 import { pathInternal } from '@/lib/nav';
 import { getStatusWorksheet } from '@/lib/data/worksheet';
@@ -51,6 +51,13 @@ export default async function MainPage({ params, searchParams }: { params: Promi
   // depan tak ditampilkan di sini sama sekali: judul-saja adalah bahasa untuk orang tua,
   // sedangkan bagi anak ia hanya jadi pintu yang tak bisa dibuka.
   const bulanAnak = await getBulanKurikulumAnak(anakId);
+  // Checklist milik peran 'ortu' — penilaian guru/psikolog punya barisnya sendiri dan
+  // tampil di rapor, bukan di layar anak.
+  const evaluasiAnak = await getEvaluasiAnak(anakId);
+  const evaluasiPerKelas = Object.fromEntries(
+    evaluasiAnak.filter((e) => e.peran === 'ortu')
+      .map((e) => [e.kelas_id, { hasil: e.hasil, peran: e.peran, updated_at: e.updated_at }]),
+  );
   const grupTema = kelompokTema(kelasList0, bulanAnak);
   const kelasTerbuka = [...grupTema.bulanIni, ...grupTema.sudahTerbuka];
   // CATATAN: pustaka kosong TIDAK lagi memantulkan ke `/pilih-anak`. Pantulan itu diam-diam
@@ -68,6 +75,7 @@ export default async function MainPage({ params, searchParams }: { params: Promi
       video={video0}
       paketAwal={paketAwal}
       kembaliUrl={kembaliUrl}
+      evaluasiPerKelas={evaluasiPerKelas}
       kelasList={kelasTerbuka}
       favIds={favIds}
       gamiAwal={gami}

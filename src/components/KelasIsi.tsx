@@ -7,7 +7,7 @@ import YoutubeEmbed from './YoutubeEmbed';
 import { youtubeId } from '@/lib/youtube';
 import ShareButton from '@/components/ShareButton';
 import WorksheetBtn from '@/components/WorksheetBtn';
-import EvaluasiTema from '@/components/EvaluasiTema';
+import AktivitasTema from '@/components/AktivitasTema';
 import type { ButirEvaluasi } from '@/lib/domain/kurikulum';
 
 const LABEL_FALLBACK: Record<string, string> = {
@@ -93,44 +93,11 @@ export default function KelasIsi({ kelas, labelArea = {}, bagikan = true, bagika
         </div>
       )}
 
-      {kelas.aktivitas?.map((a, ai) => (
-        <div key={ai} className="kp-card" style={{ marginBottom: 10 }}>
-          <b>🎯 {a.judul || `Aktivitas ${ai + 1}`}</b>
-          {a.cara_membuat && (
-            <>
-              <div style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: 'var(--abu)' }}>🛠️ CARA MEMBUAT</div>
-              <p style={{ marginTop: 4, whiteSpace: 'pre-wrap' }}>{a.cara_membuat}</p>
-            </>
-          )}
-          {a.langkah?.length > 0 && (
-            <>
-              <div style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: 'var(--abu)' }}>🎲 CARA BERMAIN</div>
-              <ol style={{ margin: '4px 0 0 18px', lineHeight: 1.7 }}>
-                {a.langkah.map((l, i) => <li key={i}>{l}</li>)}
-              </ol>
-            </>
-          )}
-          {a.catatan_ortu && (
-            <div style={{ marginTop: 10, background: '#fff3d6', borderRadius: 12, padding: '8px 12px' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#b88600' }}>💡 CATATAN UNTUK ORANG TUA</div>
-              <p style={{ margin: '4px 0 0', fontSize: 14, whiteSpace: 'pre-wrap' }}>{a.catatan_ortu}</p>
-            </div>
-          )}
-          {/* Game pilihan admin untuk aktivitas ini (opsional). Butuh anak: skor game
-              dicatat per anak, jadi tanpa anak terpilih tombolnya tak ditampilkan
-              ketimbang menebak anak siapa yang bermain. */}
-          {a.game_paket_id && anakId && (
-            <a className="kp-btn putih no-print" style={{ display: 'inline-block', marginTop: 10, fontSize: 13 }}
-              href={`/main/${anakId}?paket=${a.game_paket_id}&kembali=${encodeURIComponent(kembaliUrl ?? `/kelas/${kelas.id}?anak=${anakId}`)}`}>
-              🎮 Mainkan game aktivitas ini
-            </a>
-          )}
-        </div>
-      ))}
-
-      {/* Checklist evaluasi seluruh tema — satu tombol simpan, sesuai permintaan pemilik. */}
-      <EvaluasiTema kelasId={kelas.id} aktivitas={kelas.aktivitas ?? []} anakId={anakId} anakNama={anakNama}
-        tersimpan={evaluasiAwal} peranTersimpan={evaluasiPeran} waktuTersimpan={evaluasiWaktu} />
+      {/* Kartu aktivitas + tombol game + checklist evaluasi PER AKTIVITAS, lalu satu
+          tombol simpan di bawah. Rendering-nya di komponen client karena centang seluruh
+          aktivitas berbagi satu state. */}
+      <AktivitasTema kelasId={kelas.id} aktivitas={kelas.aktivitas ?? []} anakId={anakId} anakNama={anakNama}
+        kembaliUrl={kembaliUrl} tersimpan={evaluasiAwal} peranTersimpan={evaluasiPeran} waktuTersimpan={evaluasiWaktu} />
 
       {kelas.link_ide && youtubeId(kelas.link_ide) && (
         <div className="no-print"><YoutubeEmbed id={youtubeId(kelas.link_ide)!} title={kelas.judul} /></div>
