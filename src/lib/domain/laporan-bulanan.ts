@@ -98,6 +98,8 @@ export interface EvaluasiRingkas {
   /** posisi kurikulum; null untuk materi lama yang tak punya bulan */
   bulan?: number | null;
   minggu?: number | null;
+  /** rincian per aktivitas — nama tema saja tak cukup untuk tahu bagian mana yang dikuasai */
+  perAktivitas?: { aktivitas: string; tercapai: number; total: number }[];
 }
 
 export interface RingkasanBulan {

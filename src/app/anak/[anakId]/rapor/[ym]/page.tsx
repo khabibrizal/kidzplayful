@@ -132,6 +132,9 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
         belum: e.hasil.filter((h) => !h.tercapai).map((h) => h.butir),
         bulan: pos?.bulan ?? null,
         minggu: pos?.minggu ?? null,
+        perAktivitas: evaluasiPerAktivitas(e.hasil).map((g) => ({
+          aktivitas: g.aktivitas, tercapai: g.tercapai, total: g.total,
+        })),
       };
     }),
   });
