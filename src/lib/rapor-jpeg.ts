@@ -31,6 +31,8 @@ export interface IsiRapor {
   rekomendasi: number;
   rekomendasiPsikolog: { judul: string | null; isi: string | null; butir: { judul: string | null; isi: string | null }[]; oleh: string | null }[];
   rekomendasiItem: { jenis: 'produk' | 'event' | 'materi'; judul: string | null; catatan: string | null }[];
+  /** 0098 — checklist evaluasi kurikulum yang disimpan pada periode ini */
+  evaluasi: { judulTema: string; tercapai: number; total: number; peran: string; belum: string[] }[];
 }
 
 export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
@@ -106,6 +108,15 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
     ctx.fillText(teks, x, y);
     return y + 70;
   };
+  // Baris RINGKAS untuk daftar kolom kiri: satu halaman A4 harus memuat daftar kegiatan,
+  // catatan guru, konsultasi, DAN evaluasi kurikulum. Dengan ukuran baris biasa, bagian
+  // terakhir selalu kalah — dan yang kalah itu justru isi yang paling dicari orang tua.
+  const barisRingkas = (teks: string, x: number, y: number, lebar: number) => {
+    const { px, baris } = ukuranPas(ctx, teks, lebar, 1, (p) => `500 ${p}px ${fTeks}`, 38, 26);
+    ctx.fillStyle = HITAM; ctx.font = `500 ${px}px ${fTeks}`;
+    for (const b of baris) { ctx.fillText(b, x, y); y += Math.round(px * 1.28); }
+    return y + 4;
+  };
   const barisTeks = (teks: string, x: number, y: number, lebar: number, maksBaris = 2) => {
     const { px, baris } = ukuranPas(ctx, teks, lebar, maksBaris, (p) => `500 ${p}px ${fTeks}`, 44, 32);
     ctx.fillStyle = HITAM; ctx.font = `500 ${px}px ${fTeks}`;
@@ -113,20 +124,45 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
     return y + 6;
   };
 
+  // Ruang untuk EVALUASI KURIKULUM di dasar kolom kiri DICADANGKAN lebih dulu, bukan
+  // disisakan: pelajaran dari blok "Direkomendasikan" yang dulu terpotong habis karena
+  // hanya kebagian sisa. Semua batas kolom kiri memakai `batasKiri`, bukan BATAS_BAWAH.
+  const MAKS_EVAL = 4;
+  const nEval = Math.min(isi.evaluasi?.length ?? 0, MAKS_EVAL);
+  // Ditakar dari RENDER, bukan dikira-kira: +1 baris untuk kemungkinan "…dan N lainnya"
+  // pada daftar di atasnya. Percobaan dengan +3 baris membuat cadangannya kelewat besar —
+  // daftar Ide Bermain tinggal satu item dan baris sisa evaluasi malah tak kebagian tempat.
+  const cadanganEval = nEval > 0
+    ? 76 + nEval * 52 + ((isi.evaluasi?.length ?? 0) > MAKS_EVAL ? 52 : 0) + 52
+    : 0;
+  const batasKiri = BATAS_BAWAH - cadanganEval;
+
   // ——— KOLOM KIRI: daftar pendek ———
   yK = judulBagian('🎈 Ide Bermain di rumah', kiriX, yK);
   if (isi.daftarIdeBermain.length === 0) yK = barisTeks('Belum ada kegiatan tercatat bulan ini.', kiriX, yK, kolomL);
-  else for (const it of isi.daftarIdeBermain.slice(0, 8)) {
-    yK = barisTeks(`• ${it.judul}${it.jumlah > 1 ? ` (${it.jumlah}×)` : ''}`, kiriX, yK, kolomL, 1);
-    if (yK > BATAS_BAWAH - 500) break;
+  else {
+    // Yang tak muat DISEBUT jumlahnya. Pemotongan diam-diam membuat rapor terbaca seolah
+    // itulah seluruh kegiatan anak bulan itu — dan orang tua tak punya cara menyadarinya.
+    let n = 0;
+    for (const it of isi.daftarIdeBermain.slice(0, 8)) {
+      yK = barisRingkas(`• ${it.judul}${it.jumlah > 1 ? ` (${it.jumlah}×)` : ''}`, kiriX, yK, kolomL);
+      n++;
+      if (yK > batasKiri - 420) break;
+    }
+    if (n < isi.daftarIdeBermain.length) yK = barisRingkas(`…dan ${isi.daftarIdeBermain.length - n} lainnya`, kiriX, yK, kolomL);
   }
 
   yK += 26;
   yK = judulBagian('📺 Video yang ditonton', kiriX, yK);
   if (isi.daftarVideo.length === 0) yK = barisTeks('—', kiriX, yK, kolomL);
-  else for (const it of isi.daftarVideo.slice(0, 5)) {
-    yK = barisTeks(`• ${it.judul}${it.jumlah > 1 ? ` (${it.jumlah}×)` : ''}`, kiriX, yK, kolomL, 1);
-    if (yK > BATAS_BAWAH - 300) break;
+  else {
+    let n = 0;
+    for (const it of isi.daftarVideo.slice(0, 5)) {
+      yK = barisRingkas(`• ${it.judul}${it.jumlah > 1 ? ` (${it.jumlah}×)` : ''}`, kiriX, yK, kolomL);
+      n++;
+      if (yK > batasKiri - 250) break;
+    }
+    if (n < isi.daftarVideo.length) yK = barisRingkas(`…dan ${isi.daftarVideo.length - n} lainnya`, kiriX, yK, kolomL);
   }
 
   yK += 26;
@@ -134,12 +170,49 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
   yK = barisTeks(isi.areaTerbanyak ?? 'Belum ada data', kiriX, yK, kolomL, 1);
   yK = barisTeks(`Total ⭐ ${isi.bintang} bintang terkumpul`, kiriX, yK, kolomL, 1);
 
-  yK += 26;
-  yK = judulBagian('🎈 Kelas bermain yang diikuti', kiriX, yK);
-  if (isi.event.length === 0) yK = barisTeks('—', kiriX, yK, kolomL, 1);
-  else for (const e of isi.event.slice(0, 5)) {
-    yK = barisTeks(`• ${e}`, kiriX, yK, kolomL, 1);
-    if (yK > BATAS_BAWAH) break;
+  // Event yang catatan gurunya sudah tercetak di kolom kanan TIDAK diulang di sini —
+  // barisnya persis sama, dan pengulangan itu memakan ruang yang dibutuhkan evaluasi.
+  const eventBelumTertulis = isi.event.filter((e) => !isi.catatanGuru.some((c) => c.judulEvent === e));
+  if (eventBelumTertulis.length > 0) {
+    yK += 26;
+    yK = judulBagian('🎈 Kelas bermain yang diikuti', kiriX, yK);
+    let n = 0;
+    for (const e of eventBelumTertulis.slice(0, 5)) {
+      yK = barisRingkas(`• ${e}`, kiriX, yK, kolomL);
+      n++;
+      if (yK > batasKiri - 104) break;   // sisakan 2 baris ringkas
+    }
+    if (n < eventBelumTertulis.length) yK = barisRingkas(`…dan ${eventBelumTertulis.length - n} lainnya`, kiriX, yK, kolomL);
+  }
+
+  // ——— KOLOM KIRI, penutup: evaluasi kurikulum ———
+  // Perannya IKUT ditulis: "dinilai orang tua" dan "dinilai guru" tak setara sebagai bukti,
+  // dan rapor yang meleburkannya membuat pembaca salah menimbang.
+  if (nEval > 0) {
+    // DIJANGKARKAN ke dasar kolom: blok ini selalu mulai di ruang yang sudah dicadangkan,
+    // apa pun yang terjadi pada daftar di atasnya. Percobaan sebelumnya membiarkannya
+    // melanjutkan dari sisa, dan hasilnya seluruh temanya hilang — hanya menyisakan baris
+    // "…dan 6 tema lain". Jujur, tapi tak berguna.
+    // Mulai di garis cadangan, tapi JANGAN menariknya ke atas bila daftar di atasnya
+    // ternyata lebih panjang — memaksa `yK = batasKiri` membuat tulisannya bertumpuk di
+    // atas bagian "Kelas bermain yang diikuti". Ruangnya dijaga lewat cadangan + baris
+    // ringkas, bukan lewat paksaan.
+    yK = Math.max(yK + 26, batasKiri);
+    yK = judulBagian('📋 Evaluasi kurikulum', kiriX, yK);
+    // Penjaga BERLAPIS: cadangan ruang di atas sudah menyisakan tempat, tapi bila daftar
+    // sebelumnya tetap meluber, baris di sini berhenti sendiri sebelum menabrak footer.
+    let nTulis = 0;
+    for (const e of isi.evaluasi.slice(0, MAKS_EVAL)) {
+      // Berhenti SATU baris lebih awal supaya baris "…dan N tema lain" pasti kebagian
+      // tempat. Tanpa itu, pemotongan kembali jadi senyap — persis yang mau dihindari.
+      if (yK > BATAS_BAWAH - 104) break;
+      const peran = e.peran === 'ortu' ? 'orang tua' : e.peran;
+      yK = barisRingkas(`• ${e.judulTema} — ${e.tercapai}/${e.total} tercapai (${peran})`, kiriX, yK, kolomL);
+      nTulis++;
+    }
+    // Sisa yang tak muat DISEBUT, bukan dihilangkan diam-diam.
+    const sisa = isi.evaluasi.length - nTulis;
+    if (sisa > 0) barisRingkas(`…dan ${sisa} tema lain`, kiriX, yK, kolomL);
   }
 
   // ——— KOLOM KANAN, bagian 1: catatan perkembangan ———

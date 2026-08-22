@@ -99,6 +99,25 @@ describe('ringkasBulan', () => {
     expect(r.rekomendasiItem.map((i) => i.jenis)).toEqual(['produk', 'materi']);
   });
 
+  it('membawa evaluasi kurikulum apa adanya, beserta peran penilainya', () => {
+    const r = ringkasBulan({
+      ...dasar,
+      evaluasi: [{ judulTema: 'Main Air', tercapai: 2, total: 3, peran: 'ortu', dinilaiOleh: 'Bunda', belum: ['Menuang tanpa tumpah'] }],
+    });
+    expect(r.evaluasi[0]).toMatchObject({ judulTema: 'Main Air', tercapai: 2, total: 3, peran: 'ortu' });
+    expect(r.evaluasi[0].belum).toEqual(['Menuang tanpa tumpah']);
+  });
+
+  it('bulan yang HANYA berisi EVALUASI tetap layak dicetak', () => {
+    // Orang tua yang rajin mengisi checklist tapi anaknya tak ikut event mana pun tetap
+    // berhak atas rapor — kalau tidak, kerja mereka seolah tak tercatat.
+    const r = ringkasBulan({
+      kegiatan: [], hasilMain: [], catatan: [], event: [], rekomendasi: 0,
+      evaluasi: [{ judulTema: 'Meronce', tercapai: 1, total: 2, peran: 'ortu', dinilaiOleh: null, belum: ['x'] }],
+    });
+    expect(r.adaIsi).toBe(true);
+  });
+
   it('bulan yang HANYA berisi rekomendasi tetap layak dicetak', () => {
     const r = ringkasBulan({
       kegiatan: [], hasilMain: [], catatan: [], event: [], rekomendasi: 1,

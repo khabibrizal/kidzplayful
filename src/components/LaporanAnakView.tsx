@@ -8,6 +8,8 @@ import { getCatatanAnak } from '@/lib/data/catatan';
 import { getSertifikatAnak } from '@/lib/data/sertifikat';
 import { getGamifikasiAnak } from '@/lib/data/gamifikasi';
 import { getKegiatanAnak } from '@/lib/data/kegiatan';
+import { getEvaluasiAnak } from '@/lib/data/kurikulum';
+import { getKelasAktifCached } from '@/lib/data/publik';
 import { getHakAnak } from '@/lib/data/langganan-anak';
 import { bulanTerakhir, labelBulan } from '@/lib/domain/laporan-bulanan';
 import { getEventIdHadirAnak, getEventInfoBanyak } from '@/lib/data/event';
@@ -26,7 +28,7 @@ function Stat({ b, l }: { b: string; l: string }) {
 export default async function LaporanAnakView({ anakId, tampilkanSertifikat = true }: { anakId: string; tampilkanSertifikat?: boolean }) {
   const supabase = await createClient();
   const { data: anak } = await supabase.from('anak').select('nama').eq('id', anakId).maybeSingle();
-  const [{ data: rows }, catatan, sertifikat, gami, idHadir, kegiatan, hak] = await Promise.all([
+  const [{ data: rows }, catatan, sertifikat, gami, idHadir, kegiatan, hak, evaluasi, kelasSemua] = await Promise.all([
     supabase.from('hasil_main').select('mesin,area_skill,bintang,durasi_detik,selesai').eq('anak_id', anakId),
     getCatatanAnak(anakId),
     getSertifikatAnak(anakId),
@@ -34,7 +36,10 @@ export default async function LaporanAnakView({ anakId, tampilkanSertifikat = tr
     getEventIdHadirAnak(anakId),
     getKegiatanAnak(anakId),
     getHakAnak(anakId),
+    getEvaluasiAnak(anakId),
+    getKelasAktifCached(),
   ]);
+  const judulKelas = new Map(kelasSemua.map((k) => [k.id, k.judul]));
   const r = laporanAnak((rows ?? []) as unknown as BarisHasil[]);
   const maxArea = Math.max(1, ...Object.values(r.perArea));
   const namaAnak = (anak?.nama as string) ?? 'anak';
@@ -164,6 +169,37 @@ export default async function LaporanAnakView({ anakId, tampilkanSertifikat = tr
               </div>
             </details>
           ))}
+        </>
+      )}
+
+      {/* ——— Evaluasi kurikulum (0098) ———
+          Blok TERPISAH dari catatan guru: laporan diri orang tua dan penilaian pendidik
+          tak setara sebagai bukti, jadi tiap baris menyebut penilainya. */}
+      {evaluasi.length > 0 && (
+        <>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '18px 0 8px' }}>📋 EVALUASI KURIKULUM</div>
+          {evaluasi.map((e, i) => {
+            const tercapai = e.hasil.filter((h) => h.tercapai).length;
+            return (
+              <div key={i} className="kp-card" style={{ padding: 12, marginBottom: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <b style={{ fontSize: 14 }}>🎈 {judulKelas.get(e.kelas_id) ?? e.hasil[0]?.aktivitas ?? 'Tema'}</b>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--mint-d)' }}>{tercapai} dari {e.hasil.length} tercapai</span>
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--abu)' }}>
+                  dinilai {e.peran === 'ortu' ? 'orang tua' : e.peran}{e.dinilai_oleh ? ` · ${e.dinilai_oleh}` : ''} · {formatTanggal(e.updated_at.slice(0, 10))}
+                </div>
+                {e.hasil.some((h) => !h.tercapai) && (
+                  <>
+                    <div style={{ fontSize: 12, fontWeight: 700, marginTop: 6 }}>Masih perlu latihan:</div>
+                    <ul style={{ margin: '2px 0 0', paddingLeft: 18, fontSize: 13 }}>
+                      {e.hasil.filter((h) => !h.tercapai).map((h, j) => <li key={j} style={{ margin: '2px 0' }}>{h.butir}</li>)}
+                    </ul>
+                  </>
+                )}
+              </div>
+            );
+          })}
         </>
       )}
 

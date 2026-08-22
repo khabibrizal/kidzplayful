@@ -81,6 +81,22 @@ export interface ItemRingkas {
   oleh: string | null;
 }
 
+/**
+ * Evaluasi kurikulum satu tema pada periode ini (0098).
+ *
+ * `peran` ikut dibawa karena "dinilai orang tua" dan "dinilai guru" TIDAK setara sebagai
+ * bukti — rapor harus menyebutnya, bukan meleburkannya.
+ */
+export interface EvaluasiRingkas {
+  judulTema: string;
+  tercapai: number;
+  total: number;
+  peran: string;
+  dinilaiOleh: string | null;
+  /** butir yang BELUM tercapai — inilah yang berguna untuk langkah berikutnya */
+  belum: string[];
+}
+
 export interface RingkasanBulan {
   totalKegiatan: number;
   ideBermain: number;
@@ -100,6 +116,8 @@ export interface RingkasanBulan {
   rekomendasiPsikolog: RekomendasiRingkas[];
   /** produk / event / ide bermain yang direkomendasikan pada periode ini */
   rekomendasiItem: ItemRingkas[];
+  /** checklist evaluasi kurikulum yang disimpan pada periode ini */
+  evaluasi: EvaluasiRingkas[];
   /** true bila bulan itu punya sesuatu untuk ditampilkan */
   adaIsi: boolean;
 }
@@ -122,6 +140,7 @@ export function ringkasBulan(input: {
   rekomendasi: number;
   rekomendasiPsikolog?: RekomendasiRingkas[];
   rekomendasiItem?: ItemRingkas[];
+  evaluasi?: EvaluasiRingkas[];
 }): RingkasanBulan {
   const keg = input.kegiatan ?? [];
   const ide = keg.filter((k) => k.jenis === 'ide-bermain');
@@ -156,10 +175,11 @@ export function ringkasBulan(input: {
     rekomendasi: Math.max(0, Math.floor(input.rekomendasi || 0)),
     rekomendasiPsikolog: input.rekomendasiPsikolog ?? [],
     rekomendasiItem: input.rekomendasiItem ?? [],
+    evaluasi: input.evaluasi ?? [],
     // Rekomendasi psikolog & item ikut dihitung: bulan tanpa kegiatan mandiri tapi berisi
     // hasil konsultasi TETAP layak dicetak sebagai rapor.
     adaIsi: keg.length > 0 || main.length > 0 || (input.catatan ?? []).length > 0
       || (input.event ?? []).length > 0 || (input.rekomendasiPsikolog ?? []).length > 0
-      || (input.rekomendasiItem ?? []).length > 0,
+      || (input.rekomendasiItem ?? []).length > 0 || (input.evaluasi ?? []).length > 0,
   };
 }

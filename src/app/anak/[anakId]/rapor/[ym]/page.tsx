@@ -9,6 +9,8 @@ import { getKegiatanAnak } from '@/lib/data/kegiatan';
 import { getHakAnak } from '@/lib/data/langganan-anak';
 import { getKonsultasiAnak, getRekomendasiAnak } from '@/lib/data/konsultasi';
 import { getRekomendasiItemAnak } from '@/lib/data/rekomendasi-item';
+import { getEvaluasiAnak } from '@/lib/data/kurikulum';
+import { getKelasAktifCached } from '@/lib/data/publik';
 import { metaSkala } from '@/lib/format';
 import { getCatatanAnak } from '@/lib/data/catatan';
 import { rentangBulan, labelBulan, ringkasBulan, bulanTerakhir } from '@/lib/domain/laporan-bulanan';
@@ -47,7 +49,7 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
   }
 
   const rentang = rentangBulan(ym);
-  const [kegiatan, { data: main }, catatanSemua, konsultasi, rekPsi, rekItem] = await Promise.all([
+  const [kegiatan, { data: main }, catatanSemua, konsultasi, rekPsi, rekItem, evaluasiSemua, kelasSemua] = await Promise.all([
     getKegiatanAnak(anakId, rentang),
     // Kolom waktunya `tanggal` (migrasi 0002), bukan `created_at`/`dibuat_at` — memakai nama
     // yang salah akan gagal SENYAP dan membuat sesi game selalu 0.
@@ -57,6 +59,8 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
     getKonsultasiAnak(anakId),
     getRekomendasiAnak(anakId),
     getRekomendasiItemAnak(anakId),
+    getEvaluasiAnak(anakId),
+    getKelasAktifCached(),
   ]);
 
   // Catatan guru & event pada periode ini. `catatan_perkembangan` tak punya tanggal event,
@@ -72,6 +76,8 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
   // Rekomendasi psikolog & item disaring dengan `created_at` (waktu diberikannya), bukan
   // tanggal sesi: rekomendasi sering ditulis setelah chat selesai.
   const dalamRentang = (iso?: string | null) => !!iso && iso >= rentang.dari && iso < rentang.sampai;
+
+  const judulKelas = new Map(kelasSemua.map((k) => [k.id, k.judul]));
 
   const r = ringkasBulan({
     kegiatan,
@@ -91,6 +97,17 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
     })),
     rekomendasiItem: rekItem.filter((x) => dalamRentang(x.created_at)).map((x) => ({
       jenis: x.jenis, judul: x.judul ?? null, catatan: x.catatan ?? null, oleh: x.pemberi_nama ?? null,
+    })),
+    // Evaluasi kurikulum disaring dengan `updated_at` — waktu orang tua MENYIMPANNYA,
+    // bukan waktu materinya dibuat. Judul temanya diambil dari katalog; bila materinya
+    // sudah dihapus, dipakai judul dari butir tersimpan supaya barisnya tak jadi "—".
+    evaluasi: evaluasiSemua.filter((e) => dalamRentang(e.updated_at)).map((e) => ({
+      judulTema: judulKelas.get(e.kelas_id) ?? e.hasil[0]?.aktivitas ?? 'Tema',
+      tercapai: e.hasil.filter((h) => h.tercapai).length,
+      total: e.hasil.length,
+      peran: e.peran,
+      dinilaiOleh: e.dinilai_oleh ?? null,
+      belum: e.hasil.filter((h) => !h.tercapai).map((h) => h.butir),
     })),
   });
 
@@ -206,6 +223,33 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
             </>
           )}
 
+          {/* Evaluasi kurikulum. Blok TERPISAH dari catatan guru: laporan diri orang tua dan
+              penilaian pendidik tak setara sebagai bukti, jadi rapor menyebut penilainya. */}
+          {r.evaluasi.length > 0 && (
+            <>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '12px 0 6px' }}>📋 EVALUASI KURIKULUM</div>
+              {r.evaluasi.map((e, i) => (
+                <div key={i} className="kp-card" style={{ marginBottom: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <b style={{ fontSize: 14 }}>🎈 {e.judulTema}</b>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--mint-d)' }}>{e.tercapai} dari {e.total} tercapai</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--abu)' }}>
+                    dinilai {e.peran === 'ortu' ? 'orang tua' : e.peran}{e.dinilaiOleh ? ` · ${e.dinilaiOleh}` : ''}
+                  </div>
+                  {e.belum.length > 0 && (
+                    <>
+                      <div style={{ fontSize: 12, fontWeight: 700, marginTop: 6 }}>Masih perlu latihan:</div>
+                      <ul style={{ margin: '2px 0 0', paddingLeft: 18, fontSize: 13 }}>
+                        {e.belum.map((b, j) => <li key={j} style={{ margin: '2px 0' }}>{b}</li>)}
+                      </ul>
+                    </>
+                  )}
+                </div>
+              ))}
+            </>
+          )}
+
           {/* Hasil konsultasi psikolog: rekomendasi naratif + produk/event/ide bermain. */}
           {(r.rekomendasiPsikolog.length > 0 || r.rekomendasiItem.length > 0 || r.rekomendasi > 0) && (
             <>
@@ -252,6 +296,7 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
               daftarIdeBermain: r.daftarIdeBermain, daftarVideo: r.daftarVideo,
               event: r.event, catatanGuru: r.catatanGuru, rekomendasi: r.rekomendasi,
               rekomendasiPsikolog: r.rekomendasiPsikolog, rekomendasiItem: r.rekomendasiItem,
+              evaluasi: r.evaluasi,
             }} />
           </div>
         </>
