@@ -19,7 +19,7 @@ const P_089 = `${P},diskon_paket`;
 const K_089 = `${K},worksheet_terbuka`;
 // Kolom migrasi 0098 (kurikulum bulanan). URUTANNYA pun ikut berubah, jadi ini tak cukup
 // ditangani `pilihToleran` yang hanya menukar daftar kolom — lihat `getKelasAktifCached`.
-const K_098 = `${K_089},bulan_kurikulum,urutan`;
+const K_098 = `${K_089},bulan_kurikulum,urutan,kategori_usia_id`;
 
 /**
  * Coba `select` dengan kolom baru; bila gagal (mis. 42703 karena migrasi 0089 belum

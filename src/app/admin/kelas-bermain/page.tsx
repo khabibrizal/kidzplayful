@@ -3,17 +3,18 @@ import { getKelasSemua } from '@/lib/data/kelas-bermain';
 import { getProdukSemua } from '@/lib/data/admin-store';
 import { getFokusAreaAktif } from '@/lib/data/fokus-area';
 import { getOpsiGame } from '@/lib/data/game-pilihan';
+import { getKategoriUsiaAktif } from '@/lib/data/kategori-usia';
 import KelasAdmin from './KelasAdmin';
 import s from '../admin.module.css';
 
 export default async function AdminKelasBermain() {
-  const [list, produk, area, opsiGame] = await Promise.all([getKelasSemua(), getProdukSemua(), getFokusAreaAktif(), getOpsiGame()]);
+  const [list, produk, area, opsiGame, kategoriOpsi] = await Promise.all([getKelasSemua(), getProdukSemua(), getFokusAreaAktif(), getOpsiGame(), getKategoriUsiaAktif()]);
   const produkOpsi = produk.map((p) => ({ id: p.id, nama: p.nama }));
   const areaOpsi = area.map((a) => ({ key: a.key, label: a.label }));
   return (
     <div>
       <div className={s.head} style={{ marginTop: 8 }}><h1>🎈 Ide Bermain</h1></div>
-      <KelasAdmin awal={list} produkOpsi={produkOpsi} areaOpsi={areaOpsi} opsiGame={opsiGame} />
+      <KelasAdmin awal={list} produkOpsi={produkOpsi} areaOpsi={areaOpsi} opsiGame={opsiGame} kategoriOpsi={kategoriOpsi} />
     </div>
   );
 }

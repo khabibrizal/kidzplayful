@@ -23,18 +23,20 @@ export interface KelasInput {
   aktivitas: AktivitasInput[];
   linkIde: string;
   worksheetUrl: string | null;
+  /** 0101 — kategori usia dari master; usiaMin/usiaMax di-snapshot dari rentangnya */
+  kategoriUsiaId: string;
   /** 0098 — tema ini milik bulan ke-N kurikulum */
   bulanKurikulum: number;
   /** 0098 — urutan tampil di dalam bulan itu */
   urutan: number;
 }
 const COLS = 'id,judul,sampul_url,tujuan,fokus_area,peran_ortu,usia_min,usia_max,aktivitas,bahan,link_ide,worksheet_url,status';
-const COLS_098 = `${COLS},bulan_kurikulum,urutan`;
+const COLS_098 = `${COLS},bulan_kurikulum,urutan,kategori_usia_id`;
 /** Galat karena kolom 0098 belum ada. `evaluasi`/`game_paket_id` TIDAK ikut: keduanya di
  *  dalam jsonb `aktivitas`, jadi tak pernah memicu galat kolom. */
 function kolom098Hilang(e: { code?: string; message?: string } | null): boolean {
   if (!e) return false;
-  return e.code === '42703' || /bulan_kurikulum|urutan/.test(e.message ?? '');
+  return e.code === '42703' || /bulan_kurikulum|urutan|kategori_usia_id/.test(e.message ?? '');
 }
 
 async function adminDb() {
@@ -80,6 +82,10 @@ function row098(i: KelasInput) {
   return {
     bulan_kurikulum: Math.max(1, Math.floor(Number(i.bulanKurikulum) || 1)),
     urutan: Math.max(0, Math.floor(Number(i.urutan) || 0)),
+    // 0101 — dipisahkan bersama kolom baru lain supaya bisa dibuang saat retry bila
+    // migrasinya belum jalan. '' → null: "belum dipilih" harus jadi ketiadaan, bukan
+    // string kosong yang nanti dikira id.
+    kategori_usia_id: i.kategoriUsiaId?.trim() || null,
   };
 }
 // buat/update MENGEMBALIKAN {ok,error,kelas} (bukan throw) agar pesan error DB

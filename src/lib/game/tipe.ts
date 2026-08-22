@@ -184,6 +184,8 @@ export interface KelasBermain {
   link_ide: string | null;
   worksheet_url: string | null;
   worksheet_terbuka?: boolean;   // 0089 — true = worksheet boleh diunduh semua paket (contoh gratis)
+  /** 0101 — kategori usia dari master; `usia_min/max` tetap di-snapshot dari rentangnya */
+  kategori_usia_id?: string | null;
   bulan_kurikulum?: number;      // 0098 — tema ini milik bulan ke-N kurikulum (absen = dianggap terbuka)
   urutan?: number;               // 0098 — urutan tampil di dalam bulan itu
   status: 'aktif' | 'nonaktif';

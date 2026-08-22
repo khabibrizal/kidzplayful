@@ -3,7 +3,7 @@ import type { KelasBermain } from '@/lib/game/tipe';
 const COLS = 'id,judul,sampul_url,tujuan,fokus_area,peran_ortu,usia_min,usia_max,aktivitas,bahan,link_ide,worksheet_url,status,boleh_trial';
 // Kolom 0098 dibaca dengan CADANGAN: halaman admin tak boleh mati bila migrasinya
 // belum dijalankan di lingkungan tertentu.
-const COLS_098 = `${COLS},bulan_kurikulum,urutan`;
+const COLS_098 = `${COLS},bulan_kurikulum,urutan,kategori_usia_id`;
 
 async function ambilKelas(urut: 'kurikulum' | 'baru', hanyaAktif: boolean): Promise<KelasBermain[]> {
   const s = await createClient();

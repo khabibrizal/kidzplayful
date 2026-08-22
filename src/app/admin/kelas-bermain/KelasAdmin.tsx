@@ -13,6 +13,7 @@ const KOSONG: KelasInput = {
   sampulUrl: '',
   fokusArea: [],
   peranOrtu: '',
+  kategoriUsiaId: '',
   usiaMin: 0,
   usiaMax: 6,
   bahan: [{ nama: '', link: '', produkId: '' }],
@@ -23,11 +24,13 @@ const KOSONG: KelasInput = {
   urutan: 0,
 };
 
-export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiGame = [] }: {
+export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiGame = [], kategoriOpsi = [] }: {
   awal: KelasBermain[];
   produkOpsi?: { id: string; nama: string }[];
   areaOpsi?: { key: string; label: string }[];
   opsiGame?: { id: string; judul: string; area_skill: string; tema: string }[];
+  /** master Kategori Usia (0079) — sama dengan yang dipakai form Game */
+  kategoriOpsi?: { id: string; nama: string; usia_min: number; usia_max: number }[];
 }) {
   const [list, setList] = useState<KelasBermain[]>(awal);
   const [q, setQ] = useState('');
@@ -59,6 +62,11 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
       tujuan: k.tujuan ?? '',
       fokusArea: k.fokus_area ?? [],
       peranOrtu: k.peran_ortu ?? '',
+      // Materi lama tanpa `kategori_usia_id` dicocokkan dari rentangnya, sama seperti
+      // form Game (0079) — supaya dropdown tak tampil kosong padahal usianya terisi.
+      kategoriUsiaId: k.kategori_usia_id
+        ?? kategoriOpsi.find((x) => x.usia_min === (k.usia_min ?? -1) && x.usia_max === (k.usia_max ?? -1))?.id
+        ?? '',
       usiaMin: k.usia_min ?? 0,
       usiaMax: k.usia_max ?? 6,
       bahan: k.bahan?.length ? k.bahan.map((b) => ({ nama: b.nama, link: b.link ?? '', produkId: b.produk_id ?? '' })) : [{ nama: '', link: '', produkId: '' }],
@@ -218,13 +226,34 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
 
           {/* TUJUAN + USIA */}
           <textarea className={s.inp} placeholder="🎯 Tujuan ide bermain ini (mis. melatih motorik halus & mengenal warna) — tampil ke orang tua" rows={2} value={form.tujuan} onChange={(e) => setForm({ ...form, tujuan: e.target.value })} style={{ width: '100%', resize: 'vertical' }} />
-          <div className={s.row} style={{ gap: 6, alignItems: 'center' }}>
-            <span className={s.muted} style={{ fontSize: 12 }}>👶 Untuk usia:</span>
-            <input className={s.inp} type="number" min={0} max={12} value={form.usiaMin} onChange={(e) => setForm({ ...form, usiaMin: Number(e.target.value) })} style={{ width: 64, marginBottom: 0 }} />
-            <span className={s.muted}>–</span>
-            <input className={s.inp} type="number" min={0} max={12} value={form.usiaMax} onChange={(e) => setForm({ ...form, usiaMax: Number(e.target.value) })} style={{ width: 64, marginBottom: 0 }} />
-            <span className={s.muted} style={{ fontSize: 11 }}>tahun</span>
+          {/* Usia dipilih lewat KATEGORI dari master (0079/0101), sama seperti form Game.
+              Rentangnya tetap di-snapshot ke `usia_min/max` karena penyaringan usia anak
+              membacanya di banyak tempat. */}
+          <div className={s.row} style={{ gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span className={s.muted} style={{ fontSize: 12 }}>👶 Kategori usia:</span>
+            <select className={s.inp} value={form.kategoriUsiaId} onChange={(e) => {
+              const k = kategoriOpsi.find((x) => x.id === e.target.value);
+              setForm({
+                ...form,
+                kategoriUsiaId: e.target.value,
+                ...(k ? { usiaMin: k.usia_min, usiaMax: k.usia_max } : {}),
+              });
+            }} style={{ flex: 1, minWidth: 200, marginBottom: 0 }}>
+              <option value="">— pilih kategori —</option>
+              {kategoriOpsi.map((k) => <option key={k.id} value={k.id}>{k.nama} ({k.usia_min}–{k.usia_max} th)</option>)}
+            </select>
+            {form.kategoriUsiaId && <span className={s.muted} style={{ fontSize: 11 }}>usia {form.usiaMin}–{form.usiaMax} th</span>}
           </div>
+          {kategoriOpsi.length === 0 && (
+            <div className={s.muted} style={{ fontSize: 11, color: '#b3261e' }}>
+              Belum ada kategori usia — tambah dulu di menu 👶 Kategori Usia.
+            </div>
+          )}
+          {!form.kategoriUsiaId && kategoriOpsi.length > 0 && (
+            <div className={s.muted} style={{ fontSize: 11 }}>
+              Belum dipilih — materi ini memakai rentang lamanya: usia {form.usiaMin}–{form.usiaMax} th.
+            </div>
+          )}
 
           {/* KURIKULUM: bulan keberapa tema ini terbuka untuk seorang anak. Ditulis
               eksplisit, bukan diturunkan dari urutan — lihat 0098. */}
