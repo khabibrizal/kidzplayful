@@ -10,7 +10,7 @@ import FavoritBtn from '@/components/FavoritBtn';
 import KelasIsi from '@/components/KelasIsi';
 import CariPager, { PagerBaris } from '@/components/game/CariPager';
 import { saringPaginasi } from '@/lib/domain/paginasi';
-import { ringkasEvaluasi } from '@/lib/domain/kurikulum';
+import { ringkasEvaluasi, evaluasiPerAktivitas } from '@/lib/domain/kurikulum';
 import Sampul from '@/components/Sampul';
 import { catatRiwayatKelas } from '@/lib/data/riwayat-actions';
 import { catatKegiatan } from '@/lib/data/kegiatan-actions';
@@ -244,6 +244,13 @@ export default function MenuAnak({
               // ikut ditulis supaya penandanya berarti sesuatu, bukan sekadar centang.
               const nilai = evaluasiPerKelas[k.id];
               const rk = nilai ? ringkasEvaluasi(nilai.hasil) : null;
+              // Nama aktivitasnya ikut disebut — "sudah dikerjakan" saja tak memberi tahu
+              // BAGIAN MANA yang sudah. Dibatasi 2 nama + "+N lagi" supaya kartu tak
+              // berubah jadi paragraf; rinciannya tetap lengkap di halaman temanya.
+              const perAkt = nilai ? evaluasiPerAktivitas(nilai.hasil) : [];
+              const ringkasAkt = perAkt.slice(0, 2)
+                .map((g) => `${g.aktivitas} ${g.tercapai}/${g.total}`).join(' · ')
+                + (perAkt.length > 2 ? ` · +${perAkt.length - 2} lagi` : '');
               const kunci = terkunci(k.boleh_trial) || belumWaktunya;
               const buka = () => {
                 if (belumWaktunya) { setPesanKunci(k.judul); return; }
@@ -263,7 +270,12 @@ export default function MenuAnak({
                   <div>
                     {k.judul}
                     {belumWaktunya && <small>terbuka bulan ke-{k.bulan_kurikulum}</small>}
-                    {!belumWaktunya && rk && <small>✅ sudah dikerjakan · {rk.tercapai}/{rk.total} tercapai</small>}
+                    {!belumWaktunya && rk && (
+                      <>
+                        <small>✅ sudah dikerjakan · {rk.tercapai}/{rk.total} tercapai</small>
+                        {perAkt.length > 0 && <small style={{ opacity: 0.85 }}>🎯 {ringkasAkt}</small>}
+                      </>
+                    )}
                   </div>
                   {!kunci && <span style={{ position: 'absolute', top: 6, right: 8 }}><FavoritBtn kelasId={k.id} awal={favIds.includes(k.id)} /></span>}
                 </div>
