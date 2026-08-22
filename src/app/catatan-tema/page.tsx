@@ -17,7 +17,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getKelasAktifCached } from '@/lib/data/publik';
 import { getEvaluasiAnak } from '@/lib/data/kurikulum';
 import { posisiTema, evaluasiPerAktivitas } from '@/lib/domain/kurikulum';
-import { getAnakUntukPenulis, getCatatanTemaAnak, type PeranPenulis } from '@/lib/data/catatan-tema';
+import { getAnakUntukPenulis, getCatatanTemaAnak, getAnakBerevaluasi, type PeranPenulis } from '@/lib/data/catatan-tema';
 import { getRingkasGameAnak } from '@/lib/data/game-hasil';
 import { getLabelFokusArea } from '@/lib/data/fokus-area';
 import { formatTanggal } from '@/lib/format';
@@ -48,9 +48,18 @@ export default async function CatatanTemaPage(
   const { anak: anakParam, kelas: kelasParam } = await searchParams;
   const penulis = await penulisTerjamin();
 
-  const [anakList, kelasSemua, labelArea] = await Promise.all([
+  const [anakSemua, kelasSemua, labelArea] = await Promise.all([
     getAnakUntukPenulis(penulis.peran), getKelasAktifCached(), getLabelFokusArea(),
   ]);
+
+  // Hanya anak yang SUDAH punya evaluasi dari orang tua yang ditampilkan: tanpa evaluasi,
+  // tak ada yang perlu ditanggapi, dan mendaftarkannya hanya membuat penulis membuka satu
+  // per satu untuk menemukan halaman kosong. Diurutkan dari yang PALING BARU diisi —
+  // itulah yang paling mungkin sedang ditunggu tanggapannya.
+  const berevaluasi = await getAnakBerevaluasi(anakSemua.map((a) => a.id));
+  const anakList = anakSemua
+    .filter((a) => berevaluasi[a.id])
+    .sort((x, y) => berevaluasi[y.id].terakhir.localeCompare(berevaluasi[x.id].terakhir));
   const anak = anakList.find((a) => a.id === anakParam) ?? anakList[0] ?? null;
 
   const [evaluasiSemua, catatanAnak] = anak
@@ -100,8 +109,15 @@ export default async function CatatanTemaPage(
 
       {anakList.length === 0 ? (
         <p style={{ color: 'var(--abu)', fontSize: 13 }}>
-          Belum ada anak yang bisa Anda tulisi catatannya.
-          {penulis.peran === 'psikolog' && ' Daftar ini terisi setelah ada sesi konsultasi yang diterima atau selesai.'}
+          {anakSemua.length === 0 ? (
+            <>
+              Belum ada anak yang bisa Anda tulisi catatannya.
+              {penulis.peran === 'psikolog' && ' Daftar ini terisi setelah ada sesi konsultasi yang diterima atau selesai.'}
+            </>
+          ) : (
+            <>Belum ada orang tua yang mengisi evaluasi tema. Halaman ini menampilkan anak yang evaluasinya
+              sudah diisi — sebelum itu, belum ada yang perlu ditanggapi.</>
+          )}
         </p>
       ) : (
         <>
@@ -109,7 +125,9 @@ export default async function CatatanTemaPage(
             <span style={{ fontSize: 12, color: 'var(--abu)' }}>Anak:</span>
             {anakList.slice(0, 30).map((a) => (
               <Link key={a.id} href={`/catatan-tema?anak=${a.id}`} className={a.id === anak?.id ? 'kp-btn mint' : 'kp-btn putih'}
-                style={{ display: 'inline-block', fontSize: 13, padding: '6px 12px' }}>{a.nama}</Link>
+                style={{ display: 'inline-block', fontSize: 13, padding: '6px 12px' }}>
+                {a.nama} <span style={{ opacity: 0.7 }}>({berevaluasi[a.id].jumlah})</span>
+              </Link>
             ))}
           </div>
 

@@ -110,3 +110,32 @@ export async function getAnakUntukPenulis(peran: PeranPenulis): Promise<{ id: st
   }
   return [...map.entries()].map(([id, nama]) => ({ id, nama })).sort((a, b) => a.nama.localeCompare(b.nama));
 }
+
+/**
+ * Anak mana saja (dari daftar yang boleh dilihat penulis) yang **sudah punya evaluasi dari
+ * ORANG TUA**, beserta jumlah dan waktu pengisian terakhirnya.
+ *
+ * Halaman Catatan Tema adalah tempat MENANGGAPI evaluasi orang tua, jadi anak tanpa
+ * evaluasi tak punya apa pun untuk ditanggapi — menampilkannya hanya membuat guru membuka
+ * satu per satu untuk menemukan halaman kosong. Yang tak muncul di sini bukan berarti
+ * anaknya hilang; ia memang belum dinilai orang tuanya.
+ */
+export async function getAnakBerevaluasi(
+  anakIds: string[],
+): Promise<Record<string, { jumlah: number; terakhir: string }>> {
+  const out: Record<string, { jumlah: number; terakhir: string }> = {};
+  const ids = [...new Set(anakIds.filter(Boolean))];
+  if (ids.length === 0) return out;
+  const s = await createClient();
+  const { data, error } = await s.from('evaluasi_kurikulum')
+    .select('anak_id,updated_at').eq('peran', 'ortu').in('anak_id', ids);
+  if (error) return out;   // tabel belum ada (0098) → daftar kosong, bukan galat
+  for (const r of data ?? []) {
+    const id = r.anak_id as string;
+    const waktu = r.updated_at as string;
+    const ada = out[id];
+    if (!ada) out[id] = { jumlah: 1, terakhir: waktu };
+    else { ada.jumlah++; if (waktu > ada.terakhir) ada.terakhir = waktu; }
+  }
+  return out;
+}
