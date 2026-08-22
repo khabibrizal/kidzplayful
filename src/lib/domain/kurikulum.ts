@@ -92,3 +92,43 @@ export function ringkasEvaluasi(hasil: ButirEvaluasi[] | null | undefined): { to
   const tercapai = h.filter((x) => x.tercapai).length;
   return { total: h.length, tercapai, persen: h.length ? Math.round((tercapai / h.length) * 100) : 0 };
 }
+
+/**
+ * Posisi sebuah tema di dalam kurikulum: bulan ke-berapa, minggu ke-berapa.
+ *
+ * MINGGU DITURUNKAN, bukan disimpan: kurikulum dirancang 4 tema per bulan, jadi urutan
+ * tema di dalam bulannya = minggunya. Menyimpannya sebagai kolom tersendiri akan membuat
+ * dua sumber kebenaran yang bisa saling bertentangan (mis. tema minggu ke-5 di bulan
+ * berisi 3 tema). Bila sebuah bulan diisi lebih dari 4 tema, nomornya tetap berlanjut —
+ * itu tanda isinya perlu dirapikan, bukan sesuatu yang perlu disembunyikan kode.
+ */
+export function posisiTema<T extends TemaKurikulum>(
+  semua: T[], kelasId: string,
+): { bulan: number; minggu: number } | null {
+  const tema = (semua ?? []).find((k) => k.id === kelasId);
+  if (!tema) return null;
+  const bulan = Math.floor(Number(tema.bulan_kurikulum) || 0);
+  if (bulan < 1) return null;   // materi lama tanpa bulan → tak punya posisi kurikulum
+  const sebulan = semua
+    .filter((k) => Math.floor(Number(k.bulan_kurikulum) || 0) === bulan)
+    .sort((a, b) => (a.urutan ?? 0) - (b.urutan ?? 0) || a.id.localeCompare(b.id));
+  const i = sebulan.findIndex((k) => k.id === kelasId);
+  return { bulan, minggu: i < 0 ? 1 : i + 1 };
+}
+
+/** Ringkasan hasil evaluasi DIKELOMPOKKAN per aktivitas — bukan hanya per tema. */
+export function evaluasiPerAktivitas(hasil: ButirEvaluasi[] | null | undefined): {
+  aktivitas: string; tercapai: number; total: number; belum: string[];
+}[] {
+  const urutan: string[] = [];
+  const map = new Map<string, { tercapai: number; total: number; belum: string[] }>();
+  for (const b of hasil ?? []) {
+    const nama = (b.aktivitas ?? '').trim() || 'Aktivitas';
+    if (!map.has(nama)) { map.set(nama, { tercapai: 0, total: 0, belum: [] }); urutan.push(nama); }
+    const g = map.get(nama)!;
+    g.total++;
+    if (b.tercapai) g.tercapai++; else g.belum.push(b.butir);
+  }
+  // Urutannya mengikuti urutan butir tersimpan = urutan aktivitas di materi.
+  return urutan.map((nama) => ({ aktivitas: nama, ...map.get(nama)! }));
+}

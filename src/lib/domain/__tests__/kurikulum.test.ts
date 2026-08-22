@@ -1,6 +1,6 @@
 // src/lib/domain/__tests__/kurikulum.test.ts
 import { describe, it, expect } from 'vitest';
-import { bulanKurikulumAnak, statusTema, kelompokTema, ringkasEvaluasi, susunHasilEvaluasi } from '../kurikulum';
+import { bulanKurikulumAnak, statusTema, kelompokTema, ringkasEvaluasi, susunHasilEvaluasi, posisiTema, evaluasiPerAktivitas } from '../kurikulum';
 
 const tema = (bulan: number, judul = `T${bulan}`) => ({ id: judul, judul, bulan_kurikulum: bulan, urutan: 0 });
 
@@ -109,5 +109,53 @@ describe('susunHasilEvaluasi', () => {
   it('materi tanpa evaluasi menghasilkan daftar kosong (bukan galat)', () => {
     expect(susunHasilEvaluasi([{ judul: 'A' }], { '0': [0] })).toEqual([]);
     expect(susunHasilEvaluasi(null, null)).toEqual([]);
+  });
+});
+
+describe('posisiTema', () => {
+  const semua = [
+    { id: 'a', judul: 'A', bulan_kurikulum: 1, urutan: 0 },
+    { id: 'b', judul: 'B', bulan_kurikulum: 1, urutan: 1 },
+    { id: 'c', judul: 'C', bulan_kurikulum: 2, urutan: 0 },
+    { id: 'd', judul: 'D', bulan_kurikulum: 1, urutan: 2 },
+  ];
+
+  it('minggu diturunkan dari urutan DI DALAM bulannya', () => {
+    expect(posisiTema(semua, 'a')).toEqual({ bulan: 1, minggu: 1 });
+    expect(posisiTema(semua, 'b')).toEqual({ bulan: 1, minggu: 2 });
+    expect(posisiTema(semua, 'd')).toEqual({ bulan: 1, minggu: 3 });
+  });
+
+  it('tiap bulan memulai hitungan minggu dari 1 lagi', () => {
+    expect(posisiTema(semua, 'c')).toEqual({ bulan: 2, minggu: 1 });
+  });
+
+  it('materi lama tanpa bulan tak punya posisi kurikulum', () => {
+    expect(posisiTema([{ id: 'x', judul: 'X' }], 'x')).toBeNull();
+    expect(posisiTema(semua, 'tak-ada')).toBeNull();
+  });
+});
+
+describe('evaluasiPerAktivitas', () => {
+  const hasil = [
+    { aktivitas: 'Meronce', butir: 'Memegang manik', tercapai: true },
+    { aktivitas: 'Meronce', butir: 'Menyelesaikan 5 manik', tercapai: false },
+    { aktivitas: 'Menjepit', butir: 'Menjepit pompom', tercapai: true },
+  ];
+
+  it('mengelompokkan per aktivitas beserta butir yang belum tercapai', () => {
+    expect(evaluasiPerAktivitas(hasil)).toEqual([
+      { aktivitas: 'Meronce', tercapai: 1, total: 2, belum: ['Menyelesaikan 5 manik'] },
+      { aktivitas: 'Menjepit', tercapai: 1, total: 1, belum: [] },
+    ]);
+  });
+
+  it('urutannya mengikuti urutan butir tersimpan, bukan abjad', () => {
+    expect(evaluasiPerAktivitas(hasil).map((g) => g.aktivitas)).toEqual(['Meronce', 'Menjepit']);
+  });
+
+  it('kosong / null aman', () => {
+    expect(evaluasiPerAktivitas([])).toEqual([]);
+    expect(evaluasiPerAktivitas(null)).toEqual([]);
   });
 });

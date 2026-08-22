@@ -95,6 +95,9 @@ export interface EvaluasiRingkas {
   dinilaiOleh: string | null;
   /** butir yang BELUM tercapai — inilah yang berguna untuk langkah berikutnya */
   belum: string[];
+  /** posisi kurikulum; null untuk materi lama yang tak punya bulan */
+  bulan?: number | null;
+  minggu?: number | null;
 }
 
 export interface RingkasanBulan {

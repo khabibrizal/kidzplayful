@@ -10,6 +10,7 @@ import { getGamifikasiAnak } from '@/lib/data/gamifikasi';
 import { getKegiatanAnak } from '@/lib/data/kegiatan';
 import { getEvaluasiAnak } from '@/lib/data/kurikulum';
 import { getCatatanTemaAnak } from '@/lib/data/catatan-tema';
+import { posisiTema, evaluasiPerAktivitas } from '@/lib/domain/kurikulum';
 import { getKelasAktifCached } from '@/lib/data/publik';
 import { getHakAnak } from '@/lib/data/langganan-anak';
 import { bulanTerakhir, labelBulan } from '@/lib/domain/laporan-bulanan';
@@ -161,13 +162,17 @@ export default async function LaporanAnakView({ anakId, tampilkanSertifikat = tr
                 <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--abu)' }}>{list.length} kegiatan ▾</span>
               </summary>
               <div style={{ marginTop: 8 }}>
-                {list.slice(0, 40).map((k) => (
-                  <div key={k.id} style={{ fontSize: 13, display: 'flex', justifyContent: 'space-between', gap: 8, margin: '3px 0' }}>
-                    <span>{k.jenis === 'video' ? '📺' : '🎈'} {k.judul ?? 'Tanpa judul'}</span>
-                    <span style={{ color: 'var(--abu)', fontSize: 12 }}>{formatTanggal(k.waktu.slice(0, 10))}</span>
+                {/* SATU baris per materi, bukan per pembukaan. Membuka materi yang sama
+                    enam kali adalah hal wajar (anak mengulang), tapi enam baris identik
+                    membuat rapor terbaca seperti daftar yang rusak. Pengulangannya tetap
+                    disebut sebagai "6×" — datanya tak dibuang, hanya dirapikan. */}
+                {ringkasKegiatan(list).slice(0, 40).map((k) => (
+                  <div key={k.kunci} style={{ fontSize: 13, display: 'flex', justifyContent: 'space-between', gap: 8, margin: '3px 0' }}>
+                    <span>{k.jenis === 'video' ? '📺' : '🎈'} {k.judul}{k.jumlah > 1 ? ` (${k.jumlah}×)` : ''}</span>
+                    <span style={{ color: 'var(--abu)', fontSize: 12 }}>{formatTanggal(k.terakhir.slice(0, 10))}</span>
                   </div>
                 ))}
-                {list.length > 40 && <div style={{ fontSize: 12, color: 'var(--abu)', marginTop: 4 }}>…dan {list.length - 40} kegiatan lain</div>}
+                {ringkasKegiatan(list).length > 40 && <div style={{ fontSize: 12, color: 'var(--abu)', marginTop: 4 }}>…dan {ringkasKegiatan(list).length - 40} materi lain</div>}
               </div>
             </details>
           ))}
@@ -207,6 +212,9 @@ export default async function LaporanAnakView({ anakId, tampilkanSertifikat = tr
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '18px 0 8px' }}>📋 EVALUASI KURIKULUM</div>
           {evaluasi.map((e, i) => {
             const tercapai = e.hasil.filter((h) => h.tercapai).length;
+            // Posisi kurikulum (bulan/minggu) diturunkan dari urutan tema di bulannya.
+            const pos = posisiTema(kelasSemua, e.kelas_id);
+            const perAktivitas = evaluasiPerAktivitas(e.hasil);
             return (
               <div key={i} className="kp-card" style={{ padding: 12, marginBottom: 8 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -214,16 +222,23 @@ export default async function LaporanAnakView({ anakId, tampilkanSertifikat = tr
                   <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--mint-d)' }}>{tercapai} dari {e.hasil.length} tercapai</span>
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--abu)' }}>
+                  {pos && <><b>Bulan ke-{pos.bulan} · Minggu ke-{pos.minggu}</b> · </>}
                   dinilai {e.peran === 'ortu' ? 'orang tua' : e.peran}{e.dinilai_oleh ? ` · ${e.dinilai_oleh}` : ''} · {formatTanggal(e.updated_at.slice(0, 10))}
                 </div>
-                {e.hasil.some((h) => !h.tercapai) && (
-                  <>
-                    <div style={{ fontSize: 12, fontWeight: 700, marginTop: 6 }}>Masih perlu latihan:</div>
-                    <ul style={{ margin: '2px 0 0', paddingLeft: 18, fontSize: 13 }}>
-                      {e.hasil.filter((h) => !h.tercapai).map((h, j) => <li key={j} style={{ margin: '2px 0' }}>{h.butir}</li>)}
-                    </ul>
-                  </>
-                )}
+                {/* Rincian PER AKTIVITAS: nama temanya saja tak cukup — orang tua perlu tahu
+                    aktivitas mana yang sudah dikuasai dan mana yang belum. */}
+                {perAktivitas.map((g, j) => (
+                  <div key={j} style={{ marginTop: 8 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700 }}>
+                      🎯 {g.aktivitas} <span style={{ fontWeight: 400, color: g.belum.length === 0 ? 'var(--mint-d)' : 'var(--abu)' }}>· {g.tercapai}/{g.total} tercapai</span>
+                    </div>
+                    {g.belum.length > 0 && (
+                      <ul style={{ margin: '2px 0 0', paddingLeft: 18, fontSize: 13, color: 'var(--abu)' }}>
+                        {g.belum.map((b, k) => <li key={k} style={{ margin: '2px 0' }}>belum: {b}</li>)}
+                      </ul>
+                    )}
+                  </div>
+                ))}
               </div>
             );
           })}
@@ -283,4 +298,22 @@ export default async function LaporanAnakView({ anakId, tampilkanSertifikat = tr
         ))}
     </>
   );
+}
+
+/**
+ * Gabungkan kegiatan sejenis menjadi satu baris: satu materi = satu baris, dengan jumlah
+ * pengulangan dan waktu TERAKHIR-nya. Dikelompokkan per `ref_id` bila ada — judul bisa
+ * sama untuk materi berbeda, dan judul yang disunting admin tak boleh memecah satu materi
+ * menjadi dua baris.
+ */
+function ringkasKegiatan(list: { id: string; jenis: string; judul: string | null; ref_id?: string | null; waktu: string }[]) {
+  const map = new Map<string, { kunci: string; jenis: string; judul: string; jumlah: number; terakhir: string }>();
+  for (const k of list) {
+    const judul = (k.judul ?? '').trim() || 'Tanpa judul';
+    const kunci = `${k.jenis}:${k.ref_id ?? judul}`;
+    const ada = map.get(kunci);
+    if (!ada) map.set(kunci, { kunci, jenis: k.jenis, judul, jumlah: 1, terakhir: k.waktu });
+    else { ada.jumlah++; if (k.waktu > ada.terakhir) ada.terakhir = k.waktu; }
+  }
+  return [...map.values()].sort((a, b) => b.terakhir.localeCompare(a.terakhir));
 }

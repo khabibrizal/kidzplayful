@@ -15,6 +15,7 @@ import { getKelasAktifCached } from '@/lib/data/publik';
 import { metaSkala } from '@/lib/format';
 import { getCatatanAnak } from '@/lib/data/catatan';
 import { rentangBulan, labelBulan, ringkasBulan, bulanTerakhir } from '@/lib/domain/laporan-bulanan';
+import { posisiTema, evaluasiPerAktivitas } from '@/lib/domain/kurikulum';
 import { getEventInfoBanyak } from '@/lib/data/event';
 import Terkunci from '@/components/Terkunci';
 import UnduhRaporBtn from '@/components/UnduhRaporBtn';
@@ -119,14 +120,20 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
     // Evaluasi kurikulum disaring dengan `updated_at` — waktu orang tua MENYIMPANNYA,
     // bukan waktu materinya dibuat. Judul temanya diambil dari katalog; bila materinya
     // sudah dihapus, dipakai judul dari butir tersimpan supaya barisnya tak jadi "—".
-    evaluasi: evaluasiSemua.filter((e) => dalamRentang(e.updated_at)).map((e) => ({
-      judulTema: judulKelas.get(e.kelas_id) ?? e.hasil[0]?.aktivitas ?? 'Tema',
-      tercapai: e.hasil.filter((h) => h.tercapai).length,
-      total: e.hasil.length,
-      peran: e.peran,
-      dinilaiOleh: e.dinilai_oleh ?? null,
-      belum: e.hasil.filter((h) => !h.tercapai).map((h) => h.butir),
-    })),
+    evaluasi: evaluasiSemua.filter((e) => dalamRentang(e.updated_at)).map((e) => {
+      // Bulan & minggu DITURUNKAN dari urutan tema di bulannya (4 tema/bulan = 1/minggu).
+      const pos = posisiTema(kelasSemua, e.kelas_id);
+      return {
+        judulTema: judulKelas.get(e.kelas_id) ?? e.hasil[0]?.aktivitas ?? 'Tema',
+        tercapai: e.hasil.filter((h) => h.tercapai).length,
+        total: e.hasil.length,
+        peran: e.peran,
+        dinilaiOleh: e.dinilai_oleh ?? null,
+        belum: e.hasil.filter((h) => !h.tercapai).map((h) => h.butir),
+        bulan: pos?.bulan ?? null,
+        minggu: pos?.minggu ?? null,
+      };
+    }),
   });
 
   const namaArea = r.areaTerbanyak ? (LABEL_AREA[r.areaTerbanyak] ?? r.areaTerbanyak) : null;
@@ -269,25 +276,37 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
           {r.evaluasi.length > 0 && (
             <>
               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '12px 0 6px' }}>📋 EVALUASI KURIKULUM</div>
-              {r.evaluasi.map((e, i) => (
-                <div key={i} className="kp-card" style={{ marginBottom: 8 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <b style={{ fontSize: 14 }}>🎈 {e.judulTema}</b>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--mint-d)' }}>{e.tercapai} dari {e.total} tercapai</span>
+              {evaluasiSemua.filter((e) => dalamRentang(e.updated_at)).map((e, i) => {
+                const pos = posisiTema(kelasSemua, e.kelas_id);
+                const perAktivitas = evaluasiPerAktivitas(e.hasil);
+                const tercapai = e.hasil.filter((h) => h.tercapai).length;
+                return (
+                  <div key={i} className="kp-card" style={{ marginBottom: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <b style={{ fontSize: 14 }}>🎈 {judulKelas.get(e.kelas_id) ?? 'Tema'}</b>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--mint-d)' }}>{tercapai} dari {e.hasil.length} tercapai</span>
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--abu)' }}>
+                      {pos && <><b>Bulan ke-{pos.bulan} · Minggu ke-{pos.minggu}</b> · </>}
+                      dinilai {e.peran === 'ortu' ? 'orang tua' : e.peran}{e.dinilai_oleh ? ` · ${e.dinilai_oleh}` : ''}
+                    </div>
+                    {/* Rincian per AKTIVITAS — nama tema saja tak cukup untuk tahu bagian
+                        mana yang sudah dikuasai. */}
+                    {perAktivitas.map((g, j) => (
+                      <div key={j} style={{ marginTop: 8 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700 }}>
+                          🎯 {g.aktivitas} <span style={{ fontWeight: 400, color: g.belum.length === 0 ? 'var(--mint-d)' : 'var(--abu)' }}>· {g.tercapai}/{g.total} tercapai</span>
+                        </div>
+                        {g.belum.length > 0 && (
+                          <ul style={{ margin: '2px 0 0', paddingLeft: 18, fontSize: 13, color: 'var(--abu)' }}>
+                            {g.belum.map((b, k) => <li key={k} style={{ margin: '2px 0' }}>belum: {b}</li>)}
+                          </ul>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--abu)' }}>
-                    dinilai {e.peran === 'ortu' ? 'orang tua' : e.peran}{e.dinilaiOleh ? ` · ${e.dinilaiOleh}` : ''}
-                  </div>
-                  {e.belum.length > 0 && (
-                    <>
-                      <div style={{ fontSize: 12, fontWeight: 700, marginTop: 6 }}>Masih perlu latihan:</div>
-                      <ul style={{ margin: '2px 0 0', paddingLeft: 18, fontSize: 13 }}>
-                        {e.belum.map((b, j) => <li key={j} style={{ margin: '2px 0' }}>{b}</li>)}
-                      </ul>
-                    </>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </>
           )}
 

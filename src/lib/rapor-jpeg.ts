@@ -32,7 +32,7 @@ export interface IsiRapor {
   rekomendasiPsikolog: { judul: string | null; isi: string | null; butir: { judul: string | null; isi: string | null }[]; oleh: string | null }[];
   rekomendasiItem: { jenis: 'produk' | 'event' | 'materi'; judul: string | null; catatan: string | null }[];
   /** 0098 — checklist evaluasi kurikulum yang disimpan pada periode ini */
-  evaluasi: { judulTema: string; tercapai: number; total: number; peran: string; belum: string[] }[];
+  evaluasi: { judulTema: string; tercapai: number; total: number; peran: string; belum: string[]; bulan?: number | null; minggu?: number | null }[];
 }
 
 export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
@@ -207,7 +207,10 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
       // tempat. Tanpa itu, pemotongan kembali jadi senyap — persis yang mau dihindari.
       if (yK > BATAS_BAWAH - 104) break;
       const peran = e.peran === 'ortu' ? 'orang tua' : e.peran;
-      yK = barisRingkas(`• ${e.judulTema} — ${e.tercapai}/${e.total} tercapai (${peran})`, kiriX, yK, kolomL);
+      // Posisi kurikulum ditulis SINGKAT (B2·M3) — barisnya sempit, dan kepanjangan akan
+      // memaksa `ukuranPas` mengecilkan huruf sampai sulit dibaca.
+      const pos = e.bulan ? ` [B${e.bulan}·M${e.minggu ?? 1}]` : '';
+      yK = barisRingkas(`• ${e.judulTema}${pos} — ${e.tercapai}/${e.total} tercapai (${peran})`, kiriX, yK, kolomL);
       nTulis++;
     }
     // Sisa yang tak muat DISEBUT, bukan dihilangkan diam-diam.
