@@ -7,6 +7,10 @@ import { getEventDiikuti } from '@/lib/data/event';
 import { formatTanggal } from '@/lib/format';
 import RekamAktivitas from '@/components/RekamAktivitas';
 import BottomNav from '@/components/BottomNav';
+import PemilihAnak from '@/components/PemilihAnak';
+import { getKelasAktifCached } from '@/lib/data/publik';
+import { getBulanKurikulumAnak } from '@/lib/data/kurikulum';
+import { kelompokTema } from '@/lib/domain/kurikulum';
 
 const STATUS: Record<string, { teks: string; warna: string; bg: string }> = {
   menunggu: { teks: 'Menunggu verifikasi', warna: '#b88600', bg: '#fff3d6' },
@@ -14,16 +18,81 @@ const STATUS: Record<string, { teks: string; warna: string; bg: string }> = {
   ditolak: { teks: 'Ditolak', warna: '#b3261e', bg: '#fde8e6' },
 };
 
-export default async function KelasSayaPage() {
+export default async function KelasSayaPage({ searchParams }: { searchParams: Promise<{ anak?: string }> }) {
+  const { anak: anakParam } = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
-  const [diikuti, riwayat] = await Promise.all([getEventDiikuti(), getRiwayatKelas()]);
+  const [diikuti, riwayat, kelasSemua, { data: anakList }] = await Promise.all([
+    getEventDiikuti(), getRiwayatKelas(), getKelasAktifCached(),
+    supabase.from('anak').select('id,nama').eq('ortu_id', user.id).order('created_at'),
+  ]);
+
+  // Kurikulum berjalan PER ANAK: tema yang terbuka untuk kakak bisa masih terkunci untuk
+  // adik. Tanpa `?anak=`, ambil anak pertama supaya halaman tetap berguna — pemilihnya
+  // selalu terlihat.
+  const anakSaya = (anakList ?? []) as { id: string; nama: string }[];
+  const anakDipilih = anakSaya.find((a) => a.id === anakParam) ?? anakSaya[0] ?? null;
+  const bulanAnak = anakDipilih ? await getBulanKurikulumAnak(anakDipilih.id) : 1;
+  const grup = kelompokTema(kelasSemua, bulanAnak);
+  const tautan = (id: string) => (anakDipilih ? `/kelas/${id}?anak=${anakDipilih.id}` : `/kelas/${id}`);
 
   return (
     <main className="kp-page" style={{ padding: 16, paddingBottom: 90, marginTop: 24 }}>
       <RekamAktivitas fitur="kelas" />
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 24, margin: '6px 0 14px' }}>🎈 Ide Bermain Saya</h1>
+
+      {anakSaya.length > 0 && (
+        <>
+          <PemilihAnak anak={anakSaya} terpilih={anakDipilih?.id ?? null} />
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '0 0 8px' }}>
+            📚 KURIKULUM {anakDipilih ? anakDipilih.nama.toUpperCase() : ''} · BULAN KE-{bulanAnak}
+          </div>
+
+          {grup.bulanIni.length === 0 && grup.sudahTerbuka.length === 0 && (
+            <p style={{ color: 'var(--abu)', fontSize: 13 }}>Belum ada tema untuk bulan ini.</p>
+          )}
+
+          {grup.bulanIni.length > 0 && (
+            <div className="kp-grid-kartu" style={{ marginBottom: 12 }}>{grup.bulanIni.map((k) => (
+              <a key={k.id} href={tautan(k.id)} className="kp-card" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'inherit' }}>
+                <span style={{ fontSize: 20 }}>🎈</span>
+                <span style={{ flex: 1 }}><b>{k.judul}</b><br /><small style={{ color: 'var(--mint-d)' }}>bulan ini</small></span>
+                <span style={{ color: 'var(--abu)' }}>›</span>
+              </a>
+            ))}</div>
+          )}
+
+          {grup.sudahTerbuka.length > 0 && (
+            <details className="kp-card" style={{ marginBottom: 12 }}>
+              <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>
+                📖 Sudah terbuka ({grup.sudahTerbuka.length}) — tetap bisa dibuka kapan saja ▾
+              </summary>
+              <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {grup.sudahTerbuka.map((k) => (
+                  <a key={k.id} href={tautan(k.id)} style={{ textDecoration: 'none', color: 'inherit', fontSize: 14 }}>
+                    🎈 {k.judul}{typeof k.bulan_kurikulum === 'number' && k.bulan_kurikulum > 0 ? ` · bulan ke-${k.bulan_kurikulum}` : ''}
+                  </a>
+                ))}
+              </div>
+            </details>
+          )}
+
+          {/* Bulan depan: JUDUL SAJA. Isinya sengaja tak dimuat — inilah alasan menunggu
+              bulan berikutnya, dan menampilkan 12 bulan sekaligus justru mematikannya. */}
+          {grup.bulanDepan.length > 0 && (
+            <div className="kp-card" style={{ marginBottom: 16, background: '#f7f5fc' }}>
+              <b style={{ fontSize: 13 }}>🔜 Bulan depan (bulan ke-{bulanAnak + 1})</b>
+              <ul style={{ margin: '6px 0 0', paddingLeft: 18, color: 'var(--abu)', fontSize: 14 }}>
+                {grup.bulanDepan.map((k) => <li key={k.id}>{k.judul}</li>)}
+              </ul>
+              <div style={{ fontSize: 12, color: 'var(--abu)', marginTop: 6 }}>
+                Terbuka saat langganan {anakDipilih?.nama ?? 'anak'} masuk bulan ke-{bulanAnak + 1}.
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '0 0 8px' }}>KELAS BERMAIN YANG DIIKUTI</div>
       {diikuti.length === 0 ? (
@@ -48,7 +117,7 @@ export default async function KelasSayaPage() {
       {riwayat.length === 0 ? (
         <p style={{ color: 'var(--abu)', fontSize: 13 }}>Belum ada. Buka materi ide bermain dari Mode Anak, nanti muncul di sini.</p>
       ) : <div className="kp-grid-kartu">{riwayat.map((k) => (
-        <a key={k.id} href={`/kelas/${k.id}`} className="kp-card"
+        <a key={k.id} href={tautan(k.id)} className="kp-card"
           style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'inherit' }}>
           <span style={{ fontSize: 20 }}>🎈</span>
           <span style={{ flex: 1 }}><b>{k.judul}</b>{k.status === 'nonaktif' && <small style={{ color: 'var(--abu)' }}> (tidak aktif)</small>}</span>

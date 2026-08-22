@@ -10,6 +10,8 @@ import { getLabelFokusArea } from '@/lib/data/fokus-area';
 import { getFavoritIds } from '@/lib/data/favorit';
 import { getGamifikasiAnak } from '@/lib/data/gamifikasi';
 import { getHakAnak } from '@/lib/data/langganan-anak';
+import { getBulanKurikulumAnak } from '@/lib/data/kurikulum';
+import { kelompokTema } from '@/lib/domain/kurikulum';
 import { getStatusWorksheet } from '@/lib/data/worksheet';
 import RekamAktivitas from '@/components/RekamAktivitas';
 import MenuAnak from './MenuAnak';
@@ -41,6 +43,12 @@ export default async function MainPage({ params, searchParams }: { params: Promi
   // Basic. `batasi` = anak ini belum punya hak penuh atas game, jadi item yang tak ditandai
   // `boleh_trial` tampil terkunci.
   const batasi = !status.game;
+  // Mode Anak hanya memuat tema yang SUDAH terbuka untuk anak ini (0098). Tema bulan
+  // depan tak ditampilkan di sini sama sekali: judul-saja adalah bahasa untuk orang tua,
+  // sedangkan bagi anak ia hanya jadi pintu yang tak bisa dibuka.
+  const bulanAnak = await getBulanKurikulumAnak(anakId);
+  const grupTema = kelompokTema(kelasList0, bulanAnak);
+  const kelasTerbuka = [...grupTema.bulanIni, ...grupTema.sudahTerbuka];
   // CATATAN: pustaka kosong TIDAK lagi memantulkan ke `/pilih-anak`. Pantulan itu diam-diam
   // (klik kartu anak seolah tak berfungsi) padahal Mode Anak masih berguna tanpa game —
   // masih ada Ide Bermain, Pojok Video, koin & lencana. `MenuAnak` sendiri sudah punya
@@ -55,7 +63,7 @@ export default async function MainPage({ params, searchParams }: { params: Promi
       pinTersimpan={prof?.pin_ortu ?? null}
       video={video0}
       paketAwal={paketAwal}
-      kelasList={kelasList0}
+      kelasList={kelasTerbuka}
       favIds={favIds}
       gamiAwal={gami}
       bolehWorksheet={status.worksheet && wsKuota.boleh}

@@ -7,7 +7,8 @@ import { getVideoByKategori } from '@/lib/data/video';
 import { getHakAnak } from '@/lib/data/langganan-anak';
 import { getStatusWorksheet } from '@/lib/data/worksheet';
 import { getLabelFokusArea } from '@/lib/data/fokus-area';
-import { getEvaluasiAnak } from '@/lib/data/kurikulum';
+import { getEvaluasiAnak, getBulanKurikulumAnak } from '@/lib/data/kurikulum';
+import { kelompokTema } from '@/lib/domain/kurikulum';
 import KelasIsi from '@/components/KelasIsi';
 import Terkunci from '@/components/Terkunci';
 import s from './ortu.module.css';
@@ -20,13 +21,17 @@ export default async function ModeOrtu({ params }: { params: Promise<{ anakId: s
     getKelasAktifCached(), getVideoByKategori('baby'), getHakAnak(anakId), getLabelFokusArea(), getStatusWorksheet(),
     getEvaluasiAnak(anakId),
   ]);
+  const bulanAnak = await getBulanKurikulumAnak(anakId);
   // Checklist milik ANAK ini dan peran 'ortu' — bukan penilaian guru/psikolog, yang punya
   // barisnya sendiri (kunci 0098 = anak+kelas+peran) dan tampil di rapor, bukan di sini.
   const evalOrtu = new Map(evaluasi.filter((e) => e.peran === 'ortu').map((e) => [e.kelas_id, e]));
   // trial: item tetap TAMPIL tapi yang tak ditandai "boleh trial" akan terkunci (🔒)
   // Hak per ANAK (migrasi 0089), bukan per akun.
   const batasi = !status.ideBermain;
-  const kelasList = kelasList0;
+  // Hanya tema yang sudah terbuka untuk ANAK INI (0098). Bulan depan cukup judulnya,
+  // dan itu ditampilkan di bagian tersendiri di bawah.
+  const grup = kelompokTema(kelasList0, bulanAnak);
+  const kelasList = [...grup.bulanIni, ...grup.sudahTerbuka];
   const videoBaby = videoBaby0;
   const terkunci = (b?: boolean) => batasi && b === false;
 
@@ -41,6 +46,7 @@ export default async function ModeOrtu({ params }: { params: Promise<{ anakId: s
         </div>
       </div>
 
+      <div className={s.muted} style={{ fontSize: 12, fontWeight: 700 }}>📚 KURIKULUM {anak.nama.toUpperCase()} · BULAN KE-{bulanAnak}</div>
       {kelasList.length === 0 && <p className={s.muted}>Belum ada ide bermain aktif. Admin dapat menambah di Kelola Ide Bermain.</p>}
 
       {kelasList.map((k) => (
@@ -59,6 +65,18 @@ export default async function ModeOrtu({ params }: { params: Promise<{ anakId: s
         </div>
         )
       ))}
+
+      {grup.bulanDepan.length > 0 && (
+        <div className="kp-card" style={{ marginBottom: 12, background: '#f7f5fc' }}>
+          <b style={{ fontSize: 13 }}>🔜 Bulan depan (bulan ke-{bulanAnak + 1})</b>
+          <ul style={{ margin: '6px 0 0', paddingLeft: 18, color: 'var(--abu)', fontSize: 14 }}>
+            {grup.bulanDepan.map((k) => <li key={k.id}>{k.judul}</li>)}
+          </ul>
+          <div style={{ fontSize: 12, color: 'var(--abu)', marginTop: 6 }}>
+            Terbuka saat langganan {anak.nama} masuk bulan ke-{bulanAnak + 1}.
+          </div>
+        </div>
+      )}
 
       <div className={s.sec}>Video untuk Baby</div>
       {videoBaby.length === 0 && <p className={s.muted}>Belum ada video baby (tambah di Admin → Kelola Video).</p>}
