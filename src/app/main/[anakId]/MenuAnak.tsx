@@ -10,6 +10,7 @@ import FavoritBtn from '@/components/FavoritBtn';
 import KelasIsi from '@/components/KelasIsi';
 import CariPager, { PagerBaris } from '@/components/game/CariPager';
 import { saringPaginasi } from '@/lib/domain/paginasi';
+import { ringkasEvaluasi } from '@/lib/domain/kurikulum';
 import Sampul from '@/components/Sampul';
 import { catatRiwayatKelas } from '@/lib/data/riwayat-actions';
 import { catatKegiatan } from '@/lib/data/kegiatan-actions';
@@ -238,6 +239,11 @@ export default function MenuAnak({
               // Dua sebab terkunci yang BERBEDA, dan pesannya tak boleh tertukar:
               // belum berlangganan (🔒 fasilitas) vs belum waktunya (⏳ bulan berikutnya).
               const belumWaktunya = kelasTerkunci.includes(k.id);
+              // Penanda "sudah dikerjakan": adanya checklist orang tua untuk tema ini
+              // berarti setidaknya satu aktivitasnya sudah dimainkan & dinilai. Angkanya
+              // ikut ditulis supaya penandanya berarti sesuatu, bukan sekadar centang.
+              const nilai = evaluasiPerKelas[k.id];
+              const rk = nilai ? ringkasEvaluasi(nilai.hasil) : null;
               const kunci = terkunci(k.boleh_trial) || belumWaktunya;
               const buka = () => {
                 if (belumWaktunya) { setPesanKunci(k.judul); return; }
@@ -254,7 +260,11 @@ export default function MenuAnak({
                   onKeyDown={(e) => { if (e.key === 'Enter') buka(); }}
                   style={{ position: 'relative', cursor: 'pointer', opacity: kunci ? 0.7 : 1 }}>
                   <span className="emo">{belumWaktunya ? '⏳' : kunci ? '🔒' : '🎈'}</span>
-                  <div>{k.judul}{belumWaktunya && <small>terbuka bulan ke-{k.bulan_kurikulum}</small>}</div>
+                  <div>
+                    {k.judul}
+                    {belumWaktunya && <small>terbuka bulan ke-{k.bulan_kurikulum}</small>}
+                    {!belumWaktunya && rk && <small>✅ sudah dikerjakan · {rk.tercapai}/{rk.total} tercapai</small>}
+                  </div>
                   {!kunci && <span style={{ position: 'absolute', top: 6, right: 8 }}><FavoritBtn kelasId={k.id} awal={favIds.includes(k.id)} /></span>}
                 </div>
               );
