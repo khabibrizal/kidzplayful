@@ -17,6 +17,13 @@ export default async function GuruHome() {
       <p style={{ color: 'var(--abu)', fontSize: 14, margin: '8px 0 16px' }}>
         Hai, {guru.nama || 'Guru'}. Pilih event untuk mengisi <b>Catatan Perkembangan Bermain</b> tiap anak.
       </p>
+      {/* Catatan Tema (0099) — rute BERSAMA admin/guru/psikolog, di luar /admin karena
+          matriks Akses Menu tak punya dimensi psikolog. */}
+      <Link href="/catatan-tema" className="kp-card" style={{ display: 'block', marginBottom: 16, textDecoration: 'none', color: 'inherit' }}>
+        <b>🍎 Catatan Tema</b>
+        <br /><small style={{ color: 'var(--abu)' }}>Tulis catatan perkembangan anak pada tema kurikulum yang dikerjakan di rumah.</small>
+      </Link>
+
       {events.length === 0
         ? <p style={{ color: 'var(--abu)' }}>Belum ada event.</p>
         : events.map((ev) => (

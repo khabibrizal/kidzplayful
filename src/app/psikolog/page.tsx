@@ -27,6 +27,13 @@ export default async function PsikologHome() {
           : <small style={{ color: '#c0392b' }}>Belum diatur — atur dulu agar customer bisa daftar.</small>}
       </Link>
 
+      {/* Catatan Tema (0099) — rute BERSAMA admin/guru/psikolog, di luar /admin karena
+          matriks Akses Menu tak punya dimensi psikolog. */}
+      <Link href="/catatan-tema" className="kp-card" style={{ display: 'block', marginBottom: 16, textDecoration: 'none', color: 'inherit' }}>
+        <b>🍎 Catatan Tema</b>
+        <br /><small style={{ color: 'var(--abu)' }}>Tulis catatan perkembangan anak pada tema kurikulum yang dikerjakan di rumah.</small>
+      </Link>
+
       <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '8px 0' }}>MENUNGGU PERSETUJUAN ({menunggu.length})</div>
       {menunggu.length === 0 && <p style={{ color: 'var(--abu)', fontSize: 13 }}>Tidak ada pendaftaran baru.</p>}
       {menunggu.map((p) => (

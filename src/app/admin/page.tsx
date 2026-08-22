@@ -26,6 +26,13 @@ export default async function AdminHome() {
 
   return (
     <div>
+      {/* Catatan Tema (0099) — rute di LUAR /admin (matriks Akses Menu tak punya dimensi
+          psikolog), jadi ditautkan dari sini alih-alih didaftarkan sebagai menu admin. */}
+      <Link href="/catatan-tema" className={s.card} style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}>
+        <b>🍎 Catatan Tema</b>
+        <br /><small className={s.muted}>Catatan perkembangan anak pada tema kurikulum — bisa diisi admin, guru, &amp; psikolog.</small>
+      </Link>
+
       <div className={s.section}>Tambah Tema</div>
       <TambahTemaForm />
 

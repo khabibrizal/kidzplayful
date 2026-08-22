@@ -64,3 +64,49 @@ export async function getCatatanTemaSaya(anakId: string, kelasId: string): Promi
   if (error || !data) return null;
   return petakan([data])[0] ?? null;
 }
+
+export type PeranPenulis = 'admin' | 'guru' | 'psikolog';
+
+/**
+ * Daftar anak yang boleh ditulisi catatan oleh penulis yang login — dibangun BERBEDA per
+ * peran, karena hak bacanya memang berbeda:
+ *
+ *   admin    → tabel `anak` (policy 0006).
+ *   psikolog → dari `pendaftaran_konsultasi` miliknya yang diterima/selesai. Cakupan ini
+ *              sama dengan `boleh_lihat_laporan_anak` (0066), jadi daftarnya tak pernah
+ *              memuat anak yang nanti ditolak RLS saat menyimpan.
+ *   guru     → dari snapshot `pendaftaran_event` (anak_ids + anak_nama). Guru TIDAK punya
+ *              policy select pada tabel `anak`; inilah cara area Guru yang sudah ada
+ *              mengenal peserta, dan meniru itu lebih baik daripada melebarkan akses
+ *              tabel `anak` hanya demi satu halaman.
+ */
+export async function getAnakUntukPenulis(peran: PeranPenulis): Promise<{ id: string; nama: string }[]> {
+  const s = await createClient();
+  const { data: { user } } = await s.auth.getUser();
+  if (!user) return [];
+
+  if (peran === 'admin') {
+    const { data } = await s.from('anak').select('id,nama').order('nama');
+    return (data ?? []).map((r) => ({ id: r.id as string, nama: (r.nama as string) ?? 'Anak' }));
+  }
+
+  if (peran === 'psikolog') {
+    const { data } = await s.from('pendaftaran_konsultasi')
+      .select('anak_id,anak_nama,status').eq('psikolog_id', user.id).in('status', ['diterima', 'selesai']);
+    const map = new Map<string, string>();
+    for (const r of data ?? []) {
+      if (r.anak_id) map.set(r.anak_id as string, (r.anak_nama as string) ?? 'Anak');
+    }
+    return [...map.entries()].map(([id, nama]) => ({ id, nama })).sort((a, b) => a.nama.localeCompare(b.nama));
+  }
+
+  // guru
+  const { data } = await s.from('pendaftaran_event').select('anak_ids,anak_nama,status').eq('status', 'diterima');
+  const map = new Map<string, string>();
+  for (const r of data ?? []) {
+    const ids = (r.anak_ids ?? []) as string[];
+    const nama = (r.anak_nama ?? []) as string[];
+    ids.forEach((id, i) => { if (id) map.set(id, nama[i] ?? 'Anak'); });
+  }
+  return [...map.entries()].map(([id, nama]) => ({ id, nama })).sort((a, b) => a.nama.localeCompare(b.nama));
+}
