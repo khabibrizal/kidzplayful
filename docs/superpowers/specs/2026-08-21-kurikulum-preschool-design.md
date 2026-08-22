@@ -173,7 +173,7 @@ BULAN DEPAN                judul saja + "terbuka saat langganan Aletta masuk bul
 
 **Kebutuhan.** Checklist di §5 adalah **laporan diri orang tua**. Kurikulum preschool butuh catatan dari **pendidik/profesional**, dan hari ini catatan semacam itu hanya bisa lahir dari **event** (`catatan_perkembangan`, berkunci `unique(event_id, anak_id)`). Anak yang mengerjakan tema di rumah tanpa ikut event tak pernah mendapat catatan dari siapa pun selain orang tuanya sendiri.
 
-### 8.1 Data — tabel `catatan_tema`
+### 8.1 Data — tabel `catatan_tema` (migrasi 0099)
 
 `id` · `anak_id` · `kelas_id` · `penulis_id` (`profiles`) · `peran text check (peran in ('admin','guru','psikolog'))` · `penilaian jsonb` (`[{area, indikator, nilai}]`, skala PAUD BB/MB/BSH/BSB — **area disarankan dari `fokus_area` tema itu**) · `catatan text not null` · `created_at` · `updated_at` · **unique (anak_id, kelas_id, penulis_id)**.
 
@@ -217,3 +217,4 @@ Kurikulum berjenjang per usia (satu urutan untuk semua), penjadwalan otomatis/cr
 6. **Uji kohort per anak**: kakak `bulan_kurikulum = 3`, bayi `= 1` → tema bulan ke-3 **terbuka untuk kakak, TERKUNCI untuk bayi**; ganti anak mengunci/membuka daftar; checklist kakak **tidak** muncul di rapor bayi.
 7. **Uji keamanan** (REST sebagai ortu): PATCH `evaluasi_kurikulum` milik akun lain → gagal · DELETE baris sendiri → gagal · `kembali=https://luar.example` → ditolak.
 8. **Verifikasi migrasi**: probe anon baca-saja seperti 0093–0097 (tabel & kolom ada, kolom kontrol tetap `42703`).
+9. **Catatan tema**: guru & psikolog menulis pada tema yang sama → **dua baris** berdampingan di rapor dengan nama & peran masing-masing; ortu biasa membuka `/catatan-tema` → dipantulkan **dengan alasan yang terbaca**; PATCH catatan milik penulis lain lewat REST → **gagal**; psikolog hanya melihat anak yang pernah konsultasi dengannya.
