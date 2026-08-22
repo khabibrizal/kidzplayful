@@ -7,17 +7,22 @@
 import { useState } from 'react';
 import { mintaWorksheet } from '@/lib/data/worksheet-actions';
 
-export default function WorksheetBtn({ kelasId, sisaAwal, tanpaBatas, terbuka }: {
+export default function WorksheetBtn({ kelasId, sisaAwal, tanpaBatas, terbuka, mode = 'member' }: {
   kelasId: string;
   /** sisa kuota sebelum unduhan ini (null = tanpa batas / tak relevan) */
   sisaAwal?: number | null;
   tanpaBatas?: boolean;
   /** materi ini ditandai admin sebagai contoh gratis → tak memakai kuota */
   terbuka?: boolean;
+  /** dari mana hak akun ini berasal — trial punya plafon sendiri */
+  mode?: 'member' | 'trial';
 }) {
   const [sibuk, setSibuk] = useState(false);
   const [sisa, setSisa] = useState<number | null | undefined>(sisaAwal);
   const [galat, setGalat] = useState('');
+
+  const bebas = mode === 'trial';   // trial: 'contoh gratis' pun memakai jatah
+  const gratisTanpaKuota = !!terbuka && !bebas;
 
   async function unduh() {
     if (sibuk) return;
@@ -25,23 +30,31 @@ export default function WorksheetBtn({ kelasId, sisaAwal, tanpaBatas, terbuka }:
     const r = await mintaWorksheet(kelasId);
     setSibuk(false);
     if (!r.ok || !r.url) { setGalat(r.error ?? 'Gagal mengambil worksheet.'); return; }
-    if (!terbuka && !tanpaBatas) setSisa(r.sisa ?? 0);
+    // `terbuka` membebaskan kuota HANYA untuk member. Pada trial, unduhan tetap memotong
+    // jatah satu-kalinya — UI harus menampilkan sisa yang sama dengan yang ditegakkan server.
+    if ((!terbuka || bebas) && !tanpaBatas) setSisa(r.sisa ?? 0);
     window.open(r.url, '_blank', 'noopener,noreferrer');
   }
 
-  const habis = !terbuka && !tanpaBatas && typeof sisa === 'number' && sisa <= 0;
+  const habis = !gratisTanpaKuota && !tanpaBatas && typeof sisa === 'number' && sisa <= 0;
 
   return (
     <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 2 }}>
       <button className="kp-btn putih" onClick={unduh} disabled={sibuk || habis}
         style={{ display: 'inline-block', opacity: habis ? 0.6 : 1, cursor: habis ? 'not-allowed' : 'pointer' }}
-        title={habis ? 'Kuota unduh worksheet sudah habis' : undefined}>
-        {sibuk ? 'Menyiapkan…' : habis ? '🔒 Worksheet (kuota habis)' : '📄 Worksheet'}
+        title={habis ? (mode === 'trial' ? 'Jatah unduh worksheet masa trial sudah terpakai' : 'Kuota unduh worksheet sudah habis') : undefined}>
+        {sibuk ? 'Menyiapkan…'
+          : habis ? (mode === 'trial' ? '🔒 Worksheet (jatah trial habis)' : '🔒 Worksheet (kuota habis)')
+          : '📄 Worksheet'}
       </button>
-      {terbuka
+      {gratisTanpaKuota
         ? <small style={{ fontSize: 10, color: 'var(--mint-d)' }}>contoh gratis</small>
         : !tanpaBatas && typeof sisa === 'number'
-          ? <small style={{ fontSize: 10, color: 'var(--abu)' }}>sisa {sisa} unduhan</small>
+          ? (
+            <small style={{ fontSize: 10, color: 'var(--abu)' }}>
+              sisa {sisa} unduhan{mode === 'trial' ? ' (jatah trial)' : ''}
+            </small>
+          )
           : null}
       {galat && <small style={{ fontSize: 11, color: '#c0392b', maxWidth: 260 }}>{galat}</small>}
     </span>

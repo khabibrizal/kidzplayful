@@ -70,7 +70,7 @@ export default async function ModeOrtu({ params }: { params: Promise<{ anakId: s
         ) : (
         <div key={k.id} className="kp-card" style={{ marginBottom: 12 }}>
           <b>🎈 {k.judul}</b>
-          <KelasIsi kelas={k} labelArea={labelArea} bagikanUrl={`/coba/kelas/${k.id}`} bolehWorksheet={status.worksheet && wsKuota.boleh} sisaWorksheet={wsKuota.sisa} worksheetTanpaBatas={wsKuota.tanpaBatas}
+          <KelasIsi kelas={k} labelArea={labelArea} bagikanUrl={`/coba/kelas/${k.id}`} bolehWorksheet={status.worksheet && wsKuota.boleh} sisaWorksheet={wsKuota.sisa} worksheetTanpaBatas={wsKuota.tanpaBatas} modeWorksheet={wsKuota.mode}
             anakId={anakId} anakNama={anak.nama} evaluasiAwal={evalOrtu.get(k.id)?.hasil ?? []}
             evaluasiPeran={evalOrtu.get(k.id)?.peran ?? null} evaluasiWaktu={evalOrtu.get(k.id)?.updated_at ?? null}
             kembaliUrl={`/ortu/${anakId}`} />

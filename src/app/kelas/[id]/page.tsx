@@ -119,7 +119,7 @@ export default async function KelasDetailPage(
           </p>
         </div>
       )}
-      <KelasIsi kelas={kelas} labelArea={labelMaster} bagikanUrl={`/coba/kelas/${kelas.id}`} bolehWorksheet={ws.boleh} sisaWorksheet={ws.sisa} worksheetTanpaBatas={ws.tanpaBatas}
+      <KelasIsi kelas={kelas} labelArea={labelMaster} bagikanUrl={`/coba/kelas/${kelas.id}`} bolehWorksheet={ws.boleh} sisaWorksheet={ws.sisa} worksheetTanpaBatas={ws.tanpaBatas} modeWorksheet={ws.mode}
         anakId={anakDipilih?.id ?? null} anakNama={anakDipilih?.nama ?? null}
         evaluasiAwal={evaluasi?.hasil ?? []} evaluasiPeran={evaluasi?.peran ?? null} evaluasiWaktu={evaluasi?.updated_at ?? null}
         kembaliUrl={anakDipilih ? `/kelas/${kelas.id}?anak=${anakDipilih.id}` : undefined} />

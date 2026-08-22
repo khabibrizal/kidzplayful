@@ -93,6 +93,7 @@ export default async function MainPage({ params, searchParams }: { params: Promi
       favIds={favIds}
       gamiAwal={gami}
       bolehWorksheet={status.worksheet && wsKuota.boleh}
+      modeWorksheet={wsKuota.mode}
       sisaWorksheet={wsKuota.sisa}
       worksheetTanpaBatas={wsKuota.tanpaBatas}
       batasi={batasi}

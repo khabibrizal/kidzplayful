@@ -159,9 +159,26 @@ describe('hakAksesAkun', () => {
   });
 
   it('akun tanpa anak aktif tidak punya paket tertinggi', () => {
-    expect(hakAksesAkun([])).toEqual({ paketTertinggi: null, diskonKode: null, komunitas: false });
+    expect(hakAksesAkun([])).toEqual({
+      paketTertinggi: null, diskonKode: null, komunitas: false, status: 'kadaluarsa',
+    });
     const akun = hakAksesAkun([hakUntuk(PRESCHOOL.id, '2026-06-01')]);
     expect(akun.paketTertinggi).toBeNull();
     expect(akun.diskonKode).toBeNull();
+    expect(akun.status).toBe('kadaluarsa');
+  });
+
+  it('status MENGIKUTI anak yang paketnya terpilih, bukan anak lain', () => {
+    // Kenapa penting: hak yang berasal dari TRIAL tidak setara hak berbayar (unduh worksheet
+    // dibatasi satu kali untuk trial). Kalau status diambil dari anak mana pun, akun bisa
+    // tampak berbayar hanya karena salah satu anaknya masih trial — atau sebaliknya.
+    const berbayar = { ...hakUntuk(PRESCHOOL.id, '2027-01-01'), status: 'aktif' as const };
+    const trial = { ...hakUntuk(BASIC.id, '2027-01-01'), status: 'trial' as const };
+    // Preschool (urutan lebih tinggi) yang terpilih → statusnya 'aktif'.
+    expect(hakAksesAkun([trial, berbayar]).status).toBe('aktif');
+    // Hanya anak trial → statusnya 'trial', walau paketnya terisi.
+    const hanyaTrial = hakAksesAkun([trial]);
+    expect(hanyaTrial.paketTertinggi?.kode).toBe('basic');
+    expect(hanyaTrial.status).toBe('trial');
   });
 });

@@ -366,6 +366,15 @@ Ide Bermain kini berjalan sebagai **kurikulum per ANAK**, bukan daftar materi le
 - **Posisi tema (bulan & minggu) terisi otomatis per kategori usia.** Admin memilih kategori, sistem menaruhnya di slot bebas pertama — minggu 1–4, lalu pindah bulan. Satu kategori + bulan + minggu hanya boleh dimiliki satu tema, tapi Bayi dan Prasekolah boleh sama-sama punya Bulan 1 Minggu 1 (kurikulum yang berbeda).
 - **⧉ Duplikat: satu tema untuk beberapa kategori usia.** Pilih tema yang sudah ada dari dropdown di `/admin/kelas-bermain`, tekan Duplikat — form terisi seluruh isinya (judul, tujuan, bahan, aktivitas beserta butir evaluasi & game-nya), **kecuali kategori usia dan posisinya** yang memang harus baru. Admin lalu memilih kategori tujuan dan menyesuaikan aktivitasnya. Belum tersimpan sampai Simpan ditekan.
 
+### 📄 Unduh worksheet — khusus pelanggan
+- **Bukan pelanggan: tidak bisa mengunduh sama sekali** (sebelumnya masih bisa lewat materi bertanda "contoh gratis").
+- **Masa trial: 1× unduhan, seumur trial** — bukan 1 per bulan. Materi "contoh gratis" pun memakai jatah itu.
+- **Pelanggan: sesuai kuota paketnya**, dan materi bertanda "contoh gratis" tidak memotong kuota.
+- Tombolnya hanya muncul bila haknya ada, dan pesan penolakannya menyebut sebabnya: belum berlangganan / jatah trial habis / kuota paket habis.
+
+### 💬 Tombol WA ke orang tua di antrean konsultasi
+Di **Kelola Psikolog**, tiap baris "Konsultasi menunggu verifikasi pembayaran" punya tombol **💬 WA ortu**: WhatsApp terbuka dengan pesan siap kirim yang sudah menyebut nama anak, jadwal, psikolog, biaya, dan batas pembayarannya. Bila nomor WA orang tua belum terisi di profilnya, barisnya menuliskan itu.
+
 ### 🍎 Catatan Tema oleh admin/guru/psikolog (migrasi 0099)
 Menu baru **🍎 Catatan Tema** (di navigasi admin, Area Guru, dan Area Psikolog) untuk **menanggapi evaluasi yang sudah diisi orang tua**. Yang tampil hanya tema yang sudah dievaluasi orang tua, lengkap dengan isian mereka per aktivitas DAN hasil game anak pada aktivitas itu (atau keterangan "belum dimainkan"). Guru/psikolog menilai **per tema**, bukan per aktivitas; catatannya tampil di rapor anak beserta nama & perannya. Psikolog hanya melihat anak yang pernah konsultasi dengannya.
 

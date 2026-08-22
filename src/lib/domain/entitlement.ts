@@ -122,6 +122,12 @@ export interface HakAksesAkun {
   /** kode paket untuk diskon event & produk (null = bukan pelanggan). */
   diskonKode: string | null;
   komunitas: boolean;
+  /**
+   * Status anak yang paketnya terpilih. Dibutuhkan karena hak yang berasal dari TRIAL tidak
+   * setara dengan hak berbayar — unduh worksheet, misalnya, dibatasi satu kali untuk trial.
+   * Tanpa field ini, pemanggil hanya melihat "ada paket" dan memperlakukan keduanya sama.
+   */
+  status: StatusLangganan;
 }
 
 /**
@@ -137,9 +143,13 @@ export function hakAksesAkun(hakAnak: HakAksesAnak[]): HakAksesAkun {
   const berlaku = hakAnak.filter((h) => h.paket && h.status !== 'kadaluarsa');
   const tertinggi = berlaku.reduce<PaketLangganan | null>(
     (t, h) => (h.paket && (!t || h.paket.urutan > t.urutan) ? h.paket : t), null);
+  // Status milik anak yang paketnya TERPILIH — bukan status "terbaik" mana pun. Kalau
+  // diambil dari anak lain, akun bisa tampak berbayar hanya karena satu anaknya masih trial.
+  const pemilik = berlaku.find((h) => h.paket === tertinggi) ?? null;
   return {
     paketTertinggi: tertinggi,
     diskonKode: tertinggi?.kode ?? null,
     komunitas: tertinggi ? tertinggi.akses_komunitas : false,
+    status: pemilik?.status ?? 'kadaluarsa',
   };
 }

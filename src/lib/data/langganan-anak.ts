@@ -16,7 +16,7 @@ const COLS = 'anak_id,paket_id,paket_berikutnya_id,aktif_sampai';
 
 /** Hak "tanpa apa pun" — dipakai saat belum login. */
 export const HAK_ANAK_KOSONG: HakAksesAnak = { status: 'kadaluarsa', paket: null, ...HAK_KOSONG };
-export const HAK_AKUN_KOSONG: HakAksesAkun = { paketTertinggi: null, diskonKode: null, komunitas: false };
+export const HAK_AKUN_KOSONG: HakAksesAkun = { paketTertinggi: null, diskonKode: null, komunitas: false, status: 'kadaluarsa' };
 
 /**
  * Baris langganan semua anak milik satu ortu.

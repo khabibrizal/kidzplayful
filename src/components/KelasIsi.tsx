@@ -16,7 +16,7 @@ const LABEL_FALLBACK: Record<string, string> = {
   kemandirian: '🌟 Kemandirian', kreativitas: '🎨 Kreativitas',
 };
 
-export default function KelasIsi({ kelas, labelArea = {}, bagikan = true, bagikanUrl, bolehWorksheet = false, sisaWorksheet, worksheetTanpaBatas, anakId, anakNama, evaluasiAwal = [], evaluasiPeran, evaluasiWaktu, kembaliUrl }: {
+export default function KelasIsi({ kelas, labelArea = {}, bagikan = true, bagikanUrl, bolehWorksheet = false, sisaWorksheet, worksheetTanpaBatas, modeWorksheet = 'tidak', anakId, anakNama, evaluasiAwal = [], evaluasiPeran, evaluasiWaktu, kembaliUrl }: {
   kelas: KelasBermain; labelArea?: Record<string, string>; bagikan?: boolean; bagikanUrl?: string;
   /**
    * Worksheet adalah fasilitas paket berhak (migrasi 0089). BAWAANNYA `false`: pemanggil yang
@@ -27,6 +27,8 @@ export default function KelasIsi({ kelas, labelArea = {}, bagikan = true, bagika
   bolehWorksheet?: boolean;
   /** sisa kuota unduh worksheet (null/undefined = tak dibatasi atau tak relevan) */
   sisaWorksheet?: number | null;
+  /** dari mana hak unduh worksheet akun ini berasal — menentukan gerbang & kalimatnya */
+  modeWorksheet?: 'member' | 'trial' | 'tidak';
   worksheetTanpaBatas?: boolean;
   /**
    * Anak yang sedang dibuka (0098). Kurikulum & evaluasi selalu MILIK SATU ANAK, jadi
@@ -104,11 +106,19 @@ export default function KelasIsi({ kelas, labelArea = {}, bagikan = true, bagika
       )}
       <div className="no-print" style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {kelas.link_ide && !youtubeId(kelas.link_ide) && <a className="kp-btn" style={{ display: 'inline-block' }} href={kelas.link_ide} target="_blank">Lihat ide ▶</a>}
+        {/* `worksheet_terbuka` TIDAK lagi membuka gerbang keanggotaan — ia hanya membebaskan
+            MEMBER dari kuota. Sebelumnya penanda itu diperiksa lebih dulu, sehingga siapa pun
+            yang login bisa mengunduhnya meski bukan pelanggan sama sekali. */}
         {kelas.worksheet_url && (
-          bolehWorksheet || kelas.worksheet_terbuka
-            ? <WorksheetBtn kelasId={kelas.id} sisaAwal={sisaWorksheet} tanpaBatas={worksheetTanpaBatas} terbuka={kelas.worksheet_terbuka} />
+          bolehWorksheet || (modeWorksheet === 'member' && kelas.worksheet_terbuka)
+            ? <WorksheetBtn kelasId={kelas.id} sisaAwal={sisaWorksheet} tanpaBatas={worksheetTanpaBatas}
+                terbuka={kelas.worksheet_terbuka} mode={modeWorksheet === 'trial' ? 'trial' : 'member'} />
             : <span className="kp-btn putih" style={{ display: 'inline-block', opacity: 0.6, cursor: 'not-allowed' }}
-                title="Unduh worksheet tersedia pada paket berlangganan">🔒 Worksheet (khusus pelanggan)</span>
+                title={modeWorksheet === 'trial'
+                  ? 'Jatah unduh worksheet masa trial sudah terpakai'
+                  : 'Unduh worksheet tersedia pada paket berlangganan'}>
+                🔒 Worksheet ({modeWorksheet === 'trial' ? 'jatah trial habis' : 'khusus pelanggan'})
+              </span>
         )}
         {bagikanUrl && <ShareButton url={bagikanUrl} title={kelas.judul} text={`Materi kelas bermain "${kelas.judul}" di KidzPlayful`} jenis="kelas" gambar={kelas.sampul_url ?? undefined} label="Bagikan" />}
         {bagikan && <Link className="kp-btn putih" style={{ display: 'inline-block' }} href={`/komunitas?topik=${encodeURIComponent(kelas.judul)}`}>💬 Bagikan pengalaman</Link>}

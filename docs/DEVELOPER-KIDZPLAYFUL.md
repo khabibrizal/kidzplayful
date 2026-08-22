@@ -780,6 +780,37 @@ Sisi orang tua. **Gerbang "khusus member aktif" sudah DICABUT** (sub-proyek B): 
 - **Tema tanpa `bulan_kurikulum` dianggap TERBUKA** (materi lama / migrasi belum jalan). Default yang salah arah di sini akan mengunci konten yang tadinya jalan — dan itu terbaca sebagai fitur dicabut.
 - Mode Anak **tidak** menampilkan judul bulan depan sama sekali: judul-saja adalah bahasa untuk orang tua; bagi anak ia cuma pintu yang tak bisa dibuka.
 
+#### 📄 Unduh worksheet: gerbang keanggotaan, plafon trial 1×
+
+**🐞 Bug yang diperbaiki: yang bukan pelanggan masih bisa mengunduh.** Ada TIGA lubang sekaligus, dan semuanya harus ditutup bersama:
+
+1. **`worksheet_terbuka` diperiksa PALING AWAL** di `mintaWorksheet()` dan langsung mengembalikan URL — siapa pun yang login bisa mengunduh materi bertanda itu, tanpa langganan apa pun. Penanda "contoh gratis" seharusnya membebaskan dari **kuota**, bukan dari **keanggotaan**.
+2. **Hak dari TRIAL diperlakukan sama dengan hak berbayar.** `getStatusWorksheet` hanya melihat `paketTertinggi`, dan paket trial (`pengaturan_trial.trial_paket_id`) bisa membawa `worksheet = true` dengan `worksheet_kuota_jumlah = 0` — yang berarti **tanpa batas**.
+3. **`hakAksesAkun` tak membawa status**, jadi pemanggil memang tak punya cara membedakan trial dari berbayar.
+
+**Aturan sekarang** (`sisaWorksheetAkun` di `domain/kuota-worksheet.ts`, murni & diuji):
+
+| Mode | Hak |
+|---|---|
+| `tidak` — bukan pelanggan | **tak boleh sama sekali**, termasuk materi `worksheet_terbuka` |
+| `trial` | **`TRIAL_WORKSHEET_MAKS` = 1 unduhan, SEUMUR trial**; `worksheet_terbuka` pun memakai jatah itu |
+| `member` (aktif / tenggang) | kuota paketnya seperti dulu; `worksheet_terbuka` bebas kuota |
+
+- **Plafon trial dihitung dari SELURUH riwayat unduhan**, bukan periode berjalan. Kalau dihitung per bulan, trial yang menyeberang bulan mendapat jatah dua kali.
+- **Plafon trial hanya MENGURANGI, tak pernah menambah.** Bila paket trial memang tak memberi hak worksheet, hasilnya tetap nol — kalau tidak, aturan ini diam-diam menghidupkan fitur yang sengaja dimatikan admin.
+- **Masa tenggang ikut `member`**: seluruh aplikasi memperlakukan tenggang sebagai masih memegang paketnya, dan worksheet tak boleh jadi satu-satunya fitur yang menjawab lain untuk anak yang sama.
+- **`hakAksesAkun` kini membawa `status`**, diambil dari anak yang paketnya TERPILIH — bukan status "terbaik" mana pun. Kalau diambil dari anak lain, akun bisa tampak berbayar hanya karena satu anaknya masih trial.
+- **Cadangan tabel-belum-ada di sini MENUTUP, bukan membuka** — satu-satunya tempat di repo ini yang begitu. Bila `unduhan_worksheet` tak terbaca, plafon trial dianggap sudah terpakai: kalau unduhan tak bisa dicatat, "satu kali" tak bisa ditegakkan sama sekali, dan jatah gratis tanpa batas lebih merugikan daripada tombol yang mati. Untuk **member** cadangannya tetap membuka (kuota bulanan, kerugiannya kecil).
+- **UI mengikuti aturan yang sama, bukan menampilkan lalu ditolak**: `KelasIsi` menerima `modeWorksheet`, dan tombolnya hanya muncul bila haknya ada. Kalimat penolakannya dipisah per keadaan (`pesanTolak`) — "belum berlangganan", "jatah trial habis", dan "kuota paket habis" menuntut tindakan yang berbeda dari orang tua.
+
+#### 💬 Tombol WA orang tua di antrean konsultasi (admin)
+
+`/admin/psikolog` → antrean **Konsultasi menunggu verifikasi pembayaran** kini punya tombol **💬 WA ortu** dengan pesan siap kirim yang menyebut anak, jadwal, psikolog, nominal, dan batas bayarnya — satu akun bisa punya beberapa reservasi, jadi pesan yang tak spesifik memaksa orang tua bertanya "sesi yang mana".
+
+- Nama & nomor diambil **terpisah**, bukan lewat embed PostgREST `ortu:ortu_id(...)`: `pendaftaran_konsultasi` punya **dua** foreign key ke `profiles` (ortu & psikolog), dan embed pada tabel bertautan ganda mudah menjadi ambigu (PGRST201) — kegagalannya mematikan SELURUH antrean, bukan hanya kolom nomornya.
+- Nomor belum terisi → keadaan itu **dikatakan** ("nomor WA ortu belum terisi"), bukan tombol mati tanpa sebab.
+- **Kenapa hanya di halaman ADMIN:** hanya admin/superuser yang boleh membaca `profiles` orang lain (0056). Area Psikolog (`/psikolog`) tak bisa menampilkan tombol ini tanpa lebih dulu memberi psikolog hak baca nomor WA orang tua — pelebaran akses data pribadi yang butuh keputusan tersendiri, bukan efek samping sebuah tombol.
+
 #### Jam kurikulum: siklus kalender, kategori beku, nomor bulan per kategori (0104)
 
 **Tiga kekeliruan yang diperbaiki**, semuanya ditemukan saat memeriksa skenario "anak join 3th11bl lalu ulang tahun di tengah siklus":
