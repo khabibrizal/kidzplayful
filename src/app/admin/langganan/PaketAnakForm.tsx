@@ -14,6 +14,8 @@ export interface AnakLangganan {
   paketId: string | null;
   paketNama: string | null;
   aktifSampai: string | null;
+  /** 0098 — bulan kurikulum yang sudah dijalani anak ini (null = migrasi belum jalan) */
+  bulanKurikulum?: number | null;
 }
 
 /**
@@ -82,6 +84,12 @@ export default function PaketAnakForm(
           <span style={{ minWidth: 130, fontSize: 13 }}>
             <b>{a.nama}</b>
             <br /><small className={s.muted}>{st.teks}</small>
+            {/* Penghitung kohort kurikulum: naik tiap kali sebuah bulan diberikan, dan
+                TIDAK turun saat langganan dihentikan. Ditampilkan supaya admin bisa
+                memeriksa angkanya, bukan menebak. */}
+            {typeof a.bulanKurikulum === 'number' && (
+              <><br /><small className={s.muted}>📚 kurikulum bulan ke-{Math.max(1, a.bulanKurikulum)}</small></>
+            )}
           </span>
           <select className={s.inp} value={pilih[a.id] ?? a.paketId ?? ''}
             onChange={(e) => setPilih({ ...pilih, [a.id]: e.target.value })} style={{ width: 150, marginBottom: 0 }}>

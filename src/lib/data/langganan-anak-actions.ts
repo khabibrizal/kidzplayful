@@ -30,8 +30,21 @@ export async function setPaketAnak(
     const { data: anak } = await s.from('anak').select('id,ortu_id').eq('id', anakId).maybeSingle();
     if (!anak) return { ok: false, error: 'Anak tidak ditemukan.' };
 
-    const { data: lama, error: eBaca } = await s.from('langganan_anak')
-      .select('aktif_sampai').eq('anak_id', anakId).maybeSingle();
+    // `bulan_kurikulum` (0098) dibaca lewat percobaan terpisah: bila migrasinya belum
+    // dijalankan, kolomnya tak ada dan aktivasi TIDAK boleh gagal karenanya.
+    let bulanLama: number | null = null;
+    const coba = await s.from('langganan_anak')
+      .select('aktif_sampai,bulan_kurikulum').eq('anak_id', anakId).maybeSingle();
+    let lama = coba.data as { aktif_sampai?: string | null; bulan_kurikulum?: number | null } | null;
+    let eBaca = coba.error;
+    if (!eBaca) {
+      bulanLama = Math.max(0, Math.floor(Number(lama?.bulan_kurikulum) || 0));
+    } else {
+      const mundur = await s.from('langganan_anak')
+        .select('aktif_sampai').eq('anak_id', anakId).maybeSingle();
+      lama = mundur.data as { aktif_sampai?: string | null } | null;
+      eBaca = mundur.error;
+    }
     if (eBaca) return { ok: false, error: 'Tabel langganan per anak belum ada — jalankan migrasi 0089 dulu.' };
 
     // Tanggal dihitung dalam WIB. Dengan `new Date()` mentah, aktivasi antara 00:00–07:00
@@ -43,13 +56,31 @@ export async function setPaketAnak(
     sampai.setUTCMonth(sampai.getUTCMonth() + Math.max(1, Math.floor(bulan)));
     const aktifSampai = sampai.toISOString().slice(0, 10);
 
-    const { error } = await s.from('langganan_anak').upsert({
+    // Jam kohort KURIKULUM mengikuti JUMLAH BULAN BERLANGGANAN, jadi ia naik di sini —
+    // satu-satunya tempat periode diperpanjang (admin manual DAN verifikasi tagihan).
+    // `hentikanPaketAnak` sengaja tidak menurunkannya: bulan yang sudah dijalani anak itu
+    // tidak hilang hanya karena langganannya berhenti.
+    const tambah = Math.max(1, Math.floor(bulan));
+    const baris: Record<string, unknown> = {
       anak_id: anakId, ortu_id: anak.ortu_id as string, paket_id: paketId,
       aktif_sampai: aktifSampai, updated_at: new Date().toISOString(),
-    }, { onConflict: 'anak_id' });
-    if (error) return { ok: false, error: error.message };
+    };
+    if (bulanLama !== null) baris.bulan_kurikulum = bulanLama + tambah;
+
+    const { error } = await s.from('langganan_anak').upsert(baris, { onConflict: 'anak_id' });
+    if (error) {
+      // Kolom 0098 belum ada → ulangi tanpa penghitung. Aktivasi langganan tak boleh
+      // gagal hanya karena fitur kurikulum belum dimigrasikan.
+      if (bulanLama === null || !/bulan_kurikulum/.test(error.message)) {
+        return { ok: false, error: error.message };
+      }
+      delete baris.bulan_kurikulum;
+      const ulang = await s.from('langganan_anak').upsert(baris, { onConflict: 'anak_id' });
+      if (ulang.error) return { ok: false, error: ulang.error.message };
+    }
 
     revalidatePath('/admin/langganan'); revalidatePath('/pilih-anak');
+    revalidatePath('/kelas-saya');   // daftar tema kurikulum ikut bergeser
     return { ok: true, aktifSampai };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Gagal menetapkan paket.' };

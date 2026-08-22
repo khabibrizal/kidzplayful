@@ -118,14 +118,21 @@ export default async function Langganan({ searchParams }: { searchParams: Promis
   const [paketAktif, tagihanMenunggu] = await Promise.all([getPaketAktif(), getTagihanMenunggu()]);
   const paketNama = new Map(paketAktif.map((p) => [p.id, p.nama]));
   const idAnak = rows.flatMap((m) => (m.anak ?? []).map((a) => a.id));
-  const langAnak = new Map<string, { paketId: string | null; aktifSampai: string | null }>();
+  const langAnak = new Map<string, { paketId: string | null; aktifSampai: string | null; bulanKurikulum: number | null }>();
   if (idAnak.length > 0) {
-    const { data: la } = await supabase.from('langganan_anak')
-      .select('anak_id,paket_id,aktif_sampai').in('anak_id', idAnak);
+    // `bulan_kurikulum` (0098) dibaca dengan cadangan: halaman langganan tak boleh mati
+    // hanya karena migrasi kurikulum belum dijalankan.
+    const coba = await supabase.from('langganan_anak')
+      .select('anak_id,paket_id,aktif_sampai,bulan_kurikulum').in('anak_id', idAnak);
+    const la = coba.error
+      ? (await supabase.from('langganan_anak').select('anak_id,paket_id,aktif_sampai').in('anak_id', idAnak)).data
+      : coba.data;
     for (const r of la ?? []) {
+      const bk = (r as { bulan_kurikulum?: number | null }).bulan_kurikulum;
       langAnak.set(r.anak_id as string, {
         paketId: (r.paket_id as string | null) ?? null,
         aktifSampai: (r.aktif_sampai as string | null) ?? null,
+        bulanKurikulum: bk === undefined || bk === null ? null : Number(bk),
       });
     }
   }
@@ -136,6 +143,7 @@ export default async function Langganan({ searchParams }: { searchParams: Promis
       paketId: l?.paketId ?? null,
       paketNama: l?.paketId ? paketNama.get(l.paketId) ?? null : null,
       aktifSampai: l?.aktifSampai ?? null,
+      bulanKurikulum: l?.bulanKurikulum ?? null,
     };
   });
   const total = count ?? 0;
