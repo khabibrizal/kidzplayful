@@ -31,6 +31,7 @@ Tiga kekurangan konkret yang ditutup PRD ini:
 | Tema lama | **Tetap terbuka selamanya** untuk anak itu (penghitungnya tak pernah turun) |
 | Tema bulan depan | **Judul + sampul saja**, tanpa isi |
 | Pemilihan game | Admin memilihkan game per aktivitas dan **boleh tidak memilih** (`null` = aktivitas tanpa game) |
+| Catatan profesional | **Catatan perkembangan per tema** oleh admin/guru/psikolog, di **menu baru** `/catatan-tema` (rute bersama, bukan menu `/admin` — lihat §8.3) |
 
 ### Konsekuensi yang disadari sejak awal
 
@@ -72,7 +73,7 @@ Ditaruh di jsonb yang sudah ada karena jumlah butir evaluasi berbeda tiap aktivi
 
 ### Tabel baru `evaluasi_kurikulum`
 
-`id` · `anak_id` · `ortu_id` (untuk RLS) · `kelas_id` · `hasil jsonb` · `catatan text` · `dinilai_oleh text` · `peran text check (peran in ('ortu','guru','psikolog','admin'))` · `created_at` · `updated_at` · **unique (anak_id, kelas_id)**.
+`id` · `anak_id` · `ortu_id` (untuk RLS) · `kelas_id` · `hasil jsonb` · `catatan text` · `dinilai_oleh text` · `peran text check (peran in ('ortu','guru','psikolog','admin'))` · `created_at` · `updated_at` · **unique (anak_id, kelas_id, peran)** — lihat koreksi di §8.2: tanpa `peran` di dalam kunci, checklist guru akan **menimpa** checklist orang tua pada tema yang sama.
 
 `hasil` menyimpan **snapshot kalimatnya**, bukan indeks:
 
@@ -168,13 +169,45 @@ BULAN DEPAN                judul saja + "terbuka saat langganan Aletta masuk bul
 
 ---
 
-## 8. Di luar lingkup
+## 8. Tambahan — Catatan Perkembangan per Tema oleh admin/guru/psikolog
 
-Kurikulum berjenjang per usia (satu urutan untuk semua), penjadwalan otomatis/cron, sertifikat kelulusan bulanan, dan ekspor kurikulum ke PDF. Rebranding "preschool homeschooling" (sub-proyek D PRD langganan) tetap terpisah.
+**Kebutuhan.** Checklist di §5 adalah **laporan diri orang tua**. Kurikulum preschool butuh catatan dari **pendidik/profesional**, dan hari ini catatan semacam itu hanya bisa lahir dari **event** (`catatan_perkembangan`, berkunci `unique(event_id, anak_id)`). Anak yang mengerjakan tema di rumah tanpa ikut event tak pernah mendapat catatan dari siapa pun selain orang tuanya sendiri.
+
+### 8.1 Data — tabel `catatan_tema`
+
+`id` · `anak_id` · `kelas_id` · `penulis_id` (`profiles`) · `peran text check (peran in ('admin','guru','psikolog'))` · `penilaian jsonb` (`[{area, indikator, nilai}]`, skala PAUD BB/MB/BSH/BSB — **area disarankan dari `fokus_area` tema itu**) · `catatan text not null` · `created_at` · `updated_at` · **unique (anak_id, kelas_id, penulis_id)**.
+
+**Kenapa tabel terpisah dari `evaluasi_kurikulum`:** checklist orang tua dan catatan naratif profesional berbeda bentuk (centang vs kalimat + rubrik), berbeda penulis, dan **berbeda bobot sebagai bukti**. Menyatukannya memaksa satu baris ditimpa oleh siapa pun yang menyimpan paling akhir — guru menghapus penilaian orang tua tanpa siapa pun tahu.
+
+**Kunci uniknya menyertakan `penulis_id`** supaya guru dan psikolog bisa menulis pada tema yang sama tanpa saling menimpa; menyimpan ulang hanya menimpa catatan **miliknya sendiri**.
+
+**RLS:** SELECT oleh `boleh_lihat_laporan_anak(anak_id)` (0066 — mencakup ortu pemilik, admin, dan psikolog **yang menangani anak itu**) atau `is_guru()`. INSERT/UPDATE hanya oleh penulisnya sendiri (`penulis_id = auth.uid()`) **dan** berperan admin/guru/psikolog. **Tanpa DELETE untuk siapa pun kecuali lewat SQL Editor** — catatan perkembangan adalah rekam jejak.
+
+### 8.2 Koreksi terhadap §3: kunci `evaluasi_kurikulum`
+
+Kunci uniknya menjadi **(anak_id, kelas_id, peran)**, bukan `(anak_id, kelas_id)`. Karena penilai checklist boleh orang tua **maupun** guru/psikolog (§2), kunci yang lama membuat checklist guru **menimpa** checklist orang tua pada tema yang sama — kehilangan data yang tak terlihat sampai rapor dicetak. Dengan `peran` di dalam kunci, keduanya hidup berdampingan dan rapor menampilkannya bersebelahan ("dinilai orang tua" vs "dinilai guru").
+
+### 8.3 Menu baru — `/catatan-tema` (rute BERSAMA, bukan menu `/admin`)
+
+Satu rute dipakai tiga peran: daftar **anak × tema** (tema yang sudah pernah dibuka/dinilai lebih dulu), lalu form catatan + rubrik per area tema itu.
+
+**Kenapa bukan menu `/admin/catatan-tema`:** matriks Akses Menu hanya punya dimensi **admin, investor, guru** (`AksesMenu` & `menuUntukRole` di `lib/menu-admin.ts`) — **tidak ada psikolog**. Mendaftarkannya sebagai menu admin akan menutup akses psikolog, dan menambah dimensi psikolog ke matriks (beserta tabel akses 0063 dan halaman `/admin/akses-menu`) adalah pekerjaan tersendiri yang tak perlu dibayar sekarang. Karena itu: rute sendiri di luar `/admin`, dengan guard `is_admin || is_guru || is_psikolog`, **ditautkan** dari dashboard admin, `/guru`, dan `/psikolog`.
+
+**Cakupan psikolog dinyatakan di layar.** `boleh_lihat_laporan_anak` hanya membolehkan anak yang punya konsultasi **diterima/selesai** dengan psikolog itu. Jadi daftar anaknya pendek dan itu benar — layar menulis "hanya anak yang pernah konsultasi dengan Anda", supaya daftar pendek tak terbaca sebagai data hilang.
+
+### 8.4 Tampil di rapor
+
+Blok **"🍎 Catatan Guru/Psikolog per Tema"** di `LaporanAnakView` dan di rapor bulanan (layar + JPEG), **terpisah** dari blok checklist orang tua, masing-masing menyebut **nama penulis & perannya**. Di luar lingkup: notifikasi ke orang tua saat catatan baru masuk (bisa menyusul memakai jalur notifikasi yang sudah ada).
 
 ---
 
-## 9. Verifikasi
+## 9. Di luar lingkup
+
+Kurikulum berjenjang per usia (satu urutan untuk semua), penjadwalan otomatis/cron, sertifikat kelulusan bulanan, ekspor kurikulum ke PDF, **notifikasi ke orang tua saat catatan tema baru masuk**, dan **menambah dimensi psikolog ke matriks Akses Menu**. Rebranding "preschool homeschooling" (sub-proyek D PRD langganan) tetap terpisah.
+
+---
+
+## 10. Verifikasi
 
 1. **Gerbang mutu tiap tahap**: `npx tsc --noEmit` → `npx eslint` → `npm test` → `npm run build`.
 2. **Hidup sebelum migrasi**: buka Mode Ortu & `/kelas/[id]` saat kolom/tabel baru belum ada — semua tema harus **terbuka**, bukan terkunci.

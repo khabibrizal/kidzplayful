@@ -35,6 +35,10 @@
 | `src/app/ortu/[anakId]/page.tsx`, `src/app/main/[anakId]/*` | pengelompokan per bulan, `?kembali=` |
 | `src/lib/nav.ts` | **baru** — `pathInternal()` (murni) untuk memvalidasi `kembali` |
 | `src/components/LaporanAnakView.tsx`, `src/lib/domain/laporan-bulanan.ts`, `src/lib/rapor-jpeg.ts` | blok "Evaluasi Kurikulum" di layar & JPEG |
+| `supabase/migrations/0099_catatan_tema.sql` | **baru** — tabel `catatan_tema` + RLS (fitur menu baru) |
+| `src/lib/data/catatan-tema.ts` / `catatan-tema-actions.ts` | **baru** — reader & `simpanCatatanTema` (guard peran, hanya catatan sendiri) |
+| `src/app/catatan-tema/` | **baru** — rute BERSAMA admin/guru/psikolog (di luar `/admin`, lihat §8.3 spec) |
+| `src/app/admin/page.tsx`, `src/app/guru/page.tsx`, `src/app/psikolog/page.tsx` | tautan ke `/catatan-tema` |
 
 ---
 
@@ -236,7 +240,10 @@ create table if not exists public.evaluasi_kurikulum (
   peran text not null default 'ortu' check (peran in ('ortu','guru','psikolog','admin')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (anak_id, kelas_id)
+  -- `peran` IKUT di dalam kunci: penilai boleh ortu MAUPUN guru/psikolog, dan tanpa ini
+  -- checklist guru akan MENIMPA checklist orang tua pada tema yang sama — kehilangan data
+  -- yang tak terlihat sampai rapor dicetak.
+  unique (anak_id, kelas_id, peran)
 );
 create index if not exists evaluasi_kurikulum_anak_idx on public.evaluasi_kurikulum(anak_id, updated_at desc);
 
@@ -544,7 +551,7 @@ export async function simpanEvaluasi(
       anak_id: anakId, ortu_id: anak.ortu_id as string, kelas_id: kelasId,
       hasil, catatan: catatan?.trim() || null, dinilai_oleh: oleh, peran,
       updated_at: new Date().toISOString(),
-    }, { onConflict: 'anak_id,kelas_id' });
+    }, { onConflict: 'anak_id,kelas_id,peran' });
     if (error) return { ok: false, error: error.message };
 
     revalidatePath(`/anak/${anakId}/laporan`); revalidatePath('/kelas-saya');
@@ -707,6 +714,7 @@ git -c commit.gpgsign=false commit -am "feat(kurikulum): tombol keluar game kemb
 - [ ] **Step 1** — `laporan-bulanan.ts`: tambah tipe `EvaluasiRingkas { judulTema, tercapai, total, peran, dinilaiOleh, belum: string[] }`, terima `evaluasi?: EvaluasiRingkas[]` di `ringkasBulan`, kembalikan apa adanya, dan **ikutkan ke `adaIsi`** (bulan yang hanya berisi evaluasi tetap layak dicetak). Tambah tes seperti pola `rekomendasiPsikolog`.
 - [ ] **Step 2** — halaman rapor bulanan: `getEvaluasiAnak(anakId)` difilter `updated_at` di dalam `rentangBulan(ym)`; render blok **"📋 EVALUASI KURIKULUM"** dengan `x dari y` + **siapa penilai** ("dinilai orang tua" / "dinilai guru").
 - [ ] **Step 3** — `LaporanAnakView`: blok yang sama untuk rapor berjalan.
+- [ ] **Step 3b** — blok **TERPISAH** "🍎 Catatan Guru/Psikolog per Tema" dari `getCatatanTemaAnak`, menyebut **nama penulis & perannya**. Jangan digabung dengan checklist orang tua: laporan diri dan penilaian pendidik tidak setara sebagai bukti, dan menggabungkannya menghapus perbedaan itu.
 - [ ] **Step 4** — `rapor-jpeg.ts`: tambahkan bagian evaluasi. **Ruangnya harus DICADANGKAN** seperti `cadanganItem`/`plafonNaratif` yang sudah ada — jangan menaruhnya di sisa ruang.
 - [ ] **Step 5: WAJIB — verifikasi VISUAL**, bukan membaca kode. Bundel `rapor-jpeg.ts` dengan Vite lalu render di Chrome (`chromium.launch({ channel: 'chrome' })`), isi contoh: 3 tema evaluasi + catatan guru panjang + konsultasi. Periksa gambarnya: tak ada blok yang terpotong.
 - [ ] **Step 6: Gerbang mutu + commit**
@@ -717,10 +725,192 @@ git -c commit.gpgsign=false commit -am "feat(kurikulum): evaluasi kurikulum masu
 
 ---
 
-## Task 10: Dokumentasi & penutup
+## Task 10: Migrasi & data catatan tema (fitur menu baru)
+
+**Files:**
+- Create: `supabase/migrations/0099_catatan_tema.sql`, `src/lib/data/catatan-tema.ts`, `src/lib/data/catatan-tema-actions.ts`
+
+- [ ] **Step 1: Migrasi**
+
+```sql
+-- 0099_catatan_tema.sql — catatan perkembangan PER TEMA oleh admin/guru/psikolog.
+--
+-- Kenapa tabel sendiri, bukan menumpang `evaluasi_kurikulum`: checklist orang tua dan
+-- catatan naratif profesional berbeda bentuk, penulis, dan bobot sebagai bukti. Satu tabel
+-- berarti satu baris yang ditimpa oleh siapa pun yang menyimpan paling akhir — guru
+-- menghapus penilaian orang tua tanpa ada yang tahu.
+create table if not exists public.catatan_tema (
+  id uuid primary key default gen_random_uuid(),
+  anak_id uuid not null references public.anak(id) on delete cascade,
+  kelas_id uuid not null references public.kelas_bermain(id) on delete cascade,
+  penulis_id uuid not null references public.profiles(id) on delete cascade,
+  peran text not null check (peran in ('admin','guru','psikolog')),
+  -- [{area, indikator, nilai}] — skala PAUD, area disarankan dari fokus_area tema itu
+  penilaian jsonb not null default '[]'::jsonb,
+  catatan text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  -- penulis IKUT di kunci: guru & psikolog boleh menulis pada tema yang sama tanpa
+  -- saling menimpa; menyimpan ulang hanya menimpa catatan miliknya sendiri.
+  unique (anak_id, kelas_id, penulis_id)
+);
+create index if not exists catatan_tema_anak_idx on public.catatan_tema(anak_id, updated_at desc);
+
+alter table public.catatan_tema enable row level security;
+
+-- Baca: ortu pemilik, admin, dan psikolog yang MENANGANI anak itu (0066) + guru.
+drop policy if exists "catatan tema baca" on public.catatan_tema;
+create policy "catatan tema baca" on public.catatan_tema for select to authenticated
+  using (public.boleh_lihat_laporan_anak(anak_id) or public.is_guru());
+
+-- Tulis: hanya sebagai DIRI SENDIRI, dan hanya oleh peran profesional.
+drop policy if exists "catatan tema tulis" on public.catatan_tema;
+create policy "catatan tema tulis" on public.catatan_tema for insert to authenticated
+  with check (penulis_id = auth.uid()
+              and (public.is_admin() or public.is_guru() or public.is_psikolog())
+              and (public.boleh_lihat_laporan_anak(anak_id) or public.is_guru()));
+
+drop policy if exists "catatan tema ubah" on public.catatan_tema;
+create policy "catatan tema ubah" on public.catatan_tema for update to authenticated
+  using (penulis_id = auth.uid()) with check (penulis_id = auth.uid());
+
+-- TIDAK ADA policy DELETE: catatan perkembangan adalah rekam jejak. Pembersihan lewat
+-- SQL Editor bila benar-benar perlu.
+```
+
+> **Sudah diverifikasi:** `public.is_psikolog()` ada di `0064_roles_psikolog.sql` dan `public.boleh_lihat_laporan_anak(p_anak_id uuid)` di `0066_laporan_akses_psikolog.sql` — kedua policy di atas memanggilnya apa adanya. `SKALA_PAUD`/`metaSkala` ada di `src/lib/format.ts`.
+
+- [ ] **Step 2: Reader + action**
+
+```ts
+// src/lib/data/catatan-tema.ts
+import { createClient } from '@/lib/supabase/server';
+
+export interface CatatanTema {
+  id: string; anak_id: string; kelas_id: string; peran: 'admin' | 'guru' | 'psikolog';
+  penilaian: { area: string; indikator: string; nilai: string }[];
+  catatan: string; penulis_nama: string | null; updated_at: string;
+}
+
+/** Catatan tema milik satu anak (untuk rapor & halaman /catatan-tema). */
+export async function getCatatanTemaAnak(anakId: string): Promise<CatatanTema[]> {
+  const s = await createClient();
+  const { data, error } = await s.from('catatan_tema')
+    .select('id,anak_id,kelas_id,peran,penilaian,catatan,updated_at,penulis:penulis_id(nama_tampilan,email)')
+    .eq('anak_id', anakId).order('updated_at', { ascending: false });
+  if (error) return [];   // tabel belum ada (0099 belum jalan)
+  return (data ?? []).map((r) => {
+    const p = Array.isArray(r.penulis) ? r.penulis[0] : r.penulis;
+    const nm = p as { nama_tampilan?: string | null; email?: string | null } | null;
+    return { ...(r as unknown as CatatanTema), penulis_nama: nm?.nama_tampilan || nm?.email || null };
+  });
+}
+```
+
+```ts
+// src/lib/data/catatan-tema-actions.ts
+'use server';
+import { revalidatePath } from 'next/cache';
+import { createClient } from '@/lib/supabase/server';
+
+/**
+ * Simpan/perbarui catatan tema. Perannya DITENTUKAN SERVER dari profil penulis — klien
+ * tak boleh menyebut dirinya "psikolog". Menyimpan ulang hanya menimpa catatan sendiri
+ * (kunci unik menyertakan penulis_id).
+ */
+export async function simpanCatatanTema(input: {
+  anakId: string; kelasId: string; catatan: string;
+  penilaian?: { area: string; indikator: string; nilai: string }[];
+}): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const s = await createClient();
+    const { data: { user } } = await s.auth.getUser();
+    if (!user) return { ok: false, error: 'Harus login.' };
+    if (!input.catatan?.trim()) return { ok: false, error: 'Catatan tidak boleh kosong.' };
+
+    const { data: prof } = await s.from('profiles')
+      .select('is_admin,is_superuser,is_guru,is_psikolog').eq('id', user.id).maybeSingle();
+    const peran = prof?.is_guru ? 'guru' : prof?.is_psikolog ? 'psikolog'
+      : (prof?.is_admin || prof?.is_superuser) ? 'admin' : null;
+    if (!peran) return { ok: false, error: 'Hanya admin, guru, atau psikolog yang boleh menulis catatan tema.' };
+
+    const { error } = await s.from('catatan_tema').upsert({
+      anak_id: input.anakId, kelas_id: input.kelasId, penulis_id: user.id, peran,
+      penilaian: input.penilaian ?? [], catatan: input.catatan.trim(),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'anak_id,kelas_id,penulis_id' });
+    if (error) return { ok: false, error: error.message };
+
+    revalidatePath('/catatan-tema'); revalidatePath(`/anak/${input.anakId}/laporan`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Gagal menyimpan catatan.' };
+  }
+}
+```
+
+- [ ] **Step 3: Gerbang mutu + commit**, lalu minta user menjalankan 0099.
+
+```bash
+git -c commit.gpgsign=false commit -am "feat(kurikulum): migrasi 0099 + data catatan tema oleh admin/guru/psikolog"
+```
+
+---
+
+## Task 11: Menu baru `/catatan-tema` (rute bersama tiga peran)
+
+**Files:**
+- Create: `src/app/catatan-tema/page.tsx`, `src/app/catatan-tema/FormCatatanTema.tsx`
+- Modify: `src/app/admin/page.tsx`, `src/app/guru/page.tsx`, `src/app/psikolog/page.tsx` (tautan masuk)
+
+- [ ] **Step 1: Guard bersama**
+
+Rute ini **di luar `/admin`** karena matriks Akses Menu tak punya dimensi psikolog (`AksesMenu = {admin, investor, guru}` di `lib/menu-admin.ts`) — mendaftarkannya sebagai menu admin akan menutup akses psikolog. Guard-nya sendiri:
+
+```ts
+async function penulisTerjamin() {
+  const s = await createClient();
+  const { data: { user } } = await s.auth.getUser();
+  if (!user) redirect('/login');
+  const { data: p } = await s.from('profiles')
+    .select('nama_tampilan,is_admin,is_superuser,is_guru,is_psikolog').eq('id', user.id).single();
+  const peran = p?.is_guru ? 'guru' : p?.is_psikolog ? 'psikolog'
+    : (p?.is_admin || p?.is_superuser) ? 'admin' : null;
+  // Pantulan WAJIB membawa alasan (aturan CLAUDE.md) — jangan diam-diam.
+  if (!peran) redirect('/pilih-anak?galat=bukan-penulis-catatan');
+  return { id: user.id, nama: p?.nama_tampilan as string | null, peran };
+}
+```
+
+- [ ] **Step 2: Halaman daftar**
+
+Pilih anak → daftar tema yang **sudah terbuka** untuk anak itu (`getBulanKurikulumAnak` + `kelompokTema`), tiap tema menampilkan: ada/belum catatan dari saya, jumlah catatan orang lain, dan checklist orang tua bila ada. Untuk **psikolog**, tulis di layar: *"Hanya anak yang pernah konsultasi dengan Anda yang tampil"* — daftar pendek karena `boleh_lihat_laporan_anak` memang ter-scope (0066), dan tanpa keterangan itu akan terbaca sebagai data hilang.
+
+- [ ] **Step 3: Form catatan**
+
+`FormCatatanTema.tsx` (client): textarea catatan (wajib) + baris penilaian opsional `area` (dropdown dari `fokus_area` tema itu) × `indikator` (teks) × `nilai` (BB/MB/BSH/BSB, pakai `SKALA_PAUD` dari `lib/format.ts` — **jangan** membuat daftar skala baru). Tombol simpan memanggil `simpanCatatanTema`.
+
+- [ ] **Step 4: Tautan masuk**
+
+Kartu/tautan **"🍎 Catatan Tema"** di dashboard `/admin`, di `/guru` (di samping daftar event yang sudah ada), dan di `/psikolog`.
+
+- [ ] **Step 5: Uji peran**
+
+Login sebagai guru → bisa menulis; psikolog → hanya anak yang pernah konsultasi dengannya; ortu biasa → dipantulkan **dengan pesan**, bukan diam. Dua peran menulis pada tema yang sama → **dua baris**, tak saling menimpa.
+
+- [ ] **Step 6: Gerbang mutu + commit**
+
+```bash
+git -c commit.gpgsign=false commit -am "feat(kurikulum): menu Catatan Tema untuk admin/guru/psikolog"
+```
+
+---
+
+## Task 12: Dokumentasi & penutup
 
 - [ ] **Step 1** — `docs/DEVELOPER-KIDZPLAYFUL.md`: bagian baru "🎓 Kurikulum bulanan & evaluasi (0098)" — kohort **per anak tanpa union**, penghitung tersimpan & alasannya, snapshot kalimat, default aman saat migrasi belum jalan.
-- [ ] **Step 2** — `docs/DOKUMENTASI-KIDZPLAYFUL.md`: bagian pengguna + daftar migrasi `… → 0098 kurikulum`.
+- [ ] **Step 1b** — bagian "🍎 Catatan Tema (0099)": kenapa tabel terpisah dari `evaluasi_kurikulum`, kenapa `penulis_id` masuk kunci unik, dan **kenapa rutenya di luar `/admin`** (matriks Akses Menu tanpa dimensi psikolog).
+- [ ] **Step 2** — `docs/DOKUMENTASI-KIDZPLAYFUL.md`: bagian pengguna + daftar migrasi `… → 0098 kurikulum → 0099 catatan tema`.
 - [ ] **Step 3** — `CLAUDE.md`: satu aturan tetap — *"kohort kurikulum milik ANAK, bukan akun; `statusTema` hanya menerima `bulanAnak`"*.
 - [ ] **Step 4** — regenerasi HTML+PDF: `python tools/md2pdf.py <md>` lalu Chrome `--headless=new --no-pdf-header-footer --print-to-pdf`.
 - [ ] **Step 5** — commit + push, lalu **ingatkan user menjalankan 0098** bila belum.
@@ -739,3 +929,4 @@ git -c commit.gpgsign=false commit -am "feat(kurikulum): evaluasi kurikulum masu
 8. Kohort dua anak: kakak bulan 3 vs bayi bulan 1 → tema bulan 3 terkunci untuk bayi.
 9. Game: aktivitas dengan game → main → keluar → kembali ke aktivitas; aktivitas tanpa game → tak ada tombol.
 10. Keamanan (REST sebagai ortu): PATCH evaluasi anak orang lain → gagal; DELETE evaluasi sendiri → gagal; `kembali=https://luar.example` → diabaikan.
+11. **Catatan tema**: guru & psikolog menulis pada tema yang sama → dua baris berdampingan di rapor dengan nama & peran masing-masing; ortu biasa membuka `/catatan-tema` → dipantulkan **dengan alasan yang terbaca**; PATCH catatan milik penulis lain lewat REST → **gagal**.
