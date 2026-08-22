@@ -17,9 +17,9 @@ import { getStatusWorksheet } from '@/lib/data/worksheet';
 import RekamAktivitas from '@/components/RekamAktivitas';
 import MenuAnak from './MenuAnak';
 
-export default async function MainPage({ params, searchParams }: { params: Promise<{ anakId: string }>; searchParams: Promise<{ paket?: string; kembali?: string }> }) {
+export default async function MainPage({ params, searchParams }: { params: Promise<{ anakId: string }>; searchParams: Promise<{ paket?: string; kembali?: string; kelas?: string }> }) {
   const { anakId } = await params;
-  const { paket: paketAwal, kembali } = await searchParams;
+  const { paket: paketAwal, kembali, kelas: kelasAwal } = await searchParams;
   // Tujuan `kembali` DIVALIDASI di server: parameter tujuan yang menerima URL apa pun
   // adalah lubang open redirect (lihat `lib/nav.ts`).
   const kembaliUrl = pathInternal(kembali);
@@ -76,6 +76,7 @@ export default async function MainPage({ params, searchParams }: { params: Promi
       paketAwal={paketAwal}
       kembaliUrl={kembaliUrl}
       evaluasiPerKelas={evaluasiPerKelas}
+      kelasAwal={kelasAwal ?? null}
       kelasList={kelasTerbuka}
       favIds={favIds}
       gamiAwal={gami}

@@ -22,10 +22,16 @@ import s from './main.module.css';
 type Layar = 'menu' | 'kelas' | 'kelas-detail' | 'daftar' | 'pustaka' | 'video' | 'main' | 'istirahat';
 
 export default function MenuAnak({
-  anak, pustaka, pinTersimpan, video, paketAwal, kembaliUrl, kelasList, favIds, gamiAwal, batasi = false, labelArea = {}, bolehWorksheet = false, sisaWorksheet, worksheetTanpaBatas, evaluasiPerKelas = {},
+  anak, pustaka, pinTersimpan, video, paketAwal, kelasAwal, kembaliUrl, kelasList, favIds, gamiAwal, batasi = false, labelArea = {}, bolehWorksheet = false, sisaWorksheet, worksheetTanpaBatas, evaluasiPerKelas = {},
 }: {
   anak: { id: string; nama: string; koin: number; batas_menit: number };
   pustaka: TemaLengkap[]; pinTersimpan: string | null; video: Video[]; paketAwal?: string;
+  /**
+   * Materi yang harus langsung dibuka (deep-link `?kelas=`). Di Mode Anak, halaman tema
+   * adalah LAYAR INTERNAL — bukan rute — jadi tanpa ini tak ada alamat yang bisa dituju
+   * saat pulang dari game, dan tombol kembali selalu mendarat di menu.
+   */
+  kelasAwal?: string | null;
   /**
    * Tujuan tombol keluar bila game dibuka lewat deep-link dari sebuah aktivitas Ide
    * Bermain (0098). Sudah divalidasi `pathInternal()` di sisi server — komponen ini
@@ -56,7 +62,11 @@ export default function MenuAnak({
     ? pustaka.flatMap((t) => t.paket.map((p) => ({ p, t }))).find((x) => x.p.id === paketAwal) ?? null
     : null;
   const awal = awalCari && !terkunci(awalCari.t.tema.boleh_trial) ? awalCari : null;
-  const [layar, setLayar] = useState<Layar>(() => (awal ? 'main' : 'menu'));
+  // Urutannya: game deep-link menang atas materi deep-link, sebab `?paket=` hanya dikirim
+  // saat pengguna memang menekan tombol main.
+  const [layar, setLayar] = useState<Layar>(() => (
+    awal ? 'main' : (kelasAwal && kelasList.some((k) => k.id === kelasAwal)) ? 'kelas-detail' : 'menu'
+  ));
   const [koin, setKoin] = useState(anak.koin);
   const [aktif, setAktif] = useState<Paket | null>(() => awal?.p ?? null);
   const [temaTerpilih, setTemaTerpilih] = useState<TemaLengkap | null>(() => awal?.t ?? mingguIni);
@@ -68,7 +78,7 @@ export default function MenuAnak({
    * bermain.
    */
   const [pulangKe, setPulangKe] = useState<string | null>(() => (awal && kembaliUrl ? kembaliUrl : null));
-  const [kelasDipilih, setKelasDipilih] = useState<KelasBermain | null>(null);
+  const [kelasDipilih, setKelasDipilih] = useState<KelasBermain | null>(() => kelasList.find((k) => k.id === kelasAwal) ?? null);
   const [terpakai, setTerpakai] = useState(0);
   const [kunci] = useState(() => kunciHari(anak.id, new Date()));
 
@@ -140,8 +150,17 @@ export default function MenuAnak({
     // Dua jalan keluar (tombol ← dan GameRunner) HARUS satu perilaku; kalau dipisah,
     // salah satunya akan lupa pulang ke aktivitas asalnya.
     const keluarGame = () => {
-      if (pulangKe) { setPulangKe(null); router.push(pulangKe); return; }
-      setLayar('daftar');
+      if (!pulangKe) { setLayar('daftar'); return; }
+      setPulangKe(null);
+      // Bila tujuannya materi di HALAMAN INI juga (`/main/<anak>?kelas=<id>`), pindah layar
+      // secara lokal. `router.push` ke rute yang sama hanya mengubah query — komponennya
+      // TIDAK remount, jadi state `layar` akan tetap di game dan tombol kembali terasa mati.
+      const sama = pulangKe.startsWith(`/main/${anak.id}`);
+      const idKelas = sama ? new URLSearchParams(pulangKe.split('?')[1] ?? '').get('kelas') : null;
+      const materi = idKelas ? kelasList.find((k) => k.id === idKelas) ?? null : null;
+      if (materi) { setKelasDipilih(materi); setLayar('kelas-detail'); return; }
+      if (sama) { setLayar('kelas'); return; }   // tujuannya Mode Anak sendiri, tanpa materi
+      router.push(pulangKe);
     };
     return (
       <div className={s.wrap}>
@@ -227,7 +246,7 @@ export default function MenuAnak({
             evaluasiAwal={evaluasiPerKelas[kelas.id]?.hasil ?? []}
             evaluasiPeran={evaluasiPerKelas[kelas.id]?.peran ?? null}
             evaluasiWaktu={evaluasiPerKelas[kelas.id]?.updated_at ?? null}
-            kembaliUrl={`/main/${anak.id}`} />
+            kembaliUrl={`/main/${anak.id}?kelas=${kelas.id}`} />
         </div>
       </div>
     );
