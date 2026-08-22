@@ -8,6 +8,8 @@ import PinGate from '@/components/game/PinGate';
 import VideoPojok from '@/components/game/VideoPojok';
 import FavoritBtn from '@/components/FavoritBtn';
 import KelasIsi from '@/components/KelasIsi';
+import CariPager, { PagerBaris } from '@/components/game/CariPager';
+import { saringPaginasi } from '@/lib/domain/paginasi';
 import Sampul from '@/components/Sampul';
 import { catatRiwayatKelas } from '@/lib/data/riwayat-actions';
 import { catatKegiatan } from '@/lib/data/kegiatan-actions';
@@ -71,6 +73,12 @@ export default function MenuAnak({
   const [aktif, setAktif] = useState<Paket | null>(() => awal?.p ?? null);
   const [temaTerpilih, setTemaTerpilih] = useState<TemaLengkap | null>(() => awal?.t ?? mingguIni);
   const [pinUntuk, setPinUntuk] = useState<null | 'keluar'>(null);
+  // Cari + halaman untuk tiap daftar. Disimpan TERPISAH per layar supaya berpindah menu
+  // tak membawa kata kunci layar sebelumnya — itu akan terlihat seperti daftar kosong.
+  const [cariKelas, setCariKelas] = useState(''); const [halKelas, setHalKelas] = useState(1);
+  const [cariTema, setCariTema] = useState(''); const [halTema, setHalTema] = useState(1);
+  const [cariGame, setCariGame] = useState(''); const [halGame, setHalGame] = useState(1);
+  const [cariVideo, setCariVideo] = useState(''); const [halVideo, setHalVideo] = useState(1);
   /**
    * Hanya berlaku untuk game yang MEMANG dibuka dari aktivitas (deep-link `?paket=`),
    * dan hanya SEKALI: sesudah pulang, keluar dari game berikutnya kembali ke daftar game
@@ -175,6 +183,7 @@ export default function MenuAnak({
   }
 
   if (layar === 'video') {
+    const hVideo = saringPaginasi(video, (v) => v.judul, { q: cariVideo, hal: halVideo });
     return (
       <div className={s.wrap}>
         <div className={s.top}>
@@ -182,13 +191,19 @@ export default function MenuAnak({
           <div className="kp-chip">📺 Pojok Video</div>
           <div className="kp-coin">🪙 {koin}</div>
         </div>
-        <VideoPojok video={video} batasi={batasi} onKeluar={() => setLayar('menu')} onTerkunci={() => setKunciFitur('Pojok Video')}
+        {/* Kata kunci menyaring SELURUH daftar video, lalu halaman baru dipotong —
+            jadi video di halaman 3 tetap ketemu saat dicari dari halaman 1. */}
+        <CariPager q={cariVideo} onQ={(v) => { setCariVideo(v); setHalVideo(1); }}
+          hal={hVideo.hal} totalHal={hVideo.totalHal} total={hVideo.total} adaFilter={hVideo.adaFilter} label="video" />
+        <VideoPojok video={hVideo.baris} batasi={batasi} onKeluar={() => setLayar('menu')} onTerkunci={() => setKunciFitur('Pojok Video')}
           onTonton={(v) => { catatKegiatan(anak.id, 'video', v.id, v.judul).catch(() => {}); }} />
+        <PagerBaris hal={hVideo.hal} totalHal={hVideo.totalHal} onHal={setHalVideo} />
       </div>
     );
   }
 
   if (layar === 'kelas') {
+    const hKelas = saringPaginasi(kelasList, (k) => k.judul, { q: cariKelas, hal: halKelas });
     return (
       <div className={s.wrap}>
         <div className={s.top}>
@@ -201,8 +216,11 @@ export default function MenuAnak({
             <p style={{ color: 'var(--abu)', textAlign: 'center' }}>Belum ada ide bermain.</p>
           </div>
         ) : (
+          <>
+          <CariPager q={cariKelas} onQ={(v) => { setCariKelas(v); setHalKelas(1); }}
+            hal={hKelas.hal} totalHal={hKelas.totalHal} total={hKelas.total} adaFilter={hKelas.adaFilter} />
           <div className={s.menu}>
-            {kelasList.map((k, i) => {
+            {hKelas.baris.map((k, i) => {
               const kunci = terkunci(k.boleh_trial);
               const buka = () => {
                 if (kunci) { setKunciFitur('Materi Ide Bermain'); return; }
@@ -224,6 +242,8 @@ export default function MenuAnak({
               );
             })}
           </div>
+          <PagerBaris hal={hKelas.hal} totalHal={hKelas.totalHal} onHal={setHalKelas} />
+          </>
         )}
         <div className={s.foot}>Sisa waktu hari ini: {sisaMnt} menit</div>
       </div>
@@ -253,6 +273,7 @@ export default function MenuAnak({
   }
 
   if (layar === 'pustaka') {
+    const hTema = saringPaginasi(pustaka, (x) => x.tema.nama, { q: cariTema, hal: halTema });
     return (
       <div className={s.wrap}>
         <div className={s.top}>
@@ -265,8 +286,11 @@ export default function MenuAnak({
             <p style={{ color: 'var(--abu)', textAlign: 'center' }}>Belum ada game.</p>
           </div>
         ) : (
+        <>
+        <CariPager q={cariTema} onQ={(v) => { setCariTema(v); setHalTema(1); }}
+          hal={hTema.hal} totalHal={hTema.totalHal} total={hTema.total} adaFilter={hTema.adaFilter} label="tema" />
         <div className={s.menu}>
-          {pustaka.map((t, i) => {
+          {hTema.baris.map((t, i) => {
             const kunci = terkunci(t.tema.boleh_trial);
             return (
               <button key={t.tema.id} className={`kp-tile ${['mint', 'lavender', 'biru'][i % 3]}`} style={{ opacity: kunci ? 0.7 : 1 }}
@@ -276,6 +300,8 @@ export default function MenuAnak({
             );
           })}
         </div>
+        <PagerBaris hal={hTema.hal} totalHal={hTema.totalHal} onHal={setHalTema} />
+        </>
         )}
         <div className={s.foot}>Sisa waktu hari ini: {sisaMnt} menit</div>
       </div>
@@ -283,6 +309,7 @@ export default function MenuAnak({
   }
 
   if (layar === 'daftar' && temaTerpilih) {
+    const hGame = saringPaginasi(temaTerpilih.paket, (p) => p.judul, { q: cariGame, hal: halGame });
     return (
       <div className={s.wrap}>
         <div className={s.top}>
@@ -290,13 +317,16 @@ export default function MenuAnak({
           <div className="kp-chip"><Sampul value={temaTerpilih.tema.sampul} size={20} /> {temaTerpilih.tema.nama}</div>
           <div className="kp-coin">🪙 {koin}</div>
         </div>
+        <CariPager q={cariGame} onQ={(v) => { setCariGame(v); setHalGame(1); }}
+          hal={hGame.hal} totalHal={hGame.totalHal} total={hGame.total} adaFilter={hGame.adaFilter} label="permainan" />
         <div className={s.menu}>
-          {temaTerpilih.paket.map((p, i) => (
+          {hGame.baris.map((p, i) => (
             <button key={p.id} className={`kp-tile ${['mint', 'lavender', 'biru'][i % 3]}`} onClick={() => mulaiGame(p, temaTerpilih)}>
               <span className="emo">🎯</span><div>{p.judul}</div>
             </button>
           ))}
         </div>
+        <PagerBaris hal={hGame.hal} totalHal={hGame.totalHal} onHal={setHalGame} />
         <div className="no-print" style={{ display: 'flex', justifyContent: 'center', margin: '8px 0' }}>
           <ShareButton url={`/coba/tema/${temaTerpilih.tema.id}`} title={temaTerpilih.tema.nama} text={`Main game "${temaTerpilih.tema.nama}" di KidzPlayful`} jenis="game" gambar={temaTerpilih.tema.sampul ?? undefined} label="Bagikan tema" />
         </div>
