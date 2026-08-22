@@ -24,7 +24,7 @@ import s from './main.module.css';
 type Layar = 'menu' | 'kelas' | 'kelas-detail' | 'daftar' | 'pustaka' | 'video' | 'main' | 'istirahat';
 
 export default function MenuAnak({
-  anak, pustaka, pinTersimpan, video, paketAwal, kelasAwal, kembaliUrl, kelasList, favIds, gamiAwal, batasi = false, labelArea = {}, bolehWorksheet = false, sisaWorksheet, worksheetTanpaBatas, evaluasiPerKelas = {},
+  anak, pustaka, pinTersimpan, video, paketAwal, kelasAwal, kembaliUrl, kelasList, favIds, gamiAwal, batasi = false, labelArea = {}, bolehWorksheet = false, sisaWorksheet, worksheetTanpaBatas, evaluasiPerKelas = {}, kelasTerkunci = [], bulanKurikulum = 1,
 }: {
   anak: { id: string; nama: string; koin: number; batas_menit: number };
   pustaka: TemaLengkap[]; pinTersimpan: string | null; video: Video[]; paketAwal?: string;
@@ -41,6 +41,9 @@ export default function MenuAnak({
    */
   kembaliUrl?: string | null;
   kelasList: KelasBermain[]; favIds: string[];
+  /** id tema yang belum waktunya untuk anak ini — tampil TERKUNCI, tidak disembunyikan */
+  kelasTerkunci?: string[];
+  bulanKurikulum?: number;
   /**
    * Hasil checklist evaluasi anak ini per kelas (0098). BUG yang diperbaiki: Mode Anak
    * dulu merender `KelasIsi` tanpa `anakId` sama sekali, sehingga checklist mati dan
@@ -75,6 +78,7 @@ export default function MenuAnak({
   const [pinUntuk, setPinUntuk] = useState<null | 'keluar'>(null);
   // Cari + halaman untuk tiap daftar. Disimpan TERPISAH per layar supaya berpindah menu
   // tak membawa kata kunci layar sebelumnya — itu akan terlihat seperti daftar kosong.
+  const [pesanKunci, setPesanKunci] = useState<string | null>(null);
   const [cariKelas, setCariKelas] = useState(''); const [halKelas, setHalKelas] = useState(1);
   const [cariTema, setCariTema] = useState(''); const [halTema, setHalTema] = useState(1);
   const [cariGame, setCariGame] = useState(''); const [halGame, setHalGame] = useState(1);
@@ -219,10 +223,24 @@ export default function MenuAnak({
           <>
           <CariPager q={cariKelas} onQ={(v) => { setCariKelas(v); setHalKelas(1); }}
             hal={hKelas.hal} totalHal={hKelas.totalHal} total={hKelas.total} adaFilter={hKelas.adaFilter} />
+          {/* Menekan tema yang belum waktunya harus MENJAWAB, bukan diam — kartu yang tak
+              bereaksi tak bisa dibedakan dari tombol rusak. */}
+          {pesanKunci && (
+            <div className="no-print" style={{ margin: '4px 6px', background: '#fff3d6', color: '#b88600', borderRadius: 12, padding: '8px 12px', fontSize: 13 }}>
+              ⏳ “{pesanKunci}” belum terbuka. Sekarang kamu ada di <b>bulan ke-{bulanKurikulum}</b> —
+              tema ini menunggu bulan berikutnya ya!
+              <button type="button" onClick={() => setPesanKunci(null)}
+                style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontWeight: 800, marginLeft: 6 }}>✕</button>
+            </div>
+          )}
           <div className={s.menu}>
             {hKelas.baris.map((k, i) => {
-              const kunci = terkunci(k.boleh_trial);
+              // Dua sebab terkunci yang BERBEDA, dan pesannya tak boleh tertukar:
+              // belum berlangganan (🔒 fasilitas) vs belum waktunya (⏳ bulan berikutnya).
+              const belumWaktunya = kelasTerkunci.includes(k.id);
+              const kunci = terkunci(k.boleh_trial) || belumWaktunya;
               const buka = () => {
+                if (belumWaktunya) { setPesanKunci(k.judul); return; }
                 if (kunci) { setKunciFitur('Materi Ide Bermain'); return; }
                 setKelasDipilih(k); setLayar('kelas-detail');
                 catatRiwayatKelas(k.id).catch(() => {});
@@ -235,8 +253,8 @@ export default function MenuAnak({
                   role="button" tabIndex={0} onClick={buka}
                   onKeyDown={(e) => { if (e.key === 'Enter') buka(); }}
                   style={{ position: 'relative', cursor: 'pointer', opacity: kunci ? 0.7 : 1 }}>
-                  <span className="emo">{kunci ? '🔒' : '🎈'}</span>
-                  <div>{k.judul}</div>
+                  <span className="emo">{belumWaktunya ? '⏳' : kunci ? '🔒' : '🎈'}</span>
+                  <div>{k.judul}{belumWaktunya && <small>terbuka bulan ke-{k.bulan_kurikulum}</small>}</div>
                   {!kunci && <span style={{ position: 'absolute', top: 6, right: 8 }}><FavoritBtn kelasId={k.id} awal={favIds.includes(k.id)} /></span>}
                 </div>
               );

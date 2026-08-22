@@ -87,6 +87,22 @@ export function susunHasilEvaluasi(
   return out;
 }
 
+/**
+ * Tema yang BELUM terbuka untuk seorang anak — bulan depan maupun lebih jauh — diurutkan
+ * dari yang paling dekat.
+ *
+ * Kenapa perlu: aturan repo ini membatasi konten dengan **kunci** (🔒), bukan dengan
+ * menyembunyikannya (lihat CLAUDE.md tentang `redirect`/`dibatasiTrial`). Menyembunyikan
+ * tema membuat pemilik melihat 5 tema aktif di admin tapi hanya 4 di halaman pengguna, dan
+ * itu tak bisa dibedakan dari data yang hilang. Jadi semuanya tetap tampil; yang belum
+ * waktunya cukup dikunci beserta keterangan bulannya.
+ */
+export function temaTerkunci<T extends TemaKurikulum>(list: T[], bulanAnak: number): T[] {
+  return (list ?? [])
+    .filter((t) => statusTema(t, bulanAnak) !== 'terbuka')
+    .sort(urut);
+}
+
 export function ringkasEvaluasi(hasil: ButirEvaluasi[] | null | undefined): { total: number; tercapai: number; persen: number } {
   const h = hasil ?? [];
   const tercapai = h.filter((x) => x.tercapai).length;

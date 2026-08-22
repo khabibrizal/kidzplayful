@@ -1,6 +1,6 @@
 // src/lib/domain/__tests__/kurikulum.test.ts
 import { describe, it, expect } from 'vitest';
-import { bulanKurikulumAnak, statusTema, kelompokTema, ringkasEvaluasi, susunHasilEvaluasi, posisiTema, evaluasiPerAktivitas } from '../kurikulum';
+import { bulanKurikulumAnak, statusTema, kelompokTema, ringkasEvaluasi, susunHasilEvaluasi, posisiTema, evaluasiPerAktivitas, temaTerkunci } from '../kurikulum';
 
 const tema = (bulan: number, judul = `T${bulan}`) => ({ id: judul, judul, bulan_kurikulum: bulan, urutan: 0 });
 
@@ -157,5 +157,28 @@ describe('evaluasiPerAktivitas', () => {
   it('kosong / null aman', () => {
     expect(evaluasiPerAktivitas([])).toEqual([]);
     expect(evaluasiPerAktivitas(null)).toEqual([]);
+  });
+});
+
+describe('temaTerkunci', () => {
+  const list = [tema(1, 'a'), tema(2, 'b'), tema(3, 'c'), tema(9, 'd')];
+
+  it('memuat SEMUA tema yang belum terbuka — bulan depan MAUPUN yang lebih jauh', () => {
+    // Pemilik melihat 5 tema aktif di admin; halaman pengguna tak boleh menampilkan 4.
+    // Yang belum waktunya dikunci, bukan disembunyikan.
+    expect(temaTerkunci(list, 1).map((t) => t.judul)).toEqual(['b', 'c', 'd']);
+  });
+
+  it('diurutkan dari bulan terdekat', () => {
+    expect(temaTerkunci(list, 1).map((t) => t.bulan_kurikulum)).toEqual([2, 3, 9]);
+  });
+
+  it('tema yang sudah terbuka tidak ikut', () => {
+    expect(temaTerkunci(list, 3).map((t) => t.judul)).toEqual(['d']);
+    expect(temaTerkunci(list, 99)).toEqual([]);
+  });
+
+  it('materi lama tanpa bulan dianggap terbuka, jadi tak ikut terkunci', () => {
+    expect(temaTerkunci([{ id: 'x', judul: 'X' }], 1)).toEqual([]);
   });
 });

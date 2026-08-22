@@ -8,7 +8,7 @@ import { getHakAnak } from '@/lib/data/langganan-anak';
 import { getStatusWorksheet } from '@/lib/data/worksheet';
 import { getLabelFokusArea } from '@/lib/data/fokus-area';
 import { getEvaluasiAnak, getBulanKurikulumAnak } from '@/lib/data/kurikulum';
-import { kelompokTema } from '@/lib/domain/kurikulum';
+import { kelompokTema, temaTerkunci } from '@/lib/domain/kurikulum';
 import KelasIsi from '@/components/KelasIsi';
 import Terkunci from '@/components/Terkunci';
 import s from './ortu.module.css';
@@ -32,6 +32,7 @@ export default async function ModeOrtu({ params }: { params: Promise<{ anakId: s
   // dan itu ditampilkan di bagian tersendiri di bawah.
   const grup = kelompokTema(kelasList0, bulanAnak);
   const kelasList = [...grup.bulanIni, ...grup.sudahTerbuka];
+  const terkunciList = temaTerkunci(kelasList0, bulanAnak);
   const videoBaby = videoBaby0;
   const terkunci = (b?: boolean) => batasi && b === false;
 
@@ -66,14 +67,19 @@ export default async function ModeOrtu({ params }: { params: Promise<{ anakId: s
         )
       ))}
 
-      {grup.bulanDepan.length > 0 && (
+      {/* SEMUA tema yang belum waktunya tetap tampil — terkunci, dengan bulan terbukanya.
+          Menyembunyikannya membuat jumlah tema di admin dan di sini tak pernah cocok. */}
+      {terkunciList.length > 0 && (
         <div className="kp-card" style={{ marginBottom: 12, background: '#f7f5fc' }}>
-          <b style={{ fontSize: 13 }}>🔜 Bulan depan (bulan ke-{bulanAnak + 1})</b>
+          <b style={{ fontSize: 13 }}>⏳ Belum terbuka untuk {anak.nama}</b>
           <ul style={{ margin: '6px 0 0', paddingLeft: 18, color: 'var(--abu)', fontSize: 14 }}>
-            {grup.bulanDepan.map((k) => <li key={k.id}>{k.judul}</li>)}
+            {terkunciList.map((k) => (
+              <li key={k.id}>{k.judul} <small>· bulan ke-{k.bulan_kurikulum}</small></li>
+            ))}
           </ul>
           <div style={{ fontSize: 12, color: 'var(--abu)', marginTop: 6 }}>
-            Terbuka saat langganan {anak.nama} masuk bulan ke-{bulanAnak + 1}.
+            {anak.nama} sekarang di bulan ke-{bulanAnak}; tema di atas terbuka saat langganannya
+            mencapai bulan yang tertulis.
           </div>
         </div>
       )}

@@ -11,7 +11,7 @@ import { getFavoritIds } from '@/lib/data/favorit';
 import { getGamifikasiAnak } from '@/lib/data/gamifikasi';
 import { getHakAnak } from '@/lib/data/langganan-anak';
 import { getBulanKurikulumAnak, getEvaluasiAnak } from '@/lib/data/kurikulum';
-import { kelompokTema } from '@/lib/domain/kurikulum';
+import { kelompokTema, temaTerkunci } from '@/lib/domain/kurikulum';
 import { pathInternal } from '@/lib/nav';
 import { getStatusWorksheet } from '@/lib/data/worksheet';
 import RekamAktivitas from '@/components/RekamAktivitas';
@@ -47,9 +47,10 @@ export default async function MainPage({ params, searchParams }: { params: Promi
   // Basic. `batasi` = anak ini belum punya hak penuh atas game, jadi item yang tak ditandai
   // `boleh_trial` tampil terkunci.
   const batasi = !status.game;
-  // Mode Anak hanya memuat tema yang SUDAH terbuka untuk anak ini (0098). Tema bulan
-  // depan tak ditampilkan di sini sama sekali: judul-saja adalah bahasa untuk orang tua,
-  // sedangkan bagi anak ia hanya jadi pintu yang tak bisa dibuka.
+  // SEMUA tema aktif tetap dikirim; yang belum waktunya ditandai TERKUNCI di UI, bukan
+  // dibuang. Versi sebelumnya menyaringnya habis, dan akibatnya pemilik melihat 5 tema aktif
+  // di admin tapi hanya 4 di halaman pengguna — tak bisa dibedakan dari data hilang. Aturan
+  // repo ini pun membatasi konten dengan kunci (🔒), bukan dengan menyembunyikan.
   const bulanAnak = await getBulanKurikulumAnak(anakId);
   // Checklist milik peran 'ortu' — penilaian guru/psikolog punya barisnya sendiri dan
   // tampil di rapor, bukan di layar anak.
@@ -59,7 +60,9 @@ export default async function MainPage({ params, searchParams }: { params: Promi
       .map((e) => [e.kelas_id, { hasil: e.hasil, peran: e.peran, updated_at: e.updated_at }]),
   );
   const grupTema = kelompokTema(kelasList0, bulanAnak);
-  const kelasTerbuka = [...grupTema.bulanIni, ...grupTema.sudahTerbuka];
+  const daftarTerkunci = temaTerkunci(kelasList0, bulanAnak);
+  const idTerkunci = daftarTerkunci.map((k) => k.id);
+  const kelasTerbuka = [...grupTema.bulanIni, ...grupTema.sudahTerbuka, ...daftarTerkunci];
   // CATATAN: pustaka kosong TIDAK lagi memantulkan ke `/pilih-anak`. Pantulan itu diam-diam
   // (klik kartu anak seolah tak berfungsi) padahal Mode Anak masih berguna tanpa game —
   // masih ada Ide Bermain, Pojok Video, koin & lencana. `MenuAnak` sendiri sudah punya
@@ -78,6 +81,8 @@ export default async function MainPage({ params, searchParams }: { params: Promi
       evaluasiPerKelas={evaluasiPerKelas}
       kelasAwal={kelasAwal ?? null}
       kelasList={kelasTerbuka}
+      kelasTerkunci={idTerkunci}
+      bulanKurikulum={bulanAnak}
       favIds={favIds}
       gamiAwal={gami}
       bolehWorksheet={status.worksheet && wsKuota.boleh}

@@ -10,7 +10,7 @@ import BottomNav from '@/components/BottomNav';
 import PemilihAnak from '@/components/PemilihAnak';
 import { getKelasAktifCached } from '@/lib/data/publik';
 import { getBulanKurikulumAnak } from '@/lib/data/kurikulum';
-import { kelompokTema } from '@/lib/domain/kurikulum';
+import { kelompokTema, temaTerkunci } from '@/lib/domain/kurikulum';
 
 const STATUS: Record<string, { teks: string; warna: string; bg: string }> = {
   menunggu: { teks: 'Menunggu verifikasi', warna: '#b88600', bg: '#fff3d6' },
@@ -35,6 +35,7 @@ export default async function KelasSayaPage({ searchParams }: { searchParams: Pr
   const anakDipilih = anakSaya.find((a) => a.id === anakParam) ?? anakSaya[0] ?? null;
   const bulanAnak = anakDipilih ? await getBulanKurikulumAnak(anakDipilih.id) : 1;
   const grup = kelompokTema(kelasSemua, bulanAnak);
+  const terkunciList = anakDipilih ? temaTerkunci(kelasSemua, bulanAnak) : [];
   const tautan = (id: string) => (anakDipilih ? `/kelas/${id}?anak=${anakDipilih.id}` : `/kelas/${id}`);
 
   return (
@@ -80,14 +81,19 @@ export default async function KelasSayaPage({ searchParams }: { searchParams: Pr
 
           {/* Bulan depan: JUDUL SAJA. Isinya sengaja tak dimuat — inilah alasan menunggu
               bulan berikutnya, dan menampilkan 12 bulan sekaligus justru mematikannya. */}
-          {grup.bulanDepan.length > 0 && (
+          {/* Semua tema yang belum waktunya TETAP tampil, terkunci beserta bulan
+              terbukanya — bukan disembunyikan. */}
+          {terkunciList.length > 0 && (
             <div className="kp-card" style={{ marginBottom: 16, background: '#f7f5fc' }}>
-              <b style={{ fontSize: 13 }}>🔜 Bulan depan (bulan ke-{bulanAnak + 1})</b>
+              <b style={{ fontSize: 13 }}>⏳ Belum terbuka ({terkunciList.length})</b>
               <ul style={{ margin: '6px 0 0', paddingLeft: 18, color: 'var(--abu)', fontSize: 14 }}>
-                {grup.bulanDepan.map((k) => <li key={k.id}>{k.judul}</li>)}
+                {terkunciList.map((k) => (
+                  <li key={k.id}>{k.judul} <small>· bulan ke-{k.bulan_kurikulum}</small></li>
+                ))}
               </ul>
               <div style={{ fontSize: 12, color: 'var(--abu)', marginTop: 6 }}>
-                Terbuka saat langganan {anakDipilih?.nama ?? 'anak'} masuk bulan ke-{bulanAnak + 1}.
+                {anakDipilih?.nama ?? 'Anak'} sekarang di bulan ke-{bulanAnak}; tema di atas terbuka
+                saat langganannya mencapai bulan yang tertulis.
               </div>
             </div>
           )}
