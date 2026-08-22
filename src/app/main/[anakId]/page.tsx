@@ -11,7 +11,7 @@ import { getFavoritIds } from '@/lib/data/favorit';
 import { getGamifikasiAnak } from '@/lib/data/gamifikasi';
 import { getHakAnak } from '@/lib/data/langganan-anak';
 import { getBulanKurikulumAnak, getEvaluasiAnak } from '@/lib/data/kurikulum';
-import { kelompokTema, temaTerkunci } from '@/lib/domain/kurikulum';
+import { kelompokTema, temaTerkunci, cocokUsia } from '@/lib/domain/kurikulum';
 import { pathInternal } from '@/lib/nav';
 import { getStatusWorksheet } from '@/lib/data/worksheet';
 import RekamAktivitas from '@/components/RekamAktivitas';
@@ -59,8 +59,12 @@ export default async function MainPage({ params, searchParams }: { params: Promi
     evaluasiAnak.filter((e) => e.peran === 'ortu')
       .map((e) => [e.kelas_id, { hasil: e.hasil, peran: e.peran, updated_at: e.updated_at }]),
   );
-  const grupTema = kelompokTema(kelasList0, bulanAnak);
-  const daftarTerkunci = temaTerkunci(kelasList0, bulanAnak);
+  // Tema disaring menurut USIA anak (`kelas_bermain.usia_min/max` vs umurnya hari ini).
+  // Rentang usia diisi admin justru supaya materi 5–6 th tak muncul di layar anak 2 th;
+  // menampilkannya hanya membuat anak membuka sesuatu yang belum bisa ia kerjakan.
+  const kelasUsia = kelasList0.filter((k) => cocokUsia(k, umur));
+  const grupTema = kelompokTema(kelasUsia, bulanAnak);
+  const daftarTerkunci = temaTerkunci(kelasUsia, bulanAnak);
   const idTerkunci = daftarTerkunci.map((k) => k.id);
   const kelasTerbuka = [...grupTema.bulanIni, ...grupTema.sudahTerbuka, ...daftarTerkunci];
   // CATATAN: pustaka kosong TIDAK lagi memantulkan ke `/pilih-anak`. Pantulan itu diam-diam

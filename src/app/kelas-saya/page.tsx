@@ -10,7 +10,8 @@ import BottomNav from '@/components/BottomNav';
 import PemilihAnak from '@/components/PemilihAnak';
 import { getKelasAktifCached } from '@/lib/data/publik';
 import { getBulanKurikulumAnak } from '@/lib/data/kurikulum';
-import { kelompokTema, temaTerkunci } from '@/lib/domain/kurikulum';
+import { kelompokTema, temaTerkunci, cocokUsia } from '@/lib/domain/kurikulum';
+import { umurTahun } from '@/lib/domain/anak';
 
 const STATUS: Record<string, { teks: string; warna: string; bg: string }> = {
   menunggu: { teks: 'Menunggu verifikasi', warna: '#b88600', bg: '#fff3d6' },
@@ -25,17 +26,23 @@ export default async function KelasSayaPage({ searchParams }: { searchParams: Pr
   if (!user) redirect('/login');
   const [diikuti, riwayat, kelasSemua, { data: anakList }] = await Promise.all([
     getEventDiikuti(), getRiwayatKelas(), getKelasAktifCached(),
-    supabase.from('anak').select('id,nama').eq('ortu_id', user.id).order('created_at'),
+    supabase.from('anak').select('id,nama,tanggal_lahir').eq('ortu_id', user.id).order('created_at'),
   ]);
 
   // Kurikulum berjalan PER ANAK: tema yang terbuka untuk kakak bisa masih terkunci untuk
   // adik. Tanpa `?anak=`, ambil anak pertama supaya halaman tetap berguna — pemilihnya
   // selalu terlihat.
-  const anakSaya = (anakList ?? []) as { id: string; nama: string }[];
+  const anakSaya = (anakList ?? []) as { id: string; nama: string; tanggal_lahir?: string | null }[];
   const anakDipilih = anakSaya.find((a) => a.id === anakParam) ?? anakSaya[0] ?? null;
   const bulanAnak = anakDipilih ? await getBulanKurikulumAnak(anakDipilih.id) : 1;
-  const grup = kelompokTema(kelasSemua, bulanAnak);
-  const terkunciList = anakDipilih ? temaTerkunci(kelasSemua, bulanAnak) : [];
+  // Saring menurut usia anak terpilih; selisihnya disebut, tidak disembunyikan diam-diam.
+  const umurAnak = anakDipilih?.tanggal_lahir
+    ? umurTahun(new Date(anakDipilih.tanggal_lahir + 'T00:00:00Z'), new Date())
+    : NaN;
+  const kelasUsia = kelasSemua.filter((k) => cocokUsia(k, umurAnak));
+  const diluarUsia = kelasSemua.length - kelasUsia.length;
+  const grup = kelompokTema(kelasUsia, bulanAnak);
+  const terkunciList = anakDipilih ? temaTerkunci(kelasUsia, bulanAnak) : [];
   const tautan = (id: string) => (anakDipilih ? `/kelas/${id}?anak=${anakDipilih.id}` : `/kelas/${id}`);
 
   return (
@@ -49,6 +56,12 @@ export default async function KelasSayaPage({ searchParams }: { searchParams: Pr
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '0 0 8px' }}>
             📚 KURIKULUM {anakDipilih ? anakDipilih.nama.toUpperCase() : ''} · BULAN KE-{bulanAnak}
           </div>
+          {diluarUsia > 0 && (
+            <div style={{ fontSize: 12, color: 'var(--abu)', margin: '-4px 0 8px' }}>
+              {diluarUsia} tema disembunyikan karena di luar rentang usia {anakDipilih?.nama ?? 'anak'}
+              {Number.isFinite(umurAnak) ? ` (${umurAnak} th)` : ''}.
+            </div>
+          )}
 
           {grup.bulanIni.length === 0 && grup.sudahTerbuka.length === 0 && (
             <p style={{ color: 'var(--abu)', fontSize: 13 }}>Belum ada tema untuk bulan ini.</p>

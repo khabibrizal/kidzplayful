@@ -1,6 +1,6 @@
 // src/lib/domain/__tests__/kurikulum.test.ts
 import { describe, it, expect } from 'vitest';
-import { bulanKurikulumAnak, statusTema, kelompokTema, ringkasEvaluasi, susunHasilEvaluasi, posisiTema, evaluasiPerAktivitas, temaTerkunci } from '../kurikulum';
+import { bulanKurikulumAnak, statusTema, kelompokTema, ringkasEvaluasi, susunHasilEvaluasi, posisiTema, evaluasiPerAktivitas, temaTerkunci, cocokUsia } from '../kurikulum';
 
 const tema = (bulan: number, judul = `T${bulan}`) => ({ id: judul, judul, bulan_kurikulum: bulan, urutan: 0 });
 
@@ -180,5 +180,37 @@ describe('temaTerkunci', () => {
 
   it('materi lama tanpa bulan dianggap terbuka, jadi tak ikut terkunci', () => {
     expect(temaTerkunci([{ id: 'x', judul: 'X' }], 1)).toEqual([]);
+  });
+});
+
+describe('cocokUsia', () => {
+  const t35 = { usia_min: 3, usia_max: 5 };
+
+  it('di dalam rentang → cocok, termasuk tepat di batasnya', () => {
+    expect(cocokUsia(t35, 3)).toBe(true);
+    expect(cocokUsia(t35, 4)).toBe(true);
+    expect(cocokUsia(t35, 5)).toBe(true);
+  });
+
+  it('di luar rentang → tidak cocok', () => {
+    expect(cocokUsia(t35, 2)).toBe(false);
+    expect(cocokUsia(t35, 6)).toBe(false);
+  });
+
+  it('batas kosong berarti TAK dibatasi — materi lama tak boleh hilang', () => {
+    expect(cocokUsia({}, 1)).toBe(true);
+    expect(cocokUsia({ usia_min: 3 }, 9)).toBe(true);
+    expect(cocokUsia({ usia_max: 5 }, 1)).toBe(true);
+    expect(cocokUsia({ usia_min: null, usia_max: null }, 7)).toBe(true);
+  });
+
+  it('rentang terbalik (salah ketik admin) tidak menyaring apa pun', () => {
+    // Lebih baik menampilkan tema yang seharusnya tersaring daripada mengosongkan
+    // layar anak tanpa sebab yang terlihat.
+    expect(cocokUsia({ usia_min: 6, usia_max: 2 }, 4)).toBe(true);
+  });
+
+  it('umur tak sah (tanggal lahir belum diisi) tidak menyaring', () => {
+    expect(cocokUsia(t35, NaN)).toBe(true);
   });
 });

@@ -2,13 +2,14 @@
 import Link from 'next/link';
 import Pewi from '@/components/ui/Pewi';
 import { getAnakTerjamin } from '@/lib/data/anak';
+import { umurTahun } from '@/lib/domain/anak';
 import { getKelasAktifCached } from '@/lib/data/publik';
 import { getVideoByKategori } from '@/lib/data/video';
 import { getHakAnak } from '@/lib/data/langganan-anak';
 import { getStatusWorksheet } from '@/lib/data/worksheet';
 import { getLabelFokusArea } from '@/lib/data/fokus-area';
 import { getEvaluasiAnak, getBulanKurikulumAnak } from '@/lib/data/kurikulum';
-import { kelompokTema, temaTerkunci } from '@/lib/domain/kurikulum';
+import { kelompokTema, temaTerkunci, cocokUsia } from '@/lib/domain/kurikulum';
 import KelasIsi from '@/components/KelasIsi';
 import Terkunci from '@/components/Terkunci';
 import s from './ortu.module.css';
@@ -30,9 +31,14 @@ export default async function ModeOrtu({ params }: { params: Promise<{ anakId: s
   const batasi = !status.ideBermain;
   // Hanya tema yang sudah terbuka untuk ANAK INI (0098). Bulan depan cukup judulnya,
   // dan itu ditampilkan di bagian tersendiri di bawah.
-  const grup = kelompokTema(kelasList0, bulanAnak);
+  // Saring menurut usia anak; jumlah yang tersaring DISEBUTKAN di layar orang tua, supaya
+  // selisih jumlah tema di admin dan di sini selalu ada penjelasannya.
+  const umurAnak = umurTahun(new Date(anak.tanggal_lahir + 'T00:00:00Z'), new Date());
+  const kelasUsia = kelasList0.filter((k) => cocokUsia(k, umurAnak));
+  const diluarUsia = kelasList0.length - kelasUsia.length;
+  const grup = kelompokTema(kelasUsia, bulanAnak);
   const kelasList = [...grup.bulanIni, ...grup.sudahTerbuka];
-  const terkunciList = temaTerkunci(kelasList0, bulanAnak);
+  const terkunciList = temaTerkunci(kelasUsia, bulanAnak);
   const videoBaby = videoBaby0;
   const terkunci = (b?: boolean) => batasi && b === false;
 
@@ -48,6 +54,11 @@ export default async function ModeOrtu({ params }: { params: Promise<{ anakId: s
       </div>
 
       <div className={s.muted} style={{ fontSize: 12, fontWeight: 700 }}>📚 KURIKULUM {anak.nama.toUpperCase()} · BULAN KE-{bulanAnak}</div>
+      {diluarUsia > 0 && (
+        <div className={s.muted} style={{ fontSize: 12 }}>
+          {diluarUsia} tema disembunyikan karena di luar rentang usia {anak.nama} ({umurAnak} th).
+        </div>
+      )}
       {kelasList.length === 0 && <p className={s.muted}>Belum ada ide bermain aktif. Admin dapat menambah di Kelola Ide Bermain.</p>}
 
       {kelasList.map((k) => (

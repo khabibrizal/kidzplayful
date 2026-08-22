@@ -11,7 +11,8 @@ import Terkunci from '@/components/Terkunci';
 import TombolKembali from '@/components/TombolKembali';
 import { getLabelFokusArea } from '@/lib/data/fokus-area';
 import { getBulanKurikulumAnak, getEvaluasiTema } from '@/lib/data/kurikulum';
-import { statusTema } from '@/lib/domain/kurikulum';
+import { statusTema, cocokUsia } from '@/lib/domain/kurikulum';
+import { umurTahun } from '@/lib/domain/anak';
 import PemilihAnak from '@/components/PemilihAnak';
 
 const COLS = 'id,judul,sampul_url,tujuan,fokus_area,peran_ortu,usia_min,usia_max,aktivitas,bahan,link_ide,worksheet_url,status,boleh_trial';
@@ -35,7 +36,7 @@ export default async function KelasDetailPage(
     getHakAkun(),
     getStatusWorksheet(),
     getLabelFokusArea(),
-    supabase.from('anak').select('id,nama').eq('ortu_id', user.id).order('created_at'),
+    supabase.from('anak').select('id,nama,tanggal_lahir').eq('ortu_id', user.id).order('created_at'),
   ]);
   // Cadangan berjenjang bila kolom 0098 / 0089 belum ada.
   const baris = data
@@ -46,10 +47,17 @@ export default async function KelasDetailPage(
 
   // Kurikulum milik SATU anak. Tanpa `?anak=`, ambil anak pertama supaya halaman tetap
   // berguna; pemilihnya selalu terlihat sehingga orang tua bisa berpindah.
-  const anakSaya = (anakList ?? []) as { id: string; nama: string }[];
+  const anakSaya = (anakList ?? []) as { id: string; nama: string; tanggal_lahir?: string | null }[];
   const anakDipilih = anakSaya.find((a) => a.id === anakParam) ?? anakSaya[0] ?? null;
   const bulanAnak = anakDipilih ? await getBulanKurikulumAnak(anakDipilih.id) : 1;
   const st = statusTema(kelas, bulanAnak);
+  // Usia: di halaman ini materi TIDAK diblokir — orang tua boleh membukanya sengaja
+  // (mis. menyiapkan untuk kakaknya). Yang perlu ada hanyalah peringatan, supaya tak
+  // salah kira materi ini memang untuk anak yang sedang dipilih.
+  const umurAnak = anakDipilih?.tanggal_lahir
+    ? umurTahun(new Date(anakDipilih.tanggal_lahir + 'T00:00:00Z'), new Date())
+    : NaN;
+  const luarUsia = anakDipilih ? !cocokUsia(kelas, umurAnak) : false;
   const evaluasi = anakDipilih ? await getEvaluasiTema(anakDipilih.id, kelas.id, 'ortu') : null;
 
   // gating trial: materi ini hanya untuk pelanggan bila tak ditandai "boleh trial"
@@ -100,6 +108,16 @@ export default async function KelasDetailPage(
   return (
     <main style={{ maxWidth: 480, margin: '24px auto', padding: 16 }}>
       {kepala}
+      {luarUsia && (
+        <div className="kp-card" style={{ background: '#fff3d6', marginBottom: 10 }}>
+          <b style={{ fontSize: 13, color: '#b88600' }}>ℹ️ Di luar rentang usia {anakDipilih?.nama}</b>
+          <p style={{ margin: '4px 0 0', fontSize: 13 }}>
+            Materi ini disarankan untuk usia {kelas.usia_min ?? 0}–{kelas.usia_max ?? 6} tahun, sedangkan
+            {' '}{anakDipilih?.nama} berusia {Number.isFinite(umurAnak) ? `${umurAnak} tahun` : 'belum diisi tanggal lahirnya'}.
+            Boleh tetap dicoba dengan pendampingan; di Mode Anak materi ini tidak ditampilkan.
+          </p>
+        </div>
+      )}
       <KelasIsi kelas={kelas} labelArea={labelMaster} bagikanUrl={`/coba/kelas/${kelas.id}`} bolehWorksheet={ws.boleh} sisaWorksheet={ws.sisa} worksheetTanpaBatas={ws.tanpaBatas}
         anakId={anakDipilih?.id ?? null} anakNama={anakDipilih?.nama ?? null}
         evaluasiAwal={evaluasi?.hasil ?? []} evaluasiPeran={evaluasi?.peran ?? null} evaluasiWaktu={evaluasi?.updated_at ?? null}

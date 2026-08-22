@@ -103,6 +103,30 @@ export function temaTerkunci<T extends TemaKurikulum>(list: T[], bulanAnak: numb
     .sort(urut);
 }
 
+/** Bentuk tema yang dibutuhkan untuk mencocokkan usia. */
+export interface TemaUsia { usia_min?: number | null; usia_max?: number | null }
+
+/**
+ * Apakah sebuah tema cocok untuk anak berusia `umur` tahun?
+ *
+ * Batas yang KOSONG berarti tak dibatasi — materi lama yang tak mengisi rentang usia tak
+ * boleh hilang dari layar hanya karena fieldnya belum diisi. Batas terbalik (min > max,
+ * salah ketik admin) juga dianggap tak membatasi: lebih baik menampilkan tema yang
+ * seharusnya tersaring daripada mengosongkan layar anak tanpa sebab yang terlihat.
+ */
+export function cocokUsia(tema: TemaUsia, umur: number): boolean {
+  const u = Math.floor(Number(umur));
+  if (!Number.isFinite(u)) return true;   // tanggal lahir belum diisi → jangan menyaring
+  const min = tema?.usia_min;
+  const max = tema?.usia_max;
+  const adaMin = min !== null && min !== undefined && Number.isFinite(Number(min));
+  const adaMax = max !== null && max !== undefined && Number.isFinite(Number(max));
+  if (adaMin && adaMax && Number(min) > Number(max)) return true;   // rentang terbalik
+  if (adaMin && u < Number(min)) return false;
+  if (adaMax && u > Number(max)) return false;
+  return true;
+}
+
 export function ringkasEvaluasi(hasil: ButirEvaluasi[] | null | undefined): { total: number; tercapai: number; persen: number } {
   const h = hasil ?? [];
   const tercapai = h.filter((x) => x.tercapai).length;
