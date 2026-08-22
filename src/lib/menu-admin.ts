@@ -19,6 +19,11 @@ export const MENU_ADMIN: MenuAdmin[] = [
   { key: 'keuangan', href: '/admin/keuangan', label: '💼 Keuangan' },
   { key: 'sponsor', href: '/admin/sponsor', label: '🤝 Sponsor' },
   { key: 'anak', href: '/admin/anak', label: '🧒 Anak' },
+  // Rutenya SENGAJA di luar /admin: matriks Akses Menu tak punya dimensi psikolog, jadi
+  // halaman ini dipakai bersama admin/guru/psikolog (lihat app/catatan-tema/page.tsx).
+  // Yang didaftarkan di sini hanya pintu masuknya untuk admin — `href` boleh menunjuk ke
+  // luar /admin karena AdminNav memakai `href`, bukan merangkai `/admin/${key}`.
+  { key: 'catatan-tema', href: '/catatan-tema', label: '🍎 Catatan Tema' },
   { key: 'tantangan', href: '/admin/tantangan', label: '🏆 Tantangan' },
   { key: 'pengaturan-bayar', href: '/admin/pengaturan-bayar', label: '💰 Pembayaran' },
   { key: 'pengaturan-trial', href: '/admin/pengaturan-trial', label: '⏳ Trial' },
