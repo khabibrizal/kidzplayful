@@ -136,6 +136,46 @@ export function posisiBerikutnya(
   return { bulan: 1, urutan: 1 };
 }
 
+/**
+ * Field yang SENGAJA TIDAK dibawa saat sebuah tema diduplikat untuk kategori usia lain.
+ *
+ * Kategori & rentang usia dikosongkan karena itulah alasan duplikat ini ada: satu tema
+ * dipakai untuk beberapa kategori, yang membedakan hanya aktivitasnya. Membawa kategori
+ * sumber justru membuat salinan yang tak sah — posisinya akan bentrok dengan sumbernya
+ * (indeks `kelas_kurikulum_posisi_kategori`, 0103).
+ *
+ * Posisi (`bulanKurikulum`/`urutan`) diberi nilai sementara 1/1 dan dihitung ulang begitu
+ * admin memilih kategori. Ia TIDAK boleh mewarisi posisi sumber: dua tema di kategori yang
+ * sama tak boleh menempati slot yang sama, dan di kategori berbeda angkanya belum tentu
+ * kosong.
+ */
+export const RESET_SALINAN_TEMA = {
+  kategoriUsiaId: '',
+  usiaMin: 0,
+  usiaMax: 6,
+  bulanKurikulum: 1,
+  urutan: 1,
+} as const;
+
+/**
+ * Salin sebuah isian tema untuk dipakai di KATEGORI USIA LAIN.
+ *
+ * Yang dibawa: judul, tujuan, sampul, fokus area, peran ortu, bahan, seluruh aktivitas
+ * (beserta butir evaluasi & pilihan game-nya), link ide, dan worksheet. Yang tidak dibawa
+ * ada di `RESET_SALINAN_TEMA`.
+ *
+ * Salinannya **dalam** (`structuredClone`): `aktivitas`/`bahan` adalah array bersarang, dan
+ * salinan dangkal akan membuat menyunting langkah di salinan ikut mengubah tema sumbernya —
+ * kerusakan yang baru terlihat setelah keduanya tersimpan.
+ *
+ * Sampul & worksheet tetap menunjuk berkas yang SAMA di storage, dan itu aman: mengunggah
+ * pengganti selalu membuat objek baru (`kelas/<waktu>`, `worksheet/<waktu>`) dan tak pernah
+ * menghapus yang lama, jadi salinan tak bisa saling merusak asetnya.
+ */
+export function salinTemaKeKategoriLain<T extends object>(sumber: T): T {
+  return { ...structuredClone(sumber), ...RESET_SALINAN_TEMA };
+}
+
 /** Bentuk tema yang dibutuhkan untuk mencocokkan usia. */
 export interface TemaUsia { usia_min?: number | null; usia_max?: number | null }
 

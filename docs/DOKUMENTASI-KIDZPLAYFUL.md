@@ -360,6 +360,8 @@ Ide Bermain kini berjalan sebagai **kurikulum per ANAK**, bukan daftar materi le
 - **Tiap aktivitas punya checklist evaluasi** (kalimat bebas yang diisi admin) dan boleh punya **tautan game** yang admin pilihkan. Tombol keluar dari game kembali ke aktivitas asalnya.
 - **Satu tombol simpan per tema**; hasilnya masuk ke **rapor anak** (layar & JPEG) lengkap dengan siapa yang menilai.
 - Kurikulum berlaku untuk **semua paket, termasuk Basic dan masa trial** (bulan ke-1).
+- **Posisi tema (bulan & minggu) terisi otomatis per kategori usia.** Admin memilih kategori, sistem menaruhnya di slot bebas pertama — minggu 1–4, lalu pindah bulan. Satu kategori + bulan + minggu hanya boleh dimiliki satu tema, tapi Bayi dan Prasekolah boleh sama-sama punya Bulan 1 Minggu 1 (kurikulum yang berbeda).
+- **⧉ Duplikat: satu tema untuk beberapa kategori usia.** Pilih tema yang sudah ada dari dropdown di `/admin/kelas-bermain`, tekan Duplikat — form terisi seluruh isinya (judul, tujuan, bahan, aktivitas beserta butir evaluasi & game-nya), **kecuali kategori usia dan posisinya** yang memang harus baru. Admin lalu memilih kategori tujuan dan menyesuaikan aktivitasnya. Belum tersimpan sampai Simpan ditekan.
 
 ### 🍎 Catatan Tema oleh admin/guru/psikolog (migrasi 0099)
 Menu baru **🍎 Catatan Tema** (di navigasi admin, Area Guru, dan Area Psikolog) untuk **menanggapi evaluasi yang sudah diisi orang tua**. Yang tampil hanya tema yang sudah dievaluasi orang tua, lengkap dengan isian mereka per aktivitas DAN hasil game anak pada aktivitas itu (atau keterangan "belum dimainkan"). Guru/psikolog menilai **per tema**, bukan per aktivitas; catatannya tampil di rapor anak beserta nama & perannya. Psikolog hanya melihat anak yang pernah konsultasi dengannya.

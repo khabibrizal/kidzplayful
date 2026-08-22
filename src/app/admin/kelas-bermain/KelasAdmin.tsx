@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { buatKelas, updateKelas, toggleStatusKelas, hapusKelas, setBolehTrialKelas, type KelasInput } from '@/lib/data/kelas-bermain-actions';
 import type { KelasBermain } from '@/lib/game/tipe';
 import { kompresGambar } from '@/lib/img';
-import { posisiBerikutnya, MAKS_URUTAN_BULAN } from '@/lib/domain/kurikulum';
+import { posisiBerikutnya, MAKS_URUTAN_BULAN, salinTemaKeKategoriLain } from '@/lib/domain/kurikulum';
 import s from '../admin.module.css';
 
 const KOSONG: KelasInput = {
@@ -40,6 +40,12 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
   // Kategori saat form DIBUKA. Dipakai membedakan "kategori diganti" (posisi dihitung ulang
   // di kategori baru) dari "kategori dikembalikan" (posisi materi ini dipertahankan).
   const [awalKategori, setAwalKategori] = useState('');
+  // Tema sumber yang dipilih di dropdown Duplikat (bukan bagian dari isian form).
+  const [dariTema, setDariTema] = useState('');
+  // Judul tema yang sedang disalin. Hanya untuk keterangan di kepala form: admin yang
+  // menyalin lalu menyunting banyak aktivitas mudah lupa ini salinan dari mana, dan
+  // "Tambah Ide Bermain" saja tak membedakannya dari materi yang disusun dari nol.
+  const [asalSalinan, setAsalSalinan] = useState('');
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [toast, setToast] = useState('');
@@ -69,6 +75,15 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
   const dipakaiKategori = (kategoriId: string) => list.filter((k) =>
     k.status === 'aktif' && k.id !== editId && (k.kategori_usia_id ?? '') === kategoriId);
   const posisiOtomatis = (kategoriId: string) => posisiBerikutnya(dipakaiKategori(kategoriId));
+  // Judul kembar DI KATEGORI YANG SAMA hampir selalu tak disengaja: duplikat ini gunanya
+  // memindahkan satu tema ke kategori LAIN. Diperingatkan, bukan dilarang — admin boleh
+  // punya dua varian di satu kategori, dan memaksakannya di kode hanya akan menghalangi.
+  const judulKembar = form
+    ? list.some((k) => k.id !== editId
+        && (k.kategori_usia_id ?? '') === form.kategoriUsiaId
+        && k.judul.trim().toLowerCase() === form.judul.trim().toLowerCase()
+        && form.judul.trim() !== '')
+    : false;
   const terpakaiBulanIni = form
     ? [...new Set(dipakaiKategori(form.kategoriUsiaId)
         .filter((k) => (k.bulan_kurikulum ?? 1) === form.bulanKurikulum)
@@ -78,16 +93,22 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
   function bukaTambah() {
     setEditId(null);
     setAwalKategori('');
+    setDariTema(''); setAsalSalinan('');
     // Posisi materi baru ditetapkan begitu KATEGORI dipilih — sebelum itu belum ada
     // kurikulum yang bisa dihitung. Yang disiapkan di sini hanya posisi untuk materi
     // "tanpa kategori", supaya form tak pernah terbuka di slot yang sudah terisi.
     const p = posisiOtomatis('');
     setForm({ ...structuredClone(KOSONG), bulanKurikulum: p.bulan, urutan: p.urutan });
   }
-  function bukaEdit(k: KelasBermain) {
-    setEditId(k.id);
-    setAwalKategori(k.kategori_usia_id ?? '');
-    setForm({
+  /**
+   * Petakan satu baris `kelas_bermain` ke isian form.
+   *
+   * Dipakai BERSAMA oleh Edit dan Duplikat — sengaja satu pemeta: dua salinan pemetaan
+   * berarti field yang baru ditambahkan akan terbawa di satu jalur dan hilang di jalur lain,
+   * dan yang hilang itu baru terlihat setelah admin menyimpan.
+   */
+  function dariRow(k: KelasBermain): KelasInput {
+    return {
       judul: k.judul,
       sampulUrl: k.sampul_url ?? '',
       tujuan: k.tujuan ?? '',
@@ -113,7 +134,33 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
       // Materi lama belum punya kolom 0098 → bawaan bulan ke-1, bukan 0 (bulan 0 tak ada).
       bulanKurikulum: k.bulan_kurikulum ?? 1,
       urutan: k.urutan ?? 0,
-    });
+    };
+  }
+  function bukaEdit(k: KelasBermain) {
+    setEditId(k.id);
+    setAwalKategori(k.kategori_usia_id ?? '');
+    setDariTema(''); setAsalSalinan('');
+    setForm(dariRow(k));
+  }
+
+  /**
+   * Duplikat: pakai satu tema untuk KATEGORI USIA LAIN tanpa menyusunnya dari nol.
+   *
+   * Tidak menulis apa pun ke basis data — ia hanya MENGISI form, dan baru tersimpan bila
+   * admin menekan Simpan. Itu penting: duplikat yang langsung menulis akan meninggalkan
+   * tema separuh jadi setiap kali admin berubah pikiran.
+   *
+   * Kategori & posisinya sengaja dikosongkan (`salinTemaKeKategoriLain`), jadi admin wajib
+   * memilih kategori tujuan — dan begitu dipilih, posisinya dihitung di kategori itu.
+   */
+  function duplikatDari() {
+    const sumber = list.find((k) => k.id === dariTema);
+    if (!sumber) { flash('Pilih tema sumber dulu.'); return; }
+    setEditId(null);
+    setAwalKategori('');
+    setAsalSalinan(sumber.judul);
+    setForm(salinTemaKeKategoriLain(dariRow(sumber)));
+    flash(`Disalin dari “${sumber.judul}” — pilih kategori usianya, lalu sesuaikan aktivitasnya ✓`);
   }
 
   // --- helper update nested state ---
@@ -236,9 +283,31 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
         <button className={s.btn} onClick={bukaTambah}>+ Tambah Ide Bermain</button>
       </div>
 
+      {/* Duplikat: satu tema dipakai untuk beberapa kategori usia, yang dibedakan hanya
+          aktivitasnya. Ditaruh DI LUAR form supaya bisa dimulai tanpa lebih dulu membuka
+          form kosong — dan hanya tampil bila memang ada tema yang bisa disalin. */}
+      {list.length > 0 && (
+        <div className={s.row} style={{ gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+          <select className={s.inp} value={dariTema} onChange={(e) => setDariTema(e.target.value)} style={{ flex: 1, minWidth: 200, marginBottom: 0 }}>
+            <option value="">— Duplikat tema yang sudah ada, untuk kategori usia lain —</option>
+            {list.map((k) => (
+              <option key={k.id} value={k.id}>
+                {k.judul} — {namaKategori(k.kategori_usia_id ?? '')}{k.status === 'nonaktif' ? ' (nonaktif)' : ''}
+              </option>
+            ))}
+          </select>
+          <button className={s.btnSm} style={{ background: '#efe7fb', color: 'var(--lavender-d)' }} onClick={duplikatDari} disabled={loading}>⧉ Duplikat</button>
+        </div>
+      )}
+
       {form && (
         <div className={s.card} style={{ border: '2px solid var(--lavender)' }}>
           <b>{editId ? 'Edit' : 'Tambah'} Ide Bermain</b>
+          {!editId && asalSalinan && (
+            <div className={s.muted} style={{ fontSize: 12, marginTop: 2 }}>
+              ⧉ salinan dari “{asalSalinan}” — pilih <b>kategori usia</b> tujuannya, lalu sesuaikan aktivitasnya. Belum tersimpan sampai Anda menekan Simpan.
+            </div>
+          )}
 
           <input className={s.inp} placeholder="Judul kelas" value={form.judul} onChange={(e) => setForm({ ...form, judul: e.target.value })} style={{ width: '100%', marginTop: 8 }} />
 
@@ -281,6 +350,11 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
               {kategoriOpsi.map((k) => <option key={k.id} value={k.id}>{k.nama} ({k.usia_min}–{k.usia_max} th)</option>)}
             </select>
             {form.kategoriUsiaId && <span className={s.muted} style={{ fontSize: 11 }}>usia {form.usiaMin}–{form.usiaMax} th</span>}
+            {judulKembar && (
+              <span style={{ fontSize: 11, color: '#b88600' }}>
+                ⚠️ judul ini sudah ada di {namaKategori(form.kategoriUsiaId)} — duplikat semestinya ke kategori LAIN
+              </span>
+            )}
           </div>
           {kategoriOpsi.length === 0 && (
             <div className={s.muted} style={{ fontSize: 11, color: '#b3261e' }}>
@@ -437,7 +511,7 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
           <div className={s.row}>
             <span style={{ flex: 1 }}><b>{k.judul}</b> {k.status === 'nonaktif' && <span className={`${s.tag} ${s.tagDraf}`}>nonaktif</span>}
               {k.boleh_trial === false && <span className={`${s.tag} ${s.tagDraf}`} style={{ marginLeft: 4 }}>🔒 non-trial</span>}
-              <br /><small className={s.muted}>👶 {k.usia_min ?? 0}–{k.usia_max ?? 6} th{typeof k.bulan_kurikulum === 'number' ? ` · 📚 bulan ke-${k.bulan_kurikulum} minggu ke-${k.urutan ?? 1}` : ''}</small>
+              <br /><small className={s.muted}>🧸 {namaKategori(k.kategori_usia_id ?? '')} · 👶 {k.usia_min ?? 0}–{k.usia_max ?? 6} th{typeof k.bulan_kurikulum === 'number' ? ` · 📚 bulan ke-${k.bulan_kurikulum} minggu ke-${k.urutan ?? 1}` : ''}</small>
             </span>
           </div>
           <div className={s.row} style={{ marginTop: 8, flexWrap: 'wrap' }}>

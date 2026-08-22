@@ -1,6 +1,6 @@
 // src/lib/domain/__tests__/kurikulum.test.ts
 import { describe, it, expect } from 'vitest';
-import { bulanKurikulumAnak, statusTema, kelompokTema, ringkasEvaluasi, susunHasilEvaluasi, posisiTema, evaluasiPerAktivitas, temaTerkunci, cocokUsia, posisiBerikutnya, MAKS_URUTAN_BULAN } from '../kurikulum';
+import { bulanKurikulumAnak, statusTema, kelompokTema, ringkasEvaluasi, susunHasilEvaluasi, posisiTema, evaluasiPerAktivitas, temaTerkunci, cocokUsia, posisiBerikutnya, MAKS_URUTAN_BULAN, salinTemaKeKategoriLain, RESET_SALINAN_TEMA } from '../kurikulum';
 
 const tema = (bulan: number, judul = `T${bulan}`) => ({ id: judul, judul, bulan_kurikulum: bulan, urutan: 0 });
 
@@ -259,5 +259,83 @@ describe('posisiBerikutnya', () => {
   it('daftar null / bulan kosong tidak melempar', () => {
     expect(posisiBerikutnya(null as unknown as [])).toEqual({ bulan: 1, urutan: 1 });
     expect(posisiBerikutnya([{ bulan_kurikulum: null, urutan: 1 }])).toEqual({ bulan: 1, urutan: 2 });
+  });
+});
+
+describe('salinTemaKeKategoriLain', () => {
+  const sumber = {
+    judul: 'Pelangi di Ujung Jari',
+    tujuan: 'Melatih motorik halus',
+    sampulUrl: 'https://x/kelas/1.webp',
+    fokusArea: ['Motorik Halus', 'Kognitif'],
+    peranOrtu: 'Dampingi anak',
+    kategoriUsiaId: 'kat-bayi',
+    usiaMin: 0,
+    usiaMax: 2,
+    bahan: [{ nama: 'Cat', link: '', produkId: 'p1' }],
+    aktivitas: [{
+      judul: 'Meronce manik',
+      caraMembuat: 'Siapkan manik',
+      langkah: ['Ambil manik', 'Ronce'],
+      catatanOrtu: 'Awasi',
+      evaluasi: ['Anak memegang manik tanpa dibantu'],
+      gamePaketId: 'game-1',
+    }],
+    linkIde: 'https://ide',
+    worksheetUrl: 'https://x/worksheet/1.pdf',
+    bulanKurikulum: 3,
+    urutan: 2,
+  };
+
+  it('membawa seluruh isi materi, termasuk butir evaluasi & pilihan game', () => {
+    const salinan = salinTemaKeKategoriLain(sumber);
+    expect(salinan.judul).toBe('Pelangi di Ujung Jari');
+    expect(salinan.tujuan).toBe('Melatih motorik halus');
+    expect(salinan.sampulUrl).toBe('https://x/kelas/1.webp');
+    expect(salinan.fokusArea).toEqual(['Motorik Halus', 'Kognitif']);
+    expect(salinan.peranOrtu).toBe('Dampingi anak');
+    expect(salinan.bahan).toEqual([{ nama: 'Cat', link: '', produkId: 'p1' }]);
+    expect(salinan.aktivitas).toEqual(sumber.aktivitas);
+    expect(salinan.linkIde).toBe('https://ide');
+    expect(salinan.worksheetUrl).toBe('https://x/worksheet/1.pdf');
+  });
+
+  it('TIDAK membawa kategori usia \u2014 itulah gunanya duplikat ini', () => {
+    const salinan = salinTemaKeKategoriLain(sumber);
+    expect(salinan.kategoriUsiaId).toBe('');
+    expect(salinan.usiaMin).toBe(0);
+    expect(salinan.usiaMax).toBe(6);
+  });
+
+  it('TIDAK mewarisi posisi kurikulum sumber (akan bentrok / belum tentu kosong)', () => {
+    const salinan = salinTemaKeKategoriLain(sumber);
+    expect(salinan.bulanKurikulum).toBe(1);
+    expect(salinan.urutan).toBe(1);
+    expect(salinan.urutan).not.toBe(sumber.urutan);
+  });
+
+  it('salinannya DALAM: menyunting aktivitas salinan tak mengubah tema sumber', () => {
+    const salinan = salinTemaKeKategoriLain(sumber);
+    salinan.aktivitas[0].judul = 'Meronce manik BESAR';
+    salinan.aktivitas[0].langkah.push('Hitung manik');
+    salinan.aktivitas[0].evaluasi[0] = 'diganti';
+    salinan.bahan[0].nama = 'Cat air';
+    salinan.fokusArea.push('Bahasa');
+    expect(sumber.aktivitas[0].judul).toBe('Meronce manik');
+    expect(sumber.aktivitas[0].langkah).toEqual(['Ambil manik', 'Ronce']);
+    expect(sumber.aktivitas[0].evaluasi).toEqual(['Anak memegang manik tanpa dibantu']);
+    expect(sumber.bahan[0].nama).toBe('Cat');
+    expect(sumber.fokusArea).toEqual(['Motorik Halus', 'Kognitif']);
+  });
+
+  it('setiap field sumber ikut tersalin kecuali yang memang di-reset', () => {
+    const salinan = salinTemaKeKategoriLain(sumber);
+    const direset = Object.keys(RESET_SALINAN_TEMA);
+    for (const k of Object.keys(sumber)) {
+      if (direset.includes(k)) continue;
+      expect(salinan[k as keyof typeof salinan]).toEqual(sumber[k as keyof typeof sumber]);
+    }
+    // Dan tak ada field baru yang diam-diam muncul di salinan.
+    expect(Object.keys(salinan).sort()).toEqual(Object.keys(sumber).sort());
   });
 });

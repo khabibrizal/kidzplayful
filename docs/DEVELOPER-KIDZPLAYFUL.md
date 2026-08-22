@@ -788,6 +788,19 @@ Sisi orang tua. **Gerbang "khusus member aktif" sudah DICABUT** (sub-proyek B): 
 - **Form admin mengisi posisinya sendiri.** `posisiBerikutnya()` (murni & diuji) mencari slot bebas pertama dalam kategori itu — 1,2,3,4 lalu **pindah bulan**, tak pernah ada minggu ke-5. Dihitung ulang saat **kategori diganti**; saat mengedit, memilih kembali kategori asal **tidak** menggeser posisi materi itu. Nilainya masih bisa digeser manual, tapi dijepit 1..4 **di server juga** (`kelas-bermain-actions.ts`) — form bukan tempat menegakkan aturan data.
 - Peringatan "bulan ini tak berisi 4 tema" juga dikelompokkan per kategori: "bulan 1 sudah 4 tema" pada Bayi tak berarti apa pun bagi Prasekolah.
 
+#### Duplikat tema untuk kategori usia lain
+
+Satu tema sering dipakai untuk beberapa kategori usia — judul, tujuan, dan bahannya sama, yang berbeda hanya **aktivitasnya**. Dropdown **⧉ Duplikat** di `/admin/kelas-bermain` (pola yang sama dengan "Duplikat parameter dari event lain") mengisi form dari tema yang sudah ada.
+
+- **Tidak menulis apa pun ke basis data.** Ia hanya MENGISI form; tema baru lahir saat admin menekan Simpan. Duplikat yang langsung menulis akan meninggalkan tema separuh jadi setiap kali admin berubah pikiran.
+- Aturan "apa yang dibawa" ada di `salinTemaKeKategoriLain()` + `RESET_SALINAN_TEMA` (`domain/kurikulum.ts`, murni & diuji). **Kategori usia dan posisi kurikulum sengaja dikosongkan**: membawa kategori sumber menghasilkan salinan yang tak sah — posisinya pasti bentrok dengan sumbernya (`kelas_kurikulum_posisi_kategori`, 0103). Begitu kategori tujuan dipilih, posisinya dihitung di kategori itu.
+- **Salinannya DALAM (`structuredClone`).** `aktivitas`/`bahan` adalah array bersarang; salinan dangkal membuat suntingan pada salinan ikut mengubah tema sumbernya — kerusakan yang baru terlihat setelah keduanya tersimpan. Ada tesnya, dan mutasi menjadi salinan dangkal menjatuhkannya.
+- **Satu pemeta baris→form (`dariRow`)** dipakai bersama Edit dan Duplikat. Dua salinan pemetaan berarti field yang baru ditambahkan terbawa di satu jalur dan hilang di jalur lain.
+- Sampul & worksheet **menunjuk berkas storage yang sama**, dan itu aman: unggahan pengganti selalu membuat objek baru (`kelas/<waktu>`, `worksheet/<waktu>`) dan `hapusKelas` hanya menghapus baris, tak pernah objeknya. Jadi salinan tak bisa saling merusak asetnya.
+- Kartu daftar admin menyebut **nama kategorinya**, dan judul kembar **di kategori yang sama** diperingatkan (bukan dilarang — admin boleh punya dua varian). Tanpa keduanya, dua tema berjudul identik tak bisa dibedakan di daftar.
+
+> **⚠️ Yang perlu diawasi:** penyaringan usia (`cocokUsia`) **inklusif di kedua ujung**. Bila dua kategori bersinggungan di batasnya (mis. 0–2 th dan 2–4 th), anak berusia tepat 2 tahun **cocok untuk keduanya** dan akan melihat dua tema berjudul sama. Rentang kategori sebaiknya tak bertumpuk (0–2 dan 3–5), atau salinannya diberi judul yang membedakan.
+
 #### Evaluasi per aktivitas (0098)
 
 - Butir evaluasi = **kalimat bebas** yang diinput admin **per aktivitas**, disimpan di dalam `kelas_bermain.aktivitas jsonb` (`evaluasi: string[]`) karena jumlah butirnya tak seragam. `game_paket_id` (opsional) tinggal di jsonb yang sama.
