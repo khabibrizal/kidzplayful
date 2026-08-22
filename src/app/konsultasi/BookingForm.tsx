@@ -104,6 +104,15 @@ export default function BookingForm({ psikolog, anak, profil = {}, pratinjau }: 
   const adaWindow = !!(dipilih && dipilih.jam_mulai && dipilih.jam_selesai);
   const namaDari = (id: string) => profil[id]?.nama || psikolog.find((p) => p.psikolog_id === id)?.nama || 'Psikolog';
 
+  // Harga dasar psikolog ditampilkan di KARTU & DAFTAR — bukan hanya di rincian biaya
+  // setelah anak dipilih. Sifatnya informasi: orang tua berhak tahu tarifnya sebelum
+  // memilih, termasuk yang punya kuota gratis (potongan/kuota tetap dihitung di rincian
+  // biaya, dan RPC yang menentukan angka finalnya).
+  const labelHarga = (id: string) => {
+    const h = pratinjau.tarif[id]?.harga ?? 0;
+    return h > 0 ? `${formatRupiah(h)} / sesi` : 'tarif belum diatur';
+  };
+
   // Pratinjau biaya memakai modul yang MENIRU perhitungan RPC. Angka finalnya tetap
   // dihitung server saat mendaftar — di sini hanya supaya orang tua tahu sebelum menekan
   // Daftar, dan supaya kode voucher punya konteks nominal.
@@ -167,6 +176,7 @@ export default function BookingForm({ psikolog, anak, profil = {}, pratinjau }: 
             {psikologId ? <Avatar url={pr?.foto_url} /> : <span style={{ fontSize: 20 }}>🧠</span>}
             <span style={{ flex: 1, minWidth: 0 }}>
               <b style={{ fontSize: 14 }}>{psikologId ? namaDari(psikologId) : '— Pilih psikolog —'}</b>
+              {psikologId && <><br /><small style={{ color: 'var(--abu)' }}>💳 {labelHarga(psikologId)}</small></>}
             </span>
             {psikologId && <Badge teks={pr?.badge} />}
             <span style={{ color: 'var(--abu)' }}>⌄</span>
@@ -181,7 +191,10 @@ export default function BookingForm({ psikolog, anak, profil = {}, pratinjau }: 
                     onClick={() => gantiPsikolog(p.psikolog_id)}
                     style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', border: 'none', background: p.psikolog_id === psikologId ? '#f3f0fb' : 'transparent', padding: '8px 10px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
                     <Avatar url={q?.foto_url} ukuran={34} />
-                    <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700 }}>{q?.nama || p.nama || 'Psikolog'}</span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ fontSize: 14, fontWeight: 700 }}>{q?.nama || p.nama || 'Psikolog'}</span>
+                      <br /><small style={{ color: 'var(--abu)' }}>💳 {labelHarga(p.psikolog_id)}</small>
+                    </span>
                     <Badge teks={q?.badge} />
                   </button>
                 );
@@ -212,6 +225,11 @@ export default function BookingForm({ psikolog, anak, profil = {}, pratinjau }: 
                 <Badge teks={pr?.badge} />
               </div>
               {pr?.spesialisasi && <div style={{ fontSize: 13, color: 'var(--abu)', marginTop: 2 }}>{pr.spesialisasi}</div>}
+              {/* Tarif dasar — angka yang benar-benar ditagih (setelah diskon member,
+                  kuota gratis, atau voucher) tetap ditampilkan di rincian Biaya sesi. */}
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--lavender-d)', marginTop: 6 }}>
+                💳 {labelHarga(dipilih.psikolog_id)}
+              </div>
 
               <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
                 {pr?.pendidikan_s1 && <span>🎓 {pr.pendidikan_s1}</span>}
