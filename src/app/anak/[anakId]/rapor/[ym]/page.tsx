@@ -10,6 +10,7 @@ import { getHakAnak } from '@/lib/data/langganan-anak';
 import { getKonsultasiAnak, getRekomendasiAnak } from '@/lib/data/konsultasi';
 import { getRekomendasiItemAnak } from '@/lib/data/rekomendasi-item';
 import { getEvaluasiAnak } from '@/lib/data/kurikulum';
+import { getCatatanTemaAnak } from '@/lib/data/catatan-tema';
 import { getKelasAktifCached } from '@/lib/data/publik';
 import { metaSkala } from '@/lib/format';
 import { getCatatanAnak } from '@/lib/data/catatan';
@@ -49,7 +50,7 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
   }
 
   const rentang = rentangBulan(ym);
-  const [kegiatan, { data: main }, catatanSemua, konsultasi, rekPsi, rekItem, evaluasiSemua, kelasSemua] = await Promise.all([
+  const [kegiatan, { data: main }, catatanSemua, konsultasi, rekPsi, rekItem, evaluasiSemua, kelasSemua, catatanTemaSemua] = await Promise.all([
     getKegiatanAnak(anakId, rentang),
     // Kolom waktunya `tanggal` (migrasi 0002), bukan `created_at`/`dibuat_at` — memakai nama
     // yang salah akan gagal SENYAP dan membuat sesi game selalu 0.
@@ -61,6 +62,7 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
     getRekomendasiItemAnak(anakId),
     getEvaluasiAnak(anakId),
     getKelasAktifCached(),
+    getCatatanTemaAnak(anakId),
   ]);
 
   // Catatan guru & event pada periode ini. `catatan_perkembangan` tak punya tanggal event,
@@ -79,15 +81,31 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
 
   const judulKelas = new Map(kelasSemua.map((k) => [k.id, k.judul]));
 
+  // Catatan guru/psikolog PER TEMA (0099) pada periode ini. Bentuknya sama persis dengan
+  // catatan event (penilaian + catatan + penulis), jadi untuk JPEG keduanya masuk ke bagian
+  // "Catatan perkembangan" yang sama — menambah bagian baru di kanvas hanya akan memicu
+  // pertarungan ruang lagi, padahal isinya sejenis.
+  const catatanTema = catatanTemaSemua.filter((c) => dalamRentang(c.updated_at));
+
   const r = ringkasBulan({
     kegiatan,
     hasilMain: (main ?? []) as { area_skill: string | null; bintang: number | null; durasi_detik: number | null; selesai: boolean | null }[],
-    catatan: catatanBulan.map((x) => ({
-      judulEvent: x.judulEvent,
-      dinilai_oleh: x.c.dinilai_oleh ?? null,
-      penilaian: (x.c.penilaian ?? []).map((n) => ({ area: n.area, indikator: n.indikator, nilai: n.nilai })),
-      catatan: x.c.catatan ?? null,
-    })),
+    catatan: [
+      ...catatanBulan.map((x) => ({
+        judulEvent: x.judulEvent,
+        dinilai_oleh: x.c.dinilai_oleh ?? null,
+        penilaian: (x.c.penilaian ?? []).map((n) => ({ area: n.area, indikator: n.indikator, nilai: n.nilai })),
+        catatan: x.c.catatan ?? null,
+      })),
+      // Catatan per TEMA ikut di sini supaya tercetak juga di JPEG; judulnya memakai nama
+      // temanya, dan penulisnya disebut lengkap dengan perannya.
+      ...catatanTema.map((c) => ({
+        judulEvent: judulKelas.get(c.kelas_id) ?? 'Tema kurikulum',
+        dinilai_oleh: `${c.penulis_nama ?? 'Tim KidzPlayful'} (${c.peran})`,
+        penilaian: (c.penilaian ?? []).map((n) => ({ area: n.area, indikator: n.indikator, nilai: n.nilai })),
+        catatan: c.catatan,
+      })),
+    ],
     event: [...new Set(catatanBulan.map((x) => x.judulEvent))],
     rekomendasi: konsultasi.filter((k) => k.tanggal >= rentang.dari.slice(0, 10) && k.tanggal < rentang.sampai.slice(0, 10)).length,
     rekomendasiPsikolog: rekPsi.filter((x) => dalamRentang(x.created_at)).map((x) => ({
@@ -220,6 +238,29 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
               <div className="kp-card">
                 {r.event.map((e) => <div key={e} style={{ fontSize: 13, margin: '3px 0' }}>• {e}</div>)}
               </div>
+            </>
+          )}
+
+          {/* Catatan guru/psikolog per TEMA (0099) — terpisah dari checklist orang tua. */}
+          {catatanTema.length > 0 && (
+            <>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '12px 0 6px' }}>🍎 CATATAN GURU / PSIKOLOG PER TEMA</div>
+              {catatanTema.map((c) => (
+                <div key={c.id} className="kp-card" style={{ marginBottom: 8 }}>
+                  <b style={{ fontSize: 14 }}>🎈 {judulKelas.get(c.kelas_id) ?? 'Tema kurikulum'}</b>
+                  <div style={{ fontSize: 12, color: 'var(--abu)' }}>
+                    {c.peran}{c.penulis_nama ? ` · ${c.penulis_nama}` : ''}
+                  </div>
+                  {c.penilaian.length > 0 && (
+                    <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 13 }}>
+                      {c.penilaian.map((n, j) => (
+                        <li key={j} style={{ margin: '2px 0' }}>{n.area ? `${n.area}: ` : ''}{n.indikator} — <b>{n.nilai}</b></li>
+                      ))}
+                    </ul>
+                  )}
+                  <p style={{ fontSize: 13, marginTop: 6, marginBottom: 0, whiteSpace: 'pre-wrap' }}>{c.catatan}</p>
+                </div>
+              ))}
             </>
           )}
 

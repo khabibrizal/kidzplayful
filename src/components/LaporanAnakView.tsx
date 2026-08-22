@@ -9,6 +9,7 @@ import { getSertifikatAnak } from '@/lib/data/sertifikat';
 import { getGamifikasiAnak } from '@/lib/data/gamifikasi';
 import { getKegiatanAnak } from '@/lib/data/kegiatan';
 import { getEvaluasiAnak } from '@/lib/data/kurikulum';
+import { getCatatanTemaAnak } from '@/lib/data/catatan-tema';
 import { getKelasAktifCached } from '@/lib/data/publik';
 import { getHakAnak } from '@/lib/data/langganan-anak';
 import { bulanTerakhir, labelBulan } from '@/lib/domain/laporan-bulanan';
@@ -28,7 +29,7 @@ function Stat({ b, l }: { b: string; l: string }) {
 export default async function LaporanAnakView({ anakId, tampilkanSertifikat = true }: { anakId: string; tampilkanSertifikat?: boolean }) {
   const supabase = await createClient();
   const { data: anak } = await supabase.from('anak').select('nama').eq('id', anakId).maybeSingle();
-  const [{ data: rows }, catatan, sertifikat, gami, idHadir, kegiatan, hak, evaluasi, kelasSemua] = await Promise.all([
+  const [{ data: rows }, catatan, sertifikat, gami, idHadir, kegiatan, hak, evaluasi, kelasSemua, catatanTema] = await Promise.all([
     supabase.from('hasil_main').select('mesin,area_skill,bintang,durasi_detik,selesai').eq('anak_id', anakId),
     getCatatanAnak(anakId),
     getSertifikatAnak(anakId),
@@ -38,6 +39,7 @@ export default async function LaporanAnakView({ anakId, tampilkanSertifikat = tr
     getHakAnak(anakId),
     getEvaluasiAnak(anakId),
     getKelasAktifCached(),
+    getCatatanTemaAnak(anakId),
   ]);
   const judulKelas = new Map(kelasSemua.map((k) => [k.id, k.judul]));
   const r = laporanAnak((rows ?? []) as unknown as BarisHasil[]);
@@ -168,6 +170,31 @@ export default async function LaporanAnakView({ anakId, tampilkanSertifikat = tr
                 {list.length > 40 && <div style={{ fontSize: 12, color: 'var(--abu)', marginTop: 4 }}>…dan {list.length - 40} kegiatan lain</div>}
               </div>
             </details>
+          ))}
+        </>
+      )}
+
+      {/* ——— Catatan guru/psikolog per tema (0099) ———
+          Terpisah dari checklist orang tua di bawah: penilaian pendidik dan laporan diri
+          tidak setara sebagai bukti. */}
+      {catatanTema.length > 0 && (
+        <>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '18px 0 8px' }}>🍎 CATATAN GURU / PSIKOLOG PER TEMA</div>
+          {catatanTema.map((c) => (
+            <div key={c.id} className="kp-card" style={{ padding: 12, marginBottom: 8 }}>
+              <b style={{ fontSize: 14 }}>🎈 {judulKelas.get(c.kelas_id) ?? 'Tema kurikulum'}</b>
+              <div style={{ fontSize: 12, color: 'var(--abu)' }}>
+                {c.peran}{c.penulis_nama ? ` · ${c.penulis_nama}` : ''} · {formatTanggal(c.updated_at.slice(0, 10))}
+              </div>
+              {c.penilaian.length > 0 && (
+                <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 13 }}>
+                  {c.penilaian.map((n, j) => (
+                    <li key={j} style={{ margin: '2px 0' }}>{n.area ? `${n.area}: ` : ''}{n.indikator} — <b>{n.nilai}</b></li>
+                  ))}
+                </ul>
+              )}
+              <p style={{ fontSize: 13, marginTop: 6, marginBottom: 0, whiteSpace: 'pre-wrap' }}>{c.catatan}</p>
+            </div>
           ))}
         </>
       )}

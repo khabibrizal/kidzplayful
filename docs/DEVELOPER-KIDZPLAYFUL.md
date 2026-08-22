@@ -767,6 +767,45 @@ Sisi orang tua. **Gerbang "khusus member aktif" sudah DICABUT** (sub-proyek B): 
 >
 > Jalur ke sertifikat & catatan **tidak** bergantung status event: semua sumber blok (`sertifikat`, `catatan_perkembangan`, `hadir_anak_ids`) di-query tanpa filter status, dan pembacaan `event` untuk ortu peserta dijamin policy 0068. Jadi rapor anak tetap utuh walau event diarsipkan.
 
+### 🎓 Kurikulum bulanan, evaluasi & catatan tema (migrasi 0098–0099)
+
+**Masalah yang diselesaikan.** Ide Bermain dulu adalah **kumpulan materi lepas**: semuanya tampil sekaligus, tak berurutan, tak dinilai siapa pun, dan tak meninggalkan jejak di rapor. Orang tua mengerjakan aktivitas di rumah lalu tak punya bukti anaknya berkembang — dan tak punya alasan menunggu bulan depan.
+
+#### Kohort: MILIK ANAK, tanpa penggabungan
+
+- **Jam kohort = jumlah bulan berlangganan**, disimpan sebagai penghitung `langganan_anak.bulan_kurikulum` yang **hanya naik di `setPaketAnak`** — satu-satunya tempat periode diperpanjang (admin manual **dan** verifikasi tagihan). `hentikanPaketAnak` sengaja **tidak** menurunkannya: bulan yang sudah dijalani tak hilang karena langganan berhenti.
+- **Kenapa penghitung tersimpan, bukan diturunkan dari riwayat:** riwayat pembayaran per *anak* hanya ada di `tagihan_langganan_item` (0090), dan itu **tidak mencakup** aktivasi manual admin maupun member lama hasil backfill 0089. Menurunkan angkanya akan salah untuk keduanya. Backfill 0098 mengisi dari tagihan diterima (minimal 1) dan dijaga idempoten lewat `where bulan_kurikulum = 0`.
+- **Kunci tema milik ANAK.** Kakak di bulan ke-3 **tidak** membuka tema itu untuk bayi yang masih bulan ke-1. Karena itu `statusTema()` di `lib/domain/kurikulum.ts` **hanya menerima `bulanAnak`** — sengaja tak ada varian tingkat akun yang bisa dipanggil keliru lalu menggabungkan kohort dua anak.
+- Akibatnya **daftar tema tak bisa lagi tingkat akun**: `/kelas-saya` dan `/kelas/[id]` diberi `?anak=` + `PemilihAnak` yang **selalu terlihat**, judulnya menyebut nama anak, dan tema terkunci menyebut sebabnya ("terbuka saat langganan Bima masuk bulan ke-4"). Tanpa itu, perbedaan kakak–adik terbaca sebagai kerusakan.
+- **Tema tanpa `bulan_kurikulum` dianggap TERBUKA** (materi lama / migrasi belum jalan). Default yang salah arah di sini akan mengunci konten yang tadinya jalan — dan itu terbaca sebagai fitur dicabut.
+- Mode Anak **tidak** menampilkan judul bulan depan sama sekali: judul-saja adalah bahasa untuk orang tua; bagi anak ia cuma pintu yang tak bisa dibuka.
+
+#### Evaluasi per aktivitas (0098)
+
+- Butir evaluasi = **kalimat bebas** yang diinput admin **per aktivitas**, disimpan di dalam `kelas_bermain.aktivitas jsonb` (`evaluasi: string[]`) karena jumlah butirnya tak seragam. `game_paket_id` (opsional) tinggal di jsonb yang sama.
+- Hasilnya di tabel `evaluasi_kurikulum`, **unique (anak_id, kelas_id, `peran`)** — tanpa `peran` di kunci, checklist guru akan **menimpa** checklist orang tua pada tema yang sama; kehilangan data yang tak terlihat sampai rapor dicetak.
+- `hasil` menyimpan **snapshot kalimat**, bukan indeks. Begitu admin menyunting materi, rapor bulan lalu tak boleh berubah arti. Pola yang sama dipakai `catatan_perkembangan.penilaian` (0062) & `kegiatan_anak.judul` (0093).
+- **Kalimat butir diambil ulang dari materi di server** (`susunHasilEvaluasi`, murni & diuji); klien hanya menyebut *aktivitas ke-i, butir ke-j*. Rapor ditunjukkan ke orang lain, jadi isinya harus berasal dari materi — bukan dari browser. Indeks yang menunjuk butir tak ada (materi berubah sejak layar dibuka) diabaikan, butir kosong tak pernah jadi baris rapor.
+- **Peran ditentukan server** dari profil; ortu pemilik menang lebih dulu, jadi admin yang menilai anaknya sendiri tetap tercatat `ortu`.
+- **UI**: `components/AktivitasTema.tsx` (client) merender kartu aktivitas **beserta tombol game & checklist-nya di dalam kartu itu**, lalu **satu tombol simpan** di bawah — satu tema tersimpan sebagai satu baris. Centang awal dicocokkan lewat **kalimat**, bukan indeks. Penanda **"belum tersimpan"** wajib ada.
+
+> **🐞 Bug yang sempat terjadi:** Mode Anak (`MenuAnak`) merender `KelasIsi` **tanpa `anakId`**, sehingga checklist mati dan tombol game tak pernah muncul — padahal justru di sanalah anak membuka materi. Pelajarannya: prop hak/identitas yang **opsional** akan diam-diam tak dipasang oleh sebagian pemanggil. Bila sebuah komponen butuh konteks anak, periksa **semua** pemanggilnya (`grep -n "KelasIsi" src`), bukan hanya yang sedang dikerjakan.
+
+#### Catatan tema oleh admin/guru/psikolog (0099)
+
+- Tabel **terpisah** `catatan_tema`, bukan menumpang `evaluasi_kurikulum`: checklist orang tua dan catatan naratif profesional berbeda bentuk, penulis, dan **bobot sebagai bukti**. Satu tabel berarti satu baris yang ditimpa siapa pun yang menyimpan terakhir.
+- **unique (anak_id, kelas_id, `penulis_id`)** → guru & psikolog bisa menulis pada tema yang sama tanpa saling menimpa. Policy tulis mensyaratkan `penulis_id = auth.uid()`: tanpa itu guru bisa menulis **atas nama** psikolog, dan rapor menyebut nama penulis.
+- **Rute BERSAMA `/catatan-tema` di luar `/admin`.** Matriks Akses Menu hanya punya dimensi **admin/investor/guru** (`AksesMenu` & `menuUntukRole`) — **tidak ada psikolog** — jadi mendaftarkannya sebagai menu admin justru menutup akses orang yang diminta ikut mengisi. Ditautkan dari dashboard admin, `/guru`, dan `/psikolog`.
+- **Daftar anak dibangun berbeda per peran**, karena hak bacanya memang berbeda: admin → tabel `anak` (0006); psikolog → `pendaftaran_konsultasi` miliknya yang diterima/selesai (cakupan identik dengan `boleh_lihat_laporan_anak`, 0066, jadi daftarnya tak pernah memuat anak yang nanti ditolak RLS); guru → snapshot `pendaftaran_event`, sebab **guru tidak punya policy select pada tabel `anak`**. Cakupan sempit itu **ditulis di layar** supaya daftar pendek tak terbaca sebagai data hilang.
+- Form hanya memuat catatan **milik sendiri**; tulisan penulis lain tampil read-only sebagai konteks. Skala penilaian memakai `SKALA_PAUD` dari `lib/format` apa adanya — daftar baru akan membuat rapor menampilkan dua skala untuk hal yang sama.
+
+#### Di rapor
+
+- Layar (`LaporanAnakView` & rapor bulanan) punya **dua blok terpisah**: 🍎 catatan guru/psikolog per tema, dan 📋 evaluasi kurikulum (checklist) — masing-masing menyebut penilainya. Laporan diri dan penilaian pendidik tidak setara sebagai bukti.
+- Di **JPEG**, catatan tema **digabung ke bagian "Catatan perkembangan"** yang sudah ada (bentuknya persis sama: penilaian + catatan + penulis). Menambah bagian baru di kanvas hanya akan memicu pertarungan ruang lagi, padahal isinya sejenis.
+
+> **⚠️ Tata letak JPEG — empat kali render sebelum benar**, dan tiap cacat hanya terlihat dari **gambarnya**: (1) blok evaluasi diberi ruang cadangan, tapi cadangan itu memotong daftar Ide Bermain **diam-diam** → ditambahkan "…dan N lainnya" pada ketiga daftar kolom kiri; (2) baris tambahan itu membuat evaluasi menabrak footer; (3) cadangan diperbesar → seluruh temanya hilang, tinggal "…dan 6 tema lain" (jujur, tapi tak berguna); (4) dipaksa `yK = batasKiri` → tulisan bertumpuk. Perbaikan yang benar **bukan menyetel angka**, melainkan **mengurangi isi** kolom kiri: daftar event yang catatan gurunya sudah tercetak di kolom kanan **tak diulang** (barisnya memang sama), dan daftar kolom kiri memakai baris ringkas (38–26px).
+
 ### 📄 Rapor Bulanan & Aktivitas Mandiri — `/anak/[anakId]/rapor/[ym]` (migrasi 0093)
 - **Masalah yang diselesaikan**: rapor sudah memuat game, catatan guru, sertifikat, dan konsultasi — tapi **Ide Bermain yang dikerjakan di rumah dan video yang ditonton sama sekali tak tercatat per anak**, padahal itu inti homeschooling.
 - **Kenapa tabel baru `kegiatan_anak`, bukan `riwayat_kelas`**: tabel itu berkunci `(ortu_id, kelas_id)` dan hanya menyimpan waktu **terakhir** — bukan per anak, bukan riwayat. `aktivitas` (0046) juga tak cukup: isinya hanya nama fitur untuk analitik, tanpa rujukan materi.
