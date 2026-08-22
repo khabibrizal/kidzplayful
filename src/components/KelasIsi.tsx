@@ -7,6 +7,8 @@ import YoutubeEmbed from './YoutubeEmbed';
 import { youtubeId } from '@/lib/youtube';
 import ShareButton from '@/components/ShareButton';
 import WorksheetBtn from '@/components/WorksheetBtn';
+import EvaluasiTema from '@/components/EvaluasiTema';
+import type { ButirEvaluasi } from '@/lib/domain/kurikulum';
 
 const LABEL_FALLBACK: Record<string, string> = {
   'motorik-halus': '✋ Motorik Halus', 'motorik-kasar': '🏃 Motorik Kasar', kognitif: '🧠 Kognitif',
@@ -14,7 +16,7 @@ const LABEL_FALLBACK: Record<string, string> = {
   kemandirian: '🌟 Kemandirian', kreativitas: '🎨 Kreativitas',
 };
 
-export default function KelasIsi({ kelas, labelArea = {}, bagikan = true, bagikanUrl, bolehWorksheet = false, sisaWorksheet, worksheetTanpaBatas }: {
+export default function KelasIsi({ kelas, labelArea = {}, bagikan = true, bagikanUrl, bolehWorksheet = false, sisaWorksheet, worksheetTanpaBatas, anakId, anakNama, evaluasiAwal = [], evaluasiPeran, evaluasiWaktu, kembaliUrl }: {
   kelas: KelasBermain; labelArea?: Record<string, string>; bagikan?: boolean; bagikanUrl?: string;
   /**
    * Worksheet adalah fasilitas paket berhak (migrasi 0089). BAWAANNYA `false`: pemanggil yang
@@ -26,6 +28,19 @@ export default function KelasIsi({ kelas, labelArea = {}, bagikan = true, bagika
   /** sisa kuota unduh worksheet (null/undefined = tak dibatasi atau tak relevan) */
   sisaWorksheet?: number | null;
   worksheetTanpaBatas?: boolean;
+  /**
+   * Anak yang sedang dibuka (0098). Kurikulum & evaluasi selalu MILIK SATU ANAK, jadi
+   * tanpa ini checklist tampil read-only dan tombol game disembunyikan — bukan menebak
+   * anak siapa yang dimaksud.
+   */
+  anakId?: string | null;
+  anakNama?: string | null;
+  /** hasil checklist yang sudah tersimpan untuk anak itu pada tema ini */
+  evaluasiAwal?: ButirEvaluasi[];
+  evaluasiPeran?: string | null;
+  evaluasiWaktu?: string | null;
+  /** ke mana tombol keluar game harus kembali (path internal) */
+  kembaliUrl?: string;
 }) {
   const LABEL = { ...LABEL_FALLBACK, ...labelArea };
   const adaInfo = !!(kelas.tujuan || (kelas.fokus_area?.length ?? 0) > 0 || kelas.peran_ortu || kelas.usia_min != null);
@@ -101,8 +116,21 @@ export default function KelasIsi({ kelas, labelArea = {}, bagikan = true, bagika
               <p style={{ margin: '4px 0 0', fontSize: 14, whiteSpace: 'pre-wrap' }}>{a.catatan_ortu}</p>
             </div>
           )}
+          {/* Game pilihan admin untuk aktivitas ini (opsional). Butuh anak: skor game
+              dicatat per anak, jadi tanpa anak terpilih tombolnya tak ditampilkan
+              ketimbang menebak anak siapa yang bermain. */}
+          {a.game_paket_id && anakId && (
+            <a className="kp-btn putih no-print" style={{ display: 'inline-block', marginTop: 10, fontSize: 13 }}
+              href={`/main/${anakId}?paket=${a.game_paket_id}&kembali=${encodeURIComponent(kembaliUrl ?? `/kelas/${kelas.id}?anak=${anakId}`)}`}>
+              🎮 Mainkan game aktivitas ini
+            </a>
+          )}
         </div>
       ))}
+
+      {/* Checklist evaluasi seluruh tema — satu tombol simpan, sesuai permintaan pemilik. */}
+      <EvaluasiTema kelasId={kelas.id} aktivitas={kelas.aktivitas ?? []} anakId={anakId} anakNama={anakNama}
+        tersimpan={evaluasiAwal} peranTersimpan={evaluasiPeran} waktuTersimpan={evaluasiWaktu} />
 
       {kelas.link_ide && youtubeId(kelas.link_ide) && (
         <div className="no-print"><YoutubeEmbed id={youtubeId(kelas.link_ide)!} title={kelas.judul} /></div>

@@ -7,6 +7,7 @@ import { getVideoByKategori } from '@/lib/data/video';
 import { getHakAnak } from '@/lib/data/langganan-anak';
 import { getStatusWorksheet } from '@/lib/data/worksheet';
 import { getLabelFokusArea } from '@/lib/data/fokus-area';
+import { getEvaluasiAnak } from '@/lib/data/kurikulum';
 import KelasIsi from '@/components/KelasIsi';
 import Terkunci from '@/components/Terkunci';
 import s from './ortu.module.css';
@@ -15,9 +16,13 @@ import TombolKembali from '@/components/TombolKembali';
 export default async function ModeOrtu({ params }: { params: Promise<{ anakId: string }> }) {
   const { anakId } = await params;
   const anak = await getAnakTerjamin(anakId);
-  const [kelasList0, videoBaby0, status, labelArea, wsKuota] = await Promise.all([
+  const [kelasList0, videoBaby0, status, labelArea, wsKuota, evaluasi] = await Promise.all([
     getKelasAktifCached(), getVideoByKategori('baby'), getHakAnak(anakId), getLabelFokusArea(), getStatusWorksheet(),
+    getEvaluasiAnak(anakId),
   ]);
+  // Checklist milik ANAK ini dan peran 'ortu' — bukan penilaian guru/psikolog, yang punya
+  // barisnya sendiri (kunci 0098 = anak+kelas+peran) dan tampil di rapor, bukan di sini.
+  const evalOrtu = new Map(evaluasi.filter((e) => e.peran === 'ortu').map((e) => [e.kelas_id, e]));
   // trial: item tetap TAMPIL tapi yang tak ditandai "boleh trial" akan terkunci (🔒)
   // Hak per ANAK (migrasi 0089), bukan per akun.
   const batasi = !status.ideBermain;
@@ -47,7 +52,10 @@ export default async function ModeOrtu({ params }: { params: Promise<{ anakId: s
         ) : (
         <div key={k.id} className="kp-card" style={{ marginBottom: 12 }}>
           <b>🎈 {k.judul}</b>
-          <KelasIsi kelas={k} labelArea={labelArea} bagikanUrl={`/coba/kelas/${k.id}`} bolehWorksheet={status.worksheet && wsKuota.boleh} sisaWorksheet={wsKuota.sisa} worksheetTanpaBatas={wsKuota.tanpaBatas} />
+          <KelasIsi kelas={k} labelArea={labelArea} bagikanUrl={`/coba/kelas/${k.id}`} bolehWorksheet={status.worksheet && wsKuota.boleh} sisaWorksheet={wsKuota.sisa} worksheetTanpaBatas={wsKuota.tanpaBatas}
+            anakId={anakId} anakNama={anak.nama} evaluasiAwal={evalOrtu.get(k.id)?.hasil ?? []}
+            evaluasiPeran={evalOrtu.get(k.id)?.peran ?? null} evaluasiWaktu={evalOrtu.get(k.id)?.updated_at ?? null}
+            kembaliUrl={`/ortu/${anakId}`} />
         </div>
         )
       ))}
