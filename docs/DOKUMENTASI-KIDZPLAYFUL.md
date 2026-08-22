@@ -1,5 +1,7 @@
 # Dokumentasi Teknis — KidzPlayful
 
+> 🗺️ Dokumen ini sisi **pengguna & admin**. Peta kodenya ada di [`REFERENSI-KODE-KIDZPLAYFUL.md`](REFERENSI-KODE-KIDZPLAYFUL.md); alasan tiap keputusan teknis di [`DEVELOPER-KIDZPLAYFUL.md`](DEVELOPER-KIDZPLAYFUL.md).
+
 Dokumen ini menjelaskan **seluruh alur** aplikasi KidzPlayful dari nol sampai deploy: arsitektur, tiap berkas & perannya, parameter penting, skema database, serta cara deploy ke **Vercel** (frontend) dan **Supabase** (backend).
 
 - **Aplikasi:** web app bermain & belajar anak 0–6 tahun. Sisi pengguna: game sensorik/motorik/kognitif & calistung (11+ mesin), **Ide Bermain** (dulu "Kelas Bermain" — materi main di rumah), Pojok Video, komunitas, **event offline berbayar + pendaftaran**, **toko/Store**, **Catatan Perkembangan Bermain** (penilaian guru), **Chat Psikolog**, artikel/blog, gamifikasi (streak/lencana/tantangan), voucher, dan **reminder WhatsApp**. Sisi bisnis: **modul Keuangan** (ledger, anggaran, aset, pajak, KPI, insight), **Sponsor**, **Langganan**, **Analitik**, dan **Akses Menu per role**. Ada juga **REST API untuk aplikasi mobile (Flutter)**.

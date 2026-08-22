@@ -1,5 +1,7 @@
 # Dokumentasi Developer — KidzPlayful
 
+> 🗺️ **Mencari letak sebuah fungsi atau alur?** Dokumen ini menjelaskan **kenapa** tiap keputusan diambil. Untuk peta **di mana** kode-nya berada — daftar modul & fungsi per lapisan, alur ujung-ke-ujung, dan indeks "gejala → berkas" — buka [`REFERENSI-KODE-KIDZPLAYFUL.md`](REFERENSI-KODE-KIDZPLAYFUL.md).
+
 > Panduan teknis untuk developer baru. Menjelaskan **per halaman/menu**: file apa yang menanganinya, function/reader/server-action apa yang dipakai, dan **endpoint backend** (tabel Supabase / RPC / storage / auth) yang disentuh. Termasuk **REST API internal** (untuk aplikasi mobile) dan infrastruktur.
 
 Terakhir diperbarui: 2026-08-19.

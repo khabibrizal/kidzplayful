@@ -67,6 +67,10 @@ Jangan pakai *secret key*. `NEXT_PUBLIC_*` harus ada **sebelum build** (juga di 
 - **Prop identitas/hak yang opsional akan lupa dipasang.** `KelasIsi` menerima `anakId?`, dan Mode Anak merendernya tanpa itu — checklist mati & tombol game hilang di tempat yang justru paling sering dipakai. Saat menambah prop semacam ini, sisir **semua** pemanggilnya (`grep -n "<NamaKomponen" src`), bukan hanya berkas yang sedang dikerjakan.
 - **Styling:** kelas global `kp-*` (tombol jelly, kartu, chip) di `globals.css` + CSS Modules `*.module.css`. Palet pastel lavender/mint/peach, tinta `#5b5170`. Maskot `Pewi`, logo `public/logo.png` (komponen `Logo`).
 
+## Peta kode
+
+Sebelum mengubah apa pun di wilayah yang belum dikenal, buka **`docs/REFERENSI-KODE-KIDZPLAYFUL.md`** — peta modul & fungsi per lapisan, alur ujung-ke-ujung untuk jalur penting (kurikulum, worksheet, konsultasi, langganan, skor game, checkout, rapor), dan indeks **"gejala → berkas yang harus dibuka"**. Dokumen ini menjawab *di mana* sebuah aturan hidup; `docs/DEVELOPER-KIDZPLAYFUL.md` menjawab *kenapa* ia begitu.
+
 ## Database & migrasi
 
 - Migrasi SQL di `supabase/migrations/0001..0099`, **dijalankan MANUAL berurutan** di **Supabase SQL Editor** (tidak ada CLI migrate). Saat menambah skema: buat file `00NN_*.sql` baru, lalu minta user menjalankannya.
