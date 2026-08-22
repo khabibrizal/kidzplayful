@@ -1,0 +1,77 @@
+// src/lib/domain/__tests__/kurikulum.test.ts
+import { describe, it, expect } from 'vitest';
+import { bulanKurikulumAnak, statusTema, kelompokTema, ringkasEvaluasi } from '../kurikulum';
+
+const tema = (bulan: number, judul = `T${bulan}`) => ({ id: judul, judul, bulan_kurikulum: bulan, urutan: 0 });
+
+describe('bulanKurikulumAnak', () => {
+  it('anak tanpa langganan tetap dapat bulan ke-1 (trial & Basic ikut kurikulum)', () => {
+    expect(bulanKurikulumAnak(0)).toBe(1);
+    expect(bulanKurikulumAnak(undefined)).toBe(1);
+    expect(bulanKurikulumAnak(null)).toBe(1);
+  });
+  it('memakai penghitung tersimpan apa adanya', () => {
+    expect(bulanKurikulumAnak(3)).toBe(3);
+  });
+  it('angka aneh tidak melempar', () => {
+    expect(bulanKurikulumAnak(-5)).toBe(1);
+    expect(bulanKurikulumAnak(2.7)).toBe(2);
+  });
+});
+
+describe('statusTema', () => {
+  it('bulan yang sudah dilewati & bulan ini terbuka penuh', () => {
+    expect(statusTema(tema(1), 3)).toBe('terbuka');
+    expect(statusTema(tema(3), 3)).toBe('terbuka');
+  });
+  it('bulan depan hanya judulnya', () => {
+    expect(statusTema(tema(4), 3)).toBe('kunci-judul');
+  });
+  it('lebih dari sebulan ke depan disembunyikan', () => {
+    expect(statusTema(tema(5), 3)).toBe('tersembunyi');
+  });
+  it('tema tanpa bulan (materi lama) dianggap terbuka — jangan mengunci yang tadinya jalan', () => {
+    expect(statusTema({ id: 'x', judul: 'x' }, 1)).toBe('terbuka');
+  });
+});
+
+describe('kelompokTema', () => {
+  const list = [tema(1, 'a'), tema(2, 'b'), tema(3, 'c'), tema(4, 'd'), tema(9, 'e')];
+  it('membagi bulan ini / sudah terbuka / bulan depan, dan membuang yang tersembunyi', () => {
+    const g = kelompokTema(list, 3);
+    expect(g.bulanIni.map((t) => t.judul)).toEqual(['c']);
+    expect(g.sudahTerbuka.map((t) => t.judul)).toEqual(['b', 'a']);
+    expect(g.bulanDepan.map((t) => t.judul)).toEqual(['d']);
+  });
+  it('sudah terbuka diurutkan dari yang TERBARU (bulan turun)', () => {
+    expect(kelompokTema(list, 3).sudahTerbuka.map((t) => t.bulan_kurikulum)).toEqual([2, 1]);
+  });
+  it('materi lama tanpa bulan masuk "sudah terbuka", bukan hilang', () => {
+    const g = kelompokTema([{ id: 'lama', judul: 'lama' }], 2);
+    expect(g.sudahTerbuka.map((t) => t.judul)).toEqual(['lama']);
+    expect(g.bulanIni).toEqual([]);
+  });
+  it('daftar kosong / tak sah tidak melempar', () => {
+    expect(kelompokTema([], 1)).toEqual({ bulanIni: [], sudahTerbuka: [], bulanDepan: [] });
+  });
+});
+
+describe('ringkasEvaluasi', () => {
+  it('menghitung tercapai & persen', () => {
+    expect(ringkasEvaluasi([
+      { aktivitas: 'A', butir: 'x', tercapai: true },
+      { aktivitas: 'A', butir: 'y', tercapai: false },
+    ])).toEqual({ total: 2, tercapai: 1, persen: 50 });
+  });
+  it('kosong tidak membagi nol', () => {
+    expect(ringkasEvaluasi([])).toEqual({ total: 0, tercapai: 0, persen: 0 });
+    expect(ringkasEvaluasi(null)).toEqual({ total: 0, tercapai: 0, persen: 0 });
+  });
+  it('membulatkan persen', () => {
+    expect(ringkasEvaluasi([
+      { aktivitas: 'A', butir: '1', tercapai: true },
+      { aktivitas: 'A', butir: '2', tercapai: false },
+      { aktivitas: 'A', butir: '3', tercapai: false },
+    ]).persen).toBe(33);
+  });
+});
