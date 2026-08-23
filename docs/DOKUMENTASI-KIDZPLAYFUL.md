@@ -397,12 +397,13 @@ Tema dicocokkan dengan **kategori usia** anak. Kalau daftar kategori berlubang �
 Aplikasi kini **mengatakan** keadaan itu ("Belum ada tema untuk usia ‹nama›"), tapi jalan keluarnya ada di sisi Anda: di menu **👶 Kategori Usia**, pastikan rentangnya **bersambung tanpa celah** (mis. 0–2, 3–5, 6–9) dan tiap kategori yang dipakai anak punya minimal satu tema.
 
 ### 🔍 Filter di Catatan Tema
-Menu **🍎 Catatan Tema** punya filter: **nama anak**, **judul tema**, dan **rentang tanggal pengisian** (dari – sampai). Ketiganya bisa dipakai bersamaan, dan hasilnya tersimpan di alamat halaman — jadi bisa di-bookmark atau dikirim ke rekan.
+Menu **🍎 Catatan Tema** punya filter: **nama anak** (ketik), **judul tema** (pilih dari daftar Ide Bermain aktif), **kategori usia** (pilih dari master), dan **rentang tanggal pengisian** (dari – sampai). Ketiganya bisa dipakai bersamaan, dan hasilnya tersimpan di alamat halaman — jadi bisa di-bookmark atau dikirim ke rekan.
 
 - Rentang tanggalnya **termasuk hari pertama dan hari terakhir**.
 - Kalau tanggalnya tertukar (dari lebih akhir daripada sampai), sistem menukarnya dan **menuliskan** rentang yang benar-benar dipakai.
 - Angka di samping nama anak ikut mengikuti rentang yang dipilih.
 - Anak dan tema yang sedang dibuka tetap tampil isinya walau tak lolos filter — filter mempersempit daftar, bukan menutup yang sedang dibaca.
+- Pilihan judul tema menyebut kategori & posisi kurikulumnya, mis. *PETUALANGAN DUNIA DINOSAURUS — Batita (1-3 th) · B1 M4*.
 - Tombol **Reset** mengosongkan seluruh filter.
 
 ### 📄 Unduh worksheet — khusus pelanggan

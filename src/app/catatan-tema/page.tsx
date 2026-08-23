@@ -21,6 +21,7 @@ import { cocokCari, rapikanKunci, dalamRentang, tanggalWibDariISO, rentangTerpak
 import { getAnakUntukPenulis, getCatatanTemaAnak, getAnakBerevaluasi, type PeranPenulis } from '@/lib/data/catatan-tema';
 import { getRingkasGameAnak } from '@/lib/data/game-hasil';
 import { getLabelFokusArea } from '@/lib/data/fokus-area';
+import { getKategoriUsiaAktif } from '@/lib/data/kategori-usia';
 import { formatTanggal } from '@/lib/format';
 import TombolKembali from '@/components/TombolKembali';
 import FormCatatanTema from './FormCatatanTema';
@@ -50,19 +51,19 @@ export default async function CatatanTemaPage(
   { searchParams }: {
     searchParams: Promise<{
       anak?: string; kelas?: string;
-      q?: string; tema?: string; dari?: string; sampai?: string;
+      q?: string; tema?: string; kat?: string; dari?: string; sampai?: string;
     }>;
   },
 ) {
   const {
     anak: anakParam, kelas: kelasParam,
-    q: qAnak = '', tema: qTema = '', dari = '', sampai = '',
+    q: qAnak = '', tema: qTema = '', kat: qKat = '', dari = '', sampai = '',
   } = await searchParams;
   const penulis = await penulisTerjamin();
   // Rentang dinormalkan sekali: bila batasnya tertukar, yang dipakai adalah versi yang sudah
   // ditukar — dan itu DITULIS di layar, bukan diperbaiki diam-diam.
   const rentang = rentangTerpakai(dari, sampai);
-  const adaFilter = !!rapikanKunci(qAnak) || !!rapikanKunci(qTema) || rentang.aktif;
+  const adaFilter = !!rapikanKunci(qAnak) || !!qTema || !!qKat || rentang.aktif;
 
   /** Tautan yang MEMPERTAHANKAN filter aktif — mengklik nama anak tak boleh mengosongkannya. */
   const tautan = (p: { anak?: string; kelas?: string }) => {
@@ -71,15 +72,19 @@ export default async function CatatanTemaPage(
     if (p.kelas) sp.set('kelas', p.kelas);
     if (qAnak) sp.set('q', qAnak);
     if (qTema) sp.set('tema', qTema);
+    if (qKat) sp.set('kat', qKat);
     if (dari) sp.set('dari', dari);
     if (sampai) sp.set('sampai', sampai);
     const s = sp.toString();
     return s ? `/catatan-tema?${s}` : '/catatan-tema';
   };
 
-  const [anakSemua, kelasSemua, labelArea] = await Promise.all([
+  const [anakSemua, kelasSemua, labelArea, kategoriOpsi] = await Promise.all([
     getAnakUntukPenulis(penulis.peran), getKelasAktifCached(), getLabelFokusArea(),
+    getKategoriUsiaAktif(),
   ]);
+  const namaKategori = (id: string | null | undefined) =>
+    kategoriOpsi.find((k) => k.id === id)?.nama ?? null;
 
   // Hanya anak yang SUDAH punya evaluasi dari orang tua yang ditampilkan: tanpa evaluasi,
   // tak ada yang perlu ditanggapi, dan mendaftarkannya hanya membuat penulis membuka satu
@@ -127,8 +132,21 @@ export default async function CatatanTemaPage(
     };
   });
 
+  // Judul tema kini DIPILIH dari dropdown, jadi nilainya sebuah id — pencocokannya tepat,
+  // tak lagi menebak dari teks. Cadangan teks tetap ada agar tautan lama (yang berisi kata
+  // kunci, bukan id) tak mendadak menghasilkan daftar kosong tanpa sebab.
+  const idTemaDikenal = kelasSemua.some((k) => k.id === qTema);
+  const cocokTema = (d: typeof daftarSemua[number]) => {
+    if (!qTema) return true;
+    return idTemaDikenal ? d.evaluasi.kelas_id === qTema : cocokCari(d.judul, qTema);
+  };
+  // Kategori usia diambil dari materinya. Evaluasi yang temanya sudah tak aktif (atau tak
+  // berkategori) tak bisa cocok dengan filter kategori mana pun — dan itu memang benar.
+  const cocokKat = (d: typeof daftarSemua[number]) =>
+    !qKat || (d.kelas?.kategori_usia_id ?? '') === qKat;
+
   const daftar = daftarSemua.filter((d) =>
-    cocokCari(d.judul, qTema) && dalamRentang(d.tglWib, rentang.dari, rentang.sampai));
+    cocokTema(d) && cocokKat(d) && dalamRentang(d.tglWib, rentang.dari, rentang.sampai));
   const temaTersembunyi = daftarSemua.length - daftar.length;
 
   // Tema yang sedang dibuka tetap ditampilkan isinya walau tak lolos filter — filter
@@ -165,9 +183,29 @@ export default async function CatatanTemaPage(
           🔍 Nama anak
           <input name="q" defaultValue={qAnak} placeholder="mis. Aletta" className="kp-input" style={{ fontSize: 13, padding: '6px 8px', marginBottom: 0 }} />
         </label>
-        <label style={{ fontSize: 11, color: 'var(--abu)', display: 'flex', flexDirection: 'column', gap: 2, flex: '1 1 150px' }}>
+        <label style={{ fontSize: 11, color: 'var(--abu)', display: 'flex', flexDirection: 'column', gap: 2, flex: '1 1 190px' }}>
           🎯 Judul tema
-          <input name="tema" defaultValue={qTema} placeholder="mis. Pelangi" className="kp-input" style={{ fontSize: 13, padding: '6px 8px', marginBottom: 0 }} />
+          {/* Dipilih, bukan diketik: judulnya panjang & ber-huruf besar-kecil campur, jadi
+              mengetik hanya menambah peluang salah tulis. Label menyebut kategori & posisi
+              kurikulumnya supaya tema berjudul mirip tetap bisa dibedakan. */}
+          <select name="tema" defaultValue={qTema} className="kp-input" style={{ fontSize: 13, padding: '6px 8px', marginBottom: 0 }}>
+            <option value="">— semua tema —</option>
+            {kelasSemua.map((k) => {
+              const pos = posisiTema(kelasSemua, k.id);
+              const kat = namaKategori(k.kategori_usia_id);
+              const ket = [kat, pos ? `B${pos.bulan} M${pos.minggu}` : null].filter(Boolean).join(' · ');
+              return <option key={k.id} value={k.id}>{k.judul}{ket ? ` — ${ket}` : ''}</option>;
+            })}
+          </select>
+        </label>
+        <label style={{ fontSize: 11, color: 'var(--abu)', display: 'flex', flexDirection: 'column', gap: 2, flex: '1 1 150px' }}>
+          🧸 Kategori usia
+          <select name="kat" defaultValue={qKat} className="kp-input" style={{ fontSize: 13, padding: '6px 8px', marginBottom: 0 }}>
+            <option value="">— semua kategori —</option>
+            {kategoriOpsi.map((k) => (
+              <option key={k.id} value={k.id}>{k.nama} ({k.usia_min}–{k.usia_max} th)</option>
+            ))}
+          </select>
         </label>
         <label style={{ fontSize: 11, color: 'var(--abu)', display: 'flex', flexDirection: 'column', gap: 2 }}>
           📅 Diisi dari

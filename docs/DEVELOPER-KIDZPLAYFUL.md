@@ -899,7 +899,9 @@ Akibatnya di layar:
 
 `/catatan-tema` bisa menumpuk cepat (satu anak × banyak tema × banyak bulan). Filternya berupa **form GET biasa**, bukan komponen klien: keadaan filter terbaca dari URL, bisa di-bookmark & dibagikan, dan saat ada laporan bug URL-nya sudah memuat seluruh keadaan yang perlu direproduksi.
 
-Aturan penyaringannya di `domain/saring.ts` (murni & diuji) — dua kekeliruan yang ditutup di sana keduanya **terbaca sebagai data hilang**, bukan sebagai filter yang salah:
+Judul tema & kategori usia dipilih dari **dropdown** (sumber: Ide Bermain berstatus aktif, dan master kategori usia), jadi nilai `tema` di URL adalah sebuah **id** — pencocokannya tepat, tak lagi menebak dari teks. Label opsinya menyebut **kategori + posisi kurikulum** (`Judul — Batita · B1 M4`) supaya tema berjudul mirip tetap bisa dibedakan. Nilai `tema` yang bukan id dikenali sebagai **kata kunci** (cadangan untuk tautan lama), supaya URL yang dibagikan sebelumnya tak mendadak menghasilkan daftar kosong tanpa sebab. Filter kategori membaca `kategori_usia_id` **materinya**, jadi evaluasi yang temanya sudah tak aktif atau tak berkategori memang tak cocok dengan kategori mana pun.
+
+Aturan penyaringan tanggal & teks di `domain/saring.ts` (murni & diuji) — dua kekeliruan yang ditutup di sana keduanya **terbaca sebagai data hilang**, bukan sebagai filter yang salah:
 
 1. **Batas akhir INKLUSIF.** Batas eksklusif membuang catatan yang diisi pada hari terakhir rentang — dan itu tak terlihat sampai seseorang mencari catatan hari ini lalu tak menemukannya.
 2. **Cap waktu dikonversi ke tanggal WIB**, bukan `updated_at.slice(0, 10)`. Potongan itu memberi tanggal **UTC**: evaluasi yang diisi pukul 01:00 WIB tanggal 24 tersimpan `…T18:00:00Z` tanggal 23, jadi ia akan **ditampilkan dan tersaring sebagai tanggal 23**. Tampilan tanggal di halaman ini ikut diperbaiki ke WIB — filter dan tampilan wajib memakai acuan yang sama, kalau tidak baris yang terlihat "23 Agu" tak akan muncul saat disaring 23 Agu.
