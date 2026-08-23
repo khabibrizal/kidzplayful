@@ -377,6 +377,9 @@ Ide Bermain kini berjalan sebagai **kurikulum per ANAK**, bukan daftar materi le
 ### Tema tanpa kategori usia tidak ditampilkan
 Anak hanya menerima Ide Bermain yang **sesuai kategori usianya**. Tema yang belum diberi kategori tidak muncul di halaman anak — jadi pastikan setiap tema punya kategori usia di form Ide Bermain.
 
+### Tombol Edit di Ide Bermain
+Menekan **Edit** pada sebuah materi kini **menggulirkan halaman ke form edit-nya**, dan kepala form menyebut judul materi yang sedang dibuka ("Edit: PETUALANGAN DUNIA DINOSAURUS"). Sebelumnya form terbuka di atas daftar tanpa halaman ikut berpindah, sehingga tombolnya terasa tak berfungsi. Berlaku juga untuk **Tambah** dan **Duplikat**.
+
 ### Mengubah rentang kategori usia
 Mengubah **usia dari/sampai** sebuah kategori kini **langsung menjalar** ke seluruh Ide Bermain dan Game di kategori itu — pesan simpannya menyebutkan berapa materi yang ikut disegarkan. Anda tak perlu lagi membuka materinya satu per satu.
 

@@ -1,6 +1,6 @@
 // src/app/admin/kelas-bermain/KelasAdmin.tsx
 'use client';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { buatKelas, updateKelas, toggleStatusKelas, hapusKelas, setBolehTrialKelas, type KelasInput } from '@/lib/data/kelas-bermain-actions';
 import type { KelasBermain } from '@/lib/game/tipe';
@@ -46,6 +46,12 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
   // menyalin lalu menyunting banyak aktivitas mudah lupa ini salinan dari mana, dan
   // "Tambah Ide Bermain" saja tak membedakannya dari materi yang disusun dari nol.
   const [asalSalinan, setAsalSalinan] = useState('');
+  // Formnya dirender DI ATAS daftar, sedangkan tombol Edit ada jauh di bawah — jadi tanpa
+  // digulirkan, menekan Edit terlihat seperti tak melakukan apa pun. `bukaKe` dinaikkan tiap
+  // kali form DIBUKA (bukan tiap render), supaya guliran hanya terjadi saat pembukaan dan
+  // tidak mengganggu saat admin sedang mengetik di dalam form.
+  const formRef = useRef<HTMLDivElement>(null);
+  const [bukaKe, setBukaKe] = useState(0);
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [toast, setToast] = useState('');
@@ -53,6 +59,12 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
   const coverRef = useRef<HTMLInputElement>(null);
 
   function flash(msg: string) { setToast(msg); setTimeout(() => setToast(''), 2200); }
+
+  // `bukaKe > 0` menjaga agar guliran tak terjadi saat halaman pertama dimuat.
+  useEffect(() => {
+    if (bukaKe === 0) return;
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [bukaKe]);
   const tampil = list.filter((k) => k.judul.toLowerCase().includes(q.toLowerCase()));
   // Dihitung dari materi AKTIF saja: materi nonaktif tak tampil ke orang tua, jadi tak
   // ikut memenuhi kuota 4 tema sebulan. Dikelompokkan PER KATEGORI USIA — kurikulum Bayi
@@ -92,6 +104,7 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
 
   function bukaTambah() {
     setEditId(null);
+    setBukaKe((n) => n + 1);
     setAwalKategori('');
     setDariTema(''); setAsalSalinan('');
     // Posisi materi baru ditetapkan begitu KATEGORI dipilih — sebelum itu belum ada
@@ -146,6 +159,7 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
   }
   function bukaEdit(k: KelasBermain) {
     setEditId(k.id);
+    setBukaKe((n) => n + 1);
     setAwalKategori(k.kategori_usia_id ?? '');
     setDariTema(''); setAsalSalinan('');
     setForm(dariRow(k));
@@ -167,6 +181,7 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
     setEditId(null);
     setAwalKategori('');
     setAsalSalinan(sumber.judul);
+    setBukaKe((n) => n + 1);
     setForm(salinTemaKeKategoriLain(dariRow(sumber)));
     flash(`Disalin dari “${sumber.judul}” — pilih kategori usianya, lalu sesuaikan aktivitasnya ✓`);
   }
@@ -309,8 +324,10 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
       )}
 
       {form && (
-        <div className={s.card} style={{ border: '2px solid var(--lavender)' }}>
-          <b>{editId ? 'Edit' : 'Tambah'} Ide Bermain</b>
+        <div ref={formRef} className={s.card} style={{ border: '2px solid var(--lavender)', scrollMarginTop: 12 }}>
+          {/* Judul materinya ikut disebut: sesudah digulirkan, admin perlu kepastian bahwa
+              yang terbuka memang baris yang ia tekan — bukan materi lain. */}
+          <b>{editId ? `Edit: ${list.find((k) => k.id === editId)?.judul ?? 'Ide Bermain'}` : 'Tambah Ide Bermain'}</b>
           {!editId && asalSalinan && (
             <div className={s.muted} style={{ fontSize: 12, marginTop: 2 }}>
               ⧉ salinan dari “{asalSalinan}” — pilih <b>kategori usia</b> tujuannya, lalu sesuaikan aktivitasnya. Belum tersimpan sampai Anda menekan Simpan.

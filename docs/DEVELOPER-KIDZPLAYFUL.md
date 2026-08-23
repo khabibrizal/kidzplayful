@@ -918,6 +918,17 @@ Keputusan lain yang sengaja diambil:
 
 > **🐞 Cacat tata letak yang tertangkap saat verifikasi visual:** tombol `Reset` menjorok keluar dari kartu filter. Sebabnya `.kp-btn` punya **bayangan solid 6px di LUAR kotak elemen** (`box-shadow: 0 6px 0`), sedangkan padding kartu saya setel 10px. Padding bawah dinaikkan ke 18px. Pelajarannya: setiap kali `.kp-btn` ditaruh di wadah ber-padding kecil, sisakan ruang untuk bayangannya — `tsc` dan `build` tak akan pernah menangkap ini.
 
+#### Tombol Edit harus MEMBAWA admin ke formnya
+
+Form Ide Bermain dirender **di atas** daftar, sedangkan tombol Edit ada jauh di bawah. Menekan Edit karena itu terlihat **seperti tak melakukan apa pun** — form memang terbuka, hanya di luar layar. Kartu yang tak bereaksi tak bisa dibedakan dari tombol yang rusak.
+
+- `formRef.scrollIntoView({ behavior: 'smooth', block: 'start' })` dipicu efek yang bergantung pada **penghitung pembukaan** (`bukaKe`), bukan pada `editId` atau `form`. Kalau bergantung pada `form`, guliran akan terjadi **setiap kali admin mengetik** — setiap ketukan mengubah state form. Penghitung dinaikkan di ketiga pembuka: Tambah, Edit, dan Duplikat.
+- `bukaKe === 0` menjaga agar halaman tak menggulir sendiri saat pertama dimuat.
+- `scrollMarginTop: 12` memberi jarak dari tepi atas, jadi kartunya tak menempel.
+- **Kepala form menyebut judul materinya** ("Edit: PETUALANGAN DUNIA DINOSAURUS"). Sesudah digulirkan, admin perlu kepastian bahwa yang terbuka memang baris yang ia tekan — bukan materi lain.
+
+Diverifikasi di browser (Playwright, tiruan halaman dengan 20 kartu): tekan Edit pada kartu terakhir di `scrollY 1214` → halaman bergulir ke `scrollY 4`, tepi atas form **12 px** dari viewport, dan judulnya cocok dengan kartu yang ditekan. `tsc` maupun `build` tak bisa menangkap kegagalan semacam ini.
+
 #### 📄 Unduh worksheet: gerbang keanggotaan, plafon trial 1×
 
 **🐞 Bug yang diperbaiki: yang bukan pelanggan masih bisa mengunduh.** Ada TIGA lubang sekaligus, dan semuanya harus ditutup bersama:
