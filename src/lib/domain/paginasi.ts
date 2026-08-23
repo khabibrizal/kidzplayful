@@ -4,6 +4,10 @@
 // memotong halaman lalu menyaring isi halaman itu — hasil pencarian akan bergantung pada
 // halaman yang sedang dibuka, dan judul yang ada di halaman 3 tak akan pernah muncul saat
 // dicari dari halaman 1. Itu terbaca sebagai "datanya tidak ada".
+//
+// Normalisasi & pencocokan kata kunci dipakai BERSAMA dengan penyaring lain (`saring.ts`).
+// Dua salinan aturan "cocok" berarti dua halaman bisa menjawab beda untuk kunci yang sama.
+import { rapikanKunci as rapikan, cocokCari } from './saring';
 
 export interface HasilPaginasi<T> {
   /** isi halaman yang sedang dibuka */
@@ -19,8 +23,6 @@ export interface HasilPaginasi<T> {
 
 export const PER_HAL_ANAK = 10;
 
-/** Normalisasi kata kunci: rapikan spasi & huruf agar pencarian tak peka besar-kecil. */
-const rapikan = (s: string) => (s ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
 
 /**
  * @param items    seluruh data (belum dipotong)
@@ -39,7 +41,7 @@ export function saringPaginasi<T>(
 
   // SARING DULU — atas seluruh data, bukan atas isi satu halaman.
   const tersaring = adaFilter
-    ? semua.filter((it) => rapikan(judulDari(it)).includes(kunci))
+    ? semua.filter((it) => cocokCari(judulDari(it), kunci))
     : semua;
 
   const total = tersaring.length;

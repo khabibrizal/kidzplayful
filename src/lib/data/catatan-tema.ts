@@ -3,6 +3,7 @@
 // Terpisah dari `evaluasi_kurikulum` (checklist orang tua) karena berbeda penulis dan
 // berbeda bobot sebagai bukti — lihat 0099.
 import { createClient } from '@/lib/supabase/server';
+import { dalamRentang, tanggalWibDariISO } from '@/lib/domain/saring';
 
 export interface NilaiTema { area: string; indikator: string; nilai: string }
 
@@ -122,6 +123,7 @@ export async function getAnakUntukPenulis(peran: PeranPenulis): Promise<{ id: st
  */
 export async function getAnakBerevaluasi(
   anakIds: string[],
+  rentang?: { dari?: string | null; sampai?: string | null },
 ): Promise<Record<string, { jumlah: number; terakhir: string }>> {
   const out: Record<string, { jumlah: number; terakhir: string }> = {};
   const ids = [...new Set(anakIds.filter(Boolean))];
@@ -133,6 +135,11 @@ export async function getAnakBerevaluasi(
   for (const r of data ?? []) {
     const id = r.anak_id as string;
     const waktu = r.updated_at as string;
+    // Rentang disaring di sini, bukan di query: batasnya tanggal WIB sedangkan `updated_at`
+    // cap waktu UTC, jadi `gte/lte` PostgREST akan meleset 7 jam di kedua ujungnya — evaluasi
+    // yang diisi lepas tengah malam WIB terhitung di hari sebelumnya. Barisnya memang sudah
+    // diambil semua untuk menghitung jumlah, jadi tak ada query tambahan.
+    if (rentang && !dalamRentang(tanggalWibDariISO(waktu), rentang.dari, rentang.sampai)) continue;
     const ada = out[id];
     if (!ada) out[id] = { jumlah: 1, terakhir: waktu };
     else { ada.jumlah++; if (waktu > ada.terakhir) ada.terakhir = waktu; }

@@ -782,6 +782,27 @@ Sisi orang tua. **Gerbang "khusus member aktif" sudah DICABUT** (sub-proyek B): 
 - **Tema tanpa `bulan_kurikulum` dianggap TERBUKA** (materi lama / migrasi belum jalan). Default yang salah arah di sini akan mengunci konten yang tadinya jalan — dan itu terbaca sebagai fitur dicabut.
 - Mode Anak **tidak** menampilkan judul bulan depan sama sekali: judul-saja adalah bahasa untuk orang tua; bagi anak ia cuma pintu yang tak bisa dibuka.
 
+#### 🔍 Filter di Catatan Tema — nama anak, judul tema, rentang tanggal
+
+`/catatan-tema` bisa menumpuk cepat (satu anak × banyak tema × banyak bulan). Filternya berupa **form GET biasa**, bukan komponen klien: keadaan filter terbaca dari URL, bisa di-bookmark & dibagikan, dan saat ada laporan bug URL-nya sudah memuat seluruh keadaan yang perlu direproduksi.
+
+Aturan penyaringannya di `domain/saring.ts` (murni & diuji) — dua kekeliruan yang ditutup di sana keduanya **terbaca sebagai data hilang**, bukan sebagai filter yang salah:
+
+1. **Batas akhir INKLUSIF.** Batas eksklusif membuang catatan yang diisi pada hari terakhir rentang — dan itu tak terlihat sampai seseorang mencari catatan hari ini lalu tak menemukannya.
+2. **Cap waktu dikonversi ke tanggal WIB**, bukan `updated_at.slice(0, 10)`. Potongan itu memberi tanggal **UTC**: evaluasi yang diisi pukul 01:00 WIB tanggal 24 tersimpan `…T18:00:00Z` tanggal 23, jadi ia akan **ditampilkan dan tersaring sebagai tanggal 23**. Tampilan tanggal di halaman ini ikut diperbaiki ke WIB — filter dan tampilan wajib memakai acuan yang sama, kalau tidak baris yang terlihat "23 Agu" tak akan muncul saat disaring 23 Agu.
+
+Keputusan lain yang sengaja diambil:
+
+- **Batas tanggal TERBALIK ditukar, bukan dijadikan nol hasil.** Pada sepasang kotak tanggal itu hampir selalu salah taruh. Penukarannya **ditulis di layar** ("Tanggalnya tertukar — yang dipakai: …"), jadi terlihat, bukan diperbaiki diam-diam.
+- **Tanggal yang tak terbaca tetap lolos filter.** Menyaring keluar baris yang tanggalnya tak diketahui berarti menyembunyikan justru data yang perlu diperiksa.
+- **Jumlah di samping nama anak dihitung DI DALAM rentang.** Kalau tidak, angka itu menjanjikan evaluasi yang tak akan muncul saat namanya diklik.
+- **Rentang disaring di kode, bukan di query.** Batasnya tanggal WIB sedangkan `updated_at` cap waktu UTC, jadi `gte/lte` PostgREST meleset 7 jam di kedua ujung. Barisnya memang sudah diambil semua untuk menghitung jumlah, jadi tak ada query tambahan.
+- **Anak & tema yang sedang DIBUKA tetap dihormati walau tak lolos filter.** Filter mempersempit daftar, bukan menutup halaman yang sedang dibaca — memantulkan pengguna ke anak lain saat ia mengetik akan membuat catatan yang sedang ditulis kehilangan konteks.
+- **Batas 30 tombol nama anak kini DISEBUTKAN** ("+N anak lagi tak ditampilkan — pakai kotak Nama anak"). Sebelumnya `.slice(0, 30)` memotong diam-diam, dan itu terbaca sebagai "anaknya tak ada di sistem".
+- Normalisasi kata kunci dipakai bersama `paginasi.ts` (`rapikanKunci`/`cocokCari`) — dua salinan aturan "cocok" berarti dua halaman bisa menjawab beda untuk kunci yang sama.
+
+> **🐞 Cacat tata letak yang tertangkap saat verifikasi visual:** tombol `Reset` menjorok keluar dari kartu filter. Sebabnya `.kp-btn` punya **bayangan solid 6px di LUAR kotak elemen** (`box-shadow: 0 6px 0`), sedangkan padding kartu saya setel 10px. Padding bawah dinaikkan ke 18px. Pelajarannya: setiap kali `.kp-btn` ditaruh di wadah ber-padding kecil, sisakan ruang untuk bayangannya — `tsc` dan `build` tak akan pernah menangkap ini.
+
 #### 📄 Unduh worksheet: gerbang keanggotaan, plafon trial 1×
 
 **🐞 Bug yang diperbaiki: yang bukan pelanggan masih bisa mengunduh.** Ada TIGA lubang sekaligus, dan semuanya harus ditutup bersama:

@@ -2,7 +2,7 @@
 
 > **Kenapa dokumen ini ada.** `DEVELOPER-KIDZPLAYFUL.md` menjelaskan **kenapa** sesuatu diputuskan begitu (riwayat keputusan & jebakan), dan `DOKUMENTASI-KIDZPLAYFUL.md` menjelaskan **apa** yang dilihat pengguna. Yang belum ada: peta **di mana** sebuah aturan hidup di dalam kode. Dokumen ini mengisi itu — daftar modul & fungsi per lapisan, alur ujung-ke-ujung untuk jalur penting, dan indeks "gejala → berkas yang harus dibuka".
 >
-> Ukuran proyek saat dokumen ini dibuat: **431 berkas TypeScript, ~32.300 baris, 104 migrasi SQL, 89 rute halaman, 19 rute API**.
+> Ukuran proyek saat dokumen ini dibuat: **433 berkas TypeScript, ~32.500 baris, 104 migrasi SQL, 89 rute halaman, 19 rute API**.
 
 ---
 
@@ -57,7 +57,7 @@
 
 ## 3. `src/lib/domain/` — semua aturan, murni & teruji
 
-24 berkas, tanpa satu pun I/O. **Inilah tempat memperbaiki bug logika**, dan tempat menulis tes yang menggigit. Semua bisa diuji tanpa database.
+25 berkas, tanpa satu pun I/O. **Inilah tempat memperbaiki bug logika**, dan tempat menulis tes yang menggigit. Semua bisa diuji tanpa database.
 
 ### Langganan, hak akses & harga
 
@@ -124,7 +124,7 @@
 
 ### Lain-lain
 
-`voucher.ts` (`validasiVoucher`, `hitungPotongan`, `adaCakupan`) · `anak.ts` (`umurTahun`, `umurTeks`, `modeDefault`) · `usia.ts` (`kategoriUsia` untuk game) · `paginasi.ts` (`saringPaginasi` — **saring dulu seluruh daftar, baru potong halaman**) · `reminder.ts` (`susunPesanReminder`) · `jadwal.ts` · `stiker.ts` · `laporan.ts`
+`saring.ts` (`cocokCari`, `dalamRentang`, `tanggalWibDariISO`, `rentangTerpakai` — pencarian teks & rentang tanggal; **batas inklusif**, cap waktu dikonversi ke **WIB**) · `voucher.ts` (`validasiVoucher`, `hitungPotongan`, `adaCakupan`) · `anak.ts` (`umurTahun`, `umurTeks`, `modeDefault`) · `usia.ts` (`kategoriUsia` untuk game) · `paginasi.ts` (`saringPaginasi` — **saring dulu seluruh daftar, baru potong halaman**) · `reminder.ts` (`susunPesanReminder`) · `jadwal.ts` · `stiker.ts` · `laporan.ts`
 
 ---
 
@@ -331,7 +331,9 @@ if (error && /kolom_baru/.test(error.message)) { delete baris.kolom_baru; /* ula
 | Kuota tak berkurang / bisa dilewati | action-nya (apakah mencatat **sebelum** memberi hasil?) → trigger SQL padanannya |
 | Tema kurikulum salah muncul/hilang | `domain/siklus-kurikulum.ts` → `data/kurikulum.ts` → `kategori_usia_id` & `bulan_kurikulum` di data |
 | Perubahan admin tak muncul di sisi pengguna | apakah action-nya memanggil `updateTag('katalog')`? |
-| Tanggal/periode geser sehari | apakah memakai `tanggalWIB()`? `current_date` Postgres itu **UTC** |
+| Tanggal/periode geser sehari | apakah memakai `tanggalWIB()`? `current_date` Postgres itu **UTC**. Untuk cap waktu: `tanggalWibDariISO()`, bukan `.slice(0, 10)` |
+| Filter tanggal membuang hari terakhir | batas harus **inklusif** — `dalamRentang()` di `domain/saring.ts` |
+| Tombol menjorok keluar dari kartu | `.kp-btn` punya bayangan solid **6px di luar** kotaknya; wadah butuh padding bawah ≥ 18px |
 | Angka di form ≠ angka tersimpan | kembaran murni vs RPC SQL (`hitungBiayaKonsultasi` ↔ `daftar_konsultasi`) |
 | Data akun lain bocor | apakah jalurnya memakai `createAdminClient()`? |
 | Tombol/checklist mati di satu halaman saja | prop identitas opsional (`anakId`, `modeWorksheet`) lupa dipasang — `grep -n "<NamaKomponen" src` **semua** pemanggil |

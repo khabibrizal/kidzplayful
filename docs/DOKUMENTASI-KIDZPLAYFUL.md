@@ -368,6 +368,15 @@ Ide Bermain kini berjalan sebagai **kurikulum per ANAK**, bukan daftar materi le
 - **Posisi tema (bulan & minggu) terisi otomatis per kategori usia.** Admin memilih kategori, sistem menaruhnya di slot bebas pertama — minggu 1–4, lalu pindah bulan. Satu kategori + bulan + minggu hanya boleh dimiliki satu tema, tapi Bayi dan Prasekolah boleh sama-sama punya Bulan 1 Minggu 1 (kurikulum yang berbeda).
 - **⧉ Duplikat: satu tema untuk beberapa kategori usia.** Pilih tema yang sudah ada dari dropdown di `/admin/kelas-bermain`, tekan Duplikat — form terisi seluruh isinya (judul, tujuan, bahan, aktivitas beserta butir evaluasi & game-nya), **kecuali kategori usia dan posisinya** yang memang harus baru. Admin lalu memilih kategori tujuan dan menyesuaikan aktivitasnya. Belum tersimpan sampai Simpan ditekan.
 
+### 🔍 Filter di Catatan Tema
+Menu **🍎 Catatan Tema** punya filter: **nama anak**, **judul tema**, dan **rentang tanggal pengisian** (dari – sampai). Ketiganya bisa dipakai bersamaan, dan hasilnya tersimpan di alamat halaman — jadi bisa di-bookmark atau dikirim ke rekan.
+
+- Rentang tanggalnya **termasuk hari pertama dan hari terakhir**.
+- Kalau tanggalnya tertukar (dari lebih akhir daripada sampai), sistem menukarnya dan **menuliskan** rentang yang benar-benar dipakai.
+- Angka di samping nama anak ikut mengikuti rentang yang dipilih.
+- Anak dan tema yang sedang dibuka tetap tampil isinya walau tak lolos filter — filter mempersempit daftar, bukan menutup yang sedang dibaca.
+- Tombol **Reset** mengosongkan seluruh filter.
+
 ### 📄 Unduh worksheet — khusus pelanggan
 - **Bukan pelanggan: tidak bisa mengunduh sama sekali** (sebelumnya masih bisa lewat materi bertanda "contoh gratis").
 - **Masa trial: 1× unduhan, seumur trial** — bukan 1 per bulan. Materi "contoh gratis" pun memakai jatah itu.

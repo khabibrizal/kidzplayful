@@ -17,6 +17,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getKelasAktifCached } from '@/lib/data/publik';
 import { getEvaluasiAnak } from '@/lib/data/kurikulum';
 import { posisiTema, evaluasiPerAktivitas } from '@/lib/domain/kurikulum';
+import { cocokCari, rapikanKunci, dalamRentang, tanggalWibDariISO, rentangTerpakai } from '@/lib/domain/saring';
 import { getAnakUntukPenulis, getCatatanTemaAnak, getAnakBerevaluasi, type PeranPenulis } from '@/lib/data/catatan-tema';
 import { getRingkasGameAnak } from '@/lib/data/game-hasil';
 import { getLabelFokusArea } from '@/lib/data/fokus-area';
@@ -40,13 +41,41 @@ async function penulisTerjamin(): Promise<{ id: string; nama: string | null; per
   return { id: user.id, nama: (p?.nama_tampilan as string | null) ?? null, peran };
 }
 
+/** Batas jumlah tombol nama anak yang dirender sekaligus — sisanya dicari lewat kotak cari. */
+const MAKS_CHIP_ANAK = 30;
+
 const jam = (detik: number) => (detik >= 60 ? `${Math.floor(detik / 60)}m ${detik % 60}d` : `${detik} detik`);
 
 export default async function CatatanTemaPage(
-  { searchParams }: { searchParams: Promise<{ anak?: string; kelas?: string }> },
+  { searchParams }: {
+    searchParams: Promise<{
+      anak?: string; kelas?: string;
+      q?: string; tema?: string; dari?: string; sampai?: string;
+    }>;
+  },
 ) {
-  const { anak: anakParam, kelas: kelasParam } = await searchParams;
+  const {
+    anak: anakParam, kelas: kelasParam,
+    q: qAnak = '', tema: qTema = '', dari = '', sampai = '',
+  } = await searchParams;
   const penulis = await penulisTerjamin();
+  // Rentang dinormalkan sekali: bila batasnya tertukar, yang dipakai adalah versi yang sudah
+  // ditukar — dan itu DITULIS di layar, bukan diperbaiki diam-diam.
+  const rentang = rentangTerpakai(dari, sampai);
+  const adaFilter = !!rapikanKunci(qAnak) || !!rapikanKunci(qTema) || rentang.aktif;
+
+  /** Tautan yang MEMPERTAHANKAN filter aktif — mengklik nama anak tak boleh mengosongkannya. */
+  const tautan = (p: { anak?: string; kelas?: string }) => {
+    const sp = new URLSearchParams();
+    if (p.anak) sp.set('anak', p.anak);
+    if (p.kelas) sp.set('kelas', p.kelas);
+    if (qAnak) sp.set('q', qAnak);
+    if (qTema) sp.set('tema', qTema);
+    if (dari) sp.set('dari', dari);
+    if (sampai) sp.set('sampai', sampai);
+    const s = sp.toString();
+    return s ? `/catatan-tema?${s}` : '/catatan-tema';
+  };
 
   const [anakSemua, kelasSemua, labelArea] = await Promise.all([
     getAnakUntukPenulis(penulis.peran), getKelasAktifCached(), getLabelFokusArea(),
@@ -56,11 +85,19 @@ export default async function CatatanTemaPage(
   // tak ada yang perlu ditanggapi, dan mendaftarkannya hanya membuat penulis membuka satu
   // per satu untuk menemukan halaman kosong. Diurutkan dari yang PALING BARU diisi —
   // itulah yang paling mungkin sedang ditunggu tanggapannya.
-  const berevaluasi = await getAnakBerevaluasi(anakSemua.map((a) => a.id));
-  const anakList = anakSemua
+  // Jumlah & waktu terakhir DIHITUNG DI DALAM RENTANG yang dipilih — kalau tidak, angka di
+  // samping nama anak akan menjanjikan evaluasi yang tak akan muncul saat namanya diklik.
+  const berevaluasi = await getAnakBerevaluasi(
+    anakSemua.map((a) => a.id),
+    rentang.aktif ? { dari: rentang.dari, sampai: rentang.sampai } : undefined,
+  );
+  const anakCocok = anakSemua
     .filter((a) => berevaluasi[a.id])
     .sort((x, y) => berevaluasi[y.id].terakhir.localeCompare(berevaluasi[x.id].terakhir));
-  const anak = anakList.find((a) => a.id === anakParam) ?? anakList[0] ?? null;
+  const anakList = anakCocok.filter((a) => cocokCari(a.nama, qAnak));
+  // Anak yang sedang dibuka tetap dihormati walau tak lolos filter nama — memantulkannya ke
+  // anak lain saat mengetik akan membuat catatan yang sedang ditulis kehilangan konteksnya.
+  const anak = anakCocok.find((a) => a.id === anakParam) ?? anakList[0] ?? null;
 
   const [evaluasiSemua, catatanAnak] = anak
     ? await Promise.all([getEvaluasiAnak(anak.id), getCatatanTemaAnak(anak.id)])
@@ -71,7 +108,7 @@ export default async function CatatanTemaPage(
   const evaluasiOrtu = evaluasiSemua.filter((e) => e.peran === 'ortu');
   const kelasById = new Map(kelasSemua.map((k) => [k.id, k]));
 
-  const daftar = evaluasiOrtu.map((e) => {
+  const daftarSemua = evaluasiOrtu.map((e) => {
     const kelas = kelasById.get(e.kelas_id) ?? null;
     const pos = posisiTema(kelasSemua, e.kelas_id);
     return {
@@ -83,10 +120,20 @@ export default async function CatatanTemaPage(
       total: e.hasil.length,
       catatanSaya: catatanAnak.find((c) => c.kelas_id === e.kelas_id && c.penulis_id === penulis.id) ?? null,
       catatanLain: catatanAnak.filter((c) => c.kelas_id === e.kelas_id && c.penulis_id !== penulis.id),
+      // Tanggal pengisian dalam WIB. `updated_at.slice(0, 10)` memberi tanggal UTC, jadi
+      // evaluasi yang diisi lepas tengah malam WIB akan tampil (dan tersaring) sebagai
+      // HARI SEBELUMNYA — dan orang yang mencarinya di tanggal yang benar tak menemukannya.
+      tglWib: tanggalWibDariISO(e.updated_at),
     };
   });
 
-  const dipilih = daftar.find((d) => d.evaluasi.kelas_id === kelasParam) ?? null;
+  const daftar = daftarSemua.filter((d) =>
+    cocokCari(d.judul, qTema) && dalamRentang(d.tglWib, rentang.dari, rentang.sampai));
+  const temaTersembunyi = daftarSemua.length - daftar.length;
+
+  // Tema yang sedang dibuka tetap ditampilkan isinya walau tak lolos filter — filter
+  // mempersempit DAFTAR, bukan menutup halaman yang sedang dibaca.
+  const dipilih = daftarSemua.find((d) => d.evaluasi.kelas_id === kelasParam) ?? null;
 
   // Hasil game aktivitas pada tema terpilih. Paket yang tak ada di peta = belum dimainkan.
   const paketAktivitas = (dipilih?.kelas?.aktivitas ?? [])
@@ -107,9 +154,49 @@ export default async function CatatanTemaPage(
         {penulis.peran === 'guru' && ' Anak yang tampil adalah peserta event kelas bermain.'}
       </p>
 
+      {/* Filter: form GET biasa — tak butuh komponen klien, bisa di-bookmark & di-share,
+          dan keadaan filternya terbaca langsung dari URL saat melaporkan bug. */}
+      <form method="get" className="kp-card"
+        /* Padding bawah lebih besar dari sisi lain: tombol `.kp-btn` punya bayangan solid
+           6px DI LUAR kotak elemennya, jadi padding 10px membuat bayangannya melewati tepi
+           kartu dan terbaca sebagai tombol yang menjorok keluar. */
+        style={{ padding: '10px 10px 18px', marginBottom: 12, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        <label style={{ fontSize: 11, color: 'var(--abu)', display: 'flex', flexDirection: 'column', gap: 2, flex: '1 1 150px' }}>
+          🔍 Nama anak
+          <input name="q" defaultValue={qAnak} placeholder="mis. Aletta" className="kp-input" style={{ fontSize: 13, padding: '6px 8px', marginBottom: 0 }} />
+        </label>
+        <label style={{ fontSize: 11, color: 'var(--abu)', display: 'flex', flexDirection: 'column', gap: 2, flex: '1 1 150px' }}>
+          🎯 Judul tema
+          <input name="tema" defaultValue={qTema} placeholder="mis. Pelangi" className="kp-input" style={{ fontSize: 13, padding: '6px 8px', marginBottom: 0 }} />
+        </label>
+        <label style={{ fontSize: 11, color: 'var(--abu)', display: 'flex', flexDirection: 'column', gap: 2 }}>
+          📅 Diisi dari
+          <input type="date" name="dari" defaultValue={dari} className="kp-input" style={{ fontSize: 13, padding: '6px 8px', marginBottom: 0 }} />
+        </label>
+        <label style={{ fontSize: 11, color: 'var(--abu)', display: 'flex', flexDirection: 'column', gap: 2 }}>
+          sampai
+          <input type="date" name="sampai" defaultValue={sampai} className="kp-input" style={{ fontSize: 13, padding: '6px 8px', marginBottom: 0 }} />
+        </label>
+        {/* Anak yang sedang dibuka ikut terbawa supaya menyaring tak memindahkan halaman. */}
+        {anakParam && <input type="hidden" name="anak" value={anakParam} />}
+        <button className="kp-btn" style={{ fontSize: 13, padding: '7px 14px' }}>Terapkan</button>
+        {adaFilter && (
+          <Link href="/catatan-tema" className="kp-btn putih" style={{ fontSize: 13, padding: '7px 14px', display: 'inline-block' }}>
+            Reset
+          </Link>
+        )}
+      </form>
+      {rentang.ditukar && (
+        <p style={{ fontSize: 12, color: '#b88600', margin: '-6px 0 10px' }}>
+          ⚠️ Tanggalnya tertukar — yang dipakai: {formatTanggal(rentang.dari)} s/d {formatTanggal(rentang.sampai)}.
+        </p>
+      )}
+
       {anakList.length === 0 ? (
         <p style={{ color: 'var(--abu)', fontSize: 13 }}>
-          {anakSemua.length === 0 ? (
+          {adaFilter && anakCocok.length > 0 ? (
+            <>Tak ada anak yang cocok dengan filter ini. <Link href="/catatan-tema" style={{ color: 'var(--lavender-d)' }}>Reset filter</Link> untuk melihat {anakCocok.length} anak yang ada.</>
+          ) : anakSemua.length === 0 ? (
             <>
               Belum ada anak yang bisa Anda tulisi catatannya.
               {penulis.peran === 'psikolog' && ' Daftar ini terisi setelah ada sesi konsultasi yang diterima atau selesai.'}
@@ -123,12 +210,19 @@ export default async function CatatanTemaPage(
         <>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
             <span style={{ fontSize: 12, color: 'var(--abu)' }}>Anak:</span>
-            {anakList.slice(0, 30).map((a) => (
-              <Link key={a.id} href={`/catatan-tema?anak=${a.id}`} className={a.id === anak?.id ? 'kp-btn mint' : 'kp-btn putih'}
+            {anakList.slice(0, MAKS_CHIP_ANAK).map((a) => (
+              <Link key={a.id} href={tautan({ anak: a.id })} className={a.id === anak?.id ? 'kp-btn mint' : 'kp-btn putih'}
                 style={{ display: 'inline-block', fontSize: 13, padding: '6px 12px' }}>
                 {a.nama} <span style={{ opacity: 0.7 }}>({berevaluasi[a.id].jumlah})</span>
               </Link>
             ))}
+            {/* Batas tampil DISEBUTKAN. Pemotongan diam-diam terbaca sebagai "anaknya tak
+                ada di sistem", dan orang akan mencarinya ke tempat yang salah. */}
+            {anakList.length > MAKS_CHIP_ANAK && (
+              <span style={{ fontSize: 12, color: 'var(--abu)' }}>
+                +{anakList.length - MAKS_CHIP_ANAK} anak lagi tak ditampilkan — pakai kotak <b>Nama anak</b> di atas.
+              </span>
+            )}
           </div>
 
           {anak && (
@@ -138,13 +232,23 @@ export default async function CatatanTemaPage(
               </div>
               {daftar.length === 0 && (
                 <p style={{ color: 'var(--abu)', fontSize: 13 }}>
-                  Belum ada evaluasi dari orang tua untuk anak ini. Catatan tema ditulis setelah orang tua
-                  mengisi checklist sebuah tema — sebelum itu, belum ada yang perlu ditanggapi.
+                  {daftarSemua.length > 0 ? (
+                    <>Tak ada tema yang cocok dengan filter ini. Anak ini punya {daftarSemua.length} evaluasi —{' '}
+                      <Link href={tautan({ anak: anak.id })} style={{ color: 'var(--lavender-d)' }}>tampilkan semuanya</Link>.</>
+                  ) : (
+                    <>Belum ada evaluasi dari orang tua untuk anak ini. Catatan tema ditulis setelah orang tua
+                      mengisi checklist sebuah tema — sebelum itu, belum ada yang perlu ditanggapi.</>
+                  )}
+                </p>
+              )}
+              {daftar.length > 0 && temaTersembunyi > 0 && (
+                <p style={{ color: 'var(--abu)', fontSize: 12, margin: '0 0 6px' }}>
+                  Menampilkan {daftar.length} dari {daftarSemua.length} evaluasi ({temaTersembunyi} disaring filter).
                 </p>
               )}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {daftar.map((d) => (
-                  <Link key={d.evaluasi.kelas_id} href={`/catatan-tema?anak=${anak.id}&kelas=${d.evaluasi.kelas_id}`} className="kp-card"
+                  <Link key={d.evaluasi.kelas_id} href={tautan({ anak: anak.id, kelas: d.evaluasi.kelas_id })} className="kp-card"
                     style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'inherit', padding: 12, border: d.evaluasi.kelas_id === dipilih?.evaluasi.kelas_id ? '2px solid var(--lavender)' : undefined }}>
                     <span style={{ fontSize: 18 }}>🎈</span>
                     <span style={{ flex: 1 }}>
@@ -152,7 +256,7 @@ export default async function CatatanTemaPage(
                       <br />
                       <small style={{ color: 'var(--abu)' }}>
                         {d.pos ? `Bulan ke-${d.pos.bulan} · Minggu ke-${d.pos.minggu} · ` : ''}
-                        diisi {formatTanggal(d.evaluasi.updated_at.slice(0, 10))} · {d.tercapai}/{d.total} tercapai
+                        diisi {formatTanggal(d.tglWib)} · {d.tercapai}/{d.total} tercapai
                         {d.catatanSaya ? ' · ✓ sudah Anda tanggapi' : ' · belum ditanggapi'}
                       </small>
                     </span>
@@ -169,7 +273,7 @@ export default async function CatatanTemaPage(
                     <b style={{ fontSize: 14 }}>📋 Isian orang tua — {dipilih.judul}</b>
                     <div style={{ fontSize: 12, color: 'var(--abu)' }}>
                       {dipilih.evaluasi.dinilai_oleh ? `${dipilih.evaluasi.dinilai_oleh} · ` : ''}
-                      {formatTanggal(dipilih.evaluasi.updated_at.slice(0, 10))} · {dipilih.tercapai} dari {dipilih.total} tercapai
+                      {formatTanggal(dipilih.tglWib)} · {dipilih.tercapai} dari {dipilih.total} tercapai
                     </div>
                     {evaluasiPerAktivitas(dipilih.evaluasi.hasil).map((g, i) => (
                       <div key={i} style={{ marginTop: 8 }}>
