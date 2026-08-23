@@ -74,12 +74,25 @@ export interface SiklusArgs {
  * anak yang tadinya sudah membukanya, dan konten yang mendadak terkunci terbaca sebagai
  * fitur dicabut — bukan sebagai migrasi yang belum jalan.
  */
-export function siklusBerjalan({ mulai, hariIni, bulanDibayar }: SiklusArgs): { siklus: number; mulaiSiklus: string } {
+export function siklusBerjalan(
+  { mulai, hariIni, bulanDibayar }: SiklusArgs,
+): { siklus: number; kalenderKe: number; mulaiSiklus: string } {
   const batasBayar = Math.max(1, Math.floor(Number(bulanDibayar) || 0));
-  if (!mulai) return { siklus: batasBayar, mulaiSiklus: hariIni };
-  const kalender = bulanPenuhLewat(mulai, hariIni) + 1;
-  const siklus = Math.max(1, Math.min(kalender, batasBayar));
-  return { siklus, mulaiSiklus: tambahBulan(mulai, siklus - 1) };
+  if (!mulai) return { siklus: batasBayar, kalenderKe: batasBayar, mulaiSiklus: hariIni };
+  const kalenderKe = bulanPenuhLewat(mulai, hariIni) + 1;
+  const siklus = Math.max(1, Math.min(kalenderKe, batasBayar));
+  // ⚠️ JANGKAR PEMBEKUAN memakai `kalenderKe`, BUKAN `siklus`.
+  //
+  // Versi pertama memakai `siklus - 1`, dan itu keliru untuk anak yang jam bayarnya
+  // TERTAHAN: anak yang mulai 12 bulan lalu tapi baru membayar 1 bulan akan memakai jangkar
+  // 12 bulan yang lalu, sehingga umurnya dibekukan pada umur SETAHUN LALU. Anak yang hari
+  // ini berusia 6 tahun dihitung 5 tahun, jatuh ke luar semua kategori usia, dan SELURUH
+  // temanya terkunci — tepat gejala yang dilaporkan pemilik.
+  //
+  // Pembekuan dimaksudkan menahan umur SELAMA satu periode berjalan, bukan memakukannya di
+  // masa lalu. Yang ditahan oleh bayaran adalah NOMOR bulan kurikulum (`siklus`), sedangkan
+  // periode yang sedang dijalani anak tetap periode kalender hari ini.
+  return { siklus, kalenderKe, mulaiSiklus: tambahBulan(mulai, kalenderKe - 1) };
 }
 
 /**
@@ -111,6 +124,11 @@ export interface KonteksArgs extends SiklusArgs {
 export interface KonteksKurikulum {
   /** Nomor siklus keseluruhan (bulan ke-berapa anak ini berjalan sejak mulai). */
   siklus: number;
+  /**
+   * Periode kalender ke-berapa sejak `kurikulum_mulai` — bisa LEBIH BESAR dari `siklus`
+   * bila bulan berbayarnya tertahan. Dipakai sebagai jangkar pembekuan umur.
+   */
+  kalenderKe: number;
   /** Tanggal awal siklus berjalan — acuan pembekuan. */
   mulaiSiklus: string;
   /** Umur anak PADA AWAL siklus berjalan. NaN bila tanggal lahir kosong. */
@@ -143,26 +161,65 @@ const MAKS_SIKLUS = 600;
  * manual, refund, atau backfill — dan melesetnya tak terlihat sampai orang tua mengeluh.
  */
 export function konteksKurikulum({ lahir, mulai, hariIni, bulanDibayar, kategori }: KonteksArgs): KonteksKurikulum {
-  const { siklus, mulaiSiklus } = siklusBerjalan({ mulai, hariIni, bulanDibayar });
+  const { siklus, kalenderKe, mulaiSiklus } = siklusBerjalan({ mulai, hariIni, bulanDibayar });
   const umurPada = (tgl: string): number =>
     lahir ? umurTahun(new Date(lahir + 'T00:00:00Z'), new Date(tgl + 'T00:00:00Z')) : NaN;
 
-  const maksBulan: Record<string, number> = {};
-  const batas = Math.min(siklus, MAKS_SIKLUS);
+  // Ditelusuri sepanjang periode yang BENAR-BENAR DIJALANI anak (kalender), bukan sepanjang
+  // bulan yang dibayar — kalau tidak, anak yang bayarannya tertahan akan tercatat masih
+  // berada di kategori usianya SETAHUN LALU.
+  const dijalani: Record<string, number> = {};
+  const batas = Math.min(kalenderKe, MAKS_SIKLUS);
   let bracket = TANPA_BRACKET;
   for (let c = 1; c <= batas; c++) {
     const awalC = mulai ? tambahBulan(mulai, c - 1) : hariIni;
     bracket = bracketUntukUmur(kategori, umurPada(awalC));
-    maksBulan[bracket] = (maksBulan[bracket] ?? 0) + 1;
+    dijalani[bracket] = (dijalani[bracket] ?? 0) + 1;
   }
+
+  // BAYARAN membatasi berapa BULAN kurikulum yang terbuka, bukan kategori mana yang dijalani.
+  // Keduanya dipisah: kategori mengikuti umur hari ini, jumlah bulan mengikuti yang dibayar.
+  const maksBulan: Record<string, number> = {};
+  for (const [b, n] of Object.entries(dijalani)) maksBulan[b] = Math.min(n, siklus);
+
   return {
     siklus,
+    kalenderKe,
     mulaiSiklus,
     umurBeku: umurPada(mulaiSiklus),
     bracket,
     bulanDalamBracket: maksBulan[bracket] ?? 1,
     maksBulan,
   };
+}
+
+/**
+ * KENAPA sebuah tema terkunci untuk anak ini — `null` bila tidak terkunci.
+ *
+ *   'usia'  → tema ini bukan untuk kategori usia anak. MENUNGGU TAK AKAN MEMBUKANYA.
+ *   'bulan' → tema kategori yang sedang dijalani, tapi bulannya belum tiba.
+ *
+ * Dipisah karena pesannya di layar TIDAK BOLEH tertukar: pesan "menunggu bulan berikutnya"
+ * pada tema yang terkunci karena usia adalah janji yang tak akan pernah ditepati — orang tua
+ * akan menunggu sesuatu yang tak akan datang, lalu menyimpulkan aplikasinya rusak.
+ */
+export function kunciKarena(tema: TemaBracket, ctx: KonteksKurikulum): 'usia' | 'bulan' | null {
+  const st = statusTemaBracket(tema, ctx);
+  if (st === 'terbuka') return null;
+  const kat = (tema?.kategori_usia_id ?? TANPA_BRACKET) || TANPA_BRACKET;
+  // Kategori yang sedang//pernah dijalani → sebabnya bulan. Selain itu → sebabnya usia.
+  if (kat === TANPA_BRACKET) return 'bulan';        // materi lama: hanya digerbangi bulan…
+  return (ctx.maksBulan[kat] ?? 0) > 0 ? 'bulan' : 'usia';
+}
+
+/**
+ * Adakah tema untuk kategori usia yang sedang dijalani anak ini?
+ *
+ * Bila TIDAK, layarnya wajib mengatakan itu: kategori usia yang belum diisi materinya adalah
+ * kekosongan ISI yang harus diperbaiki admin, bukan keadaan yang bisa ditunggu orang tua.
+ */
+export function adaTemaUntukBracket(list: TemaBracket[] | null | undefined, ctx: KonteksKurikulum): boolean {
+  return (list ?? []).some((t) => ((t?.kategori_usia_id ?? TANPA_BRACKET) || TANPA_BRACKET) === ctx.bracket);
 }
 
 /** Bentuk tema yang dibutuhkan untuk penggerbangan per bracket. */
@@ -239,13 +296,24 @@ const urut = (a: TemaBracket & { urutan?: number | null }, b: TemaBracket & { ur
  */
 export function kelompokTemaBracket<T extends TemaBracket & { urutan?: number | null }>(
   list: T[], ctx: KonteksKurikulum,
-): { bulanIni: T[]; sudahTerbuka: T[]; bulanDepan: T[]; terkunci: T[] } {
+): {
+  bulanIni: T[]; sudahTerbuka: T[]; bulanDepan: T[]; terkunci: T[];
+  /** terkunci karena BELUM WAKTUNYA — menunggu akan membukanya */
+  terkunciBulan: T[];
+  /** terkunci karena BUKAN UNTUK USIANYA — menunggu TIDAK akan membukanya */
+  terkunciUsia: T[];
+} {
   const bulanIni: T[] = [];
   const sudahTerbuka: T[] = [];
   const bulanDepan: T[] = [];
   const terkunci: T[] = [];
+  const terkunciBulan: T[] = [];
+  const terkunciUsia: T[] = [];
   for (const tema of list ?? []) {
     const st = statusTemaBracket(tema, ctx);
+    if (st !== 'terbuka') {
+      (kunciKarena(tema, ctx) === 'usia' ? terkunciUsia : terkunciBulan).push(tema);
+    }
     if (st === 'terkunci') { terkunci.push(tema); continue; }
     if (st === 'kunci-judul') { bulanDepan.push(tema); terkunci.push(tema); continue; }
     const kat = (tema.kategori_usia_id ?? TANPA_BRACKET) || TANPA_BRACKET;
@@ -260,5 +328,7 @@ export function kelompokTemaBracket<T extends TemaBracket & { urutan?: number | 
     sudahTerbuka: sudahTerbuka.sort((a, b) => urut(b, a)),
     bulanDepan: bulanDepan.sort(urut),
     terkunci: terkunci.sort(urut),
+    terkunciBulan: terkunciBulan.sort(urut),
+    terkunciUsia: terkunciUsia.sort(urut),
   };
 }

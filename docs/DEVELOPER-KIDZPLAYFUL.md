@@ -782,6 +782,32 @@ Sisi orang tua. **Gerbang "khusus member aktif" sudah DICABUT** (sub-proyek B): 
 - **Tema tanpa `bulan_kurikulum` dianggap TERBUKA** (materi lama / migrasi belum jalan). Default yang salah arah di sini akan mengunci konten yang tadinya jalan — dan itu terbaca sebagai fitur dicabut.
 - Mode Anak **tidak** menampilkan judul bulan depan sama sekali: judul-saja adalah bahasa untuk orang tua; bagi anak ia cuma pintu yang tak bisa dibuka.
 
+#### 🐞 "Anak berlangganan tapi SEMUA tema tertutup" — dua sebab sekaligus
+
+Dilaporkan pemilik: anak kategori 6–9 th sudah berlangganan Preschool, tapi di Main Hari Ini **seluruh tema terkunci**. Ada tema untuk kategori 6–9 di Bulan 1 Minggu 1, jadi ia semestinya terbuka. Penelusuran memakai data live menemukan **dua** cacat, bukan satu.
+
+**SEBAB 1 — pembekuan umur memakai jangkar di masa lalu.** `siklusBerjalan` dulu mengembalikan `mulaiSiklus = tambahBulan(mulai, siklus - 1)`. Untuk anak yang jam bayarnya **tertahan** (mis. `kurikulum_mulai` hasil backfill 0104 tertulis 12 bulan lalu, tapi baru 1 bulan terbayar → `siklus = 1`), jangkarnya menjadi **12 bulan yang lalu**. Umur anak dibekukan pada umur setahun lalu: yang hari ini 6 tahun dihitung **5 tahun**, jatuh ke luar semua kategori usia (`TANPA_BRACKET`), dan setiap tema ber-kategori langsung terkunci karena `maksBulan[kat] = 0`.
+
+Perbaikannya memisahkan dua hal yang sebelumnya tercampur:
+
+| | Ditentukan oleh | Dipakai untuk |
+|---|---|---|
+| `siklus` | `min(kalender, bulan dibayar)` | **NOMOR** bulan kurikulum — berapa bulan yang terbuka |
+| `kalenderKe` | kalender sejak `kurikulum_mulai` | **JANGKAR** pembekuan umur — periode yang sedang dijalani anak |
+
+Pembekuan dimaksudkan menahan umur **selama satu periode berjalan**, bukan memakukannya di masa lalu. Penelusuran bracket kini menyusuri periode yang **benar-benar dijalani** (`1..kalenderKe`), lalu bayaran membatasi jumlah bulan yang terbuka (`maksBulan[b] = min(dijalani[b], siklus)`). Untuk pelanggan yang lancar `kalenderKe === siklus`, jadi perilakunya tak berubah sama sekali.
+
+**SEBAB 2 — CELAH antar kategori usia.** Kategori live hanya **1–3** dan **6–9**. Anak berusia **4 atau 5 tahun tidak masuk kategori mana pun** → `TANPA_BRACKET` → semua tema ber-kategori terkunci, tanpa satu pun kalimat yang menjelaskan. Ini kekosongan **isi/konfigurasi**, bukan bug kode — tapi layar wajib mengatakannya (`adaTemaUntukBracket`).
+
+**Cacat ketiga yang ikut ketahuan: pesannya BERBOHONG.** Semua tema terkunci dirender dengan `⏳ terbuka bulan ke-{n}` dan pesan *"tema ini menunggu bulan berikutnya ya!"* — padahal terkuncinya karena **usia**, dan menunggu tak akan pernah membukanya. Anak di bulan ke-1 bahkan melihat "terbuka bulan ke-1", yang menyangkal dirinya sendiri. `kunciKarena()` kini memisahkan `'usia'` dari `'bulan'`, dan `kelompokTemaBracket` mengembalikan `terkunciUsia` & `terkunciBulan` terpisah.
+
+Akibatnya di layar:
+
+- **Mode Anak** hanya mendaftarkan tema yang terkunci karena **bulan**. Tema kategori lain tak ditampilkan — alasan yang sama dengan judul bulan depan yang juga tak ditampilkan di sini: bagi anak, kartu yang tak akan pernah bisa dibuka hanyalah pintu palsu. Ketiadaannya **tidak senyap**: bila kategori usianya belum punya materi, layarnya menulis "🧸 Belum ada tema untuk usia ‹nama› (N tahun). Materinya sedang disiapkan ya."
+- **Mode Ortu & `/kelas-saya`** menyebut kedua sebab terpisah, dan yang karena usia diberi keterangan **"menunggu tak akan membukanya"**.
+
+> **Pelajaran yang berlaku umum:** saat sebuah gerbang punya lebih dari satu sebab, **sebabnya ikut dikembalikan**, jangan hanya boolean. Pesan yang salah sebab lebih merugikan daripada tak ada pesan — ia membuat orang menunggu sesuatu yang tak akan datang, lalu menyimpulkan aplikasinya rusak.
+
 #### 🔍 Filter di Catatan Tema — nama anak, judul tema, rentang tanggal
 
 `/catatan-tema` bisa menumpuk cepat (satu anak × banyak tema × banyak bulan). Filternya berupa **form GET biasa**, bukan komponen klien: keadaan filter terbaca dari URL, bisa di-bookmark & dibagikan, dan saat ada laporan bug URL-nya sudah memuat seluruh keadaan yang perlu direproduksi.

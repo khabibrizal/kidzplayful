@@ -39,7 +39,7 @@ export default async function KelasSayaPage({ searchParams }: { searchParams: Pr
   const umurAnak = ktx?.umurBeku ?? NaN;
   const grup = ktx
     ? kelompokTemaBracket(kelasSemua, ktx)
-    : { bulanIni: kelasSemua, sudahTerbuka: [], bulanDepan: [], terkunci: [] };
+    : { bulanIni: kelasSemua, sudahTerbuka: [], bulanDepan: [], terkunci: [], terkunciBulan: [], terkunciUsia: [] };
   const terkunciList = grup.terkunci;
   const tautan = (id: string) => (anakDipilih ? `/kelas/${id}?anak=${anakDipilih.id}` : `/kelas/${id}`);
 
@@ -59,8 +59,12 @@ export default async function KelasSayaPage({ searchParams }: { searchParams: Pr
               — umur pada AWAL siklus, bukan umur hari ini. */}
           {terkunciList.length > 0 && (
             <div style={{ fontSize: 12, color: 'var(--abu)', margin: '-4px 0 8px' }}>
-              {terkunciList.length} tema masih terkunci untuk {anakDipilih?.nama ?? 'anak'}
-              {Number.isFinite(umurAnak) ? ` — usia ${umurAnak} th pada awal siklus ini` : ''}.
+              {grup.terkunciBulan.length > 0 && `${grup.terkunciBulan.length} tema menunggu bulan berikutnya`}
+              {grup.terkunciBulan.length > 0 && grup.terkunciUsia.length > 0 && ' · '}
+              {grup.terkunciUsia.length > 0 && (
+                `${grup.terkunciUsia.length} tema untuk kategori usia lain`
+                + (Number.isFinite(umurAnak) ? ` (${anakDipilih?.nama ?? 'anak'} ${umurAnak} th)` : '')
+                + ' — menunggu tak akan membukanya')}.
             </div>
           )}
 

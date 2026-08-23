@@ -56,7 +56,9 @@ export default async function ModeOrtu({ params }: { params: Promise<{ anakId: s
       <div className={s.muted} style={{ fontSize: 12, fontWeight: 700 }}>📚 KURIKULUM {anak.nama.toUpperCase()} · BULAN KE-{bulanAnak}</div>
       {terkunciList.length > 0 && (
         <div className={s.muted} style={{ fontSize: 12 }}>
-          {terkunciList.length} tema masih terkunci untuk {anak.nama} — usia {umurAnak} th pada awal siklus ini.
+          {grup.terkunciBulan.length > 0 && `${grup.terkunciBulan.length} tema menunggu bulan berikutnya`}
+          {grup.terkunciBulan.length > 0 && grup.terkunciUsia.length > 0 && ' · '}
+          {grup.terkunciUsia.length > 0 && `${grup.terkunciUsia.length} tema untuk kategori usia lain (${anak.nama} ${umurAnak} th) — menunggu tak akan membukanya`}.
         </div>
       )}
       {kelasList.length === 0 && <p className={s.muted}>Belum ada ide bermain aktif. Admin dapat menambah di Kelola Ide Bermain.</p>}

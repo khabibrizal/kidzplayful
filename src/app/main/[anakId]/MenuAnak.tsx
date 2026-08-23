@@ -25,7 +25,7 @@ import s from './main.module.css';
 type Layar = 'menu' | 'kelas' | 'kelas-detail' | 'daftar' | 'pustaka' | 'video' | 'main' | 'istirahat';
 
 export default function MenuAnak({
-  anak, pustaka, pinTersimpan, video, paketAwal, kelasAwal, kembaliUrl, kelasList, favIds, gamiAwal, batasi = false, labelArea = {}, bolehWorksheet = false, sisaWorksheet, worksheetTanpaBatas, modeWorksheet = 'tidak', evaluasiPerKelas = {}, kelasTerkunci = [], bulanKurikulum = 1,
+  anak, pustaka, pinTersimpan, video, paketAwal, kelasAwal, kembaliUrl, kelasList, favIds, gamiAwal, batasi = false, labelArea = {}, bolehWorksheet = false, sisaWorksheet, worksheetTanpaBatas, modeWorksheet = 'tidak', evaluasiPerKelas = {}, kelasTerkunci = [], bulanKurikulum = 1, temaUsiaKosong = false, umurKurikulum = null,
 }: {
   anak: { id: string; nama: string; koin: number; batas_menit: number };
   pustaka: TemaLengkap[]; pinTersimpan: string | null; video: Video[]; paketAwal?: string;
@@ -45,6 +45,10 @@ export default function MenuAnak({
   /** id tema yang belum waktunya untuk anak ini — tampil TERKUNCI, tidak disembunyikan */
   kelasTerkunci?: string[];
   bulanKurikulum?: number;
+  /** kategori usia anak ini belum punya materi sama sekali */
+  temaUsiaKosong?: boolean;
+  /** umur anak yang dipakai kurikulum (umur pada awal siklus) */
+  umurKurikulum?: number | null;
   /**
    * Hasil checklist evaluasi anak ini per kelas (0098). BUG yang diperbaiki: Mode Anak
    * dulu merender `KelasIsi` tanpa `anakId` sama sekali, sehingga checklist mati dan
@@ -227,6 +231,16 @@ export default function MenuAnak({
             hal={hKelas.hal} totalHal={hKelas.totalHal} total={hKelas.total} adaFilter={hKelas.adaFilter} />
           {/* Menekan tema yang belum waktunya harus MENJAWAB, bukan diam — kartu yang tak
               bereaksi tak bisa dibedakan dari tombol rusak. */}
+          {/* Kategori usia anak ini belum diisi materi. Dikatakan TERUS TERANG: daftar yang
+              kosong tanpa sebab tak bisa dibedakan dari aplikasi yang rusak, dan orang tua
+              yang baru berlangganan akan mengira langganannya tak berfungsi. */}
+          {temaUsiaKosong && (
+            <div className="no-print" style={{ margin: '4px 6px', background: '#fff3d6', color: '#b88600', borderRadius: 12, padding: '10px 12px', fontSize: 13 }}>
+              🧸 Belum ada tema untuk usia {anak.nama}
+              {umurKurikulum !== null ? ` (${umurKurikulum} tahun)` : ''}. Materinya sedang
+              disiapkan ya — game &amp; video di bawah tetap bisa dimainkan.
+            </div>
+          )}
           {pesanKunci && (
             <div className="no-print" style={{ margin: '4px 6px', background: '#fff3d6', color: '#b88600', borderRadius: 12, padding: '8px 12px', fontSize: 13 }}>
               ⏳ “{pesanKunci}” belum terbuka. Sekarang kamu ada di <b>bulan ke-{bulanKurikulum}</b> —

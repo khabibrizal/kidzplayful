@@ -11,7 +11,7 @@ import { getFavoritIds } from '@/lib/data/favorit';
 import { getGamifikasiAnak } from '@/lib/data/gamifikasi';
 import { getHakAnak } from '@/lib/data/langganan-anak';
 import { getKonteksKurikulumAnak, getEvaluasiAnak } from '@/lib/data/kurikulum';
-import { kelompokTemaBracket } from '@/lib/domain/siklus-kurikulum';
+import { kelompokTemaBracket, adaTemaUntukBracket } from '@/lib/domain/siklus-kurikulum';
 import { pathInternal } from '@/lib/nav';
 import { getStatusWorksheet } from '@/lib/data/worksheet';
 import RekamAktivitas from '@/components/RekamAktivitas';
@@ -67,9 +67,17 @@ export default async function MainPage({ params, searchParams }: { params: Promi
   // bulan di dalam kategori itu, tema kategori LAMA yang sudah dilalui tetap terbuka, dan
   // yang belum waktunya tetap TAMPIL tapi terkunci.
   const grupTema = kelompokTemaBracket(kelasList0, ktx);
-  const daftarTerkunci = grupTema.terkunci;
+  // Tema yang terkunci karena BUKAN UNTUK USIANYA tidak ikut didaftarkan di Mode Anak.
+  // Alasannya sama dengan judul bulan depan yang juga tak ditampilkan di sini: bagi anak,
+  // kartu yang tak akan pernah bisa dibuka hanyalah pintu palsu — dan menunggu tak akan
+  // membukanya. Ketiadaannya TIDAK dibiarkan senyap: bila kategori usianya memang belum
+  // punya materi, layarnya mengatakan itu (lihat `temaUsiaKosong`).
+  const daftarTerkunci = grupTema.terkunciBulan;
   const idTerkunci = daftarTerkunci.map((k) => k.id);
   const kelasTerbuka = [...grupTema.bulanIni, ...grupTema.sudahTerbuka, ...daftarTerkunci];
+  // Kategori usia anak ini belum diisi materi sama sekali → kekosongan ISI yang harus
+  // diperbaiki admin, bukan keadaan yang bisa ditunggu orang tua.
+  const temaUsiaKosong = kelasList0.length > 0 && !adaTemaUntukBracket(kelasList0, ktx);
   // CATATAN: pustaka kosong TIDAK lagi memantulkan ke `/pilih-anak`. Pantulan itu diam-diam
   // (klik kartu anak seolah tak berfungsi) padahal Mode Anak masih berguna tanpa game —
   // masih ada Ide Bermain, Pojok Video, koin & lencana. `MenuAnak` sendiri sudah punya
@@ -90,6 +98,8 @@ export default async function MainPage({ params, searchParams }: { params: Promi
       kelasList={kelasTerbuka}
       kelasTerkunci={idTerkunci}
       bulanKurikulum={bulanAnak}
+      temaUsiaKosong={temaUsiaKosong}
+      umurKurikulum={Number.isFinite(ktx.umurBeku) ? ktx.umurBeku : null}
       favIds={favIds}
       gamiAwal={gami}
       bolehWorksheet={status.worksheet && wsKuota.boleh}

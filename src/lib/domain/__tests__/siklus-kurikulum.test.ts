@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest';
 import {
   tambahBulan, bulanPenuhLewat, siklusBerjalan, bracketUntukUmur,
   konteksKurikulum, statusTemaBracket, kelompokTemaBracket, TANPA_BRACKET,
+  kunciKarena, adaTemaUntukBracket,
 } from '../siklus-kurikulum';
 
 // Kategori usia per TAHUN — bentuk yang diandaikan skenario pemilik.
@@ -51,11 +52,14 @@ describe('siklusBerjalan', () => {
     expect(siklusBerjalan({ mulai: '2026-01-10', hariIni: '2026-03-10', bulanDibayar: 12 }).siklus).toBe(3);
     expect(siklusBerjalan({ mulai: '2026-01-10', hariIni: '2026-03-09', bulanDibayar: 12 }).siklus).toBe(2);
   });
-  it('anak yang berhenti berlangganan tidak ikut naik', () => {
+  it('anak yang berhenti berlangganan tidak ikut naik, TAPI jangkarnya tetap hari ini', () => {
     // Bulan yang tidak aktif tidak menambah hitungan: kalender sudah 10 bulan, dibayar 3.
     const r = siklusBerjalan({ mulai: '2026-01-10', hariIni: '2026-11-10', bulanDibayar: 3 });
-    expect(r.siklus).toBe(3);
-    expect(r.mulaiSiklus).toBe('2026-03-10');
+    expect(r.siklus).toBe(3);                 // NOMOR bulan kurikulum ditahan bayaran…
+    expect(r.kalenderKe).toBe(11);            // …tapi anaknya hidup di periode ke-11
+    // Jangkar pembekuan = periode kalender yang memuat HARI INI. Versi pertama memakai
+    // `siklus - 1` (→ '2026-03-10'), dan itulah yang membekukan umur anak di masa lalu.
+    expect(r.mulaiSiklus).toBe('2026-11-10');
   });
   it('trial & Basic tetap di bulan ke-1', () => {
     expect(siklusBerjalan({ mulai: '2026-01-10', hariIni: '2026-09-10', bulanDibayar: 0 }).siklus).toBe(1);
@@ -64,7 +68,7 @@ describe('siklusBerjalan', () => {
     // Memilih siklus 1 di sini akan mengunci tema bulan ke-2+ untuk anak yang tadinya sudah
     // membukanya — terbaca sebagai fitur dicabut, bukan migrasi yang belum jalan.
     const r = siklusBerjalan({ mulai: null, hariIni: '2026-08-22', bulanDibayar: 5 });
-    expect(r).toEqual({ siklus: 5, mulaiSiklus: '2026-08-22' });
+    expect(r).toEqual({ siklus: 5, kalenderKe: 5, mulaiSiklus: '2026-08-22' });
     // Tanpa langganan pun tetap minimal 1.
     expect(siklusBerjalan({ mulai: null, hariIni: '2026-08-22', bulanDibayar: 0 }).siklus).toBe(1);
   });
@@ -227,5 +231,106 @@ describe('kelompokTemaBracket', () => {
     expect(g.terkunci.map((x) => x.id).sort()).toEqual(['c', 'd', 'f']);
     // Semua tema terhitung sekali di gabungan terbuka + terkunci.
     expect(g.bulanIni.length + g.sudahTerbuka.length + g.terkunci.length).toBe(tema.length);
+  });
+});
+
+describe('🐞 bug pemilik: anak 6–9 th berlangganan tapi SEMUA tema tertutup', () => {
+  // Data live saat bug dilaporkan: 4 tema kategori batita (1–3) + 1 tema kategori 6–9.
+  const BATITA = 'kat-batita';
+  const ENAM9 = 'kat-6-9';
+  const KAT = [
+    { id: BATITA, usia_min: 1, usia_max: 3 },
+    { id: ENAM9, usia_min: 6, usia_max: 9 },
+  ];
+  const TEMA = [
+    { kategori_usia_id: BATITA, bulan_kurikulum: 1, urutan: 1 },
+    { kategori_usia_id: BATITA, bulan_kurikulum: 1, urutan: 3 },
+    { kategori_usia_id: BATITA, bulan_kurikulum: 1, urutan: 4 },
+    { kategori_usia_id: BATITA, bulan_kurikulum: 2, urutan: 1 },
+    { kategori_usia_id: ENAM9, bulan_kurikulum: 1, urutan: 1 },
+  ];
+  const hariIni = '2026-08-24';
+
+  it('SEBAB 1 — bayaran tertahan tak boleh membekukan umur di TAHUN LALU', () => {
+    // Anak berumur 6 th hari ini. `kurikulum_mulai` 12 bulan lalu (hasil backfill 0104),
+    // baru terbayar 1 bulan. Versi pertama memakai jangkar `siklus - 1` = 12 bulan lalu,
+    // sehingga umurnya dihitung 5 th → di luar semua kategori → SEMUA tema terkunci.
+    const ctx = konteksKurikulum({
+      lahir: '2020-01-01', mulai: '2025-08-24', hariIni, bulanDibayar: 1, kategori: KAT,
+    });
+    expect(ctx.umurBeku).toBe(6);              // umur HARI INI, bukan setahun lalu
+    expect(ctx.bracket).toBe(ENAM9);
+    expect(ctx.siklus).toBe(1);                // nomor bulan tetap ditahan bayaran
+    expect(ctx.kalenderKe).toBe(13);   // 12 bulan penuh lewat = periode ke-13
+    // Tema 6–9 bulan 1 WAJIB terbuka — inilah yang hilang saat bug terjadi.
+    expect(statusTemaBracket(TEMA[4], ctx)).toBe('terbuka');
+    const terbuka = TEMA.filter((x) => statusTemaBracket(x, ctx) === 'terbuka');
+    expect(terbuka).toHaveLength(1);
+  });
+
+  it('bayaran tetap membatasi JUMLAH bulan yang terbuka di kategori itu', () => {
+    // Kategori 6–9 dijalani 12 periode kalender, tapi baru 1 bulan dibayar.
+    const ctx = konteksKurikulum({
+      lahir: '2018-01-01', mulai: '2025-08-24', hariIni, bulanDibayar: 1, kategori: KAT,
+    });
+    expect(ctx.bracket).toBe(ENAM9);
+    expect(ctx.maksBulan[ENAM9]).toBe(1);      // bukan 12
+    expect(statusTemaBracket({ kategori_usia_id: ENAM9, bulan_kurikulum: 2 }, ctx)).toBe('kunci-judul');
+  });
+
+  it('SEBAB 2 — CELAH kategori usia (4–5 th) membuat semua tema terkunci', () => {
+    // Kategori yang ada hanya 1–3 dan 6–9. Anak 5 th tak masuk kategori mana pun.
+    const ctx = konteksKurikulum({
+      lahir: '2021-01-01', mulai: hariIni, hariIni, bulanDibayar: 1, kategori: KAT,
+    });
+    expect(ctx.umurBeku).toBe(5);
+    expect(ctx.bracket).toBe(TANPA_BRACKET);
+    expect(TEMA.every((x) => statusTemaBracket(x, ctx) !== 'terbuka')).toBe(true);
+    // Ini kekosongan ISI, dan layarnya WAJIB bisa mengatakannya.
+    expect(adaTemaUntukBracket(TEMA, ctx)).toBe(false);
+    for (const x of TEMA) expect(kunciKarena(x, ctx)).toBe('usia');
+  });
+});
+
+describe('kunciKarena — sebab terkunci tak boleh tertukar', () => {
+  const KAT = [{ id: 'k6', usia_min: 6, usia_max: 9 }, { id: 'k1', usia_min: 1, usia_max: 3 }];
+  const ctx = konteksKurikulum({
+    lahir: '2020-01-01', mulai: '2026-08-01', hariIni: '2026-08-24', bulanDibayar: 1, kategori: KAT,
+  }); // umur 6 → bracket k6, bulan 1
+
+  it('tema kategori LAIN → sebabnya USIA (menunggu tak akan membukanya)', () => {
+    expect(kunciKarena({ kategori_usia_id: 'k1', bulan_kurikulum: 1 }, ctx)).toBe('usia');
+  });
+  it('tema kategori SENDIRI tapi bulannya belum tiba → sebabnya BULAN', () => {
+    expect(kunciKarena({ kategori_usia_id: 'k6', bulan_kurikulum: 2 }, ctx)).toBe('bulan');
+  });
+  it('tema yang terbuka → tak ada sebab', () => {
+    expect(kunciKarena({ kategori_usia_id: 'k6', bulan_kurikulum: 1 }, ctx)).toBeNull();
+  });
+  it('kelompokTemaBracket memisahkan kedua sebab itu', () => {
+    const g = kelompokTemaBracket([
+      { id: 'a', kategori_usia_id: 'k6', bulan_kurikulum: 1, urutan: 1 },
+      { id: 'b', kategori_usia_id: 'k6', bulan_kurikulum: 2, urutan: 1 },
+      { id: 'c', kategori_usia_id: 'k1', bulan_kurikulum: 1, urutan: 1 },
+    ], ctx);
+    expect(g.bulanIni.map((x) => x.id)).toEqual(['a']);
+    expect(g.terkunciBulan.map((x) => x.id)).toEqual(['b']);
+    expect(g.terkunciUsia.map((x) => x.id)).toEqual(['c']);
+    // `terkunci` tetap gabungan keduanya, supaya pemanggil lama tak berubah arti.
+    expect(g.terkunci.map((x) => x.id).sort()).toEqual(['b', 'c']);
+  });
+});
+
+describe('adaTemaUntukBracket', () => {
+  const KAT = [{ id: 'k6', usia_min: 6, usia_max: 9 }];
+  const ctx = konteksKurikulum({
+    lahir: '2020-01-01', mulai: '2026-08-01', hariIni: '2026-08-24', bulanDibayar: 1, kategori: KAT,
+  });
+  it('true bila ada tema di kategori yang sedang dijalani', () => {
+    expect(adaTemaUntukBracket([{ kategori_usia_id: 'k6', bulan_kurikulum: 3 }], ctx)).toBe(true);
+  });
+  it('false bila kategori itu belum diisi materi sama sekali', () => {
+    expect(adaTemaUntukBracket([{ kategori_usia_id: 'lain', bulan_kurikulum: 1 }], ctx)).toBe(false);
+    expect(adaTemaUntukBracket([], ctx)).toBe(false);
   });
 });
