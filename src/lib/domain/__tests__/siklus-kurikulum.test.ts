@@ -358,3 +358,30 @@ describe('saringBerkategori', () => {
     expect(saringBerkategori(null)).toEqual([]);
   });
 });
+
+describe('urutan tampilan: NAIK dari bulan 1 minggu 1', () => {
+  const KAT = [{ id: 'k', usia_min: 0, usia_max: 9 }];
+  const ctx = konteksKurikulum({
+    lahir: '2020-01-01', mulai: '2026-01-01', hariIni: '2026-04-01', bulanDibayar: 12, kategori: KAT,
+  }); // siklus 4
+
+  it('"sudah terbuka" ikut NAIK — daftar ini petunjuk urutan mengerjakan', () => {
+    const g = kelompokTemaBracket([
+      { id: 'b2m1', kategori_usia_id: 'k', bulan_kurikulum: 2, urutan: 1 },
+      { id: 'b1m4', kategori_usia_id: 'k', bulan_kurikulum: 1, urutan: 4 },
+      { id: 'b1m1', kategori_usia_id: 'k', bulan_kurikulum: 1, urutan: 1 },
+      { id: 'b3m2', kategori_usia_id: 'k', bulan_kurikulum: 3, urutan: 2 },
+    ], ctx);
+    // Bulan berjalan = 4, jadi keempatnya "sudah terbuka".
+    expect(g.sudahTerbuka.map((x) => x.id)).toEqual(['b1m1', 'b1m4', 'b2m1', 'b3m2']);
+  });
+
+  it('bulan ini juga naik menurut minggunya', () => {
+    const g = kelompokTemaBracket([
+      { id: 'm4', kategori_usia_id: 'k', bulan_kurikulum: 4, urutan: 4 },
+      { id: 'm1', kategori_usia_id: 'k', bulan_kurikulum: 4, urutan: 1 },
+      { id: 'm3', kategori_usia_id: 'k', bulan_kurikulum: 4, urutan: 3 },
+    ], ctx);
+    expect(g.bulanIni.map((x) => x.id)).toEqual(['m1', 'm3', 'm4']);
+  });
+});

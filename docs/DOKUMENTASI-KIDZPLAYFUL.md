@@ -377,6 +377,11 @@ Ide Bermain kini berjalan sebagai **kurikulum per ANAK**, bukan daftar materi le
 ### Tema tanpa kategori usia tidak ditampilkan
 Anak hanya menerima Ide Bermain yang **sesuai kategori usianya**. Tema yang belum diberi kategori tidak muncul di halaman anak — jadi pastikan setiap tema punya kategori usia di form Ide Bermain.
 
+### 📚 Urutan mengerjakan tema
+Daftar Ide Bermain di halaman anak & orang tua kini tersusun **dari Bulan ke-1 Minggu ke-1 ke atas**, dan tiap kartu menyebut posisinya: **"Bulan ke-1 · Minggu ke-4"**. Di atas daftar ada pengingat *"Dikerjakan berurutan dari atas — minggu ke-1 lebih dulu"*, jadi orang tua tak perlu menebak mana yang dikerjakan lebih dahulu.
+
+Bagian **📖 Sudah terbuka** juga ikut naik (dulu dari yang terbaru), supaya materi yang terlewat bisa disusul berurutan.
+
 ### Tombol Edit di Ide Bermain
 Menekan **Edit** pada sebuah materi kini **menggulirkan halaman ke form edit-nya**, dan kepala form menyebut judul materi yang sedang dibuka ("Edit: PETUALANGAN DUNIA DINOSAURUS"). Sebelumnya form terbuka di atas daftar tanpa halaman ikut berpindah, sehingga tombolnya terasa tak berfungsi. Berlaku juga untuk **Tambah** dan **Duplikat**.
 

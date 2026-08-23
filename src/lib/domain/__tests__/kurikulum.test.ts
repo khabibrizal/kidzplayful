@@ -1,6 +1,6 @@
 // src/lib/domain/__tests__/kurikulum.test.ts
 import { describe, it, expect } from 'vitest';
-import { bulanKurikulumAnak, statusTema, kelompokTema, ringkasEvaluasi, susunHasilEvaluasi, posisiTema, evaluasiPerAktivitas, temaTerkunci, cocokUsia, posisiBerikutnya, MAKS_URUTAN_BULAN, salinTemaKeKategoriLain, RESET_SALINAN_TEMA } from '../kurikulum';
+import { bulanKurikulumAnak, statusTema, kelompokTema, ringkasEvaluasi, susunHasilEvaluasi, posisiTema, evaluasiPerAktivitas, temaTerkunci, cocokUsia, posisiBerikutnya, MAKS_URUTAN_BULAN, salinTemaKeKategoriLain, RESET_SALINAN_TEMA, teksPosisi } from '../kurikulum';
 
 const tema = (bulan: number, judul = `T${bulan}`) => ({ id: judul, judul, bulan_kurikulum: bulan, urutan: 0 });
 
@@ -337,5 +337,18 @@ describe('salinTemaKeKategoriLain', () => {
     }
     // Dan tak ada field baru yang diam-diam muncul di salinan.
     expect(Object.keys(salinan).sort()).toEqual(Object.keys(sumber).sort());
+  });
+});
+
+describe('teksPosisi', () => {
+  it('menyusun label yang dibaca orang tua', () => {
+    expect(teksPosisi({ bulan: 1, minggu: 4 })).toBe('Bulan ke-1 · Minggu ke-4');
+    expect(teksPosisi({ bulan: 12, minggu: 1 })).toBe('Bulan ke-12 · Minggu ke-1');
+  });
+  it('materi tanpa posisi → string KOSONG, bukan "Bulan ke-0"', () => {
+    // Nomor yang tak ada lebih membingungkan daripada tak ada nomor.
+    expect(teksPosisi(null)).toBe('');
+    expect(teksPosisi(undefined)).toBe('');
+    expect(teksPosisi({ bulan: 0, minggu: 1 })).toBe('');
   });
 });

@@ -918,6 +918,17 @@ Keputusan lain yang sengaja diambil:
 
 > **🐞 Cacat tata letak yang tertangkap saat verifikasi visual:** tombol `Reset` menjorok keluar dari kartu filter. Sebabnya `.kp-btn` punya **bayangan solid 6px di LUAR kotak elemen** (`box-shadow: 0 6px 0`), sedangkan padding kartu saya setel 10px. Padding bawah dinaikkan ke 18px. Pelajarannya: setiap kali `.kp-btn` ditaruh di wadah ber-padding kecil, sisakan ruang untuk bayangannya — `tsc` dan `build` tak akan pernah menangkap ini.
 
+#### Urutan tampilan tema = petunjuk urutan mengerjakan
+
+Daftar tema di sisi pengguna disusun **NAIK** menurut `(bulan_kurikulum, urutan)`, dan **posisinya ditulis di kartunya** — "Bulan ke-1 · Minggu ke-4" (`teksPosisi` di `domain/kurikulum.ts`, dipakai bersama oleh Mode Anak, Mode Ortu, dan `/kelas-saya`).
+
+- **`sudahTerbuka` diubah dari MENURUN ke MENAIK.** Sebelumnya diurutkan dari yang terbaru dengan alasan "bulan lalu lebih relevan daripada bulan ke-1" — tapi daftar ini adalah **petunjuk urutan mengerjakan**, dan urutan menurun justru menyarankan orang tua memulai dari yang paling akhir. `kelompokTema` (generasi pertama, tak lagi dipakai halaman) dibiarkan apa adanya.
+- **Urutannya dikatakan, bukan diserahkan ke tebakan**: "Dikerjakan berurutan dari atas — minggu ke-1 lebih dulu" muncul begitu ada lebih dari satu tema. Susunan yang benar tapi tak disebut akan terbaca sebagai kebetulan.
+- **Materi tanpa posisi menghasilkan label KOSONG**, bukan "Bulan ke-0". Nomor yang tak ada lebih membingungkan daripada tak ada nomor.
+- Kalimatnya disamakan di satu fungsi karena kalau tiga halaman menyebutnya dengan kata berbeda, orang tua akan menyangka ketiganya hal yang berbeda.
+
+Uji daya gigit: `sudahTerbuka` dikembalikan menurun → 1 tes jatuh; pengurutan minggu dilepas (hanya bulan) → 2; `teksPosisi` dibiarkan menulis bulan 0 → 1.
+
 #### Tombol Edit harus MEMBAWA admin ke formnya
 
 Form Ide Bermain dirender **di atas** daftar, sedangkan tombol Edit ada jauh di bawah. Menekan Edit karena itu terlihat **seperti tak melakukan apa pun** — form memang terbuka, hanya di luar layar. Kartu yang tak bereaksi tak bisa dibedakan dari tombol yang rusak.

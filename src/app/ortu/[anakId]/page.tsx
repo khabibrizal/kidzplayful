@@ -9,6 +9,7 @@ import { getStatusWorksheet } from '@/lib/data/worksheet';
 import { getLabelFokusArea } from '@/lib/data/fokus-area';
 import { getEvaluasiAnak, getKonteksKurikulumAnak } from '@/lib/data/kurikulum';
 import { kelompokTemaBracket, saringBerkategori } from '@/lib/domain/siklus-kurikulum';
+import { posisiTema, teksPosisi } from '@/lib/domain/kurikulum';
 import { bolehBukaTema } from '@/lib/domain/entitlement';
 import KelasIsi from '@/components/KelasIsi';
 import Terkunci from '@/components/Terkunci';
@@ -64,6 +65,9 @@ export default async function ModeOrtu({ params }: { params: Promise<{ anakId: s
         </div>
       )}
       {kelasList.length === 0 && <p className={s.muted}>Belum ada ide bermain aktif. Admin dapat menambah di Kelola Ide Bermain.</p>}
+      {kelasList.length > 1 && (
+        <p className={s.muted} style={{ fontSize: 12 }}>Dikerjakan berurutan dari atas — minggu ke-1 lebih dulu.</p>
+      )}
 
       {kelasList.map((k) => (
         terkunci(k.boleh_trial) ? (
@@ -74,6 +78,9 @@ export default async function ModeOrtu({ params }: { params: Promise<{ anakId: s
         ) : (
         <div key={k.id} className="kp-card" style={{ marginBottom: 12 }}>
           <b>🎈 {k.judul}</b>
+          {teksPosisi(posisiTema(kelasList0, k.id)) && (
+            <div className={s.muted} style={{ fontSize: 12 }}>📚 {teksPosisi(posisiTema(kelasList0, k.id))}</div>
+          )}
           <KelasIsi kelas={k} labelArea={labelArea} bagikanUrl={`/coba/kelas/${k.id}`} bolehWorksheet={status.worksheet && wsKuota.boleh} sisaWorksheet={wsKuota.sisa} worksheetTanpaBatas={wsKuota.tanpaBatas} modeWorksheet={wsKuota.mode}
             anakId={anakId} anakNama={anak.nama} evaluasiAwal={evalOrtu.get(k.id)?.hasil ?? []}
             evaluasiPeran={evalOrtu.get(k.id)?.peran ?? null} evaluasiWaktu={evalOrtu.get(k.id)?.updated_at ?? null}
@@ -89,7 +96,7 @@ export default async function ModeOrtu({ params }: { params: Promise<{ anakId: s
           <b style={{ fontSize: 13 }}>⏳ Belum terbuka untuk {anak.nama}</b>
           <ul style={{ margin: '6px 0 0', paddingLeft: 18, color: 'var(--abu)', fontSize: 14 }}>
             {terkunciList.map((k) => (
-              <li key={k.id}>{k.judul} <small>· bulan ke-{k.bulan_kurikulum}</small></li>
+              <li key={k.id}>{k.judul} <small>· {teksPosisi(posisiTema(kelasList0, k.id)) || `bulan ke-${k.bulan_kurikulum}`}</small></li>
             ))}
           </ul>
           <div style={{ fontSize: 12, color: 'var(--abu)', marginTop: 6 }}>

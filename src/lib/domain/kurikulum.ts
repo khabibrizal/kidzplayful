@@ -251,3 +251,17 @@ export function evaluasiPerAktivitas(hasil: ButirEvaluasi[] | null | undefined):
   // Urutannya mengikuti urutan butir tersimpan = urutan aktivitas di materi.
   return urutan.map((nama) => ({ aktivitas: nama, ...map.get(nama)! }));
 }
+
+/**
+ * Label posisi kurikulum untuk ditampilkan ke orang tua: "Bulan ke-1 · Minggu ke-4".
+ *
+ * Dipakai bersama oleh Mode Anak, Mode Ortu, dan `/kelas-saya`. Kalimatnya disamakan di satu
+ * tempat karena inilah petunjuk URUTAN MENGERJAKAN — kalau tiga halaman menyebutnya dengan
+ * kata yang berbeda, orang tua akan menyangka ketiganya hal yang berbeda.
+ * Materi tanpa posisi (`bulan_kurikulum` belum diisi) menghasilkan string kosong, bukan
+ * "Bulan ke-0" — nomor yang tak ada lebih membingungkan daripada tak ada nomor.
+ */
+export function teksPosisi(pos: { bulan: number; minggu: number } | null | undefined): string {
+  if (!pos || !(pos.bulan >= 1)) return '';
+  return `Bulan ke-${pos.bulan} · Minggu ke-${pos.minggu}`;
+}

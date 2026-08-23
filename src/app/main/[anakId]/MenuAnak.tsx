@@ -10,7 +10,7 @@ import FavoritBtn from '@/components/FavoritBtn';
 import KelasIsi from '@/components/KelasIsi';
 import CariPager, { PagerBaris } from '@/components/game/CariPager';
 import { saringPaginasi } from '@/lib/domain/paginasi';
-import { ringkasEvaluasi, evaluasiPerAktivitas } from '@/lib/domain/kurikulum';
+import { ringkasEvaluasi, evaluasiPerAktivitas, posisiTema, teksPosisi } from '@/lib/domain/kurikulum';
 import Sampul from '@/components/Sampul';
 import { catatRiwayatKelas } from '@/lib/data/riwayat-actions';
 import { catatKegiatan } from '@/lib/data/kegiatan-actions';
@@ -293,6 +293,11 @@ export default function MenuAnak({
                   <span className="emo">{perluLangganan ? '🔒' : belumWaktunya ? '⏳' : '🎈'}</span>
                   <div>
                     {k.judul}
+                    {/* Posisi kurikulum ikut ditulis: inilah petunjuk mana yang dikerjakan
+                        lebih dulu, dan daftarnya memang tersusun naik dari minggu ke-1. */}
+                    {!perluLangganan && !belumWaktunya && teksPosisi(posisiTema(kelasList, k.id)) && (
+                      <small>{teksPosisi(posisiTema(kelasList, k.id))}</small>
+                    )}
                     {perluLangganan && <small>khusus pelanggan</small>}
                     {!perluLangganan && belumWaktunya && <small>terbuka bulan ke-{k.bulan_kurikulum}</small>}
                     {!perluLangganan && !belumWaktunya && rk && (

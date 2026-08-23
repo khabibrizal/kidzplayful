@@ -11,6 +11,7 @@ import PemilihAnak from '@/components/PemilihAnak';
 import { getKelasAktifCached } from '@/lib/data/publik';
 import { getKonteksKurikulumAnak } from '@/lib/data/kurikulum';
 import { kelompokTemaBracket, saringBerkategori } from '@/lib/domain/siklus-kurikulum';
+import { posisiTema, teksPosisi } from '@/lib/domain/kurikulum';
 
 const STATUS: Record<string, { teks: string; warna: string; bg: string }> = {
   menunggu: { teks: 'Menunggu verifikasi', warna: '#b88600', bg: '#fff3d6' },
@@ -72,11 +73,24 @@ export default async function KelasSayaPage({ searchParams }: { searchParams: Pr
             <p style={{ color: 'var(--abu)', fontSize: 13 }}>Belum ada tema untuk bulan ini.</p>
           )}
 
+          {/* Urutan mengerjakan DIKATAKAN, bukan diserahkan ke tebakan: daftarnya sudah
+              tersusun naik dari minggu pertama, dan itu perlu disebut agar terbaca sebagai
+              petunjuk, bukan sebagai kebetulan. */}
+          {grup.bulanIni.length > 1 && (
+            <p style={{ fontSize: 12, color: 'var(--abu)', margin: '0 0 8px' }}>
+              Dikerjakan berurutan dari atas — minggu ke-1 lebih dulu.
+            </p>
+          )}
           {grup.bulanIni.length > 0 && (
             <div className="kp-grid-kartu" style={{ marginBottom: 12 }}>{grup.bulanIni.map((k) => (
               <a key={k.id} href={tautan(k.id)} className="kp-card" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: 'inherit' }}>
                 <span style={{ fontSize: 20 }}>🎈</span>
-                <span style={{ flex: 1 }}><b>{k.judul}</b><br /><small style={{ color: 'var(--mint-d)' }}>bulan ini</small></span>
+                <span style={{ flex: 1 }}>
+                  <b>{k.judul}</b><br />
+                  <small style={{ color: 'var(--mint-d)' }}>
+                    {teksPosisi(posisiTema(kelasSemua, k.id)) || 'bulan ini'}
+                  </small>
+                </span>
                 <span style={{ color: 'var(--abu)' }}>›</span>
               </a>
             ))}</div>
@@ -90,7 +104,8 @@ export default async function KelasSayaPage({ searchParams }: { searchParams: Pr
               <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {grup.sudahTerbuka.map((k) => (
                   <a key={k.id} href={tautan(k.id)} style={{ textDecoration: 'none', color: 'inherit', fontSize: 14 }}>
-                    🎈 {k.judul}{typeof k.bulan_kurikulum === 'number' && k.bulan_kurikulum > 0 ? ` · bulan ke-${k.bulan_kurikulum}` : ''}
+                    🎈 {k.judul}
+                    {teksPosisi(posisiTema(kelasSemua, k.id)) ? <small style={{ color: 'var(--abu)' }}> · {teksPosisi(posisiTema(kelasSemua, k.id))}</small> : null}
                   </a>
                 ))}
               </div>
@@ -106,7 +121,7 @@ export default async function KelasSayaPage({ searchParams }: { searchParams: Pr
               <b style={{ fontSize: 13 }}>⏳ Belum terbuka ({terkunciList.length})</b>
               <ul style={{ margin: '6px 0 0', paddingLeft: 18, color: 'var(--abu)', fontSize: 14 }}>
                 {terkunciList.map((k) => (
-                  <li key={k.id}>{k.judul} <small>· bulan ke-{k.bulan_kurikulum}</small></li>
+                  <li key={k.id}>{k.judul} <small>· {teksPosisi(posisiTema(kelasSemua, k.id)) || `bulan ke-${k.bulan_kurikulum}`}</small></li>
                 ))}
               </ul>
               <div style={{ fontSize: 12, color: 'var(--abu)', marginTop: 6 }}>

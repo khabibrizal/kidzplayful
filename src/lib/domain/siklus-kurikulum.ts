@@ -324,8 +324,10 @@ export function kelompokTemaBracket<T extends TemaBracket & { urutan?: number | 
   }
   return {
     bulanIni: bulanIni.sort(urut),
-    // Dari yang TERBARU: bulan lalu lebih relevan daripada bulan ke-1.
-    sudahTerbuka: sudahTerbuka.sort((a, b) => urut(b, a)),
+    // NAIK, dari bulan 1 minggu 1. Sebelumnya diurutkan dari yang terbaru dengan alasan
+    // "bulan lalu lebih relevan" — tapi daftar ini adalah PETUNJUK URUTAN MENGERJAKAN, dan
+    // urutan menurun justru menyarankan orang tua memulai dari yang paling akhir.
+    sudahTerbuka: sudahTerbuka.sort(urut),
     bulanDepan: bulanDepan.sort(urut),
     terkunci: terkunci.sort(urut),
     terkunciBulan: terkunciBulan.sort(urut),
