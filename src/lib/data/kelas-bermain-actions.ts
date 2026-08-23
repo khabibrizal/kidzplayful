@@ -40,6 +40,36 @@ function kolom098Hilang(e: { code?: string; message?: string } | null): boolean 
   return e.code === '42703' || /bulan_kurikulum|urutan|kategori_usia_id/.test(e.message ?? '');
 }
 
+/**
+ * Segarkan `usia_min`/`usia_max` dari MASTER kategori usia, bukan dari kiriman klien.
+ *
+ * 🐞 KENAPA: rentang usia di baris materi adalah SNAPSHOT dari kategorinya. Dulu
+ * snapshot itu ditulis apa adanya dari form, dan form mengisinya dari baris LAMA saat Edit
+ * dibuka — penyegaran hanya terjadi bila admin kebetulan menyentuh dropdown kategorinya.
+ * Akibatnya: admin mengubah rentang sebuah kategori di master, membuka materinya, menekan
+ * Simpan… dan angkanya TIDAK berubah, karena yang tersimpan adalah nilai lama yang dikirim
+ * balik oleh form. Tak ada galat, tak ada petunjuk — hanya angka yang membangkang.
+ *
+ * Sekarang server yang menentukan: selama materi punya `kategori_usia_id`, rentangnya SELALU
+ * mengikuti master. Klien tak lagi bisa mengirim rentang yang tak cocok dengan kategorinya.
+ * Materi TANPA kategori tetap memakai nilai dari form — di situ memang tak ada master untuk
+ * dirujuk.
+ */
+async function denganRentangKategori(
+  s: Awaited<ReturnType<typeof adminDb>>,
+  baris: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const id = baris.kategori_usia_id as string | null;
+  if (!id) return baris;
+  const { data } = await s.from('kategori_usia').select('usia_min,usia_max').eq('id', id).maybeSingle();
+  if (!data) return baris;   // kategori terhapus di tengah jalan → pertahankan nilai form
+  return {
+    ...baris,
+    usia_min: Math.max(0, Math.min(12, Math.floor(Number(data.usia_min) || 0))),
+    usia_max: Math.max(0, Math.min(12, Math.floor(Number(data.usia_max) || 6))),
+  };
+}
+
 async function adminDb() {
   const s = await createClient();
   const { data: { user } } = await s.auth.getUser();
@@ -70,6 +100,9 @@ function row(i: KelasInput) {
     tujuan: i.tujuan.trim() || null,
     fokus_area: (i.fokusArea ?? []).filter(Boolean),
     peran_ortu: i.peranOrtu.trim() || null,
+    // Nilai kiriman klien hanya dipakai bila materi ini TANPA kategori. Bila ada
+    // kategorinya, rentangnya diambil ulang dari master oleh `denganRentangKategori()` —
+    // lihat alasannya di sana.
     usia_min: Math.max(0, Math.min(12, Math.floor(Number(i.usiaMin) || 0))),
     usia_max: Math.max(0, Math.min(12, Math.floor(Number(i.usiaMax) || 6))),
     bahan: i.bahan
@@ -113,7 +146,8 @@ export async function buatKelas(i: KelasInput): Promise<{ ok: boolean; error?: s
   try {
     const s = await adminDb();
     if (!i.judul.trim()) return { ok: false, error: 'Judul wajib diisi.' };
-    const coba = await s.from('kelas_bermain').insert({ ...row(i), ...row098(i) }).select(COLS_098).single();
+    const baris = await denganRentangKategori(s, { ...row(i), ...row098(i) });
+    const coba = await s.from('kelas_bermain').insert(baris).select(COLS_098).single();
     if (!coba.error) { updateTag('katalog'); return { ok: true, kelas: coba.data as unknown as KelasBermain }; }
     if (!kolom098Hilang(coba.error)) return { ok: false, error: pesanGalat(coba.error) };
     // Migrasi 0098 belum jalan → simpan tanpa kolom kurikulum, jangan gagalkan materinya.
@@ -128,7 +162,8 @@ export async function buatKelas(i: KelasInput): Promise<{ ok: boolean; error?: s
 export async function updateKelas(id: string, i: KelasInput): Promise<{ ok: boolean; error?: string; kelas?: KelasBermain }> {
   try {
     const s = await adminDb();
-    const coba = await s.from('kelas_bermain').update({ ...row(i), ...row098(i) }).eq('id', id).select(COLS_098).single();
+    const baris = await denganRentangKategori(s, { ...row(i), ...row098(i) });
+    const coba = await s.from('kelas_bermain').update(baris).eq('id', id).select(COLS_098).single();
     if (!coba.error) { updateTag('katalog'); return { ok: true, kelas: coba.data as unknown as KelasBermain }; }
     if (!kolom098Hilang(coba.error)) return { ok: false, error: pesanGalat(coba.error) };
     const { data, error } = await s.from('kelas_bermain').update(row(i)).eq('id', id).select(COLS).single();

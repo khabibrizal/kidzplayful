@@ -782,6 +782,30 @@ Sisi orang tua. **Gerbang "khusus member aktif" sudah DICABUT** (sub-proyek B): 
 - **Tema tanpa `bulan_kurikulum` dianggap TERBUKA** (materi lama / migrasi belum jalan). Default yang salah arah di sini akan mengunci konten yang tadinya jalan — dan itu terbaca sebagai fitur dicabut.
 - Mode Anak **tidak** menampilkan judul bulan depan sama sekali: judul-saja adalah bahasa untuk orang tua; bagi anak ia cuma pintu yang tak bisa dibuka.
 
+#### 🐞 "Rentang kategori sudah diganti, tapi angka di Ide Bermain tetap yang lama"
+
+`kelas_bermain.usia_min/max` adalah **snapshot** dari kategorinya (0101). Dulu snapshot itu ditulis **apa adanya dari form**, dan form mengisinya dari baris LAMA saat Edit dibuka — penyegaran hanya terjadi kalau admin kebetulan menyentuh dropdown kategorinya. Rantainya:
+
+```
+admin ubah master Batita 1-3 -> 2-3
+   -> `updateKategoriUsia` hanya menyentuh baris master              (materi tak ikut)
+admin buka Edit materi, tekan Simpan
+   -> form mengirim usiaMin/usiaMax dari SNAPSHOT LAMA (1-3)
+   -> `updateKelas` menulisnya apa adanya                            (angka lama tersimpan lagi)
+```
+
+Tak ada galat, tak ada petunjuk — hanya angka yang membangkang. (Saran "buka lalu simpan ulang" yang sempat saya berikan karena itu **tidak menyelesaikan apa pun**.)
+
+**Tiga perbaikan, dan ketiganya perlu:**
+
+1. **Server menurunkan rentang dari MASTER, bukan dari kiriman klien.** `denganRentangKategori()` di `kelas-bermain-actions.ts`: selama materi punya `kategori_usia_id`, `usia_min/max`-nya SELALU mengikuti master. Klien tak lagi bisa mengirim rentang yang tak cocok dengan kategorinya. Materi tanpa kategori tetap memakai nilai form — di situ memang tak ada master untuk dirujuk.
+2. **Mengubah master MENJALAR ke snapshot.** `updateKategoriUsia` kini ikut memperbarui `kelas_bermain` **dan** `paket_aset` milik kategori itu, lalu mengembalikan `ikut` = jumlah baris yang tersegarkan, dan UI menyebutkannya. Migrasi 0101 sengaja tak mengikat snapshot ke master supaya materi yang tayang tak berubah diam-diam — prinsip itu tidak dilanggar: penyegaran hanya terjadi saat admin **memang** mengubah rentangnya, tindakan sadar, bukan efek samping.
+3. **Form menampilkan rentang master, bukan snapshot baris**, saat Edit dibuka — plus peringatan bila keduanya berbeda ("masih tersimpan 1–3 th, sedangkan Batita kini 2–3 th. Tekan Simpan untuk merapikannya"). Tanpa ini admin melihat angka basi lalu mengirimkannya balik.
+
+`segarkan()` juga kini me-`revalidatePath('/admin/kelas-bermain')` dan `updateTag('katalog')` — tanpa itu perubahan sudah benar di basis data tapi masih lama di layar.
+
+> **Pelajaran:** kalau sebuah nilai adalah **turunan** dari master, biarkan **server** yang menurunkannya saat menyimpan. Nilai turunan yang dikirim klien akan selalu punya jalur di mana klien mengirim balik salinan basi — dan gejalanya berupa "sudah saya ganti kok tidak berubah", yang paling sulit dipercaya justru oleh orang yang melaporkannya.
+
 #### 🐞 AKAR MASALAH: rentang kategori usia BERTUMPUK di tahun batasnya
 
 Setelah dua dugaan pertama (lihat di bawah) tak cocok dengan data, master `kategori_usia` sungguhan pemilik menjawabnya:

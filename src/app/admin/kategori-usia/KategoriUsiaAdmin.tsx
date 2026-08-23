@@ -36,7 +36,13 @@ export default function KategoriUsiaAdmin({ awal }: { awal: KategoriUsia[] }) {
     setBusy(id);
     const r = await updateKategoriUsia(id, { nama: eNama, usiaMin: Number(eMin) || 0, usiaMax: Number(eMax) || 0, urutan: Number(eUrut) || 0 });
     setBusy(null);
-    if (r.ok) { setEditId(null); flash('Tersimpan ✓'); router.refresh(); }
+    // Jumlah materi/game yang ikut disegarkan DISEBUTKAN: perubahan yang menjalar diam-diam
+    // sama membingungkannya dengan perubahan yang tak menjalar sama sekali.
+    if (r.ok) {
+      setEditId(null);
+      flash(r.ikut ? `Tersimpan ✓ · ${r.ikut} materi/game ikut disegarkan rentang usianya` : 'Tersimpan ✓');
+      router.refresh();
+    }
     else flash(r.error ?? 'Gagal');
   }
 

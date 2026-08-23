@@ -368,6 +368,11 @@ Ide Bermain kini berjalan sebagai **kurikulum per ANAK**, bukan daftar materi le
 - **Posisi tema (bulan & minggu) terisi otomatis per kategori usia.** Admin memilih kategori, sistem menaruhnya di slot bebas pertama — minggu 1–4, lalu pindah bulan. Satu kategori + bulan + minggu hanya boleh dimiliki satu tema, tapi Bayi dan Prasekolah boleh sama-sama punya Bulan 1 Minggu 1 (kurikulum yang berbeda).
 - **⧉ Duplikat: satu tema untuk beberapa kategori usia.** Pilih tema yang sudah ada dari dropdown di `/admin/kelas-bermain`, tekan Duplikat — form terisi seluruh isinya (judul, tujuan, bahan, aktivitas beserta butir evaluasi & game-nya), **kecuali kategori usia dan posisinya** yang memang harus baru. Admin lalu memilih kategori tujuan dan menyesuaikan aktivitasnya. Belum tersimpan sampai Simpan ditekan.
 
+### Mengubah rentang kategori usia
+Mengubah **usia dari/sampai** sebuah kategori kini **langsung menjalar** ke seluruh Ide Bermain dan Game di kategori itu — pesan simpannya menyebutkan berapa materi yang ikut disegarkan. Anda tak perlu lagi membuka materinya satu per satu.
+
+Kalau ada materi lama yang rentangnya masih tertinggal, buka materinya di **Ide Bermain**: form akan menampilkan peringatan kuning dan menekan **Simpan** merapikannya.
+
 ### ⚠️ Kategori usia: jangan berlubang, jangan bertumpuk
 Halaman **👶 Master Kategori Usia** kini memeriksa dirinya sendiri dan menampilkan tiga hal:
 

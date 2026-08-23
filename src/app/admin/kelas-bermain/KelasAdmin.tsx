@@ -108,6 +108,10 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
    * dan yang hilang itu baru terlihat setelah admin menyimpan.
    */
   function dariRow(k: KelasBermain): KelasInput {
+    const katId = k.kategori_usia_id
+      ?? kategoriOpsi.find((x) => x.usia_min === (k.usia_min ?? -1) && x.usia_max === (k.usia_max ?? -1))?.id
+      ?? '';
+    const katMaster = kategoriOpsi.find((x) => x.id === katId) ?? null;
     return {
       judul: k.judul,
       sampulUrl: k.sampul_url ?? '',
@@ -116,11 +120,15 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
       peranOrtu: k.peran_ortu ?? '',
       // Materi lama tanpa `kategori_usia_id` dicocokkan dari rentangnya, sama seperti
       // form Game (0079) — supaya dropdown tak tampil kosong padahal usianya terisi.
-      kategoriUsiaId: k.kategori_usia_id
-        ?? kategoriOpsi.find((x) => x.usia_min === (k.usia_min ?? -1) && x.usia_max === (k.usia_max ?? -1))?.id
-        ?? '',
-      usiaMin: k.usia_min ?? 0,
-      usiaMax: k.usia_max ?? 6,
+      kategoriUsiaId: katId,
+      // Rentang usia diambil dari MASTER kategori, bukan dari snapshot baris ini. Snapshot
+      // bisa tertinggal bila rentang kategorinya pernah diubah, dan form yang menampilkan
+      // angka basi akan mengirimkannya balik saat Simpan — begitulah "sudah diganti tapi
+      // angkanya tetap lama" terjadi. Server pun menurunkan ulang nilainya saat menyimpan;
+      // ini semata agar yang TERLIHAT admin sudah benar sebelum ia menekan Simpan.
+      ...(katMaster
+        ? { usiaMin: katMaster.usia_min, usiaMax: katMaster.usia_max }
+        : { usiaMin: k.usia_min ?? 0, usiaMax: k.usia_max ?? 6 }),
       bahan: k.bahan?.length ? k.bahan.map((b) => ({ nama: b.nama, link: b.link ?? '', produkId: b.produk_id ?? '' })) : [{ nama: '', link: '', produkId: '' }],
       aktivitas: k.aktivitas?.length
         ? k.aktivitas.map((a) => ({
@@ -394,6 +402,20 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
           </div>
           {/* Posisi yang sudah dipakai tema AKTIF lain — ditunjukkan SEBELUM menyimpan,
               supaya admin tak perlu menabrak galat untuk mengetahuinya. */}
+          {/* Snapshot baris berbeda dari master → katakan, jangan biarkan admin menduga-duga.
+              Menyimpan akan merapikannya, karena server menurunkan rentang dari master. */}
+          {editId && form.kategoriUsiaId && (() => {
+            const baris = list.find((k) => k.id === editId);
+            const m = kategoriOpsi.find((x) => x.id === form.kategoriUsiaId);
+            if (!baris || !m) return null;
+            if (baris.usia_min === m.usia_min && baris.usia_max === m.usia_max) return null;
+            return (
+              <div className={s.muted} style={{ fontSize: 11, color: '#b88600' }}>
+                ⚠️ Materi ini masih tersimpan dengan rentang {baris.usia_min}–{baris.usia_max} th,
+                sedangkan {m.nama} kini {m.usia_min}–{m.usia_max} th. Tekan <b>Simpan</b> untuk merapikannya.
+              </div>
+            );
+          })()}
           {terpakaiBulanIni.length > 0 && (
             <div className={s.muted} style={{ fontSize: 11 }}>
               Minggu yang sudah dipakai di {namaKategori(form.kategoriUsiaId)} bulan {form.bulanKurikulum}: {terpakaiBulanIni.join(', ')}
