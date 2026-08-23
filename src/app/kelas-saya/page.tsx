@@ -10,7 +10,7 @@ import BottomNav from '@/components/BottomNav';
 import PemilihAnak from '@/components/PemilihAnak';
 import { getKelasAktifCached } from '@/lib/data/publik';
 import { getKonteksKurikulumAnak } from '@/lib/data/kurikulum';
-import { kelompokTemaBracket } from '@/lib/domain/siklus-kurikulum';
+import { kelompokTemaBracket, saringBerkategori } from '@/lib/domain/siklus-kurikulum';
 
 const STATUS: Record<string, { teks: string; warna: string; bg: string }> = {
   menunggu: { teks: 'Menunggu verifikasi', warna: '#b88600', bg: '#fff3d6' },
@@ -38,7 +38,7 @@ export default async function KelasSayaPage({ searchParams }: { searchParams: Pr
   const bulanAnak = ktx?.bulanDalamBracket ?? 1;
   const umurAnak = ktx?.umurBeku ?? NaN;
   const grup = ktx
-    ? kelompokTemaBracket(kelasSemua, ktx)
+    ? kelompokTemaBracket(saringBerkategori(kelasSemua), ktx)
     : { bulanIni: kelasSemua, sudahTerbuka: [], bulanDepan: [], terkunci: [], terkunciBulan: [], terkunciUsia: [] };
   const terkunciList = grup.terkunci;
   const tautan = (id: string) => (anakDipilih ? `/kelas/${id}?anak=${anakDipilih.id}` : `/kelas/${id}`);

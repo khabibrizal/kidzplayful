@@ -1,7 +1,7 @@
 // src/lib/domain/__tests__/entitlement.test.ts
 // Matriks hak akses diuji di sini, BUKAN dengan memeriksa 7 halaman satu per satu.
 import { describe, it, expect } from 'vitest';
-import { hakAksesAnak, hakAksesAkun, HAK_KOSONG, tambahHari } from '../entitlement';
+import { hakAksesAnak, hakAksesAkun, HAK_KOSONG, tambahHari, bolehBukaTema } from '../entitlement';
 import type { PaketLangganan, BarisLanggananAnak } from '@/lib/game/tipe';
 
 const paket = (kode: string, urutan: number, lebih: Partial<PaketLangganan> = {}): PaketLangganan => ({
@@ -180,5 +180,38 @@ describe('hakAksesAkun', () => {
     const hanyaTrial = hakAksesAkun([trial]);
     expect(hanyaTrial.paketTertinggi?.kode).toBe('basic');
     expect(hanyaTrial.status).toBe('trial');
+  });
+});
+
+describe('bolehBukaTema — gerbang HAK, terpisah dari gerbang bulan/usia', () => {
+  const trial = { status: 'trial' as const, ideBermain: true };
+  const aktif = { status: 'aktif' as const, ideBermain: true };
+  const tenggang = { status: 'tenggang' as const, ideBermain: true };
+  const kadaluarsa = { status: 'kadaluarsa' as const, ideBermain: false };
+
+  it('tema BUKAN untuk trial tidak boleh dibuka user trial', () => {
+    // Inti bug: pemeriksa lama memakai `!paketTertinggi`, dan anak trial PUNYA paket (paket
+    // trial), jadi syarat itu tak pernah terpenuhi — temanya tetap bisa dibuka.
+    expect(bolehBukaTema({ boleh_trial: false }, trial)).toBe('perlu-langganan');
+  });
+  it('tema yang sama boleh dibuka pelanggan berbayar', () => {
+    expect(bolehBukaTema({ boleh_trial: false }, aktif)).toBe('boleh');
+  });
+  it('masa tenggang dihitung berbayar', () => {
+    expect(bolehBukaTema({ boleh_trial: false }, tenggang)).toBe('boleh');
+  });
+  it('tema yang MEMANG boleh trial tetap terbuka untuk trial', () => {
+    expect(bolehBukaTema({ boleh_trial: true }, trial)).toBe('boleh');
+    expect(bolehBukaTema({}, trial)).toBe('boleh');            // tak ditandai = boleh
+    expect(bolehBukaTema({ boleh_trial: null }, trial)).toBe('boleh');
+  });
+  it('paket tanpa hak Ide Bermain menutup SEMUA tema, bahkan yang boleh trial', () => {
+    expect(bolehBukaTema({ boleh_trial: true }, { status: 'aktif', ideBermain: false }))
+      .toBe('perlu-langganan');
+    expect(bolehBukaTema({ boleh_trial: true }, kadaluarsa)).toBe('perlu-langganan');
+  });
+  it('hak kosong/null tak pernah membuka', () => {
+    expect(bolehBukaTema({ boleh_trial: true }, { status: 'trial', ideBermain: false }))
+      .toBe('perlu-langganan');
   });
 });

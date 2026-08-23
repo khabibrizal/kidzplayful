@@ -117,6 +117,39 @@ export function hakAksesAnak(
   return { status: 'kadaluarsa', paket: null, ...HAK_KOSONG };
 }
 
+/** Kenapa sebuah tema Ide Bermain tak boleh dibuka — selain soal bulan/usia. */
+export type AksesTema = 'boleh' | 'perlu-langganan';
+
+/**
+ * Boleh membuka satu tema Ide Bermain?
+ *
+ * Ini gerbang HAK, dan ia TERPISAH dari gerbang bulan/usia (`statusTemaBracket`). Keduanya
+ * tak boleh dicampur karena tindakan yang diminta ke pengguna berbeda:
+ *   • belum waktunya  → tunggu bulan berikutnya (tak ada yang perlu dibeli);
+ *   • perlu langganan → tak akan terbuka dengan menunggu; yang benar adalah AJAKAN
+ *     BERLANGGANAN. Menampilkan "bulan ke-N masih tertutup" di sini adalah janji palsu.
+ *
+ * Dua sebab "perlu langganan":
+ *   1. paketnya memang tak termasuk Ide Bermain (`akses_ide_bermain = false`);
+ *   2. tema ini ditandai admin BUKAN untuk trial (`boleh_trial = false`) sedangkan haknya
+ *      berasal dari trial. Masa tenggang ikut dihitung berbayar — seluruh aplikasi
+ *      memperlakukannya begitu, dan Ide Bermain tak boleh jadi satu-satunya yang berbeda.
+ *
+ * 🐞 Versi sebelumnya memeriksa `!paketTertinggi && boleh_trial === false`. Anak TRIAL
+ * punya paket (paket trial), jadi syarat itu tak pernah terpenuhi untuknya — tema non-trial
+ * tetap bisa dibuka lewat tautan langsung. Yang menentukan adalah STATUS-nya, bukan ada
+ * atau tidaknya paket.
+ */
+export function bolehBukaTema(
+  tema: { boleh_trial?: boolean | null } | null | undefined,
+  hak: { status: StatusLangganan; ideBermain: boolean },
+): AksesTema {
+  if (!hak?.ideBermain) return 'perlu-langganan';
+  const berbayar = hak.status === 'aktif' || hak.status === 'tenggang';
+  if (tema?.boleh_trial === false && !berbayar) return 'perlu-langganan';
+  return 'boleh';
+}
+
 export interface HakAksesAkun {
   paketTertinggi: PaketLangganan | null;
   /** kode paket untuk diskon event & produk (null = bukan pelanggan). */

@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import {
   tambahBulan, bulanPenuhLewat, siklusBerjalan, bracketUntukUmur,
   konteksKurikulum, statusTemaBracket, kelompokTemaBracket, TANPA_BRACKET,
-  kunciKarena, adaTemaUntukBracket,
+  kunciKarena, adaTemaUntukBracket, saringBerkategori,
 } from '../siklus-kurikulum';
 
 // Kategori usia per TAHUN — bentuk yang diandaikan skenario pemilik.
@@ -332,5 +332,29 @@ describe('adaTemaUntukBracket', () => {
   it('false bila kategori itu belum diisi materi sama sekali', () => {
     expect(adaTemaUntukBracket([{ kategori_usia_id: 'lain', bulan_kurikulum: 1 }], ctx)).toBe(false);
     expect(adaTemaUntukBracket([], ctx)).toBe(false);
+  });
+});
+
+describe('saringBerkategori', () => {
+  it('membuang tema tanpa kategori bila kategorinya SUDAH dipakai', () => {
+    const r = saringBerkategori([
+      { id: 'a', kategori_usia_id: 'k1' },
+      { id: 'b', kategori_usia_id: null },
+      { id: 'c', kategori_usia_id: 'k2' },
+      { id: 'd' },
+    ]);
+    expect(r.map((x) => x.id)).toEqual(['a', 'c']);
+  });
+
+  it('daftar dikembalikan UTUH bila TAK SATU PUN berkategori (0101 belum jalan)', () => {
+    // Tanpa penjagaan ini, satu migrasi yang belum dijalankan akan mengosongkan seluruh
+    // Ide Bermain — dan konten yang mendadak hilang terbaca sebagai fitur dicabut.
+    const semua = [{ id: 'a' }, { id: 'b', kategori_usia_id: null }];
+    expect(saringBerkategori(semua)).toHaveLength(2);
+  });
+
+  it('daftar kosong / null aman', () => {
+    expect(saringBerkategori([])).toEqual([]);
+    expect(saringBerkategori(null)).toEqual([]);
   });
 });

@@ -5,7 +5,8 @@ import { createClient } from '@/lib/supabase/server';
 import type { KelasBermain } from '@/lib/game/tipe';
 import KelasIsi from '@/components/KelasIsi';
 import { rekamRiwayat } from '@/lib/data/riwayat-kelas';
-import { getHakAkun } from '@/lib/data/langganan-anak';
+import { getHakAkun, getHakAnak } from '@/lib/data/langganan-anak';
+import { bolehBukaTema } from '@/lib/domain/entitlement';
 import { getStatusWorksheet } from '@/lib/data/worksheet';
 import Terkunci from '@/components/Terkunci';
 import TombolKembali from '@/components/TombolKembali';
@@ -63,7 +64,13 @@ export default async function KelasDetailPage(
 
   // gating trial: materi ini hanya untuk pelanggan bila tak ditandai "boleh trial"
   // Detail materi tak punya konteks anak → pakai paket TERTINGGI di akun.
-  if (!status.paketTertinggi && kelas.boleh_trial === false) {
+  // Gerbang HAK. Dinilai per ANAK yang sedang dipilih bila ada — satu akun bisa punya anak
+  // berbayar dan anak trial, dan hak tertinggi di akun tak boleh membuka materi untuk anak
+  // yang tak berhak. Tanpa anak terpilih, hak tingkat akun yang dipakai.
+  const hakTema = anakDipilih
+    ? await getHakAnak(anakDipilih.id)
+    : { status: status.status, ideBermain: !!status.paketTertinggi?.akses_ide_bermain };
+  if (bolehBukaTema(kelas, { status: hakTema.status, ideBermain: hakTema.ideBermain }) !== 'boleh') {
     return <main style={{ maxWidth: 480, margin: '24px auto', padding: 16 }}><Terkunci fitur="Materi Ide Bermain" /></main>;
   }
   // Tema yang belum terbuka untuk anak ini TIDAK dicatat sebagai "pernah dibuka" —

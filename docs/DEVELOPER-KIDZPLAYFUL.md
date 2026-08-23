@@ -782,6 +782,36 @@ Sisi orang tua. **Gerbang "khusus member aktif" sudah DICABUT** (sub-proyek B): 
 - **Tema tanpa `bulan_kurikulum` dianggap TERBUKA** (materi lama / migrasi belum jalan). Default yang salah arah di sini akan mengunci konten yang tadinya jalan — dan itu terbaca sebagai fitur dicabut.
 - Mode Anak **tidak** menampilkan judul bulan depan sama sekali: judul-saja adalah bahasa untuk orang tua; bagi anak ia cuma pintu yang tak bisa dibuka.
 
+#### 🐞 Gerbang HAK Ide Bermain: tiga lubang sekaligus
+
+Pemilik meminta dipastikan: **trial tak boleh membuka tema yang akses trialnya dimatikan**, dan bila tak berhak, yang muncul harus **ajakan berlangganan** — bukan "bulan ke-N masih tertutup", karena itu kondisi yang berbeda. Pemeriksaan menemukan tiga cacat.
+
+**Lubang 1 — `/kelas/[id]` memeriksa "punya paket atau tidak", bukan STATUS.**
+
+```ts
+if (!status.paketTertinggi && kelas.boleh_trial === false)   // KELIRU
+```
+
+Anak **trial punya paket** (paket trial dari `pengaturan_trial.trial_paket_id`), jadi `!paketTertinggi` tak pernah benar untuknya — tema non-trial **tetap bisa dibuka lewat tautan langsung**. Kelas bug yang sama dengan lubang worksheet sebelumnya: hak yang berasal dari trial diperlakukan setara hak berbayar.
+
+**Lubang 2 — Mode Anak mengunci Ide Bermain memakai hak GAME.** `batasi = !status.game`, lalu `terkunci(k.boleh_trial) = batasi && boleh_trial === false` dipakai untuk **game, video, DAN tema**. Satu flag untuk tiga hak yang berbeda: paket yang memberi game tapi tidak Ide Bermain (atau sebaliknya) menghasilkan kunci pada fitur yang salah.
+
+**Lubang 3 — pesannya tertukar.** `buka()` memeriksa `belumWaktunya` **lebih dulu**, jadi tema yang sekaligus belum-waktunya dan perlu-langganan memunculkan "bulan ke-N belum terbuka". Bagi yang tak punya haknya itu **janji palsu**: menunggu tak akan membukanya.
+
+**Perbaikannya satu aturan murni**, `bolehBukaTema(tema, hak)` di `domain/entitlement.ts`:
+
+| Keadaan | Hasil |
+|---|---|
+| paket tak punya `akses_ide_bermain` | `perlu-langganan` |
+| `boleh_trial === false` & status bukan `aktif`/`tenggang` | `perlu-langganan` |
+| selain itu | `boleh` |
+
+Dipakai **ketiga** permukaan — `/kelas/[id]` (per ANAK yang dipilih, bukan hak tertinggi akun: satu akun bisa punya anak berbayar & anak trial), Mode Anak, dan Mode Ortu. Di Mode Anak urutan pemeriksaannya dibalik: **hak dulu → ajakan berlangganan**, baru bulan → pesan menunggu. Ikon & subteks kartunya pun ikut ("khusus pelanggan" vs "terbuka bulan ke-N").
+
+**Tema tanpa kategori usia tak lagi ditampilkan ke anak** (`saringBerkategori`). Setelah 0101 setiap tema semestinya berkategori; yang tanpa kategori adalah materi yang belum selesai disiapkan. **Penjagaannya penting:** bila TAK SATU PUN tema berkategori — praktisnya 0101 belum dijalankan sehingga kolomnya tak terbaca — daftarnya dikembalikan **utuh**, sebab tanpa itu satu migrasi yang belum jalan akan mengosongkan seluruh Ide Bermain.
+
+> **Pelajaran:** "punya paket" bukan sinonim "berhak". Trial, tenggang, dan berbayar semuanya punya paket — yang membedakan adalah `status`. Dan satu flag pembatas tak boleh dipakai untuk beberapa fitur: namai per fitur, atau kuncinya akan mengikuti fitur yang salah.
+
 #### 🐞 "Rentang kategori sudah diganti, tapi angka di Ide Bermain tetap yang lama"
 
 `kelas_bermain.usia_min/max` adalah **snapshot** dari kategorinya (0101). Dulu snapshot itu ditulis **apa adanya dari form**, dan form mengisinya dari baris LAMA saat Edit dibuka — penyegaran hanya terjadi kalau admin kebetulan menyentuh dropdown kategorinya. Rantainya:

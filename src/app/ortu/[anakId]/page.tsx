@@ -8,7 +8,8 @@ import { getHakAnak } from '@/lib/data/langganan-anak';
 import { getStatusWorksheet } from '@/lib/data/worksheet';
 import { getLabelFokusArea } from '@/lib/data/fokus-area';
 import { getEvaluasiAnak, getKonteksKurikulumAnak } from '@/lib/data/kurikulum';
-import { kelompokTemaBracket } from '@/lib/domain/siklus-kurikulum';
+import { kelompokTemaBracket, saringBerkategori } from '@/lib/domain/siklus-kurikulum';
+import { bolehBukaTema } from '@/lib/domain/entitlement';
 import KelasIsi from '@/components/KelasIsi';
 import Terkunci from '@/components/Terkunci';
 import s from './ortu.module.css';
@@ -28,19 +29,20 @@ export default async function ModeOrtu({ params }: { params: Promise<{ anakId: s
   // Checklist milik ANAK ini dan peran 'ortu' — bukan penilaian guru/psikolog, yang punya
   // barisnya sendiri (kunci 0098 = anak+kelas+peran) dan tampil di rapor, bukan di sini.
   const evalOrtu = new Map(evaluasi.filter((e) => e.peran === 'ortu').map((e) => [e.kelas_id, e]));
-  // trial: item tetap TAMPIL tapi yang tak ditandai "boleh trial" akan terkunci (🔒)
-  // Hak per ANAK (migrasi 0089), bukan per akun.
-  const batasi = !status.ideBermain;
   // Hanya tema yang sudah terbuka untuk ANAK INI (0098). Bulan depan cukup judulnya,
   // dan itu ditampilkan di bagian tersendiri di bawah.
   // Saring menurut usia anak; jumlah yang tersaring DISEBUTKAN di layar orang tua, supaya
   // selisih jumlah tema di admin dan di sini selalu ada penjelasannya.
   const umurAnak = ktx.umurBeku;
-  const grup = kelompokTemaBracket(kelasList0, ktx);
+  const grup = kelompokTemaBracket(saringBerkategori(kelasList0), ktx);
   const kelasList = [...grup.bulanIni, ...grup.sudahTerbuka];
   const terkunciList = grup.terkunci;
   const videoBaby = videoBaby0;
-  const terkunci = (b?: boolean) => batasi && b === false;
+  // Gerbang HAK dipusatkan di `bolehBukaTema` — bukan `batasi && boleh_trial === false`.
+  // Bentuk lama hanya mengunci bila paketnya SAMA SEKALI tak punya hak Ide Bermain, jadi
+  // anak TRIAL yang paketnya memberi hak itu tetap bisa membuka tema non-trial.
+  const terkunci = (b?: boolean) =>
+    bolehBukaTema({ boleh_trial: b }, { status: status.status, ideBermain: status.ideBermain }) !== 'boleh';
 
   return (
     <div className={s.wrap}>

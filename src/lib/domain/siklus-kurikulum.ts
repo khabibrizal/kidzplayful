@@ -332,3 +332,23 @@ export function kelompokTemaBracket<T extends TemaBracket & { urutan?: number | 
     terkunciUsia: terkunciUsia.sort(urut),
   };
 }
+
+/**
+ * Buang tema yang TIDAK punya kategori usia — tapi hanya bila kategorinya memang sudah
+ * dipakai.
+ *
+ * Keputusan pemilik: anak hanya menerima tema yang sesuai KATEGORINYA; tema tanpa kategori
+ * tak perlu ditampilkan. Setelah 0101 setiap tema semestinya berkategori, jadi yang tanpa
+ * kategori adalah materi yang belum selesai disiapkan admin.
+ *
+ * Penjagaannya penting: bila TAK SATU PUN tema punya kategori — praktisnya, migrasi 0101
+ * belum dijalankan sehingga kolomnya tak terbaca — daftarnya dikembalikan UTUH. Tanpa
+ * penjagaan itu, satu migrasi yang belum jalan akan mengosongkan seluruh Ide Bermain, dan
+ * konten yang mendadak hilang terbaca sebagai fitur dicabut.
+ */
+export function saringBerkategori<T extends { kategori_usia_id?: string | null }>(list: T[] | null | undefined): T[] {
+  const semua = list ?? [];
+  const adaYangBerkategori = semua.some((t) => !!t.kategori_usia_id);
+  if (!adaYangBerkategori) return semua;
+  return semua.filter((t) => !!t.kategori_usia_id);
+}

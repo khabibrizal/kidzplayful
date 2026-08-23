@@ -25,7 +25,7 @@ import s from './main.module.css';
 type Layar = 'menu' | 'kelas' | 'kelas-detail' | 'daftar' | 'pustaka' | 'video' | 'main' | 'istirahat';
 
 export default function MenuAnak({
-  anak, pustaka, pinTersimpan, video, paketAwal, kelasAwal, kembaliUrl, kelasList, favIds, gamiAwal, batasi = false, labelArea = {}, bolehWorksheet = false, sisaWorksheet, worksheetTanpaBatas, modeWorksheet = 'tidak', evaluasiPerKelas = {}, kelasTerkunci = [], bulanKurikulum = 1, temaUsiaKosong = false, umurKurikulum = null,
+  anak, pustaka, pinTersimpan, video, paketAwal, kelasAwal, kembaliUrl, kelasList, favIds, gamiAwal, batasi = false, labelArea = {}, bolehWorksheet = false, sisaWorksheet, worksheetTanpaBatas, modeWorksheet = 'tidak', evaluasiPerKelas = {}, kelasTerkunci = [], bulanKurikulum = 1, temaUsiaKosong = false, umurKurikulum = null, temaPerluLangganan = [],
 }: {
   anak: { id: string; nama: string; koin: number; batas_menit: number };
   pustaka: TemaLengkap[]; pinTersimpan: string | null; video: Video[]; paketAwal?: string;
@@ -49,6 +49,8 @@ export default function MenuAnak({
   temaUsiaKosong?: boolean;
   /** umur anak yang dipakai kurikulum (umur pada awal siklus) */
   umurKurikulum?: number | null;
+  /** id tema yang terkunci karena HAK (perlu berlangganan) — bukan karena bulan */
+  temaPerluLangganan?: string[];
   /**
    * Hasil checklist evaluasi anak ini per kelas (0098). BUG yang diperbaiki: Mode Anak
    * dulu merender `KelasIsi` tanpa `anakId` sama sekali, sehingga checklist mati dan
@@ -72,7 +74,7 @@ export default function MenuAnak({
   const awalCari = paketAwal
     ? pustaka.flatMap((t) => t.paket.map((p) => ({ p, t }))).find((x) => x.p.id === paketAwal) ?? null
     : null;
-  const awal = awalCari && !terkunci(awalCari.t.tema.boleh_trial) ? awalCari : null;
+  const awal = awalCari && !terkunci(awalCari.t.tema.boleh_trial) ? awalCari : null;   // game/pustaka
   // Urutannya: game deep-link menang atas materi deep-link, sebab `?paket=` hanya dikirim
   // saat pengguna memang menekan tombol main.
   const [layar, setLayar] = useState<Layar>(() => (
@@ -254,6 +256,10 @@ export default function MenuAnak({
               // Dua sebab terkunci yang BERBEDA, dan pesannya tak boleh tertukar:
               // belum berlangganan (🔒 fasilitas) vs belum waktunya (⏳ bulan berikutnya).
               const belumWaktunya = kelasTerkunci.includes(k.id);
+              // DUA gerbang, DUA pesan, dan urutannya penting: hak diperiksa LEBIH DULU.
+              // Bagi yang tak punya haknya, "menunggu bulan berikutnya" adalah janji palsu —
+              // menunggu tak akan membukanya, berlangganan yang akan.
+              const perluLangganan = temaPerluLangganan.includes(k.id);
               // Penanda "sudah dikerjakan": adanya checklist orang tua untuk tema ini
               // berarti setidaknya satu aktivitasnya sudah dimainkan & dinilai. Angkanya
               // ikut ditulis supaya penandanya berarti sesuatu, bukan sekadar centang.
@@ -266,10 +272,13 @@ export default function MenuAnak({
               const ringkasAkt = perAkt.slice(0, 2)
                 .map((g) => `${g.aktivitas} ${g.tercapai}/${g.total}`).join(' · ')
                 + (perAkt.length > 2 ? ` · +${perAkt.length - 2} lagi` : '');
-              const kunci = terkunci(k.boleh_trial) || belumWaktunya;
+              // `terkunci()` sengaja TIDAK dipakai di sini: flag itu diturunkan dari hak
+              // GAME (`batasi = !status.game`), dan memakainya untuk Ide Bermain membuat
+              // kuncinya mengikuti fitur yang salah.
+              const kunci = perluLangganan || belumWaktunya;
               const buka = () => {
+                if (perluLangganan) { setKunciFitur('Materi Ide Bermain'); return; }
                 if (belumWaktunya) { setPesanKunci(k.judul); return; }
-                if (kunci) { setKunciFitur('Materi Ide Bermain'); return; }
                 setKelasDipilih(k); setLayar('kelas-detail');
                 catatRiwayatKelas(k.id).catch(() => {});
                 // Rapor per ANAK (migrasi 0093) — `riwayat_kelas` tak bisa dipakai karena
@@ -281,11 +290,12 @@ export default function MenuAnak({
                   role="button" tabIndex={0} onClick={buka}
                   onKeyDown={(e) => { if (e.key === 'Enter') buka(); }}
                   style={{ position: 'relative', cursor: 'pointer', opacity: kunci ? 0.7 : 1 }}>
-                  <span className="emo">{belumWaktunya ? '⏳' : kunci ? '🔒' : '🎈'}</span>
+                  <span className="emo">{perluLangganan ? '🔒' : belumWaktunya ? '⏳' : '🎈'}</span>
                   <div>
                     {k.judul}
-                    {belumWaktunya && <small>terbuka bulan ke-{k.bulan_kurikulum}</small>}
-                    {!belumWaktunya && rk && (
+                    {perluLangganan && <small>khusus pelanggan</small>}
+                    {!perluLangganan && belumWaktunya && <small>terbuka bulan ke-{k.bulan_kurikulum}</small>}
+                    {!perluLangganan && !belumWaktunya && rk && (
                       <>
                         <small>✅ sudah dikerjakan · {rk.tercapai}/{rk.total} tercapai</small>
                         {perAkt.length > 0 && <small style={{ opacity: 0.85 }}>🎯 {ringkasAkt}</small>}

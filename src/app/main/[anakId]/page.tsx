@@ -11,7 +11,8 @@ import { getFavoritIds } from '@/lib/data/favorit';
 import { getGamifikasiAnak } from '@/lib/data/gamifikasi';
 import { getHakAnak } from '@/lib/data/langganan-anak';
 import { getKonteksKurikulumAnak, getEvaluasiAnak } from '@/lib/data/kurikulum';
-import { kelompokTemaBracket, adaTemaUntukBracket } from '@/lib/domain/siklus-kurikulum';
+import { kelompokTemaBracket, adaTemaUntukBracket, saringBerkategori } from '@/lib/domain/siklus-kurikulum';
+import { bolehBukaTema } from '@/lib/domain/entitlement';
 import { pathInternal } from '@/lib/nav';
 import { getStatusWorksheet } from '@/lib/data/worksheet';
 import RekamAktivitas from '@/components/RekamAktivitas';
@@ -66,7 +67,15 @@ export default async function MainPage({ params, searchParams }: { params: Promi
   // Penggerbangan per KATEGORI USIA yang dibekukan: tema kategori berjalan digerbangi per
   // bulan di dalam kategori itu, tema kategori LAMA yang sudah dilalui tetap terbuka, dan
   // yang belum waktunya tetap TAMPIL tapi terkunci.
-  const grupTema = kelompokTemaBracket(kelasList0, ktx);
+  // Tema tanpa kategori usia tak dipakai kurikulum anak (keputusan pemilik). Penjagaannya
+  // ada di `saringBerkategori`: bila TAK SATU PUN tema berkategori, daftarnya utuh.
+  const kelasBerkategori = saringBerkategori(kelasList0);
+  // Gerbang HAK, terpisah dari gerbang bulan/usia. Tema yang tak boleh dibuka karena
+  // langganan harus memunculkan AJAKAN BERLANGGANAN, bukan pesan "bulan ke-N belum tiba".
+  const temaPerluLangganan = kelasBerkategori
+    .filter((k) => bolehBukaTema(k, { status: status.status, ideBermain: status.ideBermain }) !== 'boleh')
+    .map((k) => k.id);
+  const grupTema = kelompokTemaBracket(kelasBerkategori, ktx);
   // Tema yang terkunci karena BUKAN UNTUK USIANYA tidak ikut didaftarkan di Mode Anak.
   // Alasannya sama dengan judul bulan depan yang juga tak ditampilkan di sini: bagi anak,
   // kartu yang tak akan pernah bisa dibuka hanyalah pintu palsu — dan menunggu tak akan
@@ -77,7 +86,7 @@ export default async function MainPage({ params, searchParams }: { params: Promi
   const kelasTerbuka = [...grupTema.bulanIni, ...grupTema.sudahTerbuka, ...daftarTerkunci];
   // Kategori usia anak ini belum diisi materi sama sekali → kekosongan ISI yang harus
   // diperbaiki admin, bukan keadaan yang bisa ditunggu orang tua.
-  const temaUsiaKosong = kelasList0.length > 0 && !adaTemaUntukBracket(kelasList0, ktx);
+  const temaUsiaKosong = kelasBerkategori.length > 0 && !adaTemaUntukBracket(kelasBerkategori, ktx);
   // CATATAN: pustaka kosong TIDAK lagi memantulkan ke `/pilih-anak`. Pantulan itu diam-diam
   // (klik kartu anak seolah tak berfungsi) padahal Mode Anak masih berguna tanpa game —
   // masih ada Ide Bermain, Pojok Video, koin & lencana. `MenuAnak` sendiri sudah punya
@@ -99,6 +108,7 @@ export default async function MainPage({ params, searchParams }: { params: Promi
       kelasTerkunci={idTerkunci}
       bulanKurikulum={bulanAnak}
       temaUsiaKosong={temaUsiaKosong}
+      temaPerluLangganan={temaPerluLangganan}
       umurKurikulum={Number.isFinite(ktx.umurBeku) ? ktx.umurBeku : null}
       favIds={favIds}
       gamiAwal={gami}
