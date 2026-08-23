@@ -918,6 +918,30 @@ Keputusan lain yang sengaja diambil:
 
 > **🐞 Cacat tata letak yang tertangkap saat verifikasi visual:** tombol `Reset` menjorok keluar dari kartu filter. Sebabnya `.kp-btn` punya **bayangan solid 6px di LUAR kotak elemen** (`box-shadow: 0 6px 0`), sedangkan padding kartu saya setel 10px. Padding bawah dinaikkan ke 18px. Pelajarannya: setiap kali `.kp-btn` ditaruh di wadah ber-padding kecil, sisakan ruang untuk bayangannya — `tsc` dan `build` tak akan pernah menangkap ini.
 
+#### 🐞 Bayaran membatasi TOTAL bulan, bukan per kategori
+
+Ditemukan saat memverifikasi permintaan pemilik ("anak pindah kategori → mulai dari bulan ke-1"). Aturan pindah-kategorinya **memang sudah benar**, tapi batas bayarnya bocor:
+
+```ts
+maksBulan[b] = Math.min(dijalani[b], siklus)   // KELIRU: `siklus` berlaku untuk SETIAP kategori
+```
+
+Batas 3 bulan berlaku untuk Baby **dan** untuk Batita, jadi anak yang membayar 3 bulan lalu berhenti tetap membuka bundel bulanan keempat & kelima begitu kategorinya berganti — sampai 5 bundel untuk 3 bulan yang dibayar. Bertentangan dengan keputusan pemilik sendiri: *bulan yang tidak aktif tidak menambah hitungan*.
+
+**Aturan sekarang:** bulan berbayar **DIBAGIKAN menurut urutan waktu**, totalnya dibatasi `siklus`.
+
+| Bayar | Yang terbuka |
+|---|---|
+| 3 bulan | Baby 1, Baby 2, Batita 1 — lalu **berhenti** |
+| +1 bulan | Batita 2 |
+
+Dua penyesuaian yang menyertainya, keduanya ditemukan oleh tes yang jatuh:
+
+1. **Bulan yang dijalani TANPA kategori tidak menghabiskan hak bayar.** Anak yang usianya sempat berada di celah antar-kategori dulu membakar bulan berbayarnya pada periode yang tak memberi tema apa pun — ia membayar dan tetap tak menerima apa-apa. (Tes "SEBAB 1" jatuh dan memperlihatkan ini; ekspektasinya benar, kodenya yang belum.)
+2. **Tema di kategori yang SEDANG dijalani tak pernah terkunci karena usia.** Saat anak baru berganti kategori tapi bulannya belum terbayar, `maksBulan` kategori itu masih 0 — dan `kunciKarena` dulu melaporkan sebabnya `'usia'`. Keliru: sebabnya bayaran. Statusnya pun kini `kunci-judul` (judul saja), bukan `terkunci` penuh — anak itu memang sedang menunggu, bukan salah usia.
+
+Uji daya gigit: kembali ke batas per kategori → 3 tes jatuh; bulan tanpa kategori ikut membakar hak → 2; batas bayar dilepas → 5; sebab kunci kategori berjalan kembali jadi `'usia'` → 1.
+
 #### Urutan tampilan tema = petunjuk urutan mengerjakan
 
 Daftar tema di sisi pengguna disusun **NAIK** menurut `(bulan_kurikulum, urutan)`, dan **posisinya ditulis di kartunya** — "Bulan ke-1 · Minggu ke-4" (`teksPosisi` di `domain/kurikulum.ts`, dipakai bersama oleh Mode Anak, Mode Ortu, dan `/kelas-saya`).

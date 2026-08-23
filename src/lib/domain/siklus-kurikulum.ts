@@ -168,19 +168,33 @@ export function konteksKurikulum({ lahir, mulai, hariIni, bulanDibayar, kategori
   // Ditelusuri sepanjang periode yang BENAR-BENAR DIJALANI anak (kalender), bukan sepanjang
   // bulan yang dibayar — kalau tidak, anak yang bayarannya tertahan akan tercatat masih
   // berada di kategori usianya SETAHUN LALU.
-  const dijalani: Record<string, number> = {};
+  //
+  // Bulan berbayar DIBAGIKAN menurut URUTAN WAKTU, dan totalnya dibatasi `siklus`.
+  //
+  // 🐞 Versi sebelumnya membatasi PER KATEGORI (`min(dijalani[b], siklus)`), dan itu bocor:
+  // batas 3 bulan berlaku untuk Baby DAN untuk Batita, sehingga anak yang membayar 3 bulan
+  // lalu berhenti tetap membuka bundel bulanan keempat & kelima begitu kategorinya berganti.
+  // Keputusan pemilik: 3 bulan dibayar = Baby 1, Baby 2, Batita 1 — lalu BERHENTI sampai ada
+  // pembayaran berikutnya, yang membuka Batita 2.
+  //
+  // `bracket` tetap kategori HARI INI, apa pun hak bayarnya: hak menentukan berapa bulan yang
+  // terbuka, bukan di kategori mana anak itu berada.
+  const maksBulan: Record<string, number> = {};
   const batas = Math.min(kalenderKe, MAKS_SIKLUS);
   let bracket = TANPA_BRACKET;
+  let diberikan = 0;
   for (let c = 1; c <= batas; c++) {
     const awalC = mulai ? tambahBulan(mulai, c - 1) : hariIni;
     bracket = bracketUntukUmur(kategori, umurPada(awalC));
-    dijalani[bracket] = (dijalani[bracket] ?? 0) + 1;
+    // Bulan yang dijalani TANPA kategori usia tidak menghabiskan hak bayar: di sana tak ada
+    // kurikulum untuk dikonsumsi. Tanpa aturan ini, anak yang usianya sempat berada di celah
+    // antar-kategori membakar bulan berbayarnya pada periode yang tak memberinya tema apa pun
+    // — ia membayar dan tetap tak menerima apa-apa.
+    if (bracket === TANPA_BRACKET) continue;
+    if (diberikan >= siklus) continue;          // bulan ini belum dibayar
+    maksBulan[bracket] = (maksBulan[bracket] ?? 0) + 1;
+    diberikan++;
   }
-
-  // BAYARAN membatasi berapa BULAN kurikulum yang terbuka, bukan kategori mana yang dijalani.
-  // Keduanya dipisah: kategori mengikuti umur hari ini, jumlah bulan mengikuti yang dibayar.
-  const maksBulan: Record<string, number> = {};
-  for (const [b, n] of Object.entries(dijalani)) maksBulan[b] = Math.min(n, siklus);
 
   return {
     siklus,
@@ -188,7 +202,10 @@ export function konteksKurikulum({ lahir, mulai, hariIni, bulanDibayar, kategori
     mulaiSiklus,
     umurBeku: umurPada(mulaiSiklus),
     bracket,
-    bulanDalamBracket: maksBulan[bracket] ?? 1,
+    // Minimal 1 supaya layar tak pernah menulis "bulan ke-0". Anak yang baru berganti
+    // kategori tapi bulannya belum terbayar berada di ambang bulan ke-1 kategori itu —
+    // temanya tetap terkunci, karena `maksBulan[bracket]` memang masih 0.
+    bulanDalamBracket: Math.max(1, maksBulan[bracket] ?? 0),
     maksBulan,
   };
 }
@@ -207,8 +224,12 @@ export function kunciKarena(tema: TemaBracket, ctx: KonteksKurikulum): 'usia' | 
   const st = statusTemaBracket(tema, ctx);
   if (st === 'terbuka') return null;
   const kat = (tema?.kategori_usia_id ?? TANPA_BRACKET) || TANPA_BRACKET;
-  // Kategori yang sedang//pernah dijalani → sebabnya bulan. Selain itu → sebabnya usia.
   if (kat === TANPA_BRACKET) return 'bulan';        // materi lama: hanya digerbangi bulan…
+  // Tema di kategori yang SEDANG dijalani anak tak pernah terkunci karena usia — sebabnya
+  // waktu/bayaran. Ini penting saat anak baru berganti kategori tapi bulannya belum
+  // terbayar: `maksBulan` untuk kategori itu masih 0, dan tanpa cabang ini sebabnya akan
+  // dilaporkan 'usia' — keliru, dan membuat layar menyebut alasan yang salah.
+  if (kat === ctx.bracket) return 'bulan';
   return (ctx.maksBulan[kat] ?? 0) > 0 ? 'bulan' : 'usia';
 }
 
@@ -272,11 +293,15 @@ export function statusTemaBracket(tema: TemaBracket, ctx: KonteksKurikulum): Sta
   }
 
   const capai = ctx.maksBulan[kat] ?? 0;
-  if (capai === 0) return 'terkunci';         // anak ini belum pernah masuk kategori itu
+  // Kategori yang belum pernah dijalani anak ini (dan bukan kategorinya sekarang) tertutup
+  // seluruhnya — termasuk materi lama tanpa nomor bulan.
+  if (capai === 0 && kat !== ctx.bracket) return 'terkunci';
   if (bulan < 1) return 'terbuka';
   if (bulan <= capai) return 'terbuka';
   // Judul bulan depan hanya diperlihatkan untuk kategori yang SEDANG dijalani; kategori
-  // lama tak punya "bulan depan" — anak itu sudah meninggalkannya.
+  // lama tak punya "bulan depan" — anak itu sudah meninggalkannya. Termasuk keadaan
+  // `capai === 0`: anak yang baru berganti kategori melihat judul bulan ke-1 kategori
+  // barunya, dan itu jujur — ia memang menunggu, bukan salah usia.
   if (kat === ctx.bracket && bulan === capai + 1) return 'kunci-judul';
   return 'terkunci';
 }

@@ -377,6 +377,13 @@ Ide Bermain kini berjalan sebagai **kurikulum per ANAK**, bukan daftar materi le
 ### Tema tanpa kategori usia tidak ditampilkan
 Anak hanya menerima Ide Bermain yang **sesuai kategori usianya**. Tema yang belum diberi kategori tidak muncul di halaman anak — jadi pastikan setiap tema punya kategori usia di form Ide Bermain.
 
+### Berganti kategori usia = mulai dari bulan ke-1
+Begitu anak naik ke kategori usia berikutnya, kurikulumnya **dimulai dari bulan ke-1 kategori baru** — dan tema kategori sebelumnya **tetap terbuka selamanya**.
+
+Bulan yang dibayar membatasi **total** bulan yang terbuka, dibagikan menurut urutan waktu. Contoh: bayar 3 bulan → Baby bulan 1, Baby bulan 2, **Batita bulan 1**, lalu berhenti sampai ada pembayaran berikutnya; bayar 1 bulan lagi → Batita bulan 2.
+
+Bulan yang dijalani saat usia anak tak masuk kategori mana pun **tidak** menghabiskan bulan berbayarnya — di periode itu memang tak ada tema untuknya.
+
 ### 📚 Urutan mengerjakan tema
 Daftar Ide Bermain di halaman anak & orang tua kini tersusun **dari Bulan ke-1 Minggu ke-1 ke atas**, dan tiap kartu menyebut posisinya: **"Bulan ke-1 · Minggu ke-4"**. Di atas daftar ada pengingat *"Dikerjakan berurutan dari atas — minggu ke-1 lebih dulu"*, jadi orang tua tak perlu menebak mana yang dikerjakan lebih dahulu.
 

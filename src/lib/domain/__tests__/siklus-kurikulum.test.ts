@@ -385,3 +385,76 @@ describe('urutan tampilan: NAIK dari bulan 1 minggu 1', () => {
     expect(g.bulanIni.map((x) => x.id)).toEqual(['m1', 'm3', 'm4']);
   });
 });
+
+describe('bayaran membatasi TOTAL bulan, dibagikan menurut urutan waktu', () => {
+  // Skenario pemilik: Baby -> Batita. Anak jadi 2 th pada 1 Mar 2026.
+  const BABY = 'baby', BTT = 'batita';
+  const KAT = [{ id: BABY, usia_min: 0, usia_max: 1 }, { id: BTT, usia_min: 1, usia_max: 3 }];
+  const dasar = { lahir: '2024-03-01', mulai: '2026-01-10', kategori: KAT };
+  const ctxPada = (bulanKe: number, bayar: number) =>
+    konteksKurikulum({ ...dasar, hariIni: tambahBulan('2026-01-10', bulanKe - 1), bulanDibayar: bayar });
+
+  it('3 bulan dibayar = Baby 1, Baby 2, Batita 1 — dan BERHENTI di situ', () => {
+    // Bulan kalender ke-4 & ke-5 tak menambah apa pun selama belum ada pembayaran baru.
+    for (const bulanKe of [3, 4, 5, 6]) {
+      const ctx = ctxPada(bulanKe, 3);
+      expect(ctx.bracket).toBe(BTT);
+      expect(ctx.maksBulan).toEqual({ [BABY]: 2, [BTT]: 1 });
+    }
+  });
+
+  it('kategori berganti -> kembali ke bulan ke-1 di kategori baru', () => {
+    expect(ctxPada(2, 3).bulanDalamBracket).toBe(2);   // masih Baby, bulan ke-2
+    expect(ctxPada(3, 3).bracket).toBe(BTT);
+    expect(ctxPada(3, 3).bulanDalamBracket).toBe(1);   // Batita mulai dari 1
+  });
+
+  it('tema Baby yang sudah terbuka TETAP terbuka sesudah pindah kategori', () => {
+    const ctx = ctxPada(4, 3);
+    expect(statusTemaBracket({ kategori_usia_id: BABY, bulan_kurikulum: 1 }, ctx)).toBe('terbuka');
+    expect(statusTemaBracket({ kategori_usia_id: BABY, bulan_kurikulum: 2 }, ctx)).toBe('terbuka');
+    // Baby bulan ke-3 tak pernah dijalani — dan anak sudah meninggalkan kategori itu.
+    expect(statusTemaBracket({ kategori_usia_id: BABY, bulan_kurikulum: 3 }, ctx)).toBe('terkunci');
+  });
+
+  it('BAYAR LAGI 1 bulan -> Batita 2 terbuka', () => {
+    const ctx = ctxPada(4, 4);
+    expect(ctx.maksBulan).toEqual({ [BABY]: 2, [BTT]: 2 });
+    expect(ctx.bulanDalamBracket).toBe(2);
+    expect(statusTemaBracket({ kategori_usia_id: BTT, bulan_kurikulum: 2 }, ctx)).toBe('terbuka');
+    expect(statusTemaBracket({ kategori_usia_id: BTT, bulan_kurikulum: 3 }, ctx)).toBe('kunci-judul');
+  });
+
+  it('TOTAL bundel terbuka tak pernah melebihi bulan yang dibayar', () => {
+    // Ini bocornya versi sebelumnya: batas diterapkan PER KATEGORI, jadi 3 bulan dibayar
+    // membuka sampai 5 bundel bulanan begitu kategorinya berganti.
+    for (const bayar of [1, 2, 3, 4, 5]) {
+      for (const bulanKe of [1, 2, 3, 4, 5, 6, 7]) {
+        const ctx = ctxPada(bulanKe, bayar);
+        const total = Object.values(ctx.maksBulan).reduce((a, b) => a + b, 0);
+        expect(total).toBeLessThanOrEqual(bayar);
+      }
+    }
+  });
+
+  it('bulan TANPA kategori tak menghabiskan hak bayar', () => {
+    // Kategori berlubang di usia 4-5: anak melewatinya, lalu masuk 6-9. Bulan di celah itu
+    // tak memberi tema apa pun, jadi ia tak boleh membakar bulan berbayarnya.
+    const berlubang = [{ id: 'kecil', usia_min: 0, usia_max: 3 }, { id: 'besar', usia_min: 6, usia_max: 9 }];
+    const ctx = konteksKurikulum({
+      lahir: '2020-01-01', mulai: '2024-06-01', hariIni: '2026-08-01', bulanDibayar: 1, kategori: berlubang,
+    });
+    expect(ctx.bracket).toBe('besar');
+    expect(ctx.maksBulan).toEqual({ besar: 1 });     // bukan { kecil: 1 } lalu besar kosong
+    expect(statusTemaBracket({ kategori_usia_id: 'besar', bulan_kurikulum: 1 }, ctx)).toBe('terbuka');
+  });
+
+  it('kategori baru yang bulannya BELUM terbayar: judul saja, sebabnya BULAN bukan usia', () => {
+    const ctx = ctxPada(3, 2);                       // baru bayar 2, keduanya habis di Baby
+    expect(ctx.bracket).toBe(BTT);
+    expect(ctx.maksBulan).toEqual({ [BABY]: 2 });
+    const tema = { kategori_usia_id: BTT, bulan_kurikulum: 1 };
+    expect(statusTemaBracket(tema, ctx)).toBe('kunci-judul');
+    expect(kunciKarena(tema, ctx)).toBe('bulan');    // BUKAN 'usia' — ini soal bayaran
+  });
+});
