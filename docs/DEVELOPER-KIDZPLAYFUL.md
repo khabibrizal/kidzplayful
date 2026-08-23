@@ -918,6 +918,17 @@ Keputusan lain yang sengaja diambil:
 
 > **🐞 Cacat tata letak yang tertangkap saat verifikasi visual:** tombol `Reset` menjorok keluar dari kartu filter. Sebabnya `.kp-btn` punya **bayangan solid 6px di LUAR kotak elemen** (`box-shadow: 0 6px 0`), sedangkan padding kartu saya setel 10px. Padding bawah dinaikkan ke 18px. Pelajarannya: setiap kali `.kp-btn` ditaruh di wadah ber-padding kecil, sisakan ruang untuk bayangannya — `tsc` dan `build` tak akan pernah menangkap ini.
 
+#### Daftar admin dikelompokkan per KATEGORI USIA
+
+**Kenapa perlu:** posisi kurikulum (bulan ke-N · minggu ke-M) hanya berarti **di dalam** sebuah kategori. Daftar yang mencampur semua kategori memperlihatkan "B1 M1" beberapa kali dan terbaca seperti **duplikat**, padahal itu bulan-1-minggu-1 milik kategori yang berbeda-beda — kekeliruan baca yang persis melahirkan laporan bug "kok temanya dobel".
+
+- Urutan kelompoknya mengikuti **master** (`kategoriOpsi`), bukan urutan baris — jadi susunannya sama dengan yang admin lihat di menu Kategori Usia.
+- **Materi EVENT dipisah** ke kelompok tersendiri: ia tak punya posisi kurikulum, dan menaruhnya di dalam kelompok kategori membuat hitungan "4 tema/bulan" terbaca keliru.
+- Kategori yang **sudah dihapus dari master**, atau materi yang **belum diberi kategori**, tetap ditampilkan di kelompok "❓ Tanpa kategori usia" — tidak dibuang. Justru inilah yang perlu dirapikan admin, dan daftar yang menyembunyikannya membuat materi itu tak pernah ketemu.
+- Nama kategori **dihapus dari kartunya** (kepala kelompok sudah menyebutnya), tapi **rentang usia di kartu tetap ditulis**: itu snapshot milik materi, dan bedanya dengan rentang di kepala kelompok justru pertanda snapshot yang basi.
+
+Diverifikasi visual di 900px & 390px — hierarkinya terbaca dan tak ada luberan horizontal.
+
 #### 🎪 Materi EVENT vs TEMA kurikulum (0105)
 
 Satu tempat menyusun materi, dua peruntukan. Radio button di form Ide Bermain:

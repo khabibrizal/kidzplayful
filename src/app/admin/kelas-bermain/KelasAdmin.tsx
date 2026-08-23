@@ -106,6 +106,34 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
         .map((k) => k.urutan ?? 0))].sort((a, b) => a - b)
     : [];
 
+  /**
+   * Daftar dikelompokkan MENURUT KATEGORI USIA — satu kelompok per kategori, plus satu
+   * kelompok terakhir untuk materi event.
+   *
+   * Kenapa: posisi kurikulum (bulan ke-N · minggu ke-M) hanya berarti DI DALAM sebuah
+   * kategori. Daftar yang mencampur semua kategori memperlihatkan "B1 M1" muncul beberapa
+   * kali dan terbaca seperti duplikat, padahal itu bulan-1-minggu-1 milik kategori yang
+   * berbeda. Urutan kelompoknya mengikuti master (`kategoriOpsi`), bukan urutan baris.
+   *
+   * Materi EVENT dipisah karena ia tak punya posisi kurikulum sama sekali; menaruhnya di
+   * dalam kelompok kategori akan membuat hitungan "4 tema/bulan" terbaca keliru.
+   */
+  const kelompok = (() => {
+    const tema = tampil.filter(isTema);
+    const event = tampil.filter((k) => !isTema(k));
+    const out: { id: string; nama: string; ket: string; baris: KelasBermain[] }[] = [];
+    for (const kat of kategoriOpsi) {
+      const baris = tema.filter((k) => (k.kategori_usia_id ?? '') === kat.id);
+      if (baris.length) out.push({ id: kat.id, nama: `🧸 ${kat.nama}`, ket: `${kat.usia_min}–${kat.usia_max} th`, baris });
+    }
+    // Kategori yang sudah dihapus dari master, atau materi yang belum diberi kategori:
+    // tetap ditampilkan, tidak dibuang — justru inilah yang perlu dirapikan admin.
+    const sisa = tema.filter((k) => !kategoriOpsi.some((x) => x.id === (k.kategori_usia_id ?? '')));
+    if (sisa.length) out.push({ id: '_tanpa', nama: '❓ Tanpa kategori usia', ket: 'perlu dipilih kategorinya', baris: sisa });
+    if (event.length) out.push({ id: '_event', nama: '🎪 Materi event offline', ket: 'tak menempati posisi kurikulum', baris: event });
+    return out;
+  })();
+
   function bukaTambah() {
     setEditId(null);
     setBukaKe((n) => n + 1);
@@ -577,14 +605,23 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
           ⚠️ {namaKategori(x.kat)} · bulan {x.bulan}: {x.n} tema aktif (kurikulum dirancang {MAKS_URUTAN_BULAN} tema/bulan)
         </div>
       ))}
-      {tampil.map((k) => (
+      {kelompok.map((g) => (
+        <div key={g.id}>
+          <div className={s.muted} style={{
+            fontSize: 12, fontWeight: 800, margin: '14px 0 6px',
+            display: 'flex', gap: 6, alignItems: 'baseline', flexWrap: 'wrap',
+          }}>
+            <span style={{ color: 'var(--lavender-d)' }}>{g.nama}</span>
+            <span style={{ fontWeight: 400 }}>· {g.ket} · {g.baris.length} materi</span>
+          </div>
+      {g.baris.map((k) => (
         <div key={k.id} className={s.card} style={{ opacity: k.status === 'nonaktif' ? 0.55 : 1 }}>
           <div className={s.row}>
             <span style={{ flex: 1 }}>
               {!isTema(k) && <span className={s.tag} style={{ background: '#ffe9d6', color: '#9a5b33', marginRight: 4 }}>🎪 EVENT</span>}
               <b>{k.judul}</b> {k.status === 'nonaktif' && <span className={`${s.tag} ${s.tagDraf}`}>nonaktif</span>}
               {k.boleh_trial === false && <span className={`${s.tag} ${s.tagDraf}`} style={{ marginLeft: 4 }}>🔒 non-trial</span>}
-              <br /><small className={s.muted}>🧸 {namaKategori(k.kategori_usia_id ?? '')} · 👶 {k.usia_min ?? 0}–{k.usia_max ?? 6} th{isTema(k) && typeof k.bulan_kurikulum === 'number' && k.bulan_kurikulum >= 1 ? ` · 📚 bulan ke-${k.bulan_kurikulum} minggu ke-${k.urutan ?? 1}` : ''}{!isTema(k) ? ' · tak menempati posisi kurikulum' : ''}</small>
+              <br /><small className={s.muted}>👶 {k.usia_min ?? 0}–{k.usia_max ?? 6} th{isTema(k) && typeof k.bulan_kurikulum === 'number' && k.bulan_kurikulum >= 1 ? ` · 📚 bulan ke-${k.bulan_kurikulum} minggu ke-${k.urutan ?? 1}` : ''}{!isTema(k) ? ' · tak menempati posisi kurikulum' : ''}</small>
             </span>
           </div>
           <div className={s.row} style={{ marginTop: 8, flexWrap: 'wrap' }}>
@@ -593,6 +630,8 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
             <button className={s.btnSm} style={{ background: k.boleh_trial === false ? '#eee' : '#dff5e6', color: k.boleh_trial === false ? '#888' : '#1c7a43' }} onClick={() => toggleTrial(k)} disabled={busyId === k.id} title="Boleh diakses user trial?">{k.boleh_trial === false ? 'Trial ✗' : 'Trial ✓'}</button>
             <button className={`${s.btnSm} ${s.danger}`} onClick={() => hapus(k)} disabled={busyId === k.id}>Hapus</button>
           </div>
+        </div>
+      ))}
         </div>
       ))}
       {tampil.length === 0 && <p className={s.muted}>Belum ada ide bermain{q ? ' yang cocok' : ''}.</p>}

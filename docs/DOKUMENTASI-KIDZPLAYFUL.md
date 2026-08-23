@@ -377,6 +377,15 @@ Ide Bermain kini berjalan sebagai **kurikulum per ANAK**, bukan daftar materi le
 ### Tema tanpa kategori usia tidak ditampilkan
 Anak hanya menerima Ide Bermain yang **sesuai kategori usianya**. Tema yang belum diberi kategori tidak muncul di halaman anak — jadi pastikan setiap tema punya kategori usia di form Ide Bermain.
 
+### Daftar Ide Bermain dikelompokkan per kategori usia
+Di **Kelola Ide Bermain**, daftarnya dikelompokkan menurut **kategori usia** — tiap kelompok menyebut nama kategori, rentang usianya, dan jumlah materinya. Urutan kelompok mengikuti menu 👶 Kategori Usia.
+
+Ini membuat posisi kurikulum terbaca benar: "bulan ke-1 minggu ke-1" milik Batita dan milik Middle Childhood **bukan** duplikat — keduanya slot yang berbeda di kategori yang berbeda.
+
+Dua kelompok khusus di bagian bawah:
+- **🎪 Materi event offline** — tak menempati posisi kurikulum.
+- **❓ Tanpa kategori usia** — materi yang belum diberi kategori (atau kategorinya sudah dihapus). Ini yang perlu dirapikan, jadi sengaja tetap ditampilkan.
+
 ### 🎪 Materi event vs 🎈 tema kurikulum
 Saat menambah/menyunting **Ide Bermain**, pilih dulu peruntukannya:
 
