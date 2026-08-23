@@ -130,8 +130,15 @@ function row(i: KelasInput) {
   };
 }
 /** Kolom 0098 dipisah supaya bisa dibuang saat retry bila migrasinya belum jalan. */
+/** Jenis yang DIMINTA klien, dinormalkan. Satu tempat supaya action & `row098` sepakat. */
+function jenisDiminta(i: KelasInput): JenisKelas {
+  return i.jenis === 'event' ? 'event' : 'tema';
+}
+
+const PESAN_JENIS_HILANG = 'Materi EVENT belum bisa disimpan: kolom `jenis` belum ada di basis data. → jalankan migrasi 0105_kelas_jenis.sql dulu. (Materi TEMA tetap bisa disimpan.)';
+
 function row098(i: KelasInput) {
-  const jenis: JenisKelas = i.jenis === 'event' ? 'event' : 'tema';
+  const jenis: JenisKelas = jenisDiminta(i);
   // Materi EVENT tak menempati posisi kurikulum. `bulan_kurikulum = 0` adalah cara yang
   // SUDAH dipahami seluruh kode sebagai "tanpa posisi" (`posisiTema`/`statusTema` memeriksa
   // `bulan < 1`), jadi tak perlu bentuk khusus baru. Dinolkan DI SERVER, bukan hanya
@@ -163,9 +170,16 @@ export async function buatKelas(i: KelasInput): Promise<{ ok: boolean; error?: s
     const coba = await s.from('kelas_bermain').insert(baris).select(COLS_105).single();
     if (!coba.error) { updateTag('katalog'); return { ok: true, kelas: coba.data as unknown as KelasBermain }; }
     if (!kolom098Hilang(coba.error)) return { ok: false, error: pesanGalat(coba.error) };
-    // Kolom 0105 belum ada → coba lagi TANPA `jenis` saja. Materi event akan tersimpan
-    // sebagai tema biasa di lingkungan itu, dan itu jujur: tanpa kolomnya, pembedaannya
-    // memang belum bisa disimpan — lebih baik daripada penyimpanan yang gagal total.
+    // Kolom 0105 belum ada → coba lagi TANPA `jenis`, TAPI HANYA untuk materi 'tema'.
+    //
+    // 🐞 Cadangan versi pertama menyimpan materi EVENT sebagai tema biasa "supaya tak gagal
+    // total". Itu keliru arah: barisnya lahir dengan `jenis` bawaan 'tema' dan posisi 0/0,
+    // yaitu tema tanpa posisi — yang justru TERBUKA untuk semua orang tua. Materi yang admin
+    // tandai "bukan untuk pengguna" malah jadi yang paling mudah dilihat. Untuk EVENT,
+    // gagal-dengan-pesan-jelas lebih baik daripada tersimpan salah arti.
+    if (jenisDiminta(i) === 'event') {
+      return { ok: false, error: PESAN_JENIS_HILANG };
+    }
     {
       const tanpaJenis = { ...baris };
       delete (tanpaJenis as Record<string, unknown>).jenis;
@@ -188,6 +202,9 @@ export async function updateKelas(id: string, i: KelasInput): Promise<{ ok: bool
     const coba = await s.from('kelas_bermain').update(baris).eq('id', id).select(COLS_105).single();
     if (!coba.error) { updateTag('katalog'); return { ok: true, kelas: coba.data as unknown as KelasBermain }; }
     if (!kolom098Hilang(coba.error)) return { ok: false, error: pesanGalat(coba.error) };
+    if (jenisDiminta(i) === 'event') {
+      return { ok: false, error: PESAN_JENIS_HILANG };
+    }
     {
       const tanpaJenis = { ...baris };
       delete (tanpaJenis as Record<string, unknown>).jenis;

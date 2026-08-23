@@ -192,9 +192,19 @@ describe('statusTemaBracket', () => {
     expect(statusTemaBracket({ usia_min: 3, usia_max: 6, bulan_kurikulum: 1 }, ctx)).toBe('terbuka');
     expect(statusTemaBracket({ usia_min: 0, usia_max: 2, bulan_kurikulum: 1 }, ctx)).toBe('terkunci');
   });
-  it('tema tanpa bulan kurikulum dianggap terbuka (materi lama / migrasi belum jalan)', () => {
-    expect(statusTemaBracket({ kategori_usia_id: 'k4' }, ctx)).toBe('terbuka');
+  it('materi TANPA kategori & tanpa bulan dianggap terbuka (materi lama sebelum 0098)', () => {
+    // Kelonggaran ini memang untuk materi lama — dan materi lama tak punya kategori, jadi
+    // ia lewat jalur TANPA_BRACKET.
     expect(statusTemaBracket({ usia_min: 3, usia_max: 6 }, ctx)).toBe('terbuka');
+  });
+
+  it('tema BER-KATEGORI tanpa posisi TIDAK terbuka — ia baris yang salah simpan', () => {
+    // Baris ber-kategori dengan bulan 0 hanya bisa lahir dari kekeliruan penyimpanan (mis.
+    // materi EVENT yang tersimpan sebelum kolom `jenis` ada). Memperlakukannya sebagai
+    // terbuka membuat materi yang TIDAK dimaksudkan untuk orang tua melewati SELURUH
+    // penggerbangan kurikulum — justru jadi yang paling mudah dilihat.
+    expect(statusTemaBracket({ kategori_usia_id: 'k4' }, ctx)).toBe('terkunci');
+    expect(statusTemaBracket({ kategori_usia_id: 'k4', bulan_kurikulum: 0 }, ctx)).toBe('terkunci');
   });
   it('tanggal lahir kosong → usia tidak menyaring apa pun', () => {
     const tanpaLahir = konteksKurikulum({

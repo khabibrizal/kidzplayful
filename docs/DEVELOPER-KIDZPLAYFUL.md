@@ -949,7 +949,22 @@ Kenapa satu tabel, bukan tabel baru: bentuk materinya identik (aktivitas, bahan,
 
 **Duplikat event → tema** memakai mesin duplikat yang sudah ada; `RESET_SALINAN_TEMA` ditambahi `jenis: 'tema'`, jadi **salinan selalu menjadi tema** — termasuk (terutama) saat sumbernya event. Menyalin `jenis` sumber hanya akan menghasilkan event kedua, duplikat yang tak berguna bagi siapa pun. Dropdown-nya menandai sumber event (`🎪 EVENT · judul`), dan pesan sesudah menyalin menyebut hasilnya.
 
-**Cadangan pra-migrasi** berlapis: simpan gagal karena kolom `jenis` belum ada → ulangi tanpa kolom itu. Materi event akan tersimpan sebagai tema biasa di lingkungan itu, dan itu jujur — tanpa kolomnya pembedaannya memang belum bisa disimpan, dan itu lebih baik daripada penyimpanan yang gagal total.
+**🐞 Cadangan pra-migrasi versi pertama GAGAL KE ARAH YANG SALAH.** Rencananya: simpan gagal karena kolom `jenis` belum ada → ulangi tanpa kolom itu, "supaya tak gagal total". Terbukti keliru pada data sungguhan pemilik — probe menemukan baris ini:
+
+```
+tema  aktif  B0M0  kat=c5964a40  "FLY HIGH LITTLE EKSPLORER event offline"
+```
+
+Admin membuatnya sebagai EVENT (judulnya menyebut itu, dan posisinya ternolkan 0/0), tapi tersimpan `jenis = 'tema'` karena kolomnya belum ada saat itu. Hasilnya **tema tanpa posisi**, dan `bulan < 1` dulu berarti **'terbuka'** — jadi materi yang admin tandai "bukan untuk pengguna" justru menjadi yang paling mudah dilihat: ia melewati SELURUH penggerbangan kurikulum.
+
+Dua perbaikan:
+
+1. **Cadangan itu kini hanya berlaku untuk `jenis = 'tema'`.** Untuk EVENT, penyimpanan **ditolak dengan pesan yang menyebut migrasinya** (`0105_kelas_jenis.sql`). Gagal-dengan-pesan-jelas lebih baik daripada tersimpan salah arti — "jangan gagal total" bukan alasan yang sah bila kegagalannya membuka konten.
+2. **Tema BER-KATEGORI tanpa posisi tidak lagi dianggap terbuka.** Kelonggaran "tanpa posisi = terbuka" memang untuk materi lama sebelum 0098 — dan materi lama itu **tak punya kategori**, jadi ia lewat jalur `TANPA_BRACKET`, bukan jalur ini. Baris ber-kategori dengan bulan 0 hanya bisa lahir dari kekeliruan penyimpanan.
+
+Tes lama yang mengunci perilaku itu ("tema tanpa bulan kurikulum dianggap terbuka") dipecah dua: yang **tanpa kategori** tetap terbuka, yang **ber-kategori** kini terkunci. Uji daya gigit: mengembalikannya ke `'terbuka'` menjatuhkan tes itu.
+
+> **Pelajaran:** saat memilih arah cadangan, tanya **apa yang bocor bila salah**, bukan hanya "apa yang rusak bila gagal". Cadangan yang membuka akses selalu lebih berbahaya daripada cadangan yang menolak menyimpan.
 
 Uji daya gigit: salinan dibuat mewarisi `jenis` sumber → 1 tes jatuh. Tes kelengkapan "setiap field sumber ikut tersalin" ikut menangkap munculnya field baru — fixture-nya lalu diubah menjadi materi event, sehingga kasus nyatanya yang diuji.
 

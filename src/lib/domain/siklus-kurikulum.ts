@@ -296,7 +296,15 @@ export function statusTemaBracket(tema: TemaBracket, ctx: KonteksKurikulum): Sta
   // Kategori yang belum pernah dijalani anak ini (dan bukan kategorinya sekarang) tertutup
   // seluruhnya — termasuk materi lama tanpa nomor bulan.
   if (capai === 0 && kat !== ctx.bracket) return 'terkunci';
-  if (bulan < 1) return 'terbuka';
+  // 🐞 Tema BER-KATEGORI tanpa posisi (bulan < 1) TIDAK dianggap terbuka.
+  //
+  // "Tanpa posisi = terbuka" adalah kelonggaran untuk materi LAMA dari sebelum 0098 — dan
+  // materi lama itu tak punya kategori, jadi ia lewat jalur TANPA_BRACKET di atas, bukan
+  // jalur ini. Baris ber-kategori dengan bulan 0 hanya bisa lahir dari kekeliruan
+  // penyimpanan (mis. materi EVENT yang tersimpan sebelum kolom `jenis` ada), dan
+  // memperlakukannya sebagai terbuka membuat materi yang TIDAK dimaksudkan untuk orang tua
+  // melewati SELURUH penggerbangan kurikulum.
+  if (bulan < 1) return 'terkunci';
   if (bulan <= capai) return 'terbuka';
   // Judul bulan depan hanya diperlihatkan untuk kategori yang SEDANG dijalani; kategori
   // lama tak punya "bulan depan" — anak itu sudah meninggalkannya. Termasuk keadaan
