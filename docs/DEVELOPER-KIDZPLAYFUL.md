@@ -782,7 +782,40 @@ Sisi orang tua. **Gerbang "khusus member aktif" sudah DICABUT** (sub-proyek B): 
 - **Tema tanpa `bulan_kurikulum` dianggap TERBUKA** (materi lama / migrasi belum jalan). Default yang salah arah di sini akan mengunci konten yang tadinya jalan — dan itu terbaca sebagai fitur dicabut.
 - Mode Anak **tidak** menampilkan judul bulan depan sama sekali: judul-saja adalah bahasa untuk orang tua; bagi anak ia cuma pintu yang tak bisa dibuka.
 
-#### 🐞 "Anak berlangganan tapi SEMUA tema tertutup" — dua sebab sekaligus
+#### 🐞 AKAR MASALAH: rentang kategori usia BERTUMPUK di tahun batasnya
+
+Setelah dua dugaan pertama (lihat di bawah) tak cocok dengan data, master `kategori_usia` sungguhan pemilik menjawabnya:
+
+| Kategori | Rentang |
+|---|---|
+| Baby | 0–1 |
+| Batita | 1–3 |
+| Balita | 3–5 |
+| Early Childhood | 5–6 |
+| Middle Childhood | 6–9 |
+| Late Childhood | 9–12 |
+
+**Setiap tahun batas diklaim DUA kategori** (1, 3, 5, 6, 9). `cocokUsia` inklusif di kedua ujung, jadi tumpang tindih itu tak terhindarkan dengan penomoran seperti ini. `bracketUntukUmur` harus memilih salah satu, dan aturannya "yang paling SEMPIT menang" — aturan yang saya pilih sendiri dan ternyata **sewenang-wenang untuk bracket usia**:
+
+```
+ 5 th -> Early Childhood (5-6)    (menang atas Balita 3-5: span 1 < 2)
+ 6 th -> Early Childhood (5-6)    (menang atas Middle Childhood 6-9)   <-- BUG
+ 3 th -> Batita (1-3)             (seri span 2, dipecah usia_min)
+```
+
+Anak **Alesha, 6 th**, karenanya mendarat di **Early Childhood (5–6)** — sedangkan satu-satunya tema untuknya ditaruh admin di **Middle Childhood (6–9)**. Early Childhood kosong → **seluruh tema terkunci**. Terbukti dengan menjalankan `konteksKurikulum` + `statusTemaBracket` memakai master & data anak sungguhan.
+
+Perhatikan aturannya bahkan **tidak konsisten arah**: di usia 3 yang menang kategori BAWAH (Batita), di usia 5 & 6 yang menang kategori ATAS. Itu tanda bahwa "paling sempit" bukan aturan yang tepat — tapi selama rentangnya bertumpuk, aturan mana pun akan mengejutkan sebagian orang. **Data yang ambigu tak bisa diselamatkan aturan tie-break.**
+
+**Yang bisa dilakukan kode: MEMPERLIHATKANNYA.** `domain/kategori-usia.ts` (murni & diuji) + halaman `/admin/kategori-usia` kini menampilkan:
+
+- **⚠️ daftar rentang yang bertumpuk**, beserta tahun yang diperebutkan **dan kategori mana yang benar-benar menang** — daftar tumpang tindih tanpa menyebut pemenangnya masih menyisakan tebak-tebakan;
+- **🛑 kategori yang belum punya Ide Bermain** — anak yang mendarat di sana tak melihat satu tema pun walau berlangganan;
+- **🧭 peta umur 0–12 → kategori yang benar-benar dipakai**, dihitung dengan aturan yang sama persis dengan halaman anak. Satu-satunya cara memastikan anak berumur N mendarat di kategori yang dimaksud adalah MELIHATNYA, bukan menyimpulkannya dari rentang yang tertulis.
+
+> **Pelajaran:** master data yang menentukan hak akses wajib punya **pemeriksa kesehatannya sendiri di halaman adminnya**. Tanpa itu, kekeliruan konfigurasi hanya muncul sebagai keluhan pengguna berbulan-bulan kemudian — dan terbaca sebagai bug kode, bukan sebagai data yang perlu dirapikan.
+
+#### 🐞 "Anak berlangganan tapi SEMUA tema tertutup" — dua dugaan awal yang ikut diperbaiki
 
 Dilaporkan pemilik: anak kategori 6–9 th sudah berlangganan Preschool, tapi di Main Hari Ini **seluruh tema terkunci**. Ada tema untuk kategori 6–9 di Bulan 1 Minggu 1, jadi ia semestinya terbuka. Penelusuran memakai data live menemukan **dua** cacat, bukan satu.
 

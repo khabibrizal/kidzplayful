@@ -368,7 +368,16 @@ Ide Bermain kini berjalan sebagai **kurikulum per ANAK**, bukan daftar materi le
 - **Posisi tema (bulan & minggu) terisi otomatis per kategori usia.** Admin memilih kategori, sistem menaruhnya di slot bebas pertama — minggu 1–4, lalu pindah bulan. Satu kategori + bulan + minggu hanya boleh dimiliki satu tema, tapi Bayi dan Prasekolah boleh sama-sama punya Bulan 1 Minggu 1 (kurikulum yang berbeda).
 - **⧉ Duplikat: satu tema untuk beberapa kategori usia.** Pilih tema yang sudah ada dari dropdown di `/admin/kelas-bermain`, tekan Duplikat — form terisi seluruh isinya (judul, tujuan, bahan, aktivitas beserta butir evaluasi & game-nya), **kecuali kategori usia dan posisinya** yang memang harus baru. Admin lalu memilih kategori tujuan dan menyesuaikan aktivitasnya. Belum tersimpan sampai Simpan ditekan.
 
-### ⚠️ Kategori usia sebaiknya tidak berlubang
+### ⚠️ Kategori usia: jangan berlubang, jangan bertumpuk
+Halaman **👶 Master Kategori Usia** kini memeriksa dirinya sendiri dan menampilkan tiga hal:
+
+1. **Rentang yang bertumpuk.** Kalau "Early Childhood (5–6)" dan "Middle Childhood (6–9)" sama-sama memuat usia 6, sistem harus memilih salah satu — dan anak 6 th akan mendarat di **Early Childhood**. Tema yang Anda taruh di Middle Childhood **tak akan terlihat olehnya**. Halaman itu menyebutkan pemenangnya secara eksplisit.
+2. **Kategori yang belum punya Ide Bermain.** Anak yang mendarat di sana tak melihat satu tema pun walau sudah berlangganan.
+3. **Peta umur 0–12 → kategori yang benar-benar dipakai**, dihitung dengan aturan yang sama persis dengan halaman anak.
+
+**Anjuran:** buat rentangnya **bersambung tanpa tumpuk** — mis. 0–1, 2–3, 4–5, 6–9, 10–12 — dan pastikan tiap kategori yang dipakai anak punya minimal satu tema.
+
+
 Tema dicocokkan dengan **kategori usia** anak. Kalau daftar kategori berlubang — misalnya hanya ada **1–3 th** dan **6–9 th** — maka anak berusia **4–5 tahun tidak masuk kategori mana pun**, dan tak ada satu pun tema yang terbuka untuknya walau ia berlangganan.
 
 Aplikasi kini **mengatakan** keadaan itu ("Belum ada tema untuk usia ‹nama›"), tapi jalan keluarnya ada di sisi Anda: di menu **👶 Kategori Usia**, pastikan rentangnya **bersambung tanpa celah** (mis. 0–2, 3–5, 6–9) dan tiap kategori yang dipakai anak punya minimal satu tema.
