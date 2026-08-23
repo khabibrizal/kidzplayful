@@ -190,7 +190,17 @@ export interface KelasBermain {
   urutan?: number;               // 0098 — urutan tampil di dalam bulan itu
   status: 'aktif' | 'nonaktif';
   boleh_trial?: boolean;
+  /**
+   * 0105 — peruntukan materi ini.
+   *   'tema'  = materi kurikulum: tampil ke orang tua & menempati posisi bulan/minggu;
+   *   'event' = bahan event offline: TIDAK tampil, dan TIDAK menempati posisi kurikulum.
+   * Absen (migrasi 0105 belum jalan) dianggap 'tema' — itulah perilaku sebelumnya.
+   */
+  jenis?: JenisKelas;
 }
+
+/** 0105 — peruntukan materi Ide Bermain. */
+export type JenisKelas = 'tema' | 'event';
 
 /** 0098 — satu butir checklist evaluasi yang TERSIMPAN (snapshot kalimatnya). */
 export interface ButirEvaluasiTersimpan { aktivitas: string; butir: string; tercapai: boolean }

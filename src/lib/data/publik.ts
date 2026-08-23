@@ -20,6 +20,9 @@ const K_089 = `${K},worksheet_terbuka`;
 // Kolom migrasi 0098 (kurikulum bulanan). URUTANNYA pun ikut berubah, jadi ini tak cukup
 // ditangani `pilihToleran` yang hanya menukar daftar kolom — lihat `getKelasAktifCached`.
 const K_098 = `${K_089},bulan_kurikulum,urutan,kategori_usia_id`;
+// Kolom migrasi 0105. Materi berjenis 'event' TIDAK ikut katalog pengguna — ia bahan event
+// offline, bukan kurikulum.
+const K_105 = `${K_098},jenis`;
 
 /**
  * Coba `select` dengan kolom baru; bila gagal (mis. 42703 karena migrasi 0089 belum
@@ -61,6 +64,13 @@ export const getKelasAktifCached = unstable_cache(
     // `order('bulan_kurikulum')` ikut gagal — bukan hanya `select`-nya — jadi cadangannya
     // memakai urutan lama (created_at). Tema tanpa `bulan_kurikulum` dianggap TERBUKA oleh
     // `statusTema`, sehingga katalog tetap utuh sampai migrasinya dijalankan.
+    // 0105: saring `jenis = 'tema'` DI QUERY, bukan di kode — materi event tak boleh ikut
+    // ter-cache lalu tersaring di tiap pemanggil; satu pemanggil yang lupa menyaring sudah
+    // cukup untuk membocorkannya ke halaman anak.
+    const j105 = await anon.from('kelas_bermain').select(K_105)
+      .eq('status', 'aktif').eq('jenis', 'tema')
+      .order('bulan_kurikulum', { ascending: true }).order('urutan', { ascending: true });
+    if (!j105.error) return (j105.data ?? []) as unknown as KelasBermain[];
     const baru = await anon.from('kelas_bermain').select(K_098).eq('status', 'aktif')
       .order('bulan_kurikulum', { ascending: true }).order('urutan', { ascending: true });
     if (!baru.error) return (baru.data ?? []) as unknown as KelasBermain[];

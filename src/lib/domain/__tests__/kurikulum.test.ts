@@ -269,6 +269,7 @@ describe('salinTemaKeKategoriLain', () => {
     sampulUrl: 'https://x/kelas/1.webp',
     fokusArea: ['Motorik Halus', 'Kognitif'],
     peranOrtu: 'Dampingi anak',
+    jenis: 'event',              // 0105 — sumbernya materi EVENT
     kategoriUsiaId: 'kat-bayi',
     usiaMin: 0,
     usiaMax: 2,
@@ -298,6 +299,14 @@ describe('salinTemaKeKategoriLain', () => {
     expect(salinan.aktivitas).toEqual(sumber.aktivitas);
     expect(salinan.linkIde).toBe('https://ide');
     expect(salinan.worksheetUrl).toBe('https://x/worksheet/1.pdf');
+  });
+
+  it('materi EVENT yang diduplikat SELALU menjadi tema (0105)', () => {
+    // Alur yang diminta pemilik: event selesai → materinya diduplikat jadi tema baru, dan
+    // salinan itulah yang menempati posisi bulan/minggu. Menyalin `jenis` sumber hanya akan
+    // menghasilkan event kedua.
+    expect(sumber.jenis).toBe('event');
+    expect(salinTemaKeKategoriLain(sumber).jenis).toBe('tema');
   });
 
   it('TIDAK membawa kategori usia \u2014 itulah gunanya duplikat ini', () => {

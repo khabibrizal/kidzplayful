@@ -4,16 +4,22 @@ const COLS = 'id,judul,sampul_url,tujuan,fokus_area,peran_ortu,usia_min,usia_max
 // Kolom 0098 dibaca dengan CADANGAN: halaman admin tak boleh mati bila migrasinya
 // belum dijalankan di lingkungan tertentu.
 const COLS_098 = `${COLS},bulan_kurikulum,urutan,kategori_usia_id`;
+// 0105 — `jenis`. Halaman admin memang perlu MELIHAT materi event, jadi tak ada penyaringan
+// di sini; yang menyaring adalah katalog pengguna (`publik.ts`).
+const COLS_105 = `${COLS_098},jenis`;
 
 async function ambilKelas(urut: 'kurikulum' | 'baru', hanyaAktif: boolean): Promise<KelasBermain[]> {
   const s = await createClient();
-  const dasar = () => {
+  const dasar = (cols: string) => {
     const q = s.from('kelas_bermain');
-    return hanyaAktif ? q.select(COLS_098).eq('status', 'aktif') : q.select(COLS_098);
+    return hanyaAktif ? q.select(cols).eq('status', 'aktif') : q.select(cols);
   };
-  const coba = urut === 'kurikulum'
-    ? await dasar().order('bulan_kurikulum', { ascending: true }).order('urutan', { ascending: true })
-    : await dasar().order('created_at', { ascending: false });
+  const urutkan = (cols: string) => (urut === 'kurikulum'
+    ? dasar(cols).order('bulan_kurikulum', { ascending: true }).order('urutan', { ascending: true })
+    : dasar(cols).order('created_at', { ascending: false }));
+  const j105 = await urutkan(COLS_105);
+  if (!j105.error) return (j105.data ?? []) as unknown as KelasBermain[];
+  const coba = await urutkan(COLS_098);
   if (!coba.error) return (coba.data ?? []) as unknown as KelasBermain[];
   const q2 = s.from('kelas_bermain');
   const mundur = hanyaAktif

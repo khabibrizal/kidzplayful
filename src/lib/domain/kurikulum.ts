@@ -155,6 +155,11 @@ export const RESET_SALINAN_TEMA = {
   usiaMax: 6,
   bulanKurikulum: 1,
   urutan: 1,
+  // 0105 — salinan SELALU menjadi 'tema', termasuk (terutama) saat sumbernya materi EVENT.
+  // Itulah alur yang diminta pemilik: event selesai → materinya diduplikat jadi tema baru,
+  // dan salinan itulah yang menempati posisi bulan/minggu. Menyalin `jenis` sumber akan
+  // menghasilkan event kedua — duplikat yang tak berguna bagi siapa pun.
+  jenis: 'tema',
 } as const;
 
 /**

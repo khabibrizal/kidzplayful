@@ -918,6 +918,30 @@ Keputusan lain yang sengaja diambil:
 
 > **🐞 Cacat tata letak yang tertangkap saat verifikasi visual:** tombol `Reset` menjorok keluar dari kartu filter. Sebabnya `.kp-btn` punya **bayangan solid 6px di LUAR kotak elemen** (`box-shadow: 0 6px 0`), sedangkan padding kartu saya setel 10px. Padding bawah dinaikkan ke 18px. Pelajarannya: setiap kali `.kp-btn` ditaruh di wadah ber-padding kecil, sisakan ruang untuk bayangannya — `tsc` dan `build` tak akan pernah menangkap ini.
 
+#### 🎪 Materi EVENT vs TEMA kurikulum (0105)
+
+Satu tempat menyusun materi, dua peruntukan. Radio button di form Ide Bermain:
+
+| `jenis` | Tampil ke pengguna | Menempati posisi kurikulum |
+|---|---|---|
+| `'tema'` | ya | ya — satu (kategori, bulan, minggu) |
+| `'event'` | **tidak** | **tidak** |
+
+Kenapa satu tabel, bukan tabel baru: bentuk materinya identik (aktivitas, bahan, butir evaluasi, worksheet, sampul), begitu pula form & aksi adminnya. Tabel kedua berarti dua salinan dari semua itu — dan fitur duplikat event→tema justru akan menyeberangi tabel.
+
+**Empat tempat yang harus sepakat**, dan masing-masing punya alasan sendiri:
+
+1. **Indeks unik posisi** (`kelas_kurikulum_posisi_kategori`) diberi predikat `and jenis = 'tema'`. Tanpa itu materi event **menempati slot minggu** — admin kehabisan minggu di sebuah bulan tanpa alasan yang terlihat.
+2. **Katalog pengguna menyaring DI QUERY**, bukan di kode: `getKelasAktifCached` menambahkan `.eq('jenis', 'tema')`. Kalau disaring di tiap pemanggil, satu pemanggil yang lupa sudah cukup untuk membocorkan materi event ke halaman anak — dan `getKelasAktifCached` dipakai 7 tempat.
+3. **Server MENOLKAN posisinya** (`bulan_kurikulum = 0, urutan = 0`) untuk event, bukan hanya menyembunyikan field-nya di form. Form yang tak menampilkan sebuah field tetap bisa mengirim nilainya. Angka 0 dipilih karena itu bentuk yang **sudah** dipahami seluruh kode sebagai "tanpa posisi" (`posisiTema`/`statusTema` memeriksa `bulan < 1`) — tak perlu bentuk khusus baru.
+4. **Penghitung admin mengabaikan event**: peringatan "4 tema/bulan", daftar minggu terpakai, dan `posisiBerikutnya` semuanya lewat `isTema()`.
+
+**Duplikat event → tema** memakai mesin duplikat yang sudah ada; `RESET_SALINAN_TEMA` ditambahi `jenis: 'tema'`, jadi **salinan selalu menjadi tema** — termasuk (terutama) saat sumbernya event. Menyalin `jenis` sumber hanya akan menghasilkan event kedua, duplikat yang tak berguna bagi siapa pun. Dropdown-nya menandai sumber event (`🎪 EVENT · judul`), dan pesan sesudah menyalin menyebut hasilnya.
+
+**Cadangan pra-migrasi** berlapis: simpan gagal karena kolom `jenis` belum ada → ulangi tanpa kolom itu. Materi event akan tersimpan sebagai tema biasa di lingkungan itu, dan itu jujur — tanpa kolomnya pembedaannya memang belum bisa disimpan, dan itu lebih baik daripada penyimpanan yang gagal total.
+
+Uji daya gigit: salinan dibuat mewarisi `jenis` sumber → 1 tes jatuh. Tes kelengkapan "setiap field sumber ikut tersalin" ikut menangkap munculnya field baru — fixture-nya lalu diubah menjadi materi event, sehingga kasus nyatanya yang diuji.
+
 #### 🐞 Bayaran membatasi TOTAL bulan, bukan per kategori
 
 Ditemukan saat memverifikasi permintaan pemilik ("anak pindah kategori → mulai dari bulan ke-1"). Aturan pindah-kategorinya **memang sudah benar**, tapi batas bayarnya bocor:

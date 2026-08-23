@@ -17,6 +17,7 @@ const KOSONG: KelasInput = {
   kategoriUsiaId: '',
   usiaMin: 0,
   usiaMax: 6,
+  jenis: 'tema',
   bahan: [{ nama: '', link: '', produkId: '' }],
   aktivitas: [{ judul: '', caraMembuat: '', langkah: [''], catatanOrtu: '', evaluasi: [], gamePaketId: '' }],
   linkIde: '',
@@ -71,9 +72,12 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
   // dan Prasekolah berjalan sendiri-sendiri, jadi "bulan 1 sudah 4 tema" pada yang satu
   // tak berarti apa pun bagi yang lain.
   const namaKategori = (id: string) => kategoriOpsi.find((x) => x.id === id)?.nama ?? 'tanpa kategori usia';
+  // 0105 — materi EVENT tak menempati posisi kurikulum, jadi ia tak ikut dihitung di mana
+  // pun: tidak di peringatan "4 tema/bulan", tidak di slot terpakai, tidak di posisi otomatis.
+  const isTema = (k: KelasBermain) => k.jenis !== 'event';
   const perBulan = new Map<string, number>();
   for (const k of list) {
-    if (k.status !== 'aktif' || typeof k.bulan_kurikulum !== 'number') continue;
+    if (!isTema(k) || k.status !== 'aktif' || typeof k.bulan_kurikulum !== 'number' || k.bulan_kurikulum < 1) continue;
     const kunci = `${k.kategori_usia_id ?? ''}|${k.bulan_kurikulum}`;
     perBulan.set(kunci, (perBulan.get(kunci) ?? 0) + 1);
   }
@@ -85,7 +89,7 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
   // Posisi kurikulum dihitung PER KATEGORI USIA, bukan global (materi yang sedang diedit
   // tak dihitung — ia berhak mempertahankan posisinya sendiri).
   const dipakaiKategori = (kategoriId: string) => list.filter((k) =>
-    k.status === 'aktif' && k.id !== editId && (k.kategori_usia_id ?? '') === kategoriId);
+    isTema(k) && k.status === 'aktif' && k.id !== editId && (k.kategori_usia_id ?? '') === kategoriId);
   const posisiOtomatis = (kategoriId: string) => posisiBerikutnya(dipakaiKategori(kategoriId));
   // Judul kembar DI KATEGORI YANG SAMA hampir selalu tak disengaja: duplikat ini gunanya
   // memindahkan satu tema ke kategori LAIN. Diperingatkan, bukan dilarang — admin boleh
@@ -155,6 +159,8 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
       // Materi lama belum punya kolom 0098 → bawaan bulan ke-1, bukan 0 (bulan 0 tak ada).
       bulanKurikulum: k.bulan_kurikulum ?? 1,
       urutan: k.urutan ?? 0,
+      // 0105 — absen dianggap 'tema': itulah perilaku sebelum kolomnya ada.
+      jenis: k.jenis === 'event' ? 'event' : 'tema',
     };
   }
   function bukaEdit(k: KelasBermain) {
@@ -183,7 +189,9 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
     setAsalSalinan(sumber.judul);
     setBukaKe((n) => n + 1);
     setForm(salinTemaKeKategoriLain(dariRow(sumber)));
-    flash(`Disalin dari “${sumber.judul}” — pilih kategori usianya, lalu sesuaikan aktivitasnya ✓`);
+    flash(sumber.jenis === 'event'
+      ? `Materi event “${sumber.judul}” disalin menjadi TEMA baru — pilih kategori usianya, lalu sesuaikan aktivitasnya ✓`
+      : `Disalin dari “${sumber.judul}” — pilih kategori usianya, lalu sesuaikan aktivitasnya ✓`);
   }
 
   // --- helper update nested state ---
@@ -312,10 +320,10 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
       {list.length > 0 && (
         <div className={s.row} style={{ gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
           <select className={s.inp} value={dariTema} onChange={(e) => setDariTema(e.target.value)} style={{ flex: 1, minWidth: 200, marginBottom: 0 }}>
-            <option value="">— Duplikat tema yang sudah ada, untuk kategori usia lain —</option>
+            <option value="">— Duplikat materi yang sudah ada (jadi TEMA baru) —</option>
             {list.map((k) => (
               <option key={k.id} value={k.id}>
-                {k.judul} — {namaKategori(k.kategori_usia_id ?? '')}{k.status === 'nonaktif' ? ' (nonaktif)' : ''}
+                {isTema(k) ? '' : '🎪 EVENT · '}{k.judul} — {namaKategori(k.kategori_usia_id ?? '')}{k.status === 'nonaktif' ? ' (nonaktif)' : ''}
               </option>
             ))}
           </select>
@@ -333,6 +341,24 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
               ⧉ salinan dari “{asalSalinan}” — pilih <b>kategori usia</b> tujuannya, lalu sesuaikan aktivitasnya. Belum tersimpan sampai Anda menekan Simpan.
             </div>
           )}
+
+          {/* 0105 — peruntukan materi. Ditaruh PALING ATAS karena ia mengubah arti field di
+              bawahnya: materi event tak punya posisi kurikulum sama sekali. */}
+          <div className={s.row} style={{ gap: 14, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
+            <span className={s.muted} style={{ fontSize: 12 }}>Untuk apa materi ini?</span>
+            {([['tema', '🎈 Tema kurikulum'], ['event', '🎪 Materi event offline']] as const).map(([nilai, label]) => (
+              <label key={nilai} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, cursor: 'pointer' }}>
+                <input type="radio" name="jenis" checked={form.jenis === nilai}
+                  onChange={() => setForm({ ...form, jenis: nilai })} />
+                {label}
+              </label>
+            ))}
+          </div>
+          <div className={s.muted} style={{ fontSize: 11, marginBottom: 4 }}>
+            {form.jenis === 'event'
+              ? '🎪 Tidak tampil di Ide Bermain dan tidak menempati posisi kurikulum. Sesudah event-nya selesai, materinya bisa diduplikat menjadi tema baru.'
+              : '🎈 Tampil ke orang tua & anak, dan menempati satu posisi (bulan ke-N · minggu ke-M) di kategori usianya.'}
+          </div>
 
           <input className={s.inp} placeholder="Judul kelas" value={form.judul} onChange={(e) => setForm({ ...form, judul: e.target.value })} style={{ width: '100%', marginTop: 8 }} />
 
@@ -394,6 +420,11 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
 
           {/* KURIKULUM: bulan keberapa tema ini terbuka untuk seorang anak. Ditulis
               eksplisit, bukan diturunkan dari urutan — lihat 0098. */}
+          {form.jenis === 'event' ? (
+            <div className={s.muted} style={{ fontSize: 12 }}>
+              📚 Posisi kurikulum tak berlaku untuk materi event — ia tak menghabiskan slot minggu mana pun.
+            </div>
+          ) : (<>
           {/* Posisi kurikulum DIISI OTOMATIS mengikuti kategori usia: bulan 1 minggu 1..4,
               lalu bulan 2 minggu 1, dst. Tetap bisa digeser manual bila admin memang ingin
               menaruh tema di slot tertentu — nilainya dijepit 1..4 di server juga. */}
@@ -441,6 +472,7 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
               )}
             </div>
           )}
+          </>)}
 
           {/* FOKUS AREA + PERAN ORTU */}
           <div className={s.muted} style={{ margin: '10px 0 4px', fontSize: 12 }}>🧩 Fokus area perkembangan (bisa pilih lebih dari satu — kelola daftarnya di menu 🧩 Fokus Area):</div>
@@ -548,9 +580,11 @@ export default function KelasAdmin({ awal, produkOpsi = [], areaOpsi = [], opsiG
       {tampil.map((k) => (
         <div key={k.id} className={s.card} style={{ opacity: k.status === 'nonaktif' ? 0.55 : 1 }}>
           <div className={s.row}>
-            <span style={{ flex: 1 }}><b>{k.judul}</b> {k.status === 'nonaktif' && <span className={`${s.tag} ${s.tagDraf}`}>nonaktif</span>}
+            <span style={{ flex: 1 }}>
+              {!isTema(k) && <span className={s.tag} style={{ background: '#ffe9d6', color: '#9a5b33', marginRight: 4 }}>🎪 EVENT</span>}
+              <b>{k.judul}</b> {k.status === 'nonaktif' && <span className={`${s.tag} ${s.tagDraf}`}>nonaktif</span>}
               {k.boleh_trial === false && <span className={`${s.tag} ${s.tagDraf}`} style={{ marginLeft: 4 }}>🔒 non-trial</span>}
-              <br /><small className={s.muted}>🧸 {namaKategori(k.kategori_usia_id ?? '')} · 👶 {k.usia_min ?? 0}–{k.usia_max ?? 6} th{typeof k.bulan_kurikulum === 'number' ? ` · 📚 bulan ke-${k.bulan_kurikulum} minggu ke-${k.urutan ?? 1}` : ''}</small>
+              <br /><small className={s.muted}>🧸 {namaKategori(k.kategori_usia_id ?? '')} · 👶 {k.usia_min ?? 0}–{k.usia_max ?? 6} th{isTema(k) && typeof k.bulan_kurikulum === 'number' && k.bulan_kurikulum >= 1 ? ` · 📚 bulan ke-${k.bulan_kurikulum} minggu ke-${k.urutan ?? 1}` : ''}{!isTema(k) ? ' · tak menempati posisi kurikulum' : ''}</small>
             </span>
           </div>
           <div className={s.row} style={{ marginTop: 8, flexWrap: 'wrap' }}>

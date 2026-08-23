@@ -1,7 +1,7 @@
 'use server';
 import { updateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-import type { KelasBermain } from '@/lib/game/tipe';
+import type { KelasBermain, JenisKelas } from '@/lib/game/tipe';
 import { MAKS_URUTAN_BULAN } from '@/lib/domain/kurikulum';
 
 export interface BahanInput { nama: string; link: string; produkId: string }
@@ -30,14 +30,17 @@ export interface KelasInput {
   bulanKurikulum: number;
   /** 0098 — urutan tampil di dalam bulan itu */
   urutan: number;
+  /** 0105 — 'tema' (kurikulum) atau 'event' (bahan event offline) */
+  jenis: JenisKelas;
 }
 const COLS = 'id,judul,sampul_url,tujuan,fokus_area,peran_ortu,usia_min,usia_max,aktivitas,bahan,link_ide,worksheet_url,status';
 const COLS_098 = `${COLS},bulan_kurikulum,urutan,kategori_usia_id`;
+const COLS_105 = `${COLS_098},jenis`;
 /** Galat karena kolom 0098 belum ada. `evaluasi`/`game_paket_id` TIDAK ikut: keduanya di
  *  dalam jsonb `aktivitas`, jadi tak pernah memicu galat kolom. */
 function kolom098Hilang(e: { code?: string; message?: string } | null): boolean {
   if (!e) return false;
-  return e.code === '42703' || /bulan_kurikulum|urutan|kategori_usia_id/.test(e.message ?? '');
+  return e.code === '42703' || /bulan_kurikulum|urutan|kategori_usia_id|jenis/.test(e.message ?? '');
 }
 
 /**
@@ -128,6 +131,15 @@ function row(i: KelasInput) {
 }
 /** Kolom 0098 dipisah supaya bisa dibuang saat retry bila migrasinya belum jalan. */
 function row098(i: KelasInput) {
+  const jenis: JenisKelas = i.jenis === 'event' ? 'event' : 'tema';
+  // Materi EVENT tak menempati posisi kurikulum. `bulan_kurikulum = 0` adalah cara yang
+  // SUDAH dipahami seluruh kode sebagai "tanpa posisi" (`posisiTema`/`statusTema` memeriksa
+  // `bulan < 1`), jadi tak perlu bentuk khusus baru. Dinolkan DI SERVER, bukan hanya
+  // disembunyikan di form: form yang tak menampilkan sebuah field tetap bisa mengirim
+  // nilainya, dan event yang menempati slot akan menghabiskan minggu tanpa terlihat.
+  if (jenis === 'event') {
+    return { bulan_kurikulum: 0, urutan: 0, kategori_usia_id: i.kategoriUsiaId?.trim() || null, jenis };
+  }
   return {
     bulan_kurikulum: Math.max(1, Math.floor(Number(i.bulanKurikulum) || 1)),
     // Urutan = MINGGU ke-1..4. Dijepit di server juga, bukan hanya di form: satu bulan
@@ -138,6 +150,7 @@ function row098(i: KelasInput) {
     // migrasinya belum jalan. '' → null: "belum dipilih" harus jadi ketiadaan, bukan
     // string kosong yang nanti dikira id.
     kategori_usia_id: i.kategoriUsiaId?.trim() || null,
+    jenis,
   };
 }
 // buat/update MENGEMBALIKAN {ok,error,kelas} (bukan throw) agar pesan error DB
@@ -147,9 +160,18 @@ export async function buatKelas(i: KelasInput): Promise<{ ok: boolean; error?: s
     const s = await adminDb();
     if (!i.judul.trim()) return { ok: false, error: 'Judul wajib diisi.' };
     const baris = await denganRentangKategori(s, { ...row(i), ...row098(i) });
-    const coba = await s.from('kelas_bermain').insert(baris).select(COLS_098).single();
+    const coba = await s.from('kelas_bermain').insert(baris).select(COLS_105).single();
     if (!coba.error) { updateTag('katalog'); return { ok: true, kelas: coba.data as unknown as KelasBermain }; }
     if (!kolom098Hilang(coba.error)) return { ok: false, error: pesanGalat(coba.error) };
+    // Kolom 0105 belum ada → coba lagi TANPA `jenis` saja. Materi event akan tersimpan
+    // sebagai tema biasa di lingkungan itu, dan itu jujur: tanpa kolomnya, pembedaannya
+    // memang belum bisa disimpan — lebih baik daripada penyimpanan yang gagal total.
+    {
+      const tanpaJenis = { ...baris };
+      delete (tanpaJenis as Record<string, unknown>).jenis;
+      const lagi = await s.from('kelas_bermain').insert(tanpaJenis).select(COLS_098).single();
+      if (!lagi.error) { updateTag('katalog'); return { ok: true, kelas: lagi.data as unknown as KelasBermain }; }
+    }
     // Migrasi 0098 belum jalan → simpan tanpa kolom kurikulum, jangan gagalkan materinya.
     const { data, error } = await s.from('kelas_bermain').insert(row(i)).select(COLS).single();
     if (error) return { ok: false, error: pesanGalat(error) };
@@ -163,9 +185,15 @@ export async function updateKelas(id: string, i: KelasInput): Promise<{ ok: bool
   try {
     const s = await adminDb();
     const baris = await denganRentangKategori(s, { ...row(i), ...row098(i) });
-    const coba = await s.from('kelas_bermain').update(baris).eq('id', id).select(COLS_098).single();
+    const coba = await s.from('kelas_bermain').update(baris).eq('id', id).select(COLS_105).single();
     if (!coba.error) { updateTag('katalog'); return { ok: true, kelas: coba.data as unknown as KelasBermain }; }
     if (!kolom098Hilang(coba.error)) return { ok: false, error: pesanGalat(coba.error) };
+    {
+      const tanpaJenis = { ...baris };
+      delete (tanpaJenis as Record<string, unknown>).jenis;
+      const lagi = await s.from('kelas_bermain').update(tanpaJenis).eq('id', id).select(COLS_098).single();
+      if (!lagi.error) { updateTag('katalog'); return { ok: true, kelas: lagi.data as unknown as KelasBermain }; }
+    }
     const { data, error } = await s.from('kelas_bermain').update(row(i)).eq('id', id).select(COLS).single();
     if (error) return { ok: false, error: pesanGalat(error) };
     updateTag('katalog');
