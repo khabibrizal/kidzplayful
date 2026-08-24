@@ -22,13 +22,42 @@ import { rapikanDaftar } from './domain/laporan-bulanan';
 const W = 3508;                              // lebar ruang gambar (satuan logis)
 const SKALA = 2480 / W;                      // logis -> piksel (2480 px = lebar A4 portrait)
 const H_HAL = Math.round(3508 / SKALA);      // tinggi SATU halaman dalam satuan logis
-const HITAM = '#000000';
-const UNGU = '#6b4fb0';
-const ABU = '#6b6b7b';
+// Palet diambil dari mockup rapor (`rapor_mockup.html`). Namanya dipertahankan seperti di
+// mockup supaya perbandingan berikutnya bisa dilakukan berdampingan tanpa menerjemahkan.
+const TEKS = '#2B2A33';        // --text     (dulu hitam pekat; terlalu keras untuk dokumen)
+const UNGU = '#6C4FE0';        // --purple
+const UNGU_TUA = '#4B32A8';    // --purple-dark
+const UNGU_MUDA = '#F1EEFC';   // --purple-soft
+const LATAR = '#F6F5FB';       // --bg       (di luar kartu)
+const KARTU = '#FFFFFF';       // --card
+const ABU = '#6B6975';         // --text-muted
+const GARIS = '#E4E0F5';       // --border
+const HIJAU = '#1D9E75';       // --green    (delta naik)
+const AMBER = '#BA7517';       // --amber    (delta turun)
+const PINK_KARTU = '#FCEBEB';  // .psych-card
+const PINK_TEKS = '#4B1528';   // .psych-note
+const PINK_JUDUL = '#993556';  // .psych-count
+
+// Faktor mockup(px @980) -> satuan logis di sini (@3508). Dipakai untuk radius & garis supaya
+// angkanya bisa ditelusuri balik ke mockup, bukan hasil coba-coba.
+const M = W / 980;
+
+/** Perubahan satu angka dibanding bulan lalu. Teks kosong = tak ada bulan pembanding. */
+export interface DeltaKartu { teks: string; arah: 'naik' | 'turun' | 'sama' | 'tanpa-pembanding' }
 
 export interface IsiRapor {
   namaAnak: string;
   periode: string;                   // mis. "Agustus 2026"
+  /** mis. "3 tahun 11 bulan" — kosong bila tanggal lahir belum diisi */
+  umurTeks?: string | null;
+  /** satu paragraf pembuka; sudah jadi kalimat, tak ada angka baru yang lahir di sini */
+  ringkas?: string | null;
+  /** judul tema bulan depan untuk baris penggoda di kaki rapor */
+  temaBulanDepan?: string | null;
+  delta?: {
+    ideBermain?: DeltaKartu; video?: DeltaKartu; sesiGame?: DeltaKartu;
+    totalAktivitas?: DeltaKartu; bintang?: DeltaKartu;
+  };
   ideBermain: number;
   video: number;
   sesiGame: number;
@@ -91,15 +120,19 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
     await siapkanFont(fJudul, fTeks);
     const logo = await muatGambar('/logo.png').catch(() => null);
 
-    // Latar + bingkai
-    const g = ctx.createLinearGradient(0, 0, W, hTotal);
-    g.addColorStop(0, '#f8f5ff'); g.addColorStop(1, '#f0fbf5');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, hTotal);
-    // Bingkai digambar PER HALAMAN, bukan satu kotak mengelilingi keduanya: kertasnya dipotong
-    // di `H_HAL`, jadi satu bingkai besar akan tercetak sebagai dua bingkai yang terbuka.
-    ctx.strokeStyle = UNGU; ctx.lineWidth = 10;
-    for (let hal = 0; hal * H_HAL < hTotal; hal++)
-      ctx.strokeRect(46, hal * H_HAL + 46, W - 92, H_HAL - 92);
+    // Latar + kartu halaman (mengikuti mockup: latar abu-ungu, kartu putih bersudut bulat).
+    //
+    // Gradien ungu-ke-hijau versi lama diganti warna rata. Di layar gradien itu manis; dicetak
+    // di atas kertas ia jadi bidang warna seluas A4 yang menghabiskan tinta dan membuat teks
+    // hitam terbaca kurang tajam — dan rapor ini memang untuk dicetak.
+    ctx.fillStyle = LATAR; ctx.fillRect(0, 0, W, hTotal);
+    // Kartu digambar PER HALAMAN, bukan satu kotak mengelilingi keduanya: kertasnya dipotong
+    // di `H_HAL`, jadi satu kartu besar akan tercetak sebagai dua kartu yang terbuka.
+    for (let hal = 0; hal * H_HAL < hTotal; hal++) {
+      jalurKotakBulat(ctx, 46, hal * H_HAL + 46, W - 92, H_HAL - 92, 28 * M);
+      ctx.fillStyle = KARTU; ctx.fill();
+      ctx.strokeStyle = UNGU; ctx.lineWidth = 2.5 * M; ctx.stroke();
+    }
 
     // Kepala
     if (logo) {
@@ -115,36 +148,89 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
     ctx.textAlign = 'left';
     ctx.fillStyle = ABU; ctx.font = `600 52px ${fTeks}`;
     ctx.fillText('Nama anak', 140, 420);
+
+    // Kepala TIDAK lagi memakai koordinat tetap.
+    //
+    // Mockup menyisipkan dua blok baru (pil usia & kotak ringkasan) di antara nama dan kartu
+    // angka, dan tinggi kotak ringkasan bergantung pada berapa baris kalimatnya terbungkus.
+    // Dengan angka `y` yang dipaku seperti sebelumnya, satu kalimat yang lebih panjang akan
+    // menabrak kartu angka di bawahnya — dan itu hanya terlihat di render.
+    let yKepala: number;
     {
       const { px, baris } = ukuranPas(ctx, isi.namaAnak, W * 0.55, 1, (p) => `800 ${p}px ${fJudul}`, 120, 60);
-      ctx.fillStyle = HITAM; ctx.font = `800 ${px}px ${fJudul}`;
-      ctx.fillText(baris[0] ?? isi.namaAnak, 140, 420 + px);
+      ctx.fillStyle = TEKS; ctx.font = `800 ${px}px ${fJudul}`;
+      const nama = baris[0] ?? isi.namaAnak;
+      const yNama = 420 + px;
+      ctx.fillText(nama, 140, yNama);
+      yKepala = yNama;
+
+      // Pil usia menempel di sebelah nama (mockup: .child-age).
+      const umur = (isi.umurTeks ?? '').trim();
+      if (umur) {
+        const xPil = 140 + ctx.measureText(nama).width + 34;
+        ctx.font = `700 44px ${fTeks}`;
+        const wPil = ctx.measureText(umur).width + 60, hPil = 78;
+        // Diselaraskan ke bagian BAWAH nama, bukan ke tengahnya: nama memakai huruf 120px dan
+        // pil 44px, jadi menyelaraskan titik tengahnya membuat pil tampak melayang.
+        jalurKotakBulat(ctx, xPil, yNama - hPil + 14, wPil, hPil, hPil / 2);
+        ctx.fillStyle = UNGU_MUDA; ctx.fill();
+        ctx.fillStyle = UNGU_TUA;
+        ctx.fillText(umur, xPil + 30, yNama - 12);
+      }
+    }
+
+    // Kotak ringkasan naratif (mockup: .summary-box).
+    const ringkas = (isi.ringkas ?? '').trim();
+    if (ringkas) {
+      const lebar = W - 280 - 88;
+      const { px, baris } = ukuranPas(ctx, ringkas, lebar, 4, (p) => `500 ${p}px ${fTeks}`, 50, 38);
+      const hBaris = Math.round(px * 1.5);
+      const hKotak = baris.length * hBaris + 56;
+      const yKotak = yKepala + 60;
+      jalurKotakBulat(ctx, 140, yKotak, W - 280, hKotak, 16 * M);
+      ctx.fillStyle = UNGU_MUDA; ctx.fill();
+      ctx.fillStyle = UNGU_TUA; ctx.font = `500 ${px}px ${fTeks}`;
+      let yb = yKotak + 28 + px;
+      for (const b of baris) { ctx.fillText(b, 184, yb); yb += hBaris; }
+      yKepala = yKotak + hKotak;
     }
 
     // Empat angka utama
-    const kotak = [
-      { n: String(isi.ideBermain), l: 'Ide Bermain' },
-      { n: String(isi.video), l: 'Video ditonton' },
-      { n: String(isi.sesiGame), l: 'Sesi game' },
+    const kotak: { n: string; l: string; d?: DeltaKartu }[] = [
+      { n: String(isi.ideBermain), l: 'Ide Bermain', d: isi.delta?.ideBermain },
+      { n: String(isi.video), l: 'Video ditonton', d: isi.delta?.video },
+      { n: String(isi.sesiGame), l: 'Sesi game', d: isi.delta?.sesiGame },
       // Angka utama keempat = TOTAL AKTIVITAS, bukan "total waktu main".
       //
       // 🐞 Durasi hanya tercatat untuk sesi game (`hasil_main.durasi_detik`);
       // `kegiatan_anak` tak punya kolom durasi sama sekali. Jadi "waktu main" tak pernah bisa
       // mewakili seluruh aktivitas, dan anak yang mengerjakan 9 Ide Bermain tanpa menyentuh
-      // game mendapat rapor berbunyi "0 m" — terbaca seperti rapor yang rusak.
-      { n: String(isi.totalAktivitas), l: 'Total aktivitas' },
+      // game mendapat rapor berbunyi "0 m" — terbaca seperti rapor yang rusak. Mockup masih
+      // memakai "Total waktu main"; angkanya sengaja TIDAK diikuti, tata letaknya diikuti.
+      { n: String(isi.totalAktivitas), l: 'Total aktivitas', d: isi.delta?.totalAktivitas },
     ];
     const kw = (W - 280 - 3 * 40) / 4;
+    const yKartu = yKepala + 70;
+    const hKartu = 340;
     kotak.forEach((k, i) => {
       const x = 140 + i * (kw + 40);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(x, 700, kw, 320);
-      ctx.strokeStyle = '#e6e0f2'; ctx.lineWidth = 4; ctx.strokeRect(x, 700, kw, 320);
+      jalurKotakBulat(ctx, x, yKartu, kw, hKartu, 16 * M);
+      ctx.fillStyle = KARTU; ctx.fill();
+      ctx.strokeStyle = GARIS; ctx.lineWidth = 1.5 * M; ctx.stroke();
       ctx.textAlign = 'center';
       ctx.fillStyle = UNGU; ctx.font = `800 118px ${fJudul}`;
-      ctx.fillText(k.n, x + kw / 2, 870);
+      ctx.fillText(k.n, x + kw / 2, yKartu + 170);
       ctx.fillStyle = ABU; ctx.font = `600 46px ${fTeks}`;
-      ctx.fillText(k.l, x + kw / 2, 960);
+      ctx.fillText(k.l, x + kw / 2, yKartu + 260);
+      // Baris delta hanya digambar bila ADA pembandingnya — lihat `deltaTeks` di
+      // `domain/laporan-bulanan.ts`: bulan pertama seorang anak tak punya bulan lalu.
+      const d = k.d;
+      if (d && d.teks) {
+        ctx.font = `700 38px ${fTeks}`;
+        ctx.fillStyle = d.arah === 'naik' ? HIJAU : d.arah === 'turun' ? AMBER : ABU;
+        const tanda = d.arah === 'naik' ? '▲ ' : d.arah === 'turun' ? '▼ ' : '= ';
+        ctx.fillText(tanda + d.teks, x + kw / 2, yKartu + 320);
+      }
     });
     ctx.textAlign = 'left';
 
@@ -155,11 +241,16 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
     // pertama menaruh semuanya di kanan, dan hasilnya bagian konsultasi TIDAK IKUT TERCETAK
     // sementara kolom kiri kosong separuh. Itu ditemukan dari memeriksa gambarnya, bukan kodenya.
     const kiriX = 140, kananX = W / 2 + 40, kolomL = W / 2 - 220;
-    // Ruang footer diperbesar untuk menampung baris legenda BSH/MB yang baru: batas isi
-    // menentukan kapan teks dipotong, jadi menambah baris footer TANPA menaikkan batas ini
-    // akan membuat isi kolom bertabrakan dengan legendanya.
-    const BATAS_BAWAH = hTotal - 300;
-    let yK = 1160, yR = 1160;
+    // Ruang kaki halaman. Batas isi menentukan kapan teks dipotong, jadi setiap baris baru di
+    // kaki WAJIB menaikkan angka ini — kalau tidak, isi kolom akan menabrak kaki halamannya.
+    // Isinya sekarang: garis putus-putus, legenda BSH/MB, kartu penggoda bulan depan (bila
+    // ada), dan kalimat penutup.
+    const adaTeaser = !!(isi.temaBulanDepan ?? '').trim();
+    const TINGGI_KAKI = adaTeaser ? 490 : 310;
+    const BATAS_BAWAH = hTotal - TINGGI_KAKI;
+    // Kolom isi mulai tepat di bawah kartu angka, bukan pada angka tetap — tingginya kini
+    // bergantung pada ada tidaknya kotak ringkasan di atasnya.
+    let yK = yKartu + hKartu + 140, yR = yKartu + hKartu + 140;
 
     /**
      * Berapa banyak isi yang TIDAK termuat pada tinggi ini. Inilah yang memutuskan perlu
@@ -214,14 +305,16 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
     const barisRingkas = (teks: string, x: number, y: number, lebar: number) => {
       y = hindariPotongan(y, 44);
       const { px, baris } = ukuranPas(ctx, teks, lebar, 1, (p) => `500 ${p}px ${fTeks}`, 38, 26);
-      ctx.fillStyle = HITAM; ctx.font = `500 ${px}px ${fTeks}`;
+      ctx.fillStyle = TEKS; ctx.font = `500 ${px}px ${fTeks}`;
       for (const b of baris) { ctx.fillText(b, x, y); y += Math.round(px * 1.28); }
       return y + 4;
     };
-    const barisTeks = (teks: string, x: number, y: number, lebar: number, maksBaris = 2) => {
+    // `warna` opsional: isi di dalam kartu ber-tint memakai warna teksnya sendiri (mockup
+    // .psych-note), sebab teks abu-gelap standar di atas latar merah muda terbaca kusam.
+    const barisTeks = (teks: string, x: number, y: number, lebar: number, maksBaris = 2, warna = TEKS) => {
       y = hindariPotongan(y, maksBaris * 58);
       const { px, baris } = ukuranPas(ctx, teks, lebar, maksBaris, (p) => `500 ${p}px ${fTeks}`, 44, 32);
-      ctx.fillStyle = HITAM; ctx.font = `500 ${px}px ${fTeks}`;
+      ctx.fillStyle = warna; ctx.font = `500 ${px}px ${fTeks}`;
       for (const b of baris) { ctx.fillText(b, x, y); y += Math.round(px * 1.28); }
       return y + 6;
     };
@@ -409,7 +502,14 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
     yK = barisTeks(isi.areaTerbanyak ?? 'Belum ada aktivitas yang tercatat bulan ini.', kiriX, yK, kolomL, 1);
     // Asal-usul angkanya ikut ditulis: "area paling dilatih" tanpa penjelasan hanya klaim.
     if (isi.areaTerbanyak && isi.areaDariMana) yK = barisTeks(isi.areaDariMana, kiriX + 26, yK, kolomL - 26);
-    yK = barisTeks(`Total ⭐ ${isi.bintang} bintang terkumpul`, kiriX, yK, kolomL, 1);
+    // Delta bintang ditulis MENEMPEL pada angkanya (mockup: "(+9 dari bulan lalu)"), bukan di
+    // baris sendiri: ia keterangan atas satu angka, dan baris terpisah membuatnya terbaca
+    // sebagai butir baru.
+    const dB = isi.delta?.bintang;
+    yK = barisTeks(
+      `Total ⭐ ${isi.bintang} bintang terkumpul${dB?.teks ? ` (${dB.teks})` : ''}`,
+      kiriX, yK, kolomL, 1,
+    );
 
     // Event yang catatan gurunya sudah tercetak di kolom kanan TIDAK diulang di sini —
     // barisnya persis sama, dan pengulangan itu memakan ruang yang dibutuhkan evaluasi.
@@ -506,14 +606,14 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
       // Keadaan kosong DISEBUT, sama seperti di layar: bagian yang hanya memuat "2 sesi
       // konsultasi bulan ini" terbaca sebagai "psikolognya tidak memberi apa-apa", padahal
       // yang benar adalah rekomendasi tertulisnya belum ada pada periode ini.
-      if (isi.rekomendasi > 0) yR = barisTeks(`${isi.rekomendasi} sesi konsultasi bulan ini`, kananX, yR, kolomL, 1);
+      if (isi.rekomendasi > 0) yR = barisTeks(`${isi.rekomendasi} sesi konsultasi bulan ini`, kananX, yR, kolomL, 1, PINK_JUDUL);
       if (isi.rekomendasiPsikolog.length === 0 && isi.rekomendasiItem.length === 0) {
-        yR = barisTeks('Belum ada rekomendasi tertulis dari psikolog untuk periode ini.', kananX, yR, kolomL, 2);
+        yR = barisTeks('Belum ada rekomendasi tertulis dari psikolog untuk periode ini.', kananX, yR, kolomL, 2, PINK_TEKS);
       }
       let naratifDicetak = 0;
       for (const x of isi.rekomendasiPsikolog) {
         if (yR > plafonNaratif - 80) break;
-        yR = barisTeks(`• ${x.judul || 'Rekomendasi'}${x.oleh ? ` — ${x.oleh}` : ''}`, kananX, yR, kolomL, 1);
+        yR = barisTeks(`• ${x.judul || 'Rekomendasi'}${x.oleh ? ` — ${x.oleh}` : ''}`, kananX, yR, kolomL, 1, PINK_TEKS);
         // Naratif psikolog diberi 5 baris, bukan 2 (bawaan `barisTeks`).
         //
         // 🐞 Dengan 2 baris, `ukuranPas` gagal memuat kalimat sepanjang ini bahkan pada ukuran
@@ -524,7 +624,7 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
         // MENELAN butir rekomendasinya. Naratif adalah konteks; butir ("Di rumah: perbanyak
         // bermain peran") adalah yang bisa ditindaklanjuti orang tua — jadi butirlah yang
         // dimenangkan saat ruang berebut, dan sisa naratifnya yang diringkas.
-        if (x.isi && yR < plafonNaratif - 40) yR = barisTeks(x.isi, kananX + 26, yR, kolomL - 26, 3);
+        if (x.isi && yR < plafonNaratif - 40) yR = barisTeks(x.isi, kananX + 26, yR, kolomL - 26, 3, PINK_TEKS);
         // 🐞 Butir rekomendasi dulu hilang TANPA JEJAK begitu naratifnya panjang: loop ini
         // sekadar `break`, tanpa memberi tahu ada yang tak tercetak. Padahal butir inilah
         // bagian yang bisa ditindaklanjuti orang tua ("Di rumah: perbanyak bermain peran"),
@@ -535,18 +635,18 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
           // sama dengan evaluasi kurikulum di kolom kiri. Tanpa cadangan ini, barisnya
           // tergambar di luar kartu dan menabrak footer.
           if (yR > plafonNaratif - 130) break;
-          yR = barisTeks(`– ${b.judul ? `${b.judul}: ` : ''}${b.isi ?? ''}`, kananX + 26, yR, kolomL - 26, 2);
+          yR = barisTeks(`– ${b.judul ? `${b.judul}: ` : ''}${b.isi ?? ''}`, kananX + 26, yR, kolomL - 26, 2, PINK_TEKS);
           butirDicetak += 1;
         }
         terpotong += x.butir.length - butirDicetak;
         if (butirDicetak < x.butir.length && yR < plafonNaratif - 40) {
-          yR = barisTeks(`   …${x.butir.length - butirDicetak} saran lain — lihat di aplikasi`, kananX + 26, yR, kolomL - 26, 1);
+          yR = barisTeks(`   …${x.butir.length - butirDicetak} saran lain — lihat di aplikasi`, kananX + 26, yR, kolomL - 26, 1, PINK_TEKS);
         }
         naratifDicetak += 1;
       }
       terpotong += isi.rekomendasiPsikolog.length - naratifDicetak;
       if (naratifDicetak < isi.rekomendasiPsikolog.length) {
-        yR = barisTeks(`…dan ${isi.rekomendasiPsikolog.length - naratifDicetak} rekomendasi lain — lihat di aplikasi`, kananX, yR, kolomL, 1);
+        yR = barisTeks(`…dan ${isi.rekomendasiPsikolog.length - naratifDicetak} rekomendasi lain — lihat di aplikasi`, kananX, yR, kolomL, 1, PINK_TEKS);
       }
 
       // Tint kartu digambar SESUDAH isinya, memakai blend `multiply`.
@@ -558,7 +658,7 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
       {
         ctx.save();
         ctx.globalCompositeOperation = 'multiply';
-        ctx.fillStyle = '#fceceb';
+        ctx.fillStyle = PINK_KARTU;
         // Tinggi tint DIJEPIT ke batas isi: tanpa itu, baris "…N saran lain" yang muncul di
         // ujung anggaran bisa menyeret kartunya turun sampai menyentuh footer.
         const tintSampai = Math.min(yR + 16, BATAS_BAWAH);
@@ -581,15 +681,44 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
       }
     }
 
-    // Kaki
+    // ——— Kaki halaman (mockup: .footer) ———
+    //
+    // Urutannya mengikuti mockup: garis putus-putus, legenda singkatan, kartu penggoda bulan
+    // depan, lalu kalimat penutup. Semua diukur dari `y0` — pangkal ruang kaki — supaya
+    // menambah atau menghapus baris di sini cukup mengubah `TINGGI_KAKI` di satu tempat.
+    const y0 = hTotal - TINGGI_KAKI;
+
+    ctx.save();
+    ctx.strokeStyle = GARIS; ctx.lineWidth = 1.5 * M; ctx.setLineDash([14, 12]);
+    ctx.beginPath(); ctx.moveTo(140, y0 + 20); ctx.lineTo(W - 140, y0 + 20); ctx.stroke();
+    ctx.restore();
+
     ctx.textAlign = 'center';
-    ctx.fillStyle = ABU; ctx.font = `italic 44px ${fTeks}`;
     // Legenda singkatan: istilah BSH/MB dipakai di kolom kanan tapi tak dijelaskan di mana pun,
     // dan orang tua tak wajib tahu kosakata PAUD.
     ctx.font = `600 40px ${fTeks}`; ctx.fillStyle = ABU;
-    ctx.fillText('BSH = Berkembang Sesuai Harapan  ·  MB = Mulai Berkembang', W / 2, hTotal - 215);
-    ctx.font = `600 46px ${fTeks}`;
-    ctx.fillText('Teruslah bermain, belajar, dan bertumbuh, ya! 💛  ·  KidzPlayful', W / 2, hTotal - 130);
+    ctx.fillText('BSH = Berkembang Sesuai Harapan  ·  MB = Mulai Berkembang', W / 2, y0 + 105);
+
+    const teaser = (isi.temaBulanDepan ?? '').trim();
+    if (teaser) {
+      // Kartu ungu pekat dengan teks putih (mockup: .teaser). Hanya digambar bila temanya
+      // BENAR-BENAR ada — janji "tema baru menanti" yang temanya belum disiapkan admin adalah
+      // janji yang tak bisa ditepati bulan depan.
+      jalurKotakBulat(ctx, 140, y0 + 145, W - 280, 160, 14 * M);
+      ctx.fillStyle = UNGU; ctx.fill();
+      ctx.fillStyle = '#ffffff'; ctx.font = `700 46px ${fTeks}`;
+      const teks = `✨ Bulan depan: tema baru “${teaser}” menanti ${isi.namaAnak}!`;
+      const { px, baris } = ukuranPas(ctx, teks, W - 380, 2, (q) => `700 ${q}px ${fTeks}`, 46, 34);
+      ctx.font = `700 ${px}px ${fTeks}`;
+      const hb = Math.round(px * 1.32);
+      let yb = y0 + 145 + (160 - baris.length * hb) / 2 + px;
+      for (const b of baris) { ctx.fillText(b, W / 2, yb); yb += hb; }
+      ctx.fillStyle = ABU;
+    }
+
+    ctx.font = `italic 46px ${fTeks}`; ctx.fillStyle = ABU;
+    ctx.fillText('Teruslah bermain, belajar, dan bertumbuh, ya! 💛  ·  KidzPlayful',
+      W / 2, y0 + (teaser ? 390 : 215));
 
     // Penanda potongan: rapor ini dicetak di atas dua lembar, jadi batasnya harus TERLIHAT.
     if (hTotal > H_HAL) {

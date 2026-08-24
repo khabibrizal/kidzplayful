@@ -1,6 +1,6 @@
 // src/lib/domain/__tests__/laporan-bulanan.test.ts
 import { describe, it, expect } from 'vitest';
-import { rentangBulan, ringkasBulan, labelBulan, bulanTerakhir, rapikanDaftar, hitungArea, bulanWib, bulanRekomendasi } from '../laporan-bulanan';
+import { rentangBulan, ringkasBulan, labelBulan, bulanTerakhir, rapikanDaftar, hitungArea, bulanWib, bulanRekomendasi, deltaTeks, kalimatRingkas } from '../laporan-bulanan';
 
 describe('rentangBulan', () => {
   it('memberi awal & akhir bulan dalam WIB', () => {
@@ -264,5 +264,81 @@ describe('bulanRekomendasi', () => {
   it('data tak sah menghasilkan string kosong (tak cocok bulan mana pun)', () => {
     expect(bulanRekomendasi({ pendaftaran_id: null, created_at: null })).toBe('');
     expect(bulanWib('bukan tanggal')).toBe('');
+  });
+});
+
+describe('deltaTeks', () => {
+  it('tidak mengarang perbandingan saat tak ada bulan pembanding', () => {
+    // Bulan pertama seorang anak: `null`, BUKAN 0. "+9 dari bulan lalu" pada rapor pertama
+    // adalah perbandingan terhadap bulan yang tak pernah ada.
+    expect(deltaTeks(9, null)).toEqual({ arah: 'tanpa-pembanding', teks: '' });
+    expect(deltaTeks(9, undefined)).toEqual({ arah: 'tanpa-pembanding', teks: '' });
+    expect(deltaTeks(9, NaN)).toEqual({ arah: 'tanpa-pembanding', teks: '' });
+  });
+
+  it('membedakan naik, turun, dan sama', () => {
+    expect(deltaTeks(9, 6)).toEqual({ arah: 'naik', teks: '+3 dari bulan lalu' });
+    expect(deltaTeks(4, 6)).toEqual({ arah: 'turun', teks: '-2 dari bulan lalu' });
+    expect(deltaTeks(6, 6)).toEqual({ arah: 'sama', teks: 'sama seperti bulan lalu' });
+  });
+
+  it('bulan lalu NOL tetap dibandingkan — itu berbeda dari tanpa pembanding', () => {
+    expect(deltaTeks(3, 0)).toEqual({ arah: 'naik', teks: '+3 dari bulan lalu' });
+  });
+
+  it('membawa satuan pada angka yang butuh', () => {
+    expect(deltaTeks(165, 125, 'm').teks).toBe('+40m dari bulan lalu');
+  });
+});
+
+describe('kalimatRingkas', () => {
+  const dasar = {
+    totalAktivitas: 9, rekomendasi: 0, areaTerbanyak: null,
+    daftarIdeBermain: [] as { judul: string; jumlah: number }[],
+    rekomendasiPsikolog: [] as { judul: string | null }[],
+  };
+  const buat = (x: Partial<typeof dasar>) => kalimatRingkas({ ...dasar, ...x } as never, 'Arsyi');
+
+  it('bulan kosong tidak berpura-pura ada isinya', () => {
+    expect(buat({ totalAktivitas: 0 })).toBe('Bulan ini belum ada aktivitas yang tercatat untuk Arsyi.');
+  });
+
+  it('menyebut tema yang PALING SERING, bukan yang pertama di daftar', () => {
+    const k = buat({ daftarIdeBermain: [{ judul: 'Laut Biru', jumlah: 1 }, { judul: 'Dinosaurus', jumlah: 7 }] });
+    expect(k).toContain('“Dinosaurus”');
+    expect(k).not.toContain('Laut Biru');
+  });
+
+  it('menghilangkan bagian yang tak berdata, bukan mengisinya dengan tanda hubung', () => {
+    const k = buat({});
+    expect(k).toBe('Bulan ini Arsyi menyelesaikan 9 aktivitas.');
+    expect(k).not.toContain('—');
+    expect(k).not.toContain('undefined');
+  });
+
+  it('memakai label area yang sudah diterjemahkan bila diberikan', () => {
+    const k = kalimatRingkas({ ...dasar, areaTerbanyak: 'motorik-kasar' } as never, 'Arsyi', 'Motorik Kasar');
+    expect(k).toContain('Motorik Kasar');
+    expect(k).not.toContain('motorik-kasar');
+  });
+
+  it('menyebut konsultasi beserta topiknya bila ada', () => {
+    const k = buat({ rekomendasi: 2, rekomendasiPsikolog: [{ judul: 'Kesiapan sosial' }] });
+    expect(k).toContain('2 sesi konsultasi psikolog bulan ini');
+    expect(k).toContain('kesiapan sosial');
+  });
+
+  it('tidak menyebut konsultasi sama sekali bila tak ada sesi', () => {
+    expect(buat({ rekomendasi: 0, rekomendasiPsikolog: [{ judul: 'Kesiapan sosial' }] }))
+      .not.toContain('konsultasi');
+  });
+});
+
+describe('umurTeksPanjang dipakai rapor', () => {
+  it('memakai kata penuh, bukan singkatan', async () => {
+    const { umurTeksPanjang } = await import('../anak');
+    expect(umurTeksPanjang(new Date('2022-09-15'), new Date('2026-08-24'))).toBe('3 tahun 11 bulan');
+    expect(umurTeksPanjang(new Date('2022-08-15'), new Date('2026-08-24'))).toBe('4 tahun');
+    expect(umurTeksPanjang(new Date('2026-02-15'), new Date('2026-08-24'))).toBe('6 bulan');
   });
 });

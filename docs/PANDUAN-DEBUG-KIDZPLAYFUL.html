@@ -1253,7 +1253,14 @@ semuanya hijau untuk gambar yang rusak total.</p>
   <code>rapor-jpeg.ts</code>.
 - <strong>Jangan memaku titik mulai sebuah bagian ke plafon bagian di atasnya.</strong> <code>Math.max(yR, plafonCatatan)</code>
   meninggalkan lubang kosong ketika bagian atas selesai lebih awal.
-- <strong>Selalu periksa tiga keadaan:</strong> isi sedikit, isi banyak, keadaan kosong.</p>
+- <strong>Kepala rapor tidak boleh memakai koordinat <code>y</code> tetap.</strong> Begitu ada blok yang tingginya
+  bergantung isi (kotak ringkasan naratif terbungkus 2 atau 4 baris), angka <code>y</code> yang dipaku
+  membuat blok berikutnya tertimpa. Alirkan dari satu variabel berjalan.
+- <strong>Setiap baris baru di kaki halaman WAJIB menaikkan <code>TINGGI_KAKI</code>.</strong> Batas isi diturunkan
+  darinya; menambah baris kaki tanpa menaikkannya membuat kolom isi menabrak kakinya.
+- <strong>Selalu periksa tiga keadaan:</strong> isi sedikit, isi banyak, keadaan kosong. Untuk rapor,
+  tambahkan keadaan <strong>"bulan pertama"</strong> — tanpa usia, tanpa pembanding bulan lalu, tanpa tema
+  bulan depan. Blok yang absen tak boleh meninggalkan lubang atau menggeser tata letak.</p>
 <hr />
 <h3 id="bug-12-pemotongan-senyap-rapor-terbaca-lengkap-padahal-tidak">BUG-12 · Pemotongan senyap: rapor terbaca lengkap padahal tidak</h3>
 <p><strong>Gejala.</strong> Rapor menampilkan tiga dari empat domain penilaian dan <strong>tampak lengkap</strong>. Orang tua tak punya

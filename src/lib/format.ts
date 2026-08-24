@@ -29,11 +29,18 @@ export const ASPEK_PAUD = [
   { key: 'kognitif', label: 'Kognitif' },
   { key: 'bahasa', label: 'Bahasa' },
 ];
+// Warna tag skala PAUD — mengikuti mockup rapor untuk dua kode yang ia tetapkan.
+//
+// Mockup hanya memuat MB dan BSH, dan warnanya dipakai persis di sini. Dua kode sisanya harus
+// diputuskan sendiri, dengan satu syarat: keempatnya wajib bisa DIBEDAKAN. Karena BSH kini
+// hijau-mint, BSB tak boleh ikut hijau — "Berkembang Sesuai Harapan" dan "Berkembang Sangat
+// Baik" adalah dua penilaian berbeda, dan orang tua yang tak bisa membedakannya kehilangan
+// justru informasi yang paling ingin ia lihat. BSB memakai ungu tua dari palet mockup.
 export const SKALA_PAUD: { kode: string; teks: string; warna: string; bg: string }[] = [
-  { kode: 'BB', teks: 'Belum Berkembang', warna: '#b3261e', bg: '#fde8e6' },
-  { kode: 'MB', teks: 'Mulai Berkembang', warna: '#b88600', bg: '#fff3d6' },
-  { kode: 'BSH', teks: 'Berkembang Sesuai Harapan', warna: '#3a78d6', bg: '#d6e6ff' },
-  { kode: 'BSB', teks: 'Berkembang Sangat Baik', warna: '#1c7a43', bg: '#dff5e6' },
+  { kode: 'BB', teks: 'Belum Berkembang', warna: '#8C1D18', bg: '#FBE3E1' },
+  { kode: 'MB', teks: 'Mulai Berkembang', warna: '#633806', bg: '#FAEEDA' },
+  { kode: 'BSH', teks: 'Berkembang Sesuai Harapan', warna: '#085041', bg: '#E1F5EE' },
+  { kode: 'BSB', teks: 'Berkembang Sangat Baik', warna: '#3A2489', bg: '#EAE4FA' },
 ];
 export function metaSkala(kode: string) {
   return SKALA_PAUD.find((s) => s.kode === kode) ?? { kode, teks: kode, warna: 'var(--abu)', bg: '#eee' };

@@ -851,7 +851,14 @@ semuanya hijau untuk gambar yang rusak total.
   `rapor-jpeg.ts`.
 - **Jangan memaku titik mulai sebuah bagian ke plafon bagian di atasnya.** `Math.max(yR, plafonCatatan)`
   meninggalkan lubang kosong ketika bagian atas selesai lebih awal.
-- **Selalu periksa tiga keadaan:** isi sedikit, isi banyak, keadaan kosong.
+- **Kepala rapor tidak boleh memakai koordinat `y` tetap.** Begitu ada blok yang tingginya
+  bergantung isi (kotak ringkasan naratif terbungkus 2 atau 4 baris), angka `y` yang dipaku
+  membuat blok berikutnya tertimpa. Alirkan dari satu variabel berjalan.
+- **Setiap baris baru di kaki halaman WAJIB menaikkan `TINGGI_KAKI`.** Batas isi diturunkan
+  darinya; menambah baris kaki tanpa menaikkannya membuat kolom isi menabrak kakinya.
+- **Selalu periksa tiga keadaan:** isi sedikit, isi banyak, keadaan kosong. Untuk rapor,
+  tambahkan keadaan **"bulan pertama"** — tanpa usia, tanpa pembanding bulan lalu, tanpa tema
+  bulan depan. Blok yang absen tak boleh meninggalkan lubang atau menggeser tata letak.
 
 ---
 

@@ -14,7 +14,10 @@ import { getCatatanTemaAnak } from '@/lib/data/catatan-tema';
 import { getKelasAktifCached } from '@/lib/data/publik';
 import { metaSkala } from '@/lib/format';
 import { getCatatanAnak } from '@/lib/data/catatan';
-import { rentangBulan, labelBulan, ringkasBulan, bulanTerakhir, bulanWib, bulanRekomendasi } from '@/lib/domain/laporan-bulanan';
+import { rentangBulan, labelBulan, ringkasBulan, bulanTerakhir, bulanWib, bulanRekomendasi, deltaTeks, kalimatRingkas } from '@/lib/domain/laporan-bulanan';
+import { umurTeksPanjang } from '@/lib/domain/anak';
+import { kelompokTemaBracket } from '@/lib/domain/siklus-kurikulum';
+import { getKonteksKurikulumAnak } from '@/lib/data/kurikulum';
 import { posisiTema, evaluasiPerAktivitas } from '@/lib/domain/kurikulum';
 import { getEventInfoBanyak } from '@/lib/data/event';
 import Terkunci from '@/components/Terkunci';
@@ -51,7 +54,7 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: anak } = await supabase.from('anak').select('id,nama').eq('id', anakId).maybeSingle();
+  const { data: anak } = await supabase.from('anak').select('id,nama,tanggal_lahir').eq('id', anakId).maybeSingle();
   if (!anak) redirect('/pilih-anak?galat=anak-tidak-ditemukan');
 
   const hak = await getHakAnak(anakId);
@@ -70,7 +73,12 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
   }
 
   const rentang = rentangBulan(ym);
-  const [kegiatan, { data: main }, catatanSemua, konsultasi, rekPsi, rekItem, evaluasiSemua, kelasSemua, catatanTemaSemua] = await Promise.all([
+  // Bulan pembanding untuk delta "▲ +3 dari bulan lalu". Hanya `kegiatan_anak` dan `hasil_main`
+  // yang perlu diambil ulang — sumber lain sudah diambil seluruhnya lalu disaring per bulan.
+  const ymLalu = bulanTerakhir(new Date(Date.parse(rentang.dari)), 2)[1] ?? ym;
+  const rentangLalu = rentangBulan(ymLalu);
+  const [kegiatan, { data: main }, catatanSemua, konsultasi, rekPsi, rekItem, evaluasiSemua, kelasSemua, catatanTemaSemua,
+    kegiatanLalu, { data: mainLalu }, ktx] = await Promise.all([
     getKegiatanAnak(anakId, rentang),
     // Kolom waktunya `tanggal` (migrasi 0002), bukan `created_at`/`dibuat_at` — memakai nama
     // yang salah akan gagal SENYAP dan membuat sesi game selalu 0.
@@ -83,6 +91,10 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
     getEvaluasiAnak(anakId),
     getKelasAktifCached(),
     getCatatanTemaAnak(anakId),
+    getKegiatanAnak(anakId, rentangLalu),
+    supabase.from('hasil_main').select('area_skill,bintang,durasi_detik,selesai,tanggal')
+      .eq('anak_id', anakId).gte('tanggal', rentangLalu.dari).lt('tanggal', rentangLalu.sampai),
+    getKonteksKurikulumAnak(anakId),
   ]);
 
   // Catatan guru & event pada periode ini. `catatan_perkembangan` tak punya tanggal event,
@@ -182,6 +194,51 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
     : null;
   const nama = (anak.nama as string) ?? 'Anak';
 
+  // ——— Bahan tambahan untuk desain rapor (mengikuti `rapor_mockup.html`) ———
+
+  const lahir = (anak.tanggal_lahir as string | null) ?? null;
+  const umur = lahir ? umurTeksPanjang(new Date(lahir), new Date(rentang.sampai)) : '';
+
+  /**
+   * Ringkasan bulan LALU — hanya untuk delta pada empat angka utama & bintang.
+   *
+   * Sumber keempat angka itu seluruhnya `kegiatan_anak` + `hasil_main`, jadi bagian lain
+   * (catatan, event, evaluasi, konsultasi) sengaja dikosongkan di sini: mengisinya tak
+   * mengubah satu pun angka yang dipakai, dan mengambilnya berarti query yang tak terpakai.
+   */
+  const rLalu = ringkasBulan({
+    kegiatan: kegiatanLalu,
+    fokusAreaIde: [],
+    hasilMain: (mainLalu ?? []) as { area_skill: string | null; bintang: number | null; durasi_detik: number | null; selesai: boolean | null }[],
+    catatan: [], event: [], rekomendasi: 0,
+  });
+
+  /**
+   * Bulan lalu dibandingkan HANYA bila ia benar-benar punya aktivitas.
+   *
+   * Bulan lalu yang bernilai nol tak bisa dibedakan antara "anaknya tidak bermain" dan
+   * "anaknya belum bergabung" — dan menulis "+9 dari bulan lalu" pada rapor pertama seorang
+   * anak adalah perbandingan terhadap bulan yang tak pernah ada. Harga dari kehati-hatian ini
+   * adalah satu delta yang benar kadang tak tampil; itu jauh lebih murah daripada satu klaim
+   * palsu di dokumen yang dikirim ke orang tua.
+   */
+  const adaPembanding = rLalu.totalAktivitas > 0;
+  const banding = (kini: number, lalu: number) => deltaTeks(kini, adaPembanding ? lalu : null);
+  const delta = {
+    ideBermain: banding(r.ideBermain, rLalu.ideBermain),
+    video: banding(r.video, rLalu.video),
+    sesiGame: banding(r.totalSesi, rLalu.totalSesi),
+    totalAktivitas: banding(r.totalAktivitas, rLalu.totalAktivitas),
+    bintang: banding(r.totalBintang, rLalu.totalBintang),
+  };
+
+  const ringkasTeks = kalimatRingkas(r, nama, namaArea);
+
+  // Tema bulan depan untuk baris penggoda di kaki rapor. Diambil dari kelompok yang SAMA
+  // dengan yang dipakai halaman kurikulum, jadi janjinya tak bisa berbeda dari yang nanti
+  // benar-benar terbuka untuk anak ini.
+  const temaBulanDepan = kelompokTemaBracket(kelasSemua, ktx).bulanDepan[0]?.judul ?? null;
+
   return (
     <main className="kp-page-narrow" style={{ padding: 16, paddingBottom: 60, marginTop: 20 }}>
       {/* Tujuan TETAP ke halaman Perkembangan, bukan `router.back()`: halaman ini punya chip
@@ -189,7 +246,12 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
           bukan ke tempat orang tua datang. Labelnya juga menyebut tujuannya. */}
       <Link href={`/anak/${anakId}/laporan`} style={{ color: 'var(--abu)', fontSize: 13, textDecoration: 'none' }}>← Perkembangan</Link>
       <h1 style={{ color: 'var(--lavender-d)', fontSize: 22, margin: '8px 0 2px' }}>📄 Rapor {periode}</h1>
-      <p style={{ color: 'var(--abu)', fontSize: 13, marginBottom: 12 }}>{nama}</p>
+      <p style={{ color: 'var(--abu)', fontSize: 13, marginBottom: 12 }}>
+        {nama}
+        {umur ? (
+          <span style={{ marginLeft: 8, background: '#F1EEFC', color: '#4B32A8', fontWeight: 700, fontSize: 12, padding: '3px 10px', borderRadius: 999 }}>{umur}</span>
+        ) : null}
+      </p>
 
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
         {bulanTerakhir(new Date(), 6).map((b) => (
@@ -206,22 +268,40 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
         </p>
       ) : (
         <>
+          {/* Kotak ringkasan naratif — kalimat yang sama persis dengan yang tercetak di JPEG.
+              Dihitung sekali di `kalimatRingkas`, jadi layar dan berkas unduhan tak bisa
+              berbeda isi. */}
+          <div style={{ background: '#F1EEFC', color: '#4B32A8', borderRadius: 14, padding: '12px 14px', fontSize: 13.5, lineHeight: 1.6, marginBottom: 12 }}>
+            {ringkasTeks}
+          </div>
+
           <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
             {[
-              { n: r.ideBermain, l: 'Ide Bermain' },
-              { n: r.video, l: 'Video' },
-              { n: r.totalSesi, l: 'Sesi game' },
-              { n: r.totalMenit, l: 'Menit main' },
+              { n: r.ideBermain, l: 'Ide Bermain', d: delta.ideBermain },
+              { n: r.video, l: 'Video', d: delta.video },
+              { n: r.totalSesi, l: 'Sesi game', d: delta.sesiGame },
+              // Angka keempat = TOTAL AKTIVITAS, sama dengan JPEG. "Menit main" hanya menghitung
+              // sesi game, jadi anak yang aktif di Ide Bermain saja melihat "0".
+              { n: r.totalAktivitas, l: 'Total aktivitas', d: delta.totalAktivitas },
             ].map((k) => (
               <div key={k.l} className="kp-card" style={{ flex: '1 1 120px', textAlign: 'center', padding: 12 }}>
                 <div style={{ fontSize: 22, fontWeight: 800 }}>{k.n}</div>
                 <div style={{ fontSize: 12, color: 'var(--abu)' }}>{k.l}</div>
+                {k.d.teks ? (
+                  <div style={{ fontSize: 11, fontWeight: 700, marginTop: 4, color: k.d.arah === 'naik' ? '#1D9E75' : k.d.arah === 'turun' ? '#BA7517' : 'var(--abu)' }}>
+                    {k.d.arah === 'naik' ? '▲ ' : k.d.arah === 'turun' ? '▼ ' : '= '}{k.d.teks}
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>
 
           <div className="kp-card" style={{ marginBottom: 10 }}>
-            <div style={{ fontSize: 13 }}>⭐ <b>{r.totalBintang}</b> bintang terkumpul{namaArea ? <> · area paling dilatih: <b>{namaArea}</b></> : null}</div>
+            <div style={{ fontSize: 13 }}>
+              ⭐ <b>{r.totalBintang}</b> bintang terkumpul
+              {delta.bintang.teks ? <span style={{ color: 'var(--abu)' }}> ({delta.bintang.teks})</span> : null}
+              {namaArea ? <> · area paling dilatih: <b>{namaArea}</b></> : null}
+            </div>
           </div>
 
           {r.daftarIdeBermain.length > 0 && (
@@ -402,9 +482,19 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
             </>
           )}
 
+          {temaBulanDepan ? (
+            <div style={{ background: '#6C4FE0', color: '#fff', borderRadius: 14, padding: '12px 16px', fontSize: 13.5, fontWeight: 600, marginTop: 14 }}>
+              ✨ Bulan depan: tema baru “{temaBulanDepan}” menanti {nama}!
+            </div>
+          ) : null}
+
           <div style={{ marginTop: 16 }}>
             <UnduhRaporBtn isi={{
               namaAnak: nama, periode,
+              umurTeks: umur || null,
+              ringkas: ringkasTeks,
+              temaBulanDepan,
+              delta,
               ideBermain: r.ideBermain, video: r.video, sesiGame: r.totalSesi,
               bintang: r.totalBintang, menit: r.totalMenit,
               totalAktivitas: r.totalAktivitas,

@@ -24,6 +24,21 @@ export function umurBulanTotal(tanggalLahir: Date, sekarang: Date): number {
 }
 
 /** Umur ringkas: "2 thn 3 bln" / "8 bln" / "3 thn". */
+/**
+ * Umur dengan kata PENUH: "3 tahun 11 bulan".
+ *
+ * Terpisah dari `umurTeks` yang menyingkat ("3 thn 11 bln"). Singkatan itu tepat untuk kartu
+ * dan daftar yang sempit; rapor bulanan dibaca orang tua sebagai dokumen, dan di sana
+ * singkatan terbaca seperti data mentah aplikasi, bukan kalimat tentang anaknya.
+ */
+export function umurTeksPanjang(tanggalLahir: Date, sekarang: Date): string {
+  const m = umurBulanTotal(tanggalLahir, sekarang);
+  if (!Number.isFinite(m) || m < 0) return '';
+  const th = Math.floor(m / 12), bl = m % 12;
+  if (th <= 0) return `${bl} bulan`;
+  return bl > 0 ? `${th} tahun ${bl} bulan` : `${th} tahun`;
+}
+
 export function umurTeks(tanggalLahir: Date, sekarang: Date): string {
   const m = umurBulanTotal(tanggalLahir, sekarang);
   const th = Math.floor(m / 12), bl = m % 12;

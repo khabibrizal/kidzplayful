@@ -52,6 +52,67 @@ export function bulanRekomendasi(
   return bulanWib(rek?.created_at);
 }
 
+export type ArahDelta = 'naik' | 'turun' | 'sama' | 'tanpa-pembanding';
+
+/**
+ * Perubahan sebuah angka dibanding bulan lalu, sebagai teks siap tampil.
+ *
+ * `lalu = null` berarti TIDAK ADA bulan pembanding, dan hasilnya teks KOSONG — bukan
+ * "+9 dari bulan lalu". Alasannya: bulan lalu yang bernilai nol tak bisa dibedakan antara
+ * "anaknya tidak bermain" dan "anaknya belum bergabung". Menuliskan "+9 dari bulan lalu"
+ * pada rapor pertama seorang anak adalah perbandingan terhadap bulan yang tak pernah ada.
+ * Kehilangan satu delta yang sebetulnya benar lebih murah daripada satu klaim yang palsu.
+ */
+export function deltaTeks(
+  kini: number, lalu: number | null | undefined, satuan = '',
+): { arah: ArahDelta; teks: string } {
+  if (lalu === null || lalu === undefined || !Number.isFinite(lalu)) {
+    return { arah: 'tanpa-pembanding', teks: '' };
+  }
+  const selisih = Math.round(kini) - Math.round(lalu);
+  if (selisih === 0) return { arah: 'sama', teks: 'sama seperti bulan lalu' };
+  if (selisih > 0) return { arah: 'naik', teks: `+${selisih}${satuan} dari bulan lalu` };
+  return { arah: 'turun', teks: `${selisih}${satuan} dari bulan lalu` };
+}
+
+/**
+ * Satu paragraf pembuka rapor: apa yang dikerjakan anak bulan ini, dengan kalimat manusia.
+ *
+ * Semua bahannya diambil dari ringkasan yang sudah dihitung — tidak ada angka baru yang
+ * lahir di sini, jadi kalimatnya tak bisa bertentangan dengan kartu-kartu di bawahnya.
+ * Bagian yang tak punya data DIHILANGKAN, bukan diisi tanda hubung: rapor yang berbunyi
+ * "paling menonjol di —" terbaca seperti rapor yang rusak.
+ */
+export function kalimatRingkas(
+  r: RingkasanBulan, nama: string, areaLabel?: string | null,
+): string {
+  const anak = (nama ?? '').trim() || 'Anak';
+  if (!r || r.totalAktivitas <= 0) {
+    return `Bulan ini belum ada aktivitas yang tercatat untuk ${anak}.`;
+  }
+
+  // Tema utama = yang PALING SERING dikerjakan, dihitung di sini supaya tak bergantung pada
+  // urutan daftar yang bisa berubah di pemanggilnya.
+  const utama = (r.daftarIdeBermain ?? []).reduce<{ judul: string; jumlah: number } | null>(
+    (a, b) => (!a || b.jumlah > a.jumlah ? b : a), null,
+  );
+
+  const bagian: string[] = [];
+  bagian.push(`Bulan ini ${anak} menyelesaikan ${r.totalAktivitas} aktivitas`);
+  if (utama && (utama.judul ?? '').trim()) bagian.push(`paling sering pada tema “${utama.judul.trim()}”`);
+
+  const area = (areaLabel ?? r.areaTerbanyak ?? '').trim();
+  let kalimat = `${bagian.join(', ')}.`;
+  if (area) kalimat = `${bagian.join(', ')} — area yang paling terlatih: ${area}.`;
+
+  if (r.rekomendasi > 0) {
+    const judul = (r.rekomendasiPsikolog?.[0]?.judul ?? '').trim();
+    const sesi = `${r.rekomendasi} sesi konsultasi psikolog bulan ini`;
+    kalimat += judul ? ` Ada ${sesi}, membahas ${judul.toLowerCase()}.` : ` Ada ${sesi}.`;
+  }
+  return kalimat;
+}
+
 /** Batas awal & akhir sebuah bulan WIB, sebagai ISO string untuk query. */
 export function rentangBulan(ym: string, sekarang = new Date()): { dari: string; sampai: string } {
   const { tahun, bulan } = pecah(ym, sekarang);
