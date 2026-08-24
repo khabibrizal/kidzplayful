@@ -430,6 +430,15 @@ Tema dicocokkan dengan **kategori usia** anak. Kalau daftar kategori berlubang �
 
 Aplikasi kini **mengatakan** keadaan itu ("Belum ada tema untuk usia ‹nama›"), tapi jalan keluarnya ada di sisi Anda: di menu **👶 Kategori Usia**, pastikan rentangnya **bersambung tanpa celah** (mis. 0–2, 3–5, 6–9) dan tiap kategori yang dipakai anak punya minimal satu tema.
 
+### 🔍 Filter di Kelola Event
+Menu **Kelola Event** punya kotak **cari nama event** dan **rentang tanggal** (dari – sampai). Judul bagiannya menyebut berapa yang tampil dari total, mis. *"Event (2 dari 5)"*.
+
+- Rentangnya **termasuk** hari pertama dan hari terakhir.
+- Event dengan **dua kelas** (jadwal Baby & Toddler berbeda tanggal) ikut ketemu bila **salah satu** tanggalnya masuk rentang.
+- Event yang tanggalnya belum diisi **tetap tampil** — justru itu yang perlu Anda lengkapi.
+- Kalau tanggalnya tertukar, sistem menukarnya dan menuliskan rentang yang dipakai.
+- Tombol **Reset** mengosongkan semua filter.
+
 ### 🔍 Filter di Catatan Tema
 Menu **🍎 Catatan Tema** punya filter: **nama anak** (ketik), **judul tema** (pilih dari daftar Ide Bermain aktif), **kategori usia** (pilih dari master), dan **rentang tanggal pengisian** (dari – sampai). Ketiganya bisa dipakai bersamaan, dan hasilnya tersimpan di alamat halaman — jadi bisa di-bookmark atau dikirim ke rekan.
 

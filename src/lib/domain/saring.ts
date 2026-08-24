@@ -82,3 +82,43 @@ export function rentangTerpakai(
   if (ditukar) [a, b] = [b, a];
   return { dari: a, sampai: b, aktif: !!a || !!b, ditukar };
 }
+
+/** Bentuk event seperlunya untuk penyaringan tanggal. */
+export interface EventTanggal {
+  tanggal?: string | null;
+  baby_tanggal?: string | null;
+  toddler_tanggal?: string | null;
+}
+
+/**
+ * SEMUA tanggal yang dimiliki sebuah event, tanpa duplikat.
+ *
+ * Sebuah event bisa punya tanggal gabungan (`tanggal`) DAN/ATAU tanggal per kelas
+ * (`baby_tanggal`, `toddler_tanggal`, migrasi 0069). Menyaring hanya pada `tanggal` akan
+ * menghilangkan event yang tanggalnya cuma diisi di kelasnya — dan admin akan menyimpulkan
+ * event-nya terhapus.
+ */
+export function tanggalEvent(ev: EventTanggal | null | undefined): string[] {
+  const semua = [ev?.tanggal, ev?.baby_tanggal, ev?.toddler_tanggal]
+    .map((x) => (x ?? '').trim())
+    .filter(Boolean);
+  return [...new Set(semua)].sort();
+}
+
+/**
+ * Apakah event ini punya SETIDAKNYA SATU tanggal di dalam rentang?
+ *
+ * Event tanpa tanggal sama sekali dianggap LOLOS — mengikuti aturan yang sama dengan
+ * `dalamRentang`: baris yang tanggalnya tak diketahui justru yang perlu diperiksa, dan
+ * menyaringnya keluar hanya membuatnya tak pernah ketemu.
+ */
+export function eventDalamRentang(
+  ev: EventTanggal | null | undefined,
+  dari?: string | null,
+  sampai?: string | null,
+): boolean {
+  if (!rentangTerpakai(dari, sampai).aktif) return true;
+  const tgl = tanggalEvent(ev);
+  if (tgl.length === 0) return true;
+  return tgl.some((x) => dalamRentang(x, dari, sampai));
+}

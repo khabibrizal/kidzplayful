@@ -1,6 +1,6 @@
 // src/lib/domain/__tests__/saring.test.ts
 import { describe, it, expect } from 'vitest';
-import { rapikanKunci, cocokCari, tanggalWibDariISO, dalamRentang, rentangTerpakai } from '../saring';
+import { rapikanKunci, cocokCari, tanggalWibDariISO, dalamRentang, rentangTerpakai, tanggalEvent, eventDalamRentang } from '../saring';
 
 describe('rapikanKunci', () => {
   it('merapikan spasi & huruf besar', () => {
@@ -97,5 +97,49 @@ describe('rentangTerpakai', () => {
   });
   it('satu batas saja tetap aktif', () => {
     expect(rentangTerpakai('2026-08-01', '')).toMatchObject({ aktif: true, ditukar: false });
+  });
+});
+
+describe('tanggalEvent', () => {
+  it('mengumpulkan tanggal gabungan DAN tanggal per kelas', () => {
+    expect(tanggalEvent({ tanggal: '2026-09-01', baby_tanggal: '2026-09-02', toddler_tanggal: '2026-09-03' }))
+      .toEqual(['2026-09-01', '2026-09-02', '2026-09-03']);
+  });
+  it('event yang tanggalnya HANYA di kelas tetap punya tanggal', () => {
+    // Menyaring hanya pada `tanggal` akan menghilangkan event seperti ini sepenuhnya.
+    expect(tanggalEvent({ tanggal: null, baby_tanggal: '2026-09-02' })).toEqual(['2026-09-02']);
+  });
+  it('tanggal kembar dihitung sekali, dan urut', () => {
+    expect(tanggalEvent({ tanggal: '2026-09-05', baby_tanggal: '2026-09-05', toddler_tanggal: '2026-09-01' }))
+      .toEqual(['2026-09-01', '2026-09-05']);
+  });
+  it('tanpa tanggal sama sekali → daftar kosong', () => {
+    expect(tanggalEvent({})).toEqual([]);
+    expect(tanggalEvent(null)).toEqual([]);
+  });
+});
+
+describe('eventDalamRentang', () => {
+  const ev = { tanggal: null, baby_tanggal: '2026-09-10', toddler_tanggal: '2026-09-11' };
+
+  it('tanpa rentang aktif → semua lolos', () => {
+    expect(eventDalamRentang(ev, '', '')).toBe(true);
+    expect(eventDalamRentang({}, null, null)).toBe(true);
+  });
+  it('cukup SATU tanggal yang masuk rentang', () => {
+    expect(eventDalamRentang(ev, '2026-09-11', '2026-09-30')).toBe(true);   // hanya toddler
+    expect(eventDalamRentang(ev, '2026-09-01', '2026-09-10')).toBe(true);   // hanya baby
+  });
+  it('semua tanggalnya di luar rentang → tidak lolos', () => {
+    expect(eventDalamRentang(ev, '2026-10-01', '2026-10-31')).toBe(false);
+  });
+  it('kedua ujung rentang INKLUSIF', () => {
+    expect(eventDalamRentang({ tanggal: '2026-09-01' }, '2026-09-01', '2026-09-01')).toBe(true);
+  });
+  it('event TANPA tanggal tetap lolos — justru ia yang perlu diperiksa', () => {
+    expect(eventDalamRentang({}, '2026-09-01', '2026-09-30')).toBe(true);
+  });
+  it('batas terbalik ditukar, sama seperti dalamRentang', () => {
+    expect(eventDalamRentang(ev, '2026-09-30', '2026-09-01')).toBe(true);
   });
 });

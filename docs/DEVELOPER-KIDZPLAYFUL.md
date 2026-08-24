@@ -895,6 +895,20 @@ Akibatnya di layar:
 
 > **Pelajaran yang berlaku umum:** saat sebuah gerbang punya lebih dari satu sebab, **sebabnya ikut dikembalikan**, jangan hanya boolean. Pesan yang salah sebab lebih merugikan daripada tak ada pesan — ia membuat orang menunggu sesuatu yang tak akan datang, lalu menyimpulkan aplikasinya rusak.
 
+#### 🔍 Filter di Kelola Event — nama & rentang tanggal
+
+Filter klien (`EventAdmin` sudah memegang `list` di state), memakai aturan yang sama dengan filter halaman lain: `cocokCari` + `rentangTerpakai` dari `domain/saring.ts`, jadi batasnya **inklusif** dan batas terbalik **ditukar** (dan penukarannya ditulis di layar).
+
+**Yang khusus untuk event: sebuah event bisa punya TIGA tanggal.** Selain `tanggal` (gabungan), ada `baby_tanggal` dan `toddler_tanggal` dari migrasi 0069 ("event 2 kelas"). Event yang tanggalnya **hanya** diisi di kelasnya akan **lenyap dari daftar** bila filter hanya melihat `tanggal` — dan admin akan menyimpulkan event-nya terhapus.
+
+`eventDalamRentang()` karena itu memeriksa **semua** tanggal event dan lolos bila **ada satu** yang masuk rentang (`some`, bukan `every`): event dua-hari yang menyeberangi batas rentang tetap harus ketemu.
+
+Event **tanpa tanggal sama sekali** tetap lolos — mengikuti aturan yang sama dengan `dalamRentang`: baris yang tanggalnya tak diketahui justru yang perlu diperiksa, dan menyaringnya keluar hanya membuatnya tak pernah ketemu.
+
+Judul bagian menyebut **"Event (2 dari 5)"** saat filter aktif, jadi jumlah yang tersaring tak pernah disembunyikan.
+
+Uji daya gigit: hanya kolom `tanggal` yang dilihat → 4 tes jatuh; `some` diganti `every` → 1; event tanpa tanggal disaring keluar → 1.
+
 #### 🔍 Filter di Catatan Tema — nama anak, judul tema, rentang tanggal
 
 `/catatan-tema` bisa menumpuk cepat (satu anak × banyak tema × banyak bulan). Filternya berupa **form GET biasa**, bukan komponen klien: keadaan filter terbaca dari URL, bisa di-bookmark & dibagikan, dan saat ada laporan bug URL-nya sudah memuat seluruh keadaan yang perlu direproduksi.

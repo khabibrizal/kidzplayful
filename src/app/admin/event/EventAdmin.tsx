@@ -9,12 +9,16 @@ import { generateSertifikatEvent } from '@/lib/data/admin-sertifikat-actions';
 import DownloadPesertaBtn from './DownloadPesertaBtn';
 import type { EventKelas } from '@/lib/game/tipe';
 import { formatRupiah } from '@/lib/format';
+import { cocokCari, rapikanKunci, rentangTerpakai, eventDalamRentang } from '@/lib/domain/saring';
 import s from '../admin.module.css';
 
 const KOSONG: EventInput = { judul: '', lokasi: '', tanggal: '', jamMulai: '', jamSelesai: '', deskripsi: '', gambarUrl: null, hargaPerAnak: 0, hargaPendamping: 0, diskonLanggananPersen: 0, babyTanggal: '', babyJamMulai: '', babyJamSelesai: '', toddlerTanggal: '', toddlerJamMulai: '', toddlerJamSelesai: '', kuotaBaby: 0, kuotaToddler: 0, kuotaGabungan: 0 };
 
 export default function EventAdmin({ awal, counts, menunggu = {} }: { awal: EventKelas[]; counts: Record<string, number>; menunggu?: Record<string, number> }) {
   const [list, setList] = useState<EventKelas[]>(awal);
+  const [q, setQ] = useState('');
+  const [dari, setDari] = useState('');
+  const [sampai, setSampai] = useState('');
   const [form, setForm] = useState<EventInput | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -85,6 +89,12 @@ export default function EventAdmin({ awal, counts, menunggu = {} }: { awal: Even
     finally { setBusyId(null); }
   }
 
+  // Nama DAN rentang tanggal harus keduanya cocok. Aturan tanggalnya di `domain/saring.ts`
+  // supaya sama dengan filter di halaman lain — batas inklusif, batas terbalik ditukar.
+  const rentang = rentangTerpakai(dari, sampai);
+  const adaFilter = !!rapikanKunci(q) || rentang.aktif;
+  const tampil = list.filter((e) => cocokCari(e.judul, q) && eventDalamRentang(e, dari, sampai));
+
   return (
     <div>
       <div className={s.row} style={{ marginBottom: 12 }}>
@@ -152,8 +162,43 @@ export default function EventAdmin({ awal, counts, menunggu = {} }: { awal: Even
         </div>
       )}
 
-      <div className={s.section}>Event ({list.length})</div>
-      {list.map((e) => (
+      {/* Filter nama & rentang tanggal. Rentangnya melihat SEMUA tanggal event — gabungan
+          maupun per kelas (baby/toddler, 0069) — sebab event yang tanggalnya hanya diisi di
+          kelasnya akan lenyap dari daftar bila hanya `tanggal` yang disaring. */}
+      <div className={s.card} style={{ padding: '10px 10px 18px', display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        <label style={{ fontSize: 11, color: 'var(--abu)', display: 'flex', flexDirection: 'column', gap: 2, flex: '1 1 170px' }}>
+          🔍 Nama event
+          <input className={s.inp} value={q} onChange={(ev) => setQ(ev.target.value)}
+            placeholder="mis. Open House" style={{ fontSize: 13, padding: '6px 8px', marginBottom: 0 }} />
+        </label>
+        <label style={{ fontSize: 11, color: 'var(--abu)', display: 'flex', flexDirection: 'column', gap: 2 }}>
+          📅 Tanggal dari
+          <input type="date" className={s.inp} value={dari} onChange={(ev) => setDari(ev.target.value)}
+            style={{ fontSize: 13, padding: '6px 8px', marginBottom: 0 }} />
+        </label>
+        <label style={{ fontSize: 11, color: 'var(--abu)', display: 'flex', flexDirection: 'column', gap: 2 }}>
+          sampai
+          <input type="date" className={s.inp} value={sampai} onChange={(ev) => setSampai(ev.target.value)}
+            style={{ fontSize: 13, padding: '6px 8px', marginBottom: 0 }} />
+        </label>
+        {adaFilter && (
+          <button className={s.btnSm} style={{ background: '#eee' }}
+            onClick={() => { setQ(''); setDari(''); setSampai(''); }}>Reset</button>
+        )}
+      </div>
+      {rentang.ditukar && (
+        <div className={s.muted} style={{ fontSize: 12, color: '#b88600', marginTop: 6 }}>
+          ⚠️ Tanggalnya tertukar — yang dipakai: {rentang.dari} s/d {rentang.sampai}.
+        </div>
+      )}
+
+      <div className={s.section}>
+        Event ({tampil.length}{adaFilter && tampil.length !== list.length ? ` dari ${list.length}` : ''})
+      </div>
+      {adaFilter && tampil.length === 0 && (
+        <p className={s.muted}>Tak ada event yang cocok dengan filter ini.</p>
+      )}
+      {tampil.map((e) => (
         <div key={e.id} className={s.card} style={{ opacity: e.status === 'arsip' ? 0.55 : 1, position: 'relative' }}>
           {(menunggu[e.id] ?? 0) > 0 && (
             <span title={`${menunggu[e.id]} pendaftar baru belum diproses`} style={{ position: 'absolute', top: -8, right: -8, minWidth: 22, height: 22, padding: '0 6px', borderRadius: 99, background: '#e53935', color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,.25)', zIndex: 2 }}>{menunggu[e.id]}</span>
