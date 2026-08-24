@@ -408,6 +408,11 @@ Daftar Ide Bermain di halaman anak & orang tua kini tersusun **dari Bulan ke-1 M
 
 Bagian **📖 Sudah terbuka** juga ikut naik (dulu dari yang terbaru), supaya materi yang terlewat bisa disusul berurutan.
 
+### Ukuran tombol
+Tombol di seluruh aplikasi dikecilkan agar tak mendominasi tampilan: tombol utama dari tinggi ~51px menjadi **~39px** (font 18 → 15), tombol admin dari ~38px menjadi **~34px**. Bayangan tebalnya ikut diperkecil supaya proporsinya tetap enak dilihat.
+
+Yang **tidak** dikecilkan: tombol kecil di baris aksi admin (Edit/Nonaktifkan/Hapus — sudah kecil), dan **tile menu Mode Anak** — itu sasaran sentuh untuk anak, jadi sengaja tetap besar.
+
 ### Tombol Edit di Ide Bermain
 Menekan **Edit** pada sebuah materi kini **menggulirkan halaman ke form edit-nya**, dan kepala form menyebut judul materi yang sedang dibuka ("Edit: PETUALANGAN DUNIA DINOSAURUS"). Sebelumnya form terbuka di atas daftar tanpa halaman ikut berpindah, sehingga tombolnya terasa tak berfungsi. Berlaku juga untuk **Tambah** dan **Duplikat**.
 

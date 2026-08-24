@@ -1017,6 +1017,27 @@ Daftar tema di sisi pengguna disusun **NAIK** menurut `(bulan_kurikulum, urutan)
 
 Uji daya gigit: `sudahTerbuka` dikembalikan menurun → 1 tes jatuh; pengurutan minggu dilepas (hanya bulan) → 2; `teksPosisi` dibiarkan menulis bulan 0 → 1.
 
+#### Ukuran tombol dikecilkan (skala global)
+
+Permintaan pemilik: tombolnya terlalu besar dan mendominasi tampilan. Yang diubah **hanya dua kelas dasar** — tak ada satu pun berkas komponen disentuh, sebab semua tombol mewarisi dari sini.
+
+| Kelas | Sebelum | Sesudah | Tinggi |
+|---|---|---|---|
+| `.kp-btn` (135 pemakaian) | `padding 15/28`, font 18, bayangan 6px | `padding 11/20`, font **15**, bayangan **4px** | 51 → **39 px** |
+| `.btn` admin (41 pemakaian) | `padding 10/18`, font **warisan**, bayangan 4px | `padding 8/16`, font **13** eksplisit, bayangan 3px | 38 → **34 px** |
+
+Yang **tidak** diubah, dan alasannya:
+
+- **`.btnSm` (198 pemakaian, tinggi 29px)** — sudah kecil. Mengecilkannya lagi akan membuat baris tombol admin (Edit/Nonaktifkan/Trial/Hapus) sulit disentuh di HP.
+- **`.kp-tile` (menu Mode Anak)** — itu sasaran sentuh untuk ANAK, bukan tombol antarmuka orang tua. Daftar panjangnya pun sudah memakai varian `.kp-tile.rapat` (11px/17px) dari permintaan sebelumnya; yang tersisa berukuran penuh hanya 3 tile menu utama.
+
+Dua hal yang ikut diperbaiki karena sekalian:
+
+1. **Bayangan solid diproporsikan** (6→4px, 4→3px). Bayangan yang tak ikut mengecil membuat tombol kecil tampak melayang — dan ia berada **di luar kotak elemen**, jadi wadah ber-padding kecil perlu menyisakan ruang untuknya (lihat catatan cacat tombol Reset di bawah).
+2. **`.btn` admin kini punya `font-size` eksplisit.** Sebelumnya ia mewarisi ukuran induknya, sehingga tombol yang sama tampil berbeda besar di halaman yang berbeda.
+
+Diverifikasi dengan render sebelum/sesudah + pengukuran DOM: tinggi & font tiap kelas, dan pemeriksaan bahwa bayangan setiap tombol di dalam kartu masih tertampung padding wadahnya (sisa 18px). Ambang sentuh ~39px masih nyaman di HP; mengecilkan lagi akan mulai menyulitkan.
+
 #### Tombol Edit harus MEMBAWA admin ke formnya
 
 Form Ide Bermain dirender **di atas** daftar, sedangkan tombol Edit ada jauh di bawah. Menekan Edit karena itu terlihat **seperti tak melakukan apa pun** — form memang terbuka, hanya di luar layar. Kartu yang tak bereaksi tak bisa dibedakan dari tombol yang rusak.
