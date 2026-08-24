@@ -336,7 +336,14 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
   // Diberi PLAFON agar bagian konsultasi di bawahnya dijamin kebagian ruang. Sisa yang tak
   // termuat disebut jumlahnya — tidak dihilangkan diam-diam.
   const adaKonsultasi = isi.rekomendasiPsikolog.length > 0 || isi.rekomendasiItem.length > 0 || isi.rekomendasi > 0;
-  const plafonCatatan = adaKonsultasi ? 1160 + (BATAS_BAWAH - 1160) * 0.55 : BATAS_BAWAH;
+  // Pembagian ruang kolom kanan digeser 0,55 -> 0,45 ke arah bagian PSIKOLOG.
+  //
+  // Alasannya prioritas isi: bagian psikolog memuat naratif DAN butir saran yang bisa
+  // ditindaklanjuti orang tua ("Di rumah: perbanyak bermain peran"), dan dengan 55% untuk
+  // catatan, butirnya tak pernah kebagian tempat sama sekali. Catatan perkembangan yang
+  // menyusut sudah punya pemberitahuannya sendiri ("…dan N catatan lain"), jadi
+  // penyusutannya terlihat — bukan senyap.
+  const plafonCatatan = adaKonsultasi ? 1160 + (BATAS_BAWAH - 1160) * 0.45 : BATAS_BAWAH;
 
   yR = judulBagian('📝 Catatan perkembangan', kananX, yR);
   if (isi.catatanGuru.length === 0) yR = barisTeks('Belum ada catatan perkembangan bulan ini.', kananX, yR, kolomL, 1);
@@ -345,8 +352,14 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
     for (const c of isi.catatanGuru) {
       if (yR > plafonCatatan - 90) break;
       yR = barisTeks(`• ${c.judulEvent}${c.dinilai_oleh ? ` — ${c.dinilai_oleh}` : ''}`, kananX, yR, kolomL, 1);
+      // 🐞 Baris penilaian yang tak muat dulu hilang TANPA JEJAK. Pemberitahuan
+      // "…dan N catatan lain" di bawah hanya menghitung CATATAN yang utuh tak tercetak, bukan
+      // baris domain yang terpotong di dalam sebuah catatan — jadi rapor bisa menampilkan
+      // tiga dari empat domain dan tampak lengkap.
+      let nilaiDicetak = 0;
       for (const n of c.penilaian) {
-        if (yR > plafonCatatan - 40) break;
+        // Berhenti lebih awal supaya pemberitahuannya kebagian tempat.
+        if (yR > plafonCatatan - 120) break;
         // Kode skalanya dipindah dari teks ke TAG BERWARNA di tepi kanan kolom.
         // Tagnya digambar SEBELUM teksnya bergulir ke bawah, jadi ia sejajar dengan baris
         // pertama entri — menaruhnya sesudah baris terakhir butuh posisi-x akhir teks, dan
@@ -355,6 +368,10 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
         const lebarTeks = kolomL - 26 - 200;   // sisakan ruang untuk tagnya (tag ~110px + jarak)
         yR = barisTeks(`${rapikanDaftar(n.area)}: ${rapikanDaftar(n.indikator)}`, kananX + 26, yR, lebarTeks);
         if ((n.nilai ?? '').trim()) tagSkala(n.nilai, kananX + kolomL, yTag);
+        nilaiDicetak += 1;
+      }
+      if (nilaiDicetak < c.penilaian.length && yR < plafonCatatan - 40) {
+        yR = barisTeks(`   …${c.penilaian.length - nilaiDicetak} penilaian lain — lihat di aplikasi`, kananX + 26, yR, kolomL - 26, 1);
       }
       if (c.catatan && yR < plafonCatatan - 40) yR = barisTeks(`"${c.catatan}"`, kananX + 26, yR, kolomL - 26);
       dicetak += 1;
@@ -384,10 +401,32 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
     for (const x of isi.rekomendasiPsikolog) {
       if (yR > plafonNaratif - 80) break;
       yR = barisTeks(`• ${x.judul || 'Rekomendasi'}${x.oleh ? ` — ${x.oleh}` : ''}`, kananX, yR, kolomL, 1);
-      if (x.isi && yR < plafonNaratif - 40) yR = barisTeks(x.isi, kananX + 26, yR, kolomL - 26);
+      // Naratif psikolog diberi 5 baris, bukan 2 (bawaan `barisTeks`).
+      //
+      // 🐞 Dengan 2 baris, `ukuranPas` gagal memuat kalimat sepanjang ini bahkan pada ukuran
+      // huruf terkecilnya, lalu MEMOTONGNYA dengan "…" — dan yang terpotong justru isi paling
+      // berharga di rapor: kesimpulan psikolog. Efek sampingnya menguntungkan: dengan ruang
+      // baris yang cukup, `ukuranPas` memilih huruf yang LEBIH BESAR, bukan lebih kecil.
+      // 3 baris, bukan 4: kolom kanan kelebihan muatan, dan naratif yang lebih panjang
+      // MENELAN butir rekomendasinya. Naratif adalah konteks; butir ("Di rumah: perbanyak
+      // bermain peran") adalah yang bisa ditindaklanjuti orang tua — jadi butirlah yang
+      // dimenangkan saat ruang berebut, dan sisa naratifnya yang diringkas.
+      if (x.isi && yR < plafonNaratif - 40) yR = barisTeks(x.isi, kananX + 26, yR, kolomL - 26, 3);
+      // 🐞 Butir rekomendasi dulu hilang TANPA JEJAK begitu naratifnya panjang: loop ini
+      // sekadar `break`, tanpa memberi tahu ada yang tak tercetak. Padahal butir inilah
+      // bagian yang bisa ditindaklanjuti orang tua ("Di rumah: perbanyak bermain peran"),
+      // dan rapor yang menelannya diam-diam membuat orang tua tak pernah tahu ia ada.
+      let butirDicetak = 0;
       for (const b of x.butir) {
-        if (yR > plafonNaratif - 40) break;
-        yR = barisTeks(`– ${b.judul ? `${b.judul}: ` : ''}${b.isi ?? ''}`, kananX + 26, yR, kolomL - 26, 1);
+        // Berhenti LEBIH AWAL supaya baris "…N saran lain" pasti kebagian tempat — pola yang
+        // sama dengan evaluasi kurikulum di kolom kiri. Tanpa cadangan ini, barisnya
+        // tergambar di luar kartu dan menabrak footer.
+        if (yR > plafonNaratif - 130) break;
+        yR = barisTeks(`– ${b.judul ? `${b.judul}: ` : ''}${b.isi ?? ''}`, kananX + 26, yR, kolomL - 26, 2);
+        butirDicetak += 1;
+      }
+      if (butirDicetak < x.butir.length && yR < plafonNaratif - 40) {
+        yR = barisTeks(`   …${x.butir.length - butirDicetak} saran lain — lihat di aplikasi`, kananX + 26, yR, kolomL - 26, 1);
       }
       naratifDicetak += 1;
     }
@@ -405,7 +444,10 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
       ctx.save();
       ctx.globalCompositeOperation = 'multiply';
       ctx.fillStyle = '#fceceb';
-      jalurKotakBulat(ctx, kananX - 28, tintDari, kolomL + 56, Math.max(80, yR - tintDari + 16), 28);
+      // Tinggi tint DIJEPIT ke batas isi: tanpa itu, baris "…N saran lain" yang muncul di
+      // ujung anggaran bisa menyeret kartunya turun sampai menyentuh footer.
+      const tintSampai = Math.min(yR + 16, BATAS_BAWAH);
+      jalurKotakBulat(ctx, kananX - 28, tintDari, kolomL + 56, Math.max(80, tintSampai - tintDari), 28);
       ctx.fill();
       ctx.restore();
     }
