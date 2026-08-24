@@ -140,6 +140,7 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
     hasilMain: (main ?? []) as { area_skill: string | null; bintang: number | null; durasi_detik: number | null; selesai: boolean | null }[],
     catatan: [
       ...catatanBulan.map((x) => ({
+        sumber: 'event' as const,
         judulEvent: x.judulEvent,
         dinilai_oleh: x.c.dinilai_oleh ?? null,
         penilaian: (x.c.penilaian ?? []).map((n) => ({ area: n.area, indikator: n.indikator, nilai: n.nilai })),
@@ -148,6 +149,7 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
       // Catatan per TEMA ikut di sini supaya tercetak juga di JPEG; judulnya memakai nama
       // temanya, dan penulisnya disebut lengkap dengan perannya.
       ...catatanTema.map((c) => ({
+        sumber: 'tema' as const,
         judulEvent: judulKelas.get(c.kelas_id) ?? 'Tema kurikulum',
         dinilai_oleh: `${c.penulis_nama ?? 'Tim KidzPlayful'} (${c.peran})`,
         penilaian: (c.penilaian ?? []).map((n) => ({ area: n.area, indikator: n.indikator, nilai: n.nilai })),
@@ -330,14 +332,27 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
             </>
           )}
 
-          {/* Catatan perkembangan LENGKAP dari event yang diikuti bulan ini — bukan cuma
-              judul & penilainya. Inilah yang orang tua cari di rapor. */}
-          {r.catatanGuru.length > 0 && (
-            <>
-              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '12px 0 6px' }}>📝 CATATAN PERKEMBANGAN</div>
-              {r.catatanGuru.map((c, i) => (
+          {/* Catatan perkembangan LENGKAP — bukan cuma judul & penilainya. Inilah yang orang
+              tua cari di rapor.
+
+              DIPISAH menurut asalnya, sama seperti di JPEG: penilaian guru pada kelas offline
+              dan tanggapan atas evaluasi kurikulum yang dikerjakan di rumah adalah dua jenis
+              bukti yang tak setara, dan satu daftar gabungan membuat pembacanya menyangka
+              semuanya hasil pengamatan guru di kelas. */}
+          {([
+            { kunci: 'event' as const, judul: '📝 CATATAN PERKEMBANGAN (EVENT)', ikon: '🎈' },
+            { kunci: 'tema' as const, judul: '📘 CATATAN TEMA KURIKULUM', ikon: '📘' },
+          ]).map((grup) => {
+            const daftar = r.catatanGuru.filter((c) =>
+              // Baris lama tanpa `sumber` dianggap `event` — perilaku sebelum pemisahan ini.
+              grup.kunci === 'event' ? (c.sumber ?? 'event') === 'event' : c.sumber === 'tema');
+            if (daftar.length === 0) return null;
+            return (
+            <div key={grup.kunci}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '12px 0 6px' }}>{grup.judul}</div>
+              {daftar.map((c, i) => (
                 <div key={i} className="kp-card" style={{ marginBottom: 8 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14 }}>🎈 {c.judulEvent}</div>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>{grup.ikon} {c.judulEvent}</div>
                   {c.dinilai_oleh && <div style={{ fontSize: 12, color: 'var(--abu)' }}>dinilai {c.dinilai_oleh}</div>}
                   {c.penilaian.length > 0 && (
                     <div style={{ marginTop: 8 }}>
@@ -359,8 +374,9 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
                   {c.catatan && <p style={{ fontSize: 13, marginTop: 8, marginBottom: 0 }}>💬 {c.catatan}</p>}
                 </div>
               ))}
-            </>
-          )}
+            </div>
+            );
+          })}
 
           {r.event.length > 0 && r.catatanGuru.length === 0 && (
             <>

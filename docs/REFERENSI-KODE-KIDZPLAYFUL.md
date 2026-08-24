@@ -4,7 +4,7 @@
 >
 > Ukuran proyek saat dokumen ini dibuat: **433 berkas TypeScript, ~32.500 baris, 104 migrasi SQL, 89 rute halaman, 19 rute API**.
 >
-> **Untuk memburu bug, buka [`PANDUAN-DEBUG-KIDZPLAYFUL.md`](PANDUAN-DEBUG-KIDZPLAYFUL.md) (+PDF).** Dokumen ini menjawab *di mana* sebuah aturan hidup; panduan debug menjawab *bagaimana membuktikan aturan itu yang salah* — alat debug, peta fitur → berkas → fungsi, dan katalog 17 bug yang pernah benar-benar terjadi beserta akar & perbaikannya.
+> **Untuk memburu bug, buka [`PANDUAN-DEBUG-KIDZPLAYFUL.md`](PANDUAN-DEBUG-KIDZPLAYFUL.md) (+PDF).** Dokumen ini menjawab *di mana* sebuah aturan hidup; panduan debug menjawab *bagaimana membuktikan aturan itu yang salah* — alat debug, peta fitur → berkas → fungsi, dan katalog 18 bug yang pernah benar-benar terjadi beserta akar & perbaikannya.
 
 ---
 

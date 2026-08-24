@@ -52,6 +52,24 @@ export function bulanRekomendasi(
   return bulanWib(rek?.created_at);
 }
 
+/**
+ * Berapa banyak butir yang TIDAK termuat — dijaga tak pernah negatif.
+ *
+ * 🐞 Rapor bulanan pernah selalu pecah jadi DUA HALAMAN padahal isinya sedikit. Sebabnya
+ * satu pengurangan yang boleh negatif: blok "Direkomendasikan" dibatasi 4 item, dan
+ * penghitungnya menulis `panjang - 4`. Anak dengan 1 rekomendasi menghasilkan -3, dan
+ * keputusan halaman yang berbunyi `terpotong === 0` gagal untuk -3 persis seperti gagal
+ * untuk +3 — jadi halaman kedua dicetak, kosong, untuk setiap anak yang rekomendasinya
+ * kurang dari empat.
+ *
+ * Angka ini artinya "sisa yang tak kebagian tempat". Nilai negatif tak punya arti dalam
+ * kalimat itu, jadi ia dijepit di sini — sekali, di satu tempat — bukan di tiap pemanggil.
+ */
+export function sisaTakMuat(total: number, tercetak: number): number {
+  const a = Math.round(Number(total) || 0), b = Math.round(Number(tercetak) || 0);
+  return Math.max(0, a - b);
+}
+
 export type ArahDelta = 'naik' | 'turun' | 'sama' | 'tanpa-pembanding';
 
 /**
@@ -155,6 +173,19 @@ export interface CatatanRingkas {
   penilaian: NilaiRingkas[];
   /** catatan bebas dari guru */
   catatan: string | null;
+  /**
+   * Dari mana catatan ini berasal — dan ini BUKAN sekadar label.
+   *
+   * `event` = penilaian guru pada acara offline (`catatan_perkembangan`), diamati langsung
+   * oleh guru di kelas. `tema` = tanggapan atas evaluasi kurikulum yang dikerjakan orang tua
+   * di rumah (`catatan_tema`). Keduanya dulu dicetak dalam satu daftar, dan itu membuat
+   * pembacanya menyangka semuanya hasil pengamatan guru. Dua jenis bukti yang tak setara
+   * tidak boleh tampil sebagai satu daftar.
+   *
+   * Opsional demi baris lama yang tak menyimpannya; yang tak menyebut asal diperlakukan
+   * sebagai `event` (perilaku sebelum pemisahan ini).
+   */
+  sumber?: 'event' | 'tema';
 }
 
 /** Rekomendasi naratif psikolog dari sesi konsultasi. */

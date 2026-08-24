@@ -1,6 +1,6 @@
 // src/lib/domain/__tests__/laporan-bulanan.test.ts
 import { describe, it, expect } from 'vitest';
-import { rentangBulan, ringkasBulan, labelBulan, bulanTerakhir, rapikanDaftar, hitungArea, bulanWib, bulanRekomendasi, deltaTeks, kalimatRingkas } from '../laporan-bulanan';
+import { rentangBulan, ringkasBulan, labelBulan, bulanTerakhir, rapikanDaftar, hitungArea, bulanWib, bulanRekomendasi, deltaTeks, kalimatRingkas, sisaTakMuat } from '../laporan-bulanan';
 
 describe('rentangBulan', () => {
   it('memberi awal & akhir bulan dalam WIB', () => {
@@ -340,5 +340,32 @@ describe('umurTeksPanjang dipakai rapor', () => {
     expect(umurTeksPanjang(new Date('2022-09-15'), new Date('2026-08-24'))).toBe('3 tahun 11 bulan');
     expect(umurTeksPanjang(new Date('2022-08-15'), new Date('2026-08-24'))).toBe('4 tahun');
     expect(umurTeksPanjang(new Date('2026-02-15'), new Date('2026-08-24'))).toBe('6 bulan');
+  });
+});
+
+describe('sisaTakMuat', () => {
+  it('TIDAK PERNAH negatif walau batasnya lebih besar dari isinya', () => {
+    // 🐞 Inilah bug rapor 2 halaman: blok "Direkomendasikan" dibatasi 4 item, dan
+    // penghitungnya menulis `panjang - 4`. Satu rekomendasi menghasilkan -3, lalu keputusan
+    // halaman `terpotong === 0` gagal untuk -3 persis seperti gagal untuk +3.
+    expect(sisaTakMuat(1, 4)).toBe(0);
+    expect(sisaTakMuat(0, 8)).toBe(0);
+  });
+
+  it('menghitung sisa yang benar-benar tak termuat', () => {
+    expect(sisaTakMuat(7, 3)).toBe(4);
+    expect(sisaTakMuat(3, 3)).toBe(0);
+  });
+
+  it('nilai tak masuk akal tidak menjatuhkan hitungannya', () => {
+    expect(sisaTakMuat(NaN, 2)).toBe(0);
+    expect(sisaTakMuat(5, NaN)).toBe(5);
+  });
+
+  it('jumlah dari banyak blok tetap nol saat semuanya termuat', () => {
+    // Sifat yang sesungguhnya dijaga: satu blok yang "kelebihan jatah" tak boleh MENGURANGI
+    // hitungan blok lain yang benar-benar terpotong.
+    const total = sisaTakMuat(1, 4) + sisaTakMuat(2, 5) + sisaTakMuat(9, 4);
+    expect(total).toBe(5);
   });
 });

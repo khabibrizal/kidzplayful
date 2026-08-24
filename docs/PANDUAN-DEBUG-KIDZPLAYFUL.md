@@ -862,6 +862,51 @@ semuanya hijau untuk gambar yang rusak total.
 
 ---
 
+### BUG-11b · Penghitung yang boleh NEGATIF membalik sebuah keputusan
+
+**Gejala.** Rapor bulanan **selalu** tercetak dua halaman padahal isinya sedikit — halaman
+kedua nyaris kosong, hanya berisi satu blok yang memang dipaku ke dasar kolom, plus kaki
+halaman.
+
+**Akar.** Keputusan jumlah halaman dibaca dari satu penghitung, `terpotong`, yang artinya
+"berapa banyak isi yang tak kebagian tempat". Salah satu penyumbangnya menulis
+`isi.rekomendasiItem.length - MAKS_ITEM`, dengan `MAKS_ITEM = 4`. Anak dengan **satu**
+rekomendasi menghasilkan **−3**. Keputusannya berbunyi `terpotong === 0`, dan **−3 gagal
+memenuhi syarat itu persis seperti +3** — jadi halaman kedua dicetak untuk setiap anak yang
+rekomendasinya kurang dari empat, yaitu hampir semua anak.
+
+**Tempat.** `src/lib/rapor-jpeg.ts` (semua `terpotong +=`),
+`src/lib/domain/laporan-bulanan.ts` → `sisaTakMuat`.
+
+**Cara membuktikan.** Jangan menebak penyumbangnya — **cetak semuanya.** Ganti tiap
+`terpotong += X` dengan pemanggilan yang mencatat nilainya, lalu render dengan fixture yang
+menyalin data yang dilaporkan:
+
+```ts
+const lacak = (tag: string, n: number) => { console.log('POTONG', hTotal, tag, n); terpotong += n; };
+```
+
+Keluarannya langsung menunjuk pelakunya:
+
+```
+POTONG 4962 b448 0 … POTONG 4962 b678 -3      ← satu-satunya yang bukan nol, dan NEGATIF
+```
+
+**Cara memperbaiki.** Dua lapis, dan keduanya perlu:
+
+1. **Jepit di sumbernya, sekali:** satu helper murni `sisaTakMuat(total, tercetak)` yang
+   mengembalikan `Math.max(0, total - tercetak)`. "Sisa yang tak kebagian tempat" tak punya
+   arti negatif, jadi pembatasannya milik definisi angkanya — bukan tugas tiap pemanggil.
+2. **Bandingkan, jangan samakan:** `terpotong <= 0`, bukan `=== 0`.
+
+**Pelajaran yang bisa dibawa ke tempat lain.** Sebuah angka yang namanya menyiratkan "jumlah
+sisa", "berapa yang gagal", atau "berapa yang tertinggal" **tak boleh** bisa negatif. Kalau
+bisa, satu blok yang "kelebihan jatah" akan diam-diam mengurangi hitungan blok lain yang
+benar-benar terpotong — dan bug seperti ini tak pernah memberi galat: rapornya tetap tercetak,
+hanya jadi dua lembar dengan satu lembar kosong.
+
+---
+
 ### BUG-12 · Pemotongan senyap: rapor terbaca lengkap padahal tidak
 
 **Gejala.** Rapor menampilkan tiga dari empat domain penilaian dan **tampak lengkap**. Orang tua tak punya
@@ -970,6 +1015,7 @@ alasannya** (§4.3).
 | Data lintas-akun bisa diambil kunci anon | `EXECUTE` fungsi belum dicabut ganda | BUG-09 |
 | Migrasi gagal / insert ditolak | indeks sebelum data rapi; CHECK belum didaftarkan | BUG-10 |
 | Rapor/sertifikat/stiker berantakan | tata letak Canvas | BUG-11 |
+| Rapor selalu 2 halaman padahal isinya sedikit | penghitung sisa yang boleh negatif | BUG-11b |
 | Rapor tampak lengkap tapi ada yang hilang | pemotongan senyap | BUG-12 |
 | Game salah deteksi saat klik cepat | stale closure | BUG-13 |
 | Field form tak ter-reset / field baru hilang | form kirim objek penuh | BUG-14 |

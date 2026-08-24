@@ -6,7 +6,7 @@
 'use client';
 import { ukuranPas, muatGambar, keluarga, siapkanFont, jalurKotakBulat } from './kartu-bersama';
 import { metaSkala } from './format';
-import { rapikanDaftar } from './domain/laporan-bulanan';
+import { rapikanDaftar, sisaTakMuat } from './domain/laporan-bulanan';
 
 // A4 @300dpi = 2480 x 3508 piksel, dicetak PORTRAIT.
 //
@@ -72,6 +72,8 @@ export interface IsiRapor {
   daftarVideo: { judul: string; jumlah: number }[];
   event: string[];
   catatanGuru: {
+    /** 'event' = penilaian guru di kelas offline, 'tema' = tanggapan atas evaluasi di rumah */
+    sumber?: 'event' | 'tema';
     judulEvent: string; dinilai_oleh: string | null;
     penilaian: { area: string; indikator: string; nilai: string }[];
     catatan: string | null;
@@ -444,13 +446,13 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
         }
         evalDicetak += 1;
       }
-      terpotong += barisEval.length - evalDicetak;
+      terpotong += sisaTakMuat(barisEval.length, evalDicetak);
       // Sisa yang tak muat DISEBUT, bukan dihilangkan diam-diam — baik tema maupun baris
       // rincian aktivitas yang kena anggaran.
       // `yK` WAJIB diperbarui: dulu blok ini paling bawah sehingga nilai baliknya tak
       // berpengaruh, tapi sekarang ada bagian lain di bawahnya — mengabaikannya membuat
       // baris ini bertumpuk dengan judul berikutnya.
-      terpotong += sisaTema + aktivitasTerpotong;
+      terpotong += Math.max(0, sisaTema) + Math.max(0, aktivitasTerpotong);
       if (sisaTema > 0) yK = barisRingkas(`…dan ${sisaTema} tema lain`, kiriX, yK, kolomL);
       else if (aktivitasTerpotong > 0) yK = barisRingkas('…rincian aktivitas dipersingkat', kiriX, yK, kolomL);
     }
@@ -467,7 +469,7 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
         n++;
         if (yK > batasKiri - 420) break;
       }
-      terpotong += isi.daftarIdeBermain.length - n;
+      terpotong += sisaTakMuat(isi.daftarIdeBermain.length, n);
       if (n < isi.daftarIdeBermain.length) yK = barisRingkas(`…dan ${isi.daftarIdeBermain.length - n} lainnya`, kiriX, yK, kolomL);
     }
 
@@ -486,7 +488,7 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
         n++;
         if (yK > batasKiri - 250) break;
       }
-      terpotong += isi.daftarVideo.length - n;
+      terpotong += sisaTakMuat(isi.daftarVideo.length, n);
       if (n < isi.daftarVideo.length) yK = barisRingkas(`…dan ${isi.daftarVideo.length - n} lainnya`, kiriX, yK, kolomL);
     }
 
@@ -525,7 +527,7 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
         n++;
         if (yK > batasKiri - 104) break;   // sisakan 2 baris ringkas
       }
-      terpotong += eventBelumTertulis.length - n;
+      terpotong += sisaTakMuat(eventBelumTertulis.length, n);
       if (n < eventBelumTertulis.length) yK = barisRingkas(`…dan ${eventBelumTertulis.length - n} lainnya`, kiriX, yK, kolomL);
     } else if (eventBelumTertulis.length > 0) terpotong += eventBelumTertulis.length;
 
@@ -542,11 +544,19 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
     // penyusutannya terlihat — bukan senyap.
     const plafonCatatan = adaKonsultasi ? 1160 + (BATAS_BAWAH - 1160) * 0.45 : BATAS_BAWAH;
 
-    yR = judulBagian('📝 Catatan perkembangan', kananX, yR);
-    if (isi.catatanGuru.length === 0) yR = barisTeks('Belum ada catatan perkembangan bulan ini.', kananX, yR, kolomL, 1);
-    else {
+    /**
+     * Satu blok catatan. Dipanggil DUA KALI — sekali untuk penilaian guru di acara offline,
+     * sekali untuk tanggapan atas evaluasi kurikulum yang dikerjakan di rumah.
+     *
+     * Keduanya dulu satu daftar, dan pembacanya menyangka semuanya hasil pengamatan guru di
+     * kelas. Keduanya bukti yang tak setara: yang satu guru melihat sendiri, yang satu guru
+     * menanggapi laporan orang tua. Rapor yang meleburkannya membuat pembaca salah menimbang.
+     */
+    const blokCatatan = (judul: string, list: typeof isi.catatanGuru, kosong: string) => {
+      yR = judulBagian(judul, kananX, yR);
+      if (list.length === 0) { yR = barisTeks(kosong, kananX, yR, kolomL, 1); return; }
       let dicetak = 0;
-      for (const c of isi.catatanGuru) {
+      for (const c of list) {
         if (yR > plafonCatatan - 90) break;
         yR = barisTeks(`• ${c.judulEvent}${c.dinilai_oleh ? ` — ${c.dinilai_oleh}` : ''}`, kananX, yR, kolomL, 1);
         // 🐞 Baris penilaian yang tak muat dulu hilang TANPA JEJAK. Pemberitahuan
@@ -567,17 +577,32 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
           if ((n.nilai ?? '').trim()) tagSkala(n.nilai, kananX + kolomL, yTag);
           nilaiDicetak += 1;
         }
-        terpotong += c.penilaian.length - nilaiDicetak;
+        terpotong += sisaTakMuat(c.penilaian.length, nilaiDicetak);
         if (nilaiDicetak < c.penilaian.length && yR < plafonCatatan - 40) {
           yR = barisTeks(`   …${c.penilaian.length - nilaiDicetak} penilaian lain — lihat di aplikasi`, kananX + 26, yR, kolomL - 26, 1);
         }
         if (c.catatan && yR < plafonCatatan - 40) yR = barisTeks(`"${c.catatan}"`, kananX + 26, yR, kolomL - 26);
         dicetak += 1;
       }
-      terpotong += isi.catatanGuru.length - dicetak;
-      if (dicetak < isi.catatanGuru.length) {
-        yR = barisTeks(`…dan ${isi.catatanGuru.length - dicetak} catatan lain — lihat di aplikasi`, kananX, yR, kolomL, 1);
+      terpotong += sisaTakMuat(list.length, dicetak);
+      if (dicetak < list.length) {
+        yR = barisTeks(`…dan ${list.length - dicetak} catatan lain — lihat di aplikasi`, kananX, yR, kolomL, 1);
       }
+    };
+
+    // Baris lama yang belum menyimpan `sumber` dianggap `event` — itu perilaku sebelum
+    // pemisahan ini, jadi rapor bulan-bulan lampau tak berubah artinya.
+    const catatanEvent = isi.catatanGuru.filter((c) => (c.sumber ?? 'event') === 'event');
+    const catatanTema = isi.catatanGuru.filter((c) => c.sumber === 'tema');
+
+    blokCatatan('📝 Catatan perkembangan (event)', catatanEvent,
+      'Belum ada catatan dari kelas bermain bulan ini.');
+    // Blok kedua hanya muncul bila ADA isinya. Keadaan kosong yang kedua di kolom yang sama
+    // membuat rapor terbaca seperti dua bagian yang sama-sama gagal, padahal tema kurikulum
+    // memang tak selalu ditanggapi guru.
+    if (catatanTema.length > 0) {
+      yR += 26;
+      blokCatatan('📘 Catatan tema kurikulum', catatanTema, '');
     }
 
     // ——— KOLOM KANAN, bagian 2: hasil konsultasi psikolog ———
@@ -638,13 +663,13 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
           yR = barisTeks(`– ${b.judul ? `${b.judul}: ` : ''}${b.isi ?? ''}`, kananX + 26, yR, kolomL - 26, 2, PINK_TEKS);
           butirDicetak += 1;
         }
-        terpotong += x.butir.length - butirDicetak;
+        terpotong += sisaTakMuat(x.butir.length, butirDicetak);
         if (butirDicetak < x.butir.length && yR < plafonNaratif - 40) {
           yR = barisTeks(`   …${x.butir.length - butirDicetak} saran lain — lihat di aplikasi`, kananX + 26, yR, kolomL - 26, 1, PINK_TEKS);
         }
         naratifDicetak += 1;
       }
-      terpotong += isi.rekomendasiPsikolog.length - naratifDicetak;
+      terpotong += sisaTakMuat(isi.rekomendasiPsikolog.length, naratifDicetak);
       if (naratifDicetak < isi.rekomendasiPsikolog.length) {
         yR = barisTeks(`…dan ${isi.rekomendasiPsikolog.length - naratifDicetak} rekomendasi lain — lihat di aplikasi`, kananX, yR, kolomL, 1, PINK_TEKS);
       }
@@ -674,7 +699,7 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
           const label = it.jenis === 'materi' ? 'ide bermain' : it.jenis;
           yR = barisTeks(`• ${it.judul ?? '—'} (${label})${it.catatan ? ` · ${it.catatan}` : ''}`, kananX + 26, yR, kolomL - 26, 1);
         }
-        terpotong += isi.rekomendasiItem.length - MAKS_ITEM;
+        terpotong += sisaTakMuat(isi.rekomendasiItem.length, MAKS_ITEM);
         if (isi.rekomendasiItem.length > MAKS_ITEM) {
           barisTeks(`…dan ${isi.rekomendasiItem.length - MAKS_ITEM} rekomendasi lain`, kananX + 26, yR, kolomL - 26, 1);
         }
@@ -740,7 +765,10 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
   // pantas dicetak di dua lembar dengan satu lembar nyaris kosong. Baru bila ada yang tak
   // termuat, digambar ulang pada dua halaman.
   const satu = await render(H_HAL);
-  const canvas = satu.terpotong === 0 ? satu.canvas : (await render(H_HAL * 2)).canvas;
+  // `<= 0`, bukan `=== 0`. Penjepitan di `sisaTakMuat` sudah membuat angka negatif mustahil;
+  // ini lapis keduanya, sebab kegagalannya SENYAP: rapor tetap tercetak, hanya jadi dua
+  // lembar dengan satu lembar kosong — tak ada galat yang bisa menunjukkannya.
+  const canvas = satu.terpotong <= 0 ? satu.canvas : (await render(H_HAL * 2)).canvas;
 
   return await new Promise<Blob>((res, rej) =>
     canvas.toBlob((b) => (b ? res(b) : rej(new Error('toBlob gagal'))), 'image/jpeg', 0.92));
