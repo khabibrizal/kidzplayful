@@ -1,6 +1,6 @@
 // src/lib/domain/__tests__/laporan-bulanan.test.ts
 import { describe, it, expect } from 'vitest';
-import { rentangBulan, ringkasBulan, labelBulan, bulanTerakhir, rapikanDaftar, hitungArea } from '../laporan-bulanan';
+import { rentangBulan, ringkasBulan, labelBulan, bulanTerakhir, rapikanDaftar, hitungArea, bulanWib, bulanRekomendasi } from '../laporan-bulanan';
 
 describe('rentangBulan', () => {
   it('memberi awal & akhir bulan dalam WIB', () => {
@@ -234,5 +234,35 @@ describe('ringkasBulan: totalAktivitas', () => {
   });
   it('nol bila memang tak ada apa-apa', () => {
     expect(ringkasBulan(kosong).totalAktivitas).toBe(0);
+  });
+});
+
+describe('bulanRekomendasi', () => {
+  const peta = new Map([['p1', '2026-08-30'], ['p2', '2026-09-01']]);
+
+  it('memakai bulan KONSULTASI, bukan bulan penulisan', () => {
+    // Sesi 30 Agustus, rekomendasinya ditulis 2 September — miliknya rapor AGUSTUS.
+    expect(bulanRekomendasi({ pendaftaran_id: 'p1', created_at: '2026-09-02T04:00:00.000Z' }, peta)).toBe('2026-08');
+  });
+
+  it('mencocokkan peta lewat pendaftaran_id, bukan id barisnya sendiri', () => {
+    // `id` rekomendasi juga ada di peta tapi menunjuk bulan lain — memakai kunci yang salah
+    // akan menghasilkan bulan yang salah tanpa error apa pun.
+    const r = { id: 'p2', pendaftaran_id: 'p1', created_at: '2026-09-02T04:00:00.000Z' };
+    expect(bulanRekomendasi(r, peta)).toBe('2026-08');
+  });
+
+  it('memakai created_at (WIB) untuk rekomendasi lepas tanpa pendaftaran', () => {
+    // 1 Sep 03:00 WIB = 31 Agu 20:00 UTC — harus terhitung September, bukan Agustus.
+    expect(bulanRekomendasi({ pendaftaran_id: null, created_at: '2026-08-31T20:00:00.000Z' })).toBe('2026-09');
+  });
+
+  it('pendaftaran yang tak dikenal jatuh ke created_at, bukan ikut hilang', () => {
+    expect(bulanRekomendasi({ pendaftaran_id: 'entah', created_at: '2026-07-10T05:00:00.000Z' }, peta)).toBe('2026-07');
+  });
+
+  it('data tak sah menghasilkan string kosong (tak cocok bulan mana pun)', () => {
+    expect(bulanRekomendasi({ pendaftaran_id: null, created_at: null })).toBe('');
+    expect(bulanWib('bukan tanggal')).toBe('');
   });
 });

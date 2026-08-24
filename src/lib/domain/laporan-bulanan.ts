@@ -21,6 +21,37 @@ function pecah(ym: string, sekarang = new Date()): { tahun: number; bulan: numbe
   return { tahun: Number(m[1]), bulan };
 }
 
+/** 'YYYY-MM' menurut WIB dari sebuah cap waktu ISO. Cap waktu tak sah → string kosong. */
+export function bulanWib(iso: string | null | undefined): string {
+  const t = Date.parse(iso ?? '');
+  if (!Number.isFinite(t)) return '';
+  return new Date(t + OFFSET_WIB).toISOString().slice(0, 7);
+}
+
+/**
+ * Bulan ('YYYY-MM' WIB) yang MEMILIKI sebuah rekomendasi psikolog.
+ *
+ * Bukan bulan `created_at`-nya. Psikolog menulis rekomendasinya SESUDAH sesi — sering
+ * beberapa hari kemudian. Menyaring dengan `created_at` membuat rekomendasi untuk sesi
+ * 30 Agustus yang ditulis 2 September LENYAP dari rapor Agustus, lalu muncul di rapor
+ * September — bulan yang tak punya sesi konsultasi sama sekali. Dari sisi orang tua itu
+ * terbaca sebagai "psikolognya tidak memberi apa-apa", bukan sebagai penyaring yang salah
+ * jangkar; itulah sebabnya keliru ini tak pernah dilaporkan sebagai bug filter.
+ *
+ * Jangkarnya tanggal KONSULTASI-nya bila diketahui; `created_at` hanya cadangan untuk
+ * rekomendasi lepas yang tak terkait pendaftaran mana pun.
+ */
+export function bulanRekomendasi(
+  rek: { created_at?: string | null; pendaftaran_id?: string | null },
+  tanggalKonsultasi?: ReadonlyMap<string, string> | null,
+): string {
+  const tgl = rek?.pendaftaran_id ? tanggalKonsultasi?.get(rek.pendaftaran_id) : null;
+  // `pendaftaran_konsultasi.tanggal` sudah tanggal LOKAL (WIB), bukan cap waktu UTC —
+  // menggesernya lagi dengan OFFSET_WIB akan memindahkan sesi tanggal 1 ke bulan sebelumnya.
+  if (tgl && /^\d{4}-\d{2}/.test(tgl)) return tgl.slice(0, 7);
+  return bulanWib(rek?.created_at);
+}
+
 /** Batas awal & akhir sebuah bulan WIB, sebagai ISO string untuk query. */
 export function rentangBulan(ym: string, sekarang = new Date()): { dari: string; sampai: string } {
   const { tahun, bulan } = pecah(ym, sekarang);

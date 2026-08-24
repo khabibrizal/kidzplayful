@@ -468,7 +468,13 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
       yR = judulBagian('🧠 Hasil konsultasi psikolog', kananX, yR);
       // Awal kartu ber-tint dicatat: isinya digambar dulu, tintnya menyusul di akhir.
       const tintDari = yR - 52;
+      // Keadaan kosong DISEBUT, sama seperti di layar: bagian yang hanya memuat "2 sesi
+      // konsultasi bulan ini" terbaca sebagai "psikolognya tidak memberi apa-apa", padahal
+      // yang benar adalah rekomendasi tertulisnya belum ada pada periode ini.
       if (isi.rekomendasi > 0) yR = barisTeks(`${isi.rekomendasi} sesi konsultasi bulan ini`, kananX, yR, kolomL, 1);
+      if (isi.rekomendasiPsikolog.length === 0 && isi.rekomendasiItem.length === 0) {
+        yR = barisTeks('Belum ada rekomendasi tertulis dari psikolog untuk periode ini.', kananX, yR, kolomL, 2);
+      }
       let naratifDicetak = 0;
       for (const x of isi.rekomendasiPsikolog) {
         if (yR > plafonNaratif - 80) break;

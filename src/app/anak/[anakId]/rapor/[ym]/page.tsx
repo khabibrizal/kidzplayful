@@ -14,7 +14,7 @@ import { getCatatanTemaAnak } from '@/lib/data/catatan-tema';
 import { getKelasAktifCached } from '@/lib/data/publik';
 import { metaSkala } from '@/lib/format';
 import { getCatatanAnak } from '@/lib/data/catatan';
-import { rentangBulan, labelBulan, ringkasBulan, bulanTerakhir } from '@/lib/domain/laporan-bulanan';
+import { rentangBulan, labelBulan, ringkasBulan, bulanTerakhir, bulanWib, bulanRekomendasi } from '@/lib/domain/laporan-bulanan';
 import { posisiTema, evaluasiPerAktivitas } from '@/lib/domain/kurikulum';
 import { getEventInfoBanyak } from '@/lib/data/event';
 import Terkunci from '@/components/Terkunci';
@@ -101,6 +101,11 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
 
   const judulKelas = new Map(kelasSemua.map((k) => [k.id, k.judul]));
 
+  // Rekomendasi psikolog dijangkarkan ke bulan KONSULTASINYA, bukan ke kapan ia ditulis —
+  // lihat `bulanRekomendasi`. Petanya dibangun dari sesi milik anak ini.
+  const tanggalKonsultasi = new Map(konsultasi.map((k) => [k.id, k.tanggal]));
+  const ymRapor = bulanWib(rentang.dari);
+
   // Catatan guru/psikolog PER TEMA (0099) pada periode ini. Bentuknya sama persis dengan
   // catatan event (penilaian + catatan + penulis), jadi untuk JPEG keduanya masuk ke bagian
   // "Catatan perkembangan" yang sama — menambah bagian baru di kanvas hanya akan memicu
@@ -139,7 +144,7 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
     ],
     event: [...new Set(catatanBulan.map((x) => x.judulEvent))],
     rekomendasi: konsultasi.filter((k) => k.tanggal >= rentang.dari.slice(0, 10) && k.tanggal < rentang.sampai.slice(0, 10)).length,
-    rekomendasiPsikolog: rekPsi.filter((x) => dalamRentang(x.created_at)).map((x) => ({
+    rekomendasiPsikolog: rekPsi.filter((x) => bulanRekomendasi(x, tanggalKonsultasi) === ymRapor).map((x) => ({
       judul: x.judul ?? null, isi: x.isi ?? null,
       butir: (x.butir ?? []).map((b) => ({ judul: b.judul ?? null, isi: b.isi ?? null })),
       oleh: x.dinilai_oleh ?? null,
@@ -358,6 +363,14 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
               <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--abu)', margin: '12px 0 6px' }}>🧠 HASIL KONSULTASI PSIKOLOG</div>
               {r.rekomendasi > 0 && (
                 <p style={{ fontSize: 12, color: 'var(--abu)', margin: '0 0 6px' }}>{r.rekomendasi} sesi konsultasi pada periode ini.</p>
+              )}
+              {/* Keadaan kosong DISEBUT. Tanpa baris ini bagian ini hanya berisi jumlah sesi,
+                  dan itu terbaca sebagai "psikolognya tidak memberi apa-apa" — padahal yang
+                  benar adalah rekomendasi tertulisnya belum ada. */}
+              {r.rekomendasiPsikolog.length === 0 && r.rekomendasiItem.length === 0 && (
+                <p style={{ fontSize: 12, color: 'var(--abu)', margin: '0 0 6px' }}>
+                  Belum ada rekomendasi tertulis dari psikolog untuk periode ini.
+                </p>
               )}
               {r.rekomendasiPsikolog.map((x, i) => (
                 <div key={i} className="kp-card" style={{ marginBottom: 8 }}>
