@@ -4,7 +4,8 @@
 // (`kartu-bersama.ts`) — tanpa dependensi baru. Alasan memilih kanvas, bukan cetak-ke-PDF:
 // ukuran berkasnya PASTI, tidak bergantung setelan skala/margin/header-footer pengguna.
 'use client';
-import { ukuranPas, muatGambar, keluarga, siapkanFont } from './kartu-bersama';
+import { ukuranPas, muatGambar, keluarga, siapkanFont, jalurKotakBulat } from './kartu-bersama';
+import { metaSkala } from './format';
 import { rapikanDaftar } from './domain/laporan-bulanan';
 
 const W = 3508, H = 2480;            // A4 landscape @300dpi
@@ -142,6 +143,63 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
     return y + 6;
   };
 
+  /**
+   * Batang progres untuk evaluasi kurikulum: rel abu + isi ungu + pecahan di ujung kanan.
+   *
+   * Menggantikan "— 2/3" berupa teks polos. Pecahannya TETAP ditulis di sebelah batang,
+   * bukan diganti persentase: "2/3" memberi tahu ada berapa butir seluruhnya, sedangkan
+   * "67%" menyembunyikannya — dan bagi orang tua, "2 dari 3" itulah yang bisa ditindaklanjuti.
+   */
+  /** Lebar batang dibatasi: selebar kolom ia terbaca sebagai GARIS PEMISAH, bukan progres. */
+  const LEBAR_BATANG = 430;
+  const barisProgres = (x: number, y: number, lebar: number, tercapai: number, total: number) => {
+    const tot = Math.max(0, Math.floor(total));
+    const cap = Math.min(Math.max(0, Math.floor(tercapai)), tot);
+    const pecahan = `${cap}/${tot}`;
+    const h = 20, wRel = Math.min(Math.max(120, lebar - 140), LEBAR_BATANG);
+    // `barisRingkas`/`barisTeks` memakai `y` sebagai BASELINE baris yang digambarnya, dan
+    // mengembalikan baseline baris berikutnya. Jadi batang ini menempati "satu baris" itu:
+    // pucuknya sedikit di atas baseline (seperti pucuk huruf), bukan di bawahnya —
+    // menggambarnya di bawah baseline membuatnya menimpa teks baris selanjutnya.
+    const yRel = y - 22;
+    ctx.fillStyle = '#e6e0f2';
+    jalurKotakBulat(ctx, x, yRel, wRel, h, h / 2); ctx.fill();
+    if (tot > 0 && cap > 0) {
+      ctx.fillStyle = UNGU;
+      jalurKotakBulat(ctx, x, yRel, Math.max(h, (wRel * cap) / tot), h, h / 2); ctx.fill();
+    }
+    // Pecahan menempel di sebelah KANAN batang, bukan di tepi kolom: angka yang terpisah
+    // jauh dari batangnya tak lagi terbaca sebagai keterangan batang itu.
+    ctx.font = `800 34px ${fTeks}`;
+    ctx.fillStyle = UNGU; ctx.textAlign = 'left';
+    ctx.fillText(pecahan, x + wRel + 20, y + 2);
+    // Jarak sesudah batang dibuat LAPANG (bukan setinggi batangnya): baris di bawahnya bisa
+    // berupa teks ber-emoji atau JUDUL BAGIAN 54px, yang glyph-nya jauh lebih tinggi daripada
+    // teks biasa. Perhitungan yang pas-pasan membuat batang menimpa keduanya — dan itu hanya
+    // terlihat di render, tak pernah di tipe atau di build.
+    return y + 62;
+  };
+
+  /**
+   * Tag kode skala PAUD (BB/MB/BSH/BSB) dengan warna latar.
+   *
+   * Warnanya diambil dari `SKALA_PAUD` — sumber yang SAMA dengan yang dipakai layar aplikasi,
+   * bukan dari dua warna contoh di mockup. Alasannya: mockup hanya memuat BSH & MB, dan
+   * warna hijau yang dipakainya untuk BSH bertumpuk dengan BSB pada skala penuh
+   * (BB merah → MB kuning → BSH biru → BSB hijau). Memakai warna mockup akan membuat
+   * "Berkembang Sesuai Harapan" dan "Berkembang Sangat Baik" tak lagi bisa dibedakan.
+   */
+  const tagSkala = (kode: string, kananX2: number, y: number) => {
+    const m = metaSkala(kode);
+    ctx.font = `800 32px ${fTeks}`;
+    const w = ctx.measureText(m.kode).width + 34, h = 46;
+    ctx.fillStyle = m.bg;
+    jalurKotakBulat(ctx, kananX2 - w, y - h + 10, w, h, 12); ctx.fill();
+    ctx.fillStyle = m.warna; ctx.textAlign = 'center';
+    ctx.fillText(m.kode, kananX2 - w / 2, y + 2);
+    ctx.textAlign = 'left';
+  };
+
   // Ruang untuk EVALUASI KURIKULUM di dasar kolom kiri DICADANGKAN lebih dulu, bukan
   // disisakan: pelajaran dari blok "Direkomendasikan" yang dulu terpotong habis karena
   // hanya kebagian sisa. Semua batas kolom kiri memakai `batasKiri`, bukan BATAS_BAWAH.
@@ -150,7 +208,7 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
   // bagian mana yang sudah dikuasai. Barisnya disusun dulu lalu dipotong pada anggaran,
   // baru ruangnya dicadangkan; jadi yang tercetak persis sama dengan yang direncanakan.
   const MAKS_BARIS_EVAL = 7;
-  const barisEval: { teks: string; anak?: boolean }[] = [];
+  const barisEval: { teks: string; anak?: boolean; tercapai?: number; total?: number }[] = [];
   let temaTertulis = 0;
   let aktivitasTerpotong = 0;
   for (const e of isi.evaluasi ?? []) {
@@ -161,11 +219,13 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
     // Kode internal seperti "[B1·M4]" TIDAK dirender ke rapor orang tua — ia bahasa admin.
     // Posisinya tetap disebut, tapi dengan kata yang bisa dibaca siapa pun.
     const pos = e.bulan ? ` (bulan ke-${e.bulan} · minggu ke-${e.minggu ?? 1})` : '';
-    barisEval.push({ teks: `• ${e.judulTema}${pos} — ${e.tercapai}/${e.total} (${peran})` });
+    // Pecahannya TIDAK lagi di dalam teks: ia digambar sebagai batang progres di baris
+    // berikutnya, jadi menuliskannya dua kali hanya menggandakan informasi yang sama.
+    barisEval.push({ teks: `• ${e.judulTema}${pos} (${peran})`, tercapai: e.tercapai, total: e.total });
     temaTertulis++;
     for (const g of e.perAktivitas ?? []) {
       if (barisEval.length >= MAKS_BARIS_EVAL) { aktivitasTerpotong++; continue; }
-      barisEval.push({ teks: `${g.aktivitas} — ${g.tercapai}/${g.total}`, anak: true });
+      barisEval.push({ teks: g.aktivitas, anak: true, tercapai: g.tercapai, total: g.total });
     }
   }
   const sisaTema = (isi.evaluasi?.length ?? 0) - temaTertulis;
@@ -189,9 +249,15 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
     for (const b of barisEval) {
       // Penjaga berlapis: berhenti satu baris lebih awal supaya "…dan N tema lain" pasti
       // kebagian tempat. Tanpa itu, pemotongan kembali jadi senyap.
-      if (yK > BATAS_BAWAH - 104) break;
+      // Anggarannya dinaikkan: tiap baris kini bisa membawa BATANG PROGRES di bawahnya,
+      // jadi berhenti pada ambang lama akan membuat batang terakhir tergambar di footer.
+      if (yK > BATAS_BAWAH - 150) break;
       // Baris aktivitas menjorok ke dalam supaya terbaca sebagai bagian dari temanya.
+      const jorok = b.anak ? 96 : 0;   // sejajar dengan teks aktivitas yang menjorok
       yK = barisRingkas(b.anak ? `    🎯 ${b.teks}` : b.teks, kiriX, yK, kolomL);
+      if (typeof b.total === 'number' && b.total > 0) {
+        yK = barisProgres(kiriX + jorok + 26, yK, kolomL - jorok - 26, b.tercapai ?? 0, b.total);
+      }
     }
     // Sisa yang tak muat DISEBUT, bukan dihilangkan diam-diam — baik tema maupun baris
     // rincian aktivitas yang kena anggaran.
@@ -281,7 +347,14 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
       yR = barisTeks(`• ${c.judulEvent}${c.dinilai_oleh ? ` — ${c.dinilai_oleh}` : ''}`, kananX, yR, kolomL, 1);
       for (const n of c.penilaian) {
         if (yR > plafonCatatan - 40) break;
-        yR = barisTeks(`${rapikanDaftar(n.area)}: ${rapikanDaftar(n.indikator)} — ${n.nilai}`, kananX + 26, yR, kolomL - 26);
+        // Kode skalanya dipindah dari teks ke TAG BERWARNA di tepi kanan kolom.
+        // Tagnya digambar SEBELUM teksnya bergulir ke bawah, jadi ia sejajar dengan baris
+        // pertama entri — menaruhnya sesudah baris terakhir butuh posisi-x akhir teks, dan
+        // `barisTeks` hanya mengembalikan y (teksnya bisa membungkus beberapa baris).
+        const yTag = yR;
+        const lebarTeks = kolomL - 26 - 200;   // sisakan ruang untuk tagnya (tag ~110px + jarak)
+        yR = barisTeks(`${rapikanDaftar(n.area)}: ${rapikanDaftar(n.indikator)}`, kananX + 26, yR, lebarTeks);
+        if ((n.nilai ?? '').trim()) tagSkala(n.nilai, kananX + kolomL, yTag);
       }
       if (c.catatan && yR < plafonCatatan - 40) yR = barisTeks(`"${c.catatan}"`, kananX + 26, yR, kolomL - 26);
       dicetak += 1;
@@ -304,6 +377,8 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
 
     yR = Math.max(yR + 26, plafonCatatan);
     yR = judulBagian('🧠 Hasil konsultasi psikolog', kananX, yR);
+    // Awal kartu ber-tint dicatat: isinya digambar dulu, tintnya menyusul di akhir.
+    const tintDari = yR - 52;
     if (isi.rekomendasi > 0) yR = barisTeks(`${isi.rekomendasi} sesi konsultasi bulan ini`, kananX, yR, kolomL, 1);
     let naratifDicetak = 0;
     for (const x of isi.rekomendasiPsikolog) {
@@ -318,6 +393,21 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
     }
     if (naratifDicetak < isi.rekomendasiPsikolog.length) {
       yR = barisTeks(`…dan ${isi.rekomendasiPsikolog.length - naratifDicetak} rekomendasi lain — lihat di aplikasi`, kananX, yR, kolomL, 1);
+    }
+
+    // Tint kartu digambar SESUDAH isinya, memakai blend `multiply`.
+    //
+    // Tingginya baru diketahui setelah teksnya tergambar (teks membungkus, jadi tak bisa
+    // dihitung di muka), dan `destination-over` tak menolong karena latar halaman sudah opak
+    // — tintnya akan tersembunyi di belakangnya. `multiply` dengan warna terang menggelapkan
+    // latar putih menjadi tint yang diminta, sementara teks yang nyaris hitam tetap hitam.
+    {
+      ctx.save();
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.fillStyle = '#fceceb';
+      jalurKotakBulat(ctx, kananX - 28, tintDari, kolomL + 56, Math.max(80, yR - tintDari + 16), 28);
+      ctx.fill();
+      ctx.restore();
     }
 
     if (nItem > 0) {

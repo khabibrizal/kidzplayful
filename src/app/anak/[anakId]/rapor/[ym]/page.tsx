@@ -20,6 +20,25 @@ import { getEventInfoBanyak } from '@/lib/data/event';
 import Terkunci from '@/components/Terkunci';
 import UnduhRaporBtn from '@/components/UnduhRaporBtn';
 
+/**
+ * Batang progres kecil untuk evaluasi kurikulum.
+ *
+ * Pecahannya TIDAK diganti persentase: "2/3" memberi tahu ada berapa butir seluruhnya,
+ * sedangkan "67%" menyembunyikannya — dan bagi orang tua, "2 dari 3" itulah yang bisa
+ * ditindaklanjuti. Angkanya sudah tertulis di baris di atas batang, jadi di sini cukup
+ * batangnya saja.
+ */
+function BatangProgres({ tercapai, total }: { tercapai: number; total: number }) {
+  const tot = Math.max(0, Math.floor(total));
+  const cap = Math.min(Math.max(0, Math.floor(tercapai)), tot);
+  const persen = tot > 0 ? Math.round((cap / tot) * 100) : 0;
+  return (
+    <div style={{ height: 8, background: 'var(--border, #e4e0f5)', borderRadius: 999, overflow: 'hidden', margin: '6px 0 2px' }}>
+      <div style={{ height: '100%', width: `${persen}%`, background: 'var(--lavender-d)', borderRadius: 999 }} />
+    </div>
+  );
+}
+
 const LABEL_AREA: Record<string, string> = {
   kognitif: 'Kognitif', 'motorik-halus': 'Motorik Halus', 'motorik-kasar': 'Motorik Kasar',
   sensorik: 'Sensorik', kemandirian: 'Kemandirian', kreativitas: 'Kreativitas',
@@ -305,6 +324,9 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
                       <b style={{ fontSize: 14 }}>🎈 {judulKelas.get(e.kelas_id) ?? 'Tema'}</b>
                       <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--mint-d)' }}>{tercapai} dari {e.hasil.length} tercapai</span>
                     </div>
+                    {/* Batang progres — bentuk yang sama dengan rapor JPEG, supaya layar dan
+                        berkas yang dikirim ke orang tua tak bercerita beda. */}
+                    <BatangProgres tercapai={tercapai} total={e.hasil.length} />
                     <div style={{ fontSize: 12, color: 'var(--abu)' }}>
                       {pos && <><b>Bulan ke-{pos.bulan} · Minggu ke-{pos.minggu}</b> · </>}
                       dinilai {e.peran === 'ortu' ? 'orang tua' : e.peran}{e.dinilai_oleh ? ` · ${e.dinilai_oleh}` : ''}
@@ -316,6 +338,7 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
                         <div style={{ fontSize: 13, fontWeight: 700 }}>
                           🎯 {g.aktivitas} <span style={{ fontWeight: 400, color: g.belum.length === 0 ? 'var(--mint-d)' : 'var(--abu)' }}>· {g.tercapai}/{g.total} tercapai</span>
                         </div>
+                        <BatangProgres tercapai={g.tercapai} total={g.total} />
                         {g.belum.length > 0 && (
                           <ul style={{ margin: '2px 0 0', paddingLeft: 18, fontSize: 13, color: 'var(--abu)' }}>
                             {g.belum.map((b, k) => <li key={k} style={{ margin: '2px 0' }}>belum: {b}</li>)}
