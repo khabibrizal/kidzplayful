@@ -1,4 +1,4 @@
-// src/lib/rapor-jpeg.ts — render rapor bulanan ke JPEG A4 LANDSCAPE.
+// src/lib/rapor-jpeg.ts — render rapor bulanan ke JPEG A4 PORTRAIT.
 //
 // Memakai ulang helper kanvas yang sama dengan e-sertifikat & kartu Instagram
 // (`kartu-bersama.ts`) — tanpa dependensi baru. Alasan memilih kanvas, bukan cetak-ke-PDF:
@@ -8,7 +8,20 @@ import { ukuranPas, muatGambar, keluarga, siapkanFont, jalurKotakBulat } from '.
 import { metaSkala } from './format';
 import { rapikanDaftar } from './domain/laporan-bulanan';
 
-const W = 3508, H_HAL = 2480;        // SATU halaman A4 landscape @300dpi
+// A4 @300dpi = 2480 x 3508 piksel, dicetak PORTRAIT.
+//
+// Ruang gambarnya tetap dinyatakan dalam satuan LOGIS selebar 3508, lalu seluruh kanvas
+// diperkecil dengan `ctx.scale(SKALA, SKALA)` sampai lebarnya jadi 2480 piksel. Sebabnya
+// praktis: setiap ukuran huruf, jarak baris, dan lebar kolom di berkas ini sudah ditala satu
+// per satu terhadap lebar 3508 — mengubah lebar logisnya berarti menala ulang semuanya, dan
+// tiap salah tala hanya terlihat di render, tak pernah di `tsc`. Dengan cara ini
+// PROPORSINYA persis sama seperti sebelumnya; yang berubah hanya bentuk kertasnya.
+//
+// Efek sampingnya menguntungkan: satu halaman portrait memuat ~2x tinggi logis halaman
+// landscape, jadi isi yang dulu terpotong sekarang lebih sering muat dalam satu lembar.
+const W = 3508;                              // lebar ruang gambar (satuan logis)
+const SKALA = 2480 / W;                      // logis -> piksel (2480 px = lebar A4 portrait)
+const H_HAL = Math.round(3508 / SKALA);      // tinggi SATU halaman dalam satuan logis
 const HITAM = '#000000';
 const UNGU = '#6b4fb0';
 const ABU = '#6b6b7b';
@@ -64,9 +77,14 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
   /** Menggambar seluruh rapor pada tinggi `hTotal`; mengembalikan sampai mana isinya turun. */
   const render = async (hTotal: number) => {
     const canvas = document.createElement('canvas');
-    canvas.width = W; canvas.height = hTotal;
+    // Ukuran PIKSEL diturunkan dari satuan logis, lalu konteksnya diskalakan sekali di sini.
+    // Sesudah baris `scale` ini, seluruh kode di bawah memakai satuan logis dan tak perlu
+    // tahu apa-apa soal piksel — termasuk `hindariPotongan` dan penanda halaman.
+    canvas.width = Math.round(W * SKALA);
+    canvas.height = Math.round(hTotal * SKALA);
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('canvas tak didukung');
+    ctx.scale(SKALA, SKALA);
 
     const fJudul = keluarga('--font-baloo', 'system-ui, sans-serif');
     const fTeks = keluarga('--font-quick', 'system-ui, sans-serif');
@@ -154,8 +172,17 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
      * Yang menandakan "tidak cukup" adalah adanya isi yang dipotong, bukan panjangnya isi.
      */
     let terpotong = 0;
-    /** Anggaran daftar dilonggarkan saat dua halaman — ruangnya memang ada. */
-    const lega = hTotal > H_HAL;
+    /**
+     * Anggaran panjang daftar, diturunkan dari TINGGI halaman — bukan angka tetap.
+     *
+     * Angka-angka aslinya (7 baris evaluasi, 8 ide bermain, 5 video) ditala pada halaman
+     * LANDSCAPE yang tinggi logisnya 2480. Begitu kertasnya jadi portrait, tinggi logis satu
+     * halaman jadi hampir dua kali itu — dan angka tetap yang sama membuat rapor melompat ke
+     * halaman kedua padahal separuh halaman pertama masih kosong. Sebabnya angka tetap bukan
+     * batas RUANG, melainkan batas jumlah: ia memotong isi lalu penghitung `terpotong`
+     * membacanya sebagai "tidak cukup".
+     */
+    const muat = (padaLandscape: number) => Math.max(1, Math.round((padaLandscape * hTotal) / 2480));
 
     /**
      * Menggeser sebuah baris ke halaman 2 bila ia akan TERBELAH oleh potongan kertas.
@@ -264,7 +291,7 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
     // aktivitas, dan nama aktivitasnya IKUT dicetak — nama tema saja tak cukup untuk tahu
     // bagian mana yang sudah dikuasai. Barisnya disusun dulu lalu dipotong pada anggaran,
     // baru ruangnya dicadangkan; jadi yang tercetak persis sama dengan yang direncanakan.
-    const MAKS_BARIS_EVAL = lega ? 18 : 7;
+    const MAKS_BARIS_EVAL = muat(7);
     const barisEval: { teks: string; anak?: boolean; tercapai?: number; total?: number }[] = [];
     let temaTertulis = 0;
     let aktivitasTerpotong = 0;
@@ -342,7 +369,7 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
       // Yang tak muat DISEBUT jumlahnya. Pemotongan diam-diam membuat rapor terbaca seolah
       // itulah seluruh kegiatan anak bulan itu — dan orang tua tak punya cara menyadarinya.
       let n = 0;
-      for (const it of isi.daftarIdeBermain.slice(0, lega ? 18 : 8)) {
+      for (const it of isi.daftarIdeBermain.slice(0, muat(8))) {
         yK = barisRingkas(`• ${it.judul}${it.jumlah > 1 ? ` (${it.jumlah}×)` : ''}`, kiriX, yK, kolomL);
         n++;
         if (yK > batasKiri - 420) break;
@@ -361,7 +388,7 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
     if (isi.daftarVideo.length === 0) yK = barisTeks('Belum ada video ditonton bulan ini.', kiriX, yK, kolomL);
     else {
       let n = 0;
-      for (const it of isi.daftarVideo.slice(0, lega ? 12 : 5)) {
+      for (const it of isi.daftarVideo.slice(0, muat(5))) {
         yK = barisRingkas(`• ${it.judul}${it.jumlah > 1 ? ` (${it.jumlah}×)` : ''}`, kiriX, yK, kolomL);
         n++;
         if (yK > batasKiri - 250) break;
@@ -464,7 +491,15 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
       const cadanganItem = nItem > 0 ? 70 + nItem * 60 + (isi.rekomendasiItem.length > MAKS_ITEM ? 60 : 0) : 0;
       const plafonNaratif = BATAS_BAWAH - cadanganItem;
 
-      yR = Math.max(yR + 26, plafonCatatan);
+      // Bagian ini mengikuti tepat di bawah catatan, TIDAK dipaku ke `plafonCatatan`.
+      //
+      // Dulu barisnya `Math.max(yR + 26, plafonCatatan)`, yang memaksanya mulai di 45% kolom
+      // walau catatannya selesai lebih awal. Pada halaman landscape yang sempit itu tak
+      // kelihatan karena catatannya hampir selalu memenuhi plafonnya; pada halaman portrait
+      // ia meninggalkan LUBANG kosong sebesar seperempat kolom. `plafonCatatan` tetap
+      // berguna sebagai BATAS bagi catatan di atasnya — yang tak berguna adalah memakainya
+      // sebagai titik mulai yang dipaku.
+      yR = yR + 26;
       yR = judulBagian('🧠 Hasil konsultasi psikolog', kananX, yR);
       // Awal kartu ber-tint dicatat: isinya digambar dulu, tintnya menyusul di akhir.
       const tintDari = yR - 52;

@@ -1,4 +1,4 @@
-// src/components/UnduhRaporBtn.tsx — unduh rapor bulanan sebagai JPEG A4 landscape.
+// src/components/UnduhRaporBtn.tsx — unduh rapor bulanan sebagai JPEG A4 portrait.
 'use client';
 import { useState } from 'react';
 import { buatRaporJpeg, type IsiRapor } from '@/lib/rapor-jpeg';

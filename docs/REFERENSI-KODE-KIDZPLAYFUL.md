@@ -190,7 +190,7 @@
 
 **Pembuat gambar tanpa dependensi** (Canvas murni): `lib/rapor-jpeg.ts`, `lib/sertifikat-jpeg.ts`, `lib/kartu-bersama.ts`, `lib/story-card.ts`. Perubahan tata letak di sini **wajib diverifikasi visual** (render lewat Vite + Playwright), bukan hanya lolos `tsc`.
 
-`rapor-jpeg.ts` bisa menghasilkan **satu atau dua halaman A4**. Keputusannya diambil dengan menggambar pada satu halaman lebih dulu sambil menghitung berapa banyak isi yang dipotong (`terpotong`); nol potongan berarti satu halaman cukup, selain itu digambar ulang pada tinggi dua halaman. Urutannya TIDAK boleh dibalik: tata letaknya elastis (batas kolom & plafon bagian diturunkan dari tinggi kanvas), jadi mengukur langsung pada kanvas dua halaman selalu menyimpulkan "butuh dua halaman".
+`rapor-jpeg.ts` menghasilkan **A4 portrait** (2480x3508 px @300dpi), **satu atau dua halaman**. Ruang gambarnya tetap dinyatakan dalam satuan LOGIS selebar 3508 lalu diperkecil sekali lewat `ctx.scale(SKALA, SKALA)` — semua ukuran huruf & jarak di berkas itu sudah ditala terhadap lebar 3508, dan menala ulangnya berarti memeriksa ulang setiap baris secara visual. Keputusannya diambil dengan menggambar pada satu halaman lebih dulu sambil menghitung berapa banyak isi yang dipotong (`terpotong`); nol potongan berarti satu halaman cukup, selain itu digambar ulang pada tinggi dua halaman. Urutannya TIDAK boleh dibalik: tata letaknya elastis (batas kolom & plafon bagian diturunkan dari tinggi kanvas), jadi mengukur langsung pada kanvas dua halaman selalu menyimpulkan "butuh dua halaman".
 
 ---
 
