@@ -1,0 +1,1669 @@
+<!DOCTYPE html><html lang="id"><head><meta charset="utf-8">
+<title>Dokumentasi KidzPlayful</title><style>
+@page { size: A4; margin: 15mm 14mm; }
+* { box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; color:#222; line-height:1.55; font-size:11pt; }
+h1 { font-size:20pt; color:#5a2ca0; border-bottom:3px solid #efe7fb; padding-bottom:6px; }
+h2 { font-size:14pt; color:#3a78d6; margin-top:20px; border-bottom:1px solid #eee; padding-bottom:3px; page-break-after:avoid; }
+h3 { font-size:12pt; color:#2ba8a3; margin-top:14px; page-break-after:avoid; }
+table { border-collapse:collapse; width:100%; margin:10px 0; font-size:9.5pt; page-break-inside:avoid; }
+th,td { border:1px solid #ddd; padding:5px 8px; text-align:left; vertical-align:top; }
+th { background:#f4f0fb; color:#444; }
+code { background:#f3f3f7; padding:1px 5px; border-radius:4px; font-size:9pt; color:#a13; font-family:'Consolas','Courier New',monospace; }
+pre { background:#f7f7fb; border:1px solid #e6e6ee; border-radius:8px; padding:10px 12px; overflow:auto; font-size:8pt; line-height:1.35; page-break-inside:avoid; white-space:pre-wrap; font-family:'Consolas','Courier New',monospace; }
+pre code { background:none; color:#333; padding:0; font-family:'Consolas','Courier New',monospace; }
+blockquote { border-left:4px solid #ffc93c; background:#fffdf3; margin:10px 0; padding:6px 14px; color:#665; }
+hr { border:none; border-top:1px solid #e2e2ea; margin:16px 0; }
+a { color:#3a78d6; text-decoration:none; }
+ul,ol { margin:8px 0 8px 6px; padding-left:20px; }
+li { margin:3px 0; }
+</style></head>
+<body><h1 id="panduan-debug-kidzplayful">Panduan Debug KidzPlayful</h1>
+<p><strong>Untuk programmer yang harus mencari bug SENDIRI — tanpa bantuan AI.</strong></p>
+<p>Dokumen ini bukan ringkasan arsitektur (itu ada di <a href="REFERENSI-KODE-KIDZPLAYFUL.md"><code>REFERENSI-KODE-KIDZPLAYFUL.md</code></a>).
+Ini alat kerja: dari <strong>gejala yang dilihat pengguna</strong> → <strong>berkas dan fungsi yang menanganinya</strong> →
+<strong>cara membuktikan penyebabnya</strong> → <strong>cara memperbaikinya</strong>.</p>
+<p>Tiga hal yang harus Anda percayai saat memakai dokumen ini:</p>
+<ol>
+<li><strong>Setiap bug di katalog Bagian 6 pernah benar-benar terjadi di produksi aplikasi ini.</strong> Bukan daftar
+   teoretis. Itulah sebabnya masing-masing menyebutkan berkas, nomor baris, dan commit-nya.</li>
+<li><strong>Sebagian besar bug di sini TIDAK menghasilkan galat.</strong> Tidak ada stack trace, tidak ada log merah —
+   hanya angka yang salah, daftar yang kosong, atau materi yang muncul kepada orang yang tak berhak.
+   Kalau Anda menunggu error message, Anda akan melewatkannya.</li>
+<li><strong><code>tsc</code> dan <code>npm run build</code> hijau bukan bukti.</strong> Tiga kelas bug terbesar di aplikasi ini (cache basi,
+   snapshot basi, tata letak kanvas) lolos keduanya dengan sempurna.</li>
+</ol>
+<hr />
+<h2 id="daftar-isi">Daftar isi</h2>
+<ol>
+<li><a href="#1-peta-30-detik">Peta 30 detik</a></li>
+<li><a href="#2-menjalankan--alat-debug">Menjalankan &amp; alat debug</a></li>
+<li><a href="#3-alur-satu-request-dari-klik-sampai-baris-database">Alur satu request: dari klik sampai baris database</a></li>
+<li><a href="#4-aturan-besar-yang-mengikat-seluruh-kode">Aturan besar yang mengikat seluruh kode</a></li>
+<li><a href="#5-peta-fitur--berkas--fungsi">Peta fitur → berkas → fungsi</a></li>
+<li><a href="#6-katalog-bug-yang-sering-terjadi">Katalog bug yang sering terjadi</a></li>
+<li><a href="#7-indeks-cepat-gejala--tempat">Indeks cepat: gejala → tempat</a></li>
+<li><a href="#8-migrasi-database-aturan-main">Migrasi database: aturan main</a></li>
+<li><a href="#9-pantangan">Pantangan</a></li>
+<li><a href="#10-lampiran-seluruh-modul-domain--fungsinya">Lampiran: seluruh modul domain &amp; fungsinya</a></li>
+</ol>
+<hr />
+<h2 id="1-peta-30-detik">1. Peta 30 detik</h2>
+<p><strong>Next.js 16 App Router + Supabase (Postgres + RLS).</strong> Tanpa ORM, tanpa state manager, tanpa API route
+untuk data internal.</p>
+<pre><code>Browser
+  │
+  ├─ Server Component  ──► src/lib/data/&lt;fitur&gt;.ts        (BACA)   ──┐
+  │                          └─ src/lib/domain/&lt;aturan&gt;.ts (MURNI)   │
+  │                                                                  ├──► Supabase Postgres
+  └─ Server Action     ──► src/lib/data/&lt;fitur&gt;-actions.ts (TULIS) ──┘         + RLS
+                             ('use server')
+</code></pre>
+<p>Empat lapis, dan setiap lapis punya satu tugas:</p>
+<table>
+<thead>
+<tr>
+<th>Lapis</th>
+<th>Letak</th>
+<th>Tugas</th>
+<th>Boleh I/O?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Halaman</td>
+<td><code>src/app/**/page.tsx</code></td>
+<td>Ambil data, render. Server Component secara bawaan.</td>
+<td>ya (baca)</td>
+</tr>
+<tr>
+<td>Komponen</td>
+<td><code>src/components/*.tsx</code></td>
+<td>Interaksi. <code>'use client'</code> bila perlu state.</td>
+<td>tidak</td>
+</tr>
+<tr>
+<td>Data</td>
+<td><code>src/lib/data/*.ts</code></td>
+<td>Query &amp; mutasi Supabase. <strong>Berkas biasa = BACA, berkas <code>-actions</code> = TULIS.</strong></td>
+<td>ya</td>
+</tr>
+<tr>
+<td>Domain</td>
+<td><code>src/lib/domain/*.ts</code></td>
+<td>Aturan bisnis MURNI. Tanpa I/O, tanpa <code>Date.now()</code> tersembunyi. Ada vitest-nya.</td>
+<td><strong>tidak</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Kenapa pemisahan Data/Domain itu penting untuk debugging:</strong> kalau angkanya salah, Anda tidak perlu
+menyalakan aplikasi. Aturannya ada di modul domain yang bisa dipanggil langsung dari test — dan sudah ada
+393 test yang memanggilnya. Kalau bug ada di domain, Anda bisa membuktikannya dalam 30 detik dengan satu
+test baru. Kalau bug TIDAK bisa direproduksi di domain, bug-nya di lapis data (query/RLS/cache) — dan itu
+mempersempit pencarian dari 105 berkas menjadi satu.</p>
+<p><strong>Tiga client Supabase — pilih yang salah dan RLS ikut berubah:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Berkas</th>
+<th>Kunci</th>
+<th>Kapan</th>
+<th>Bahaya</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>src/lib/supabase/server.ts</code></td>
+<td>anon + cookie sesi</td>
+<td>Server Component &amp; Server Action. <strong>Bawaan.</strong></td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>src/lib/supabase/client.ts</code></td>
+<td>anon, di browser</td>
+<td>Komponen <code>'use client'</code> yang perlu realtime/auth</td>
+<td>Semua query kena RLS sebagai user itu</td>
+</tr>
+<tr>
+<td><code>src/lib/supabase/admin.ts</code></td>
+<td><strong>service role</strong></td>
+<td>Hanya operasi admin sensitif (mis. buat user)</td>
+<td><strong>Melewati RLS sepenuhnya.</strong> <code>import 'server-only'</code>. Jangan pernah dipakai untuk membaca data pengguna</td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>src/proxy.ts</code></strong> adalah middleware: ia menyegarkan sesi Supabase pada setiap request DAN menjaga akses
+menu admin (<code>keyMenuDariPath</code>, <code>menuUntukRole</code>). Kalau seseorang "tiba-tiba tak bisa membuka halaman
+admin", periksa di sini lebih dulu, bukan di halamannya.</p>
+<hr />
+<h2 id="2-menjalankan-alat-debug">2. Menjalankan &amp; alat debug</h2>
+<h3 id="21-perintah-harian">2.1 Perintah harian</h3>
+<pre><code class="language-bash">npm run dev            # localhost:3000
+npx tsc --noEmit       # tipe
+npx eslint             # lint
+npm test               # 393 vitest (domain + game + lib)
+npm run build          # build produksi
+</code></pre>
+<p><strong>Gerbang mutu sebelum SETIAP commit — keempatnya, dalam urutan ini:</strong></p>
+<pre><code class="language-bash">npx tsc --noEmit &amp;&amp; npx eslint &amp;&amp; npm test &amp;&amp; npm run build
+</code></pre>
+<p>Urutannya bukan selera: <code>tsc</code> paling cepat memberi tahu Anda salah tipe, dan <code>build</code> paling lambat.
+Menjalankan <code>build</code> lebih dulu berarti menunggu 3 menit untuk mengetahui hal yang <code>tsc</code> bisa katakan
+dalam 20 detik.</p>
+<h3 id="22-di-mana-log-nya-muncul">2.2 Di mana log-nya muncul</h3>
+<p>Ini sumber kebingungan paling sering di App Router:</p>
+<table>
+<thead>
+<tr>
+<th>Kode berjalan di</th>
+<th><code>console.log</code> muncul di</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Server Component (<code>page.tsx</code> tanpa <code>'use client'</code>)</td>
+<td><strong>terminal <code>npm run dev</code></strong> — BUKAN console browser</td>
+</tr>
+<tr>
+<td>Server Action (<code>'use server'</code>)</td>
+<td><strong>terminal <code>npm run dev</code></strong></td>
+</tr>
+<tr>
+<td>Komponen <code>'use client'</code></td>
+<td>console browser</td>
+</tr>
+<tr>
+<td><code>src/proxy.ts</code> (middleware)</td>
+<td>terminal, dengan awalan yang berbeda per request</td>
+</tr>
+</tbody>
+</table>
+<p>Kalau <code>console.log</code> Anda tak muncul di mana-mana, kodenya tidak dieksekusi. Itu informasi, bukan kegagalan
+alat — lihat BUG-01 (cache) dan BUG-08 (RLS/guard memantulkan lebih awal).</p>
+<h3 id="23-menjalankan-satu-test-saja">2.3 Menjalankan satu test saja</h3>
+<pre><code class="language-bash">npx vitest run src/lib/domain/__tests__/siklus-kurikulum.test.ts
+npx vitest run -t 'nama test'          # per nama
+npx vitest                             # watch mode
+</code></pre>
+<h3 id="24-uji-daya-gigit-mutation-testing-wajib-untuk-aturan-baru">2.4 Uji daya gigit (mutation testing) — WAJIB untuk aturan baru</h3>
+<p>Test yang hijau belum berarti test yang berguna. Cara memastikan:</p>
+<ol>
+<li><strong>Rusak kodenya dengan sengaja</strong> — balik <code>&lt;=</code> jadi <code>&lt;</code>, hapus <code>Math.max(1, …)</code>, ganti kunci Map.</li>
+<li>Jalankan test.</li>
+<li><strong>Kalau test tetap hijau, test-nya tidak menjaga apa pun.</strong> Perbaiki test-nya, bukan kodenya.</li>
+<li>Kembalikan kode ke semula.</li>
+</ol>
+<p>Contoh nyata dari repo ini: asersi "tanggal konsultasi tak boleh digeser seperti UTC" ternyata <strong>mustahil
+dilanggar</strong> — menambah 7 jam pada tengah malam tak pernah memindahkan bulan. Test itu terlihat
+meyakinkan, hijau, dan tidak menjaga apa pun. Diganti dengan asersi yang benar-benar bisa jatuh: kunci
+peta harus <code>pendaftaran_id</code>, bukan <code>id</code> baris rekomendasinya sendiri.</p>
+<p>Cara cepat: simpan salinan, mutasi, uji, pulihkan.</p>
+<pre><code class="language-bash">cp src/lib/domain/X.ts /tmp/X.bak
+# ...ubah satu operator...
+npx vitest run src/lib/domain/__tests__/X.test.ts
+cp /tmp/X.bak src/lib/domain/X.ts
+</code></pre>
+<h3 id="25-membuktikan-migrasi-sudah-jalan-probe-rest-baca-saja">2.5 Membuktikan migrasi sudah jalan (probe REST baca-saja)</h3>
+<p>Migrasi dijalankan <strong>manual</strong> di Supabase SQL Editor, <strong>setelah</strong> deploy. Jadi pertanyaan "apakah kolomnya
+sudah ada di produksi?" itu pertanyaan nyata, dan menjawabnya dengan menebak adalah sumber BUG-03/BUG-04.</p>
+<p>Buktikan dengan probe REST. Kuncinya: <strong>selalu sertakan satu kolom kontrol yang sengaja SALAH.</strong></p>
+<pre><code class="language-bash">URL=$(grep NEXT_PUBLIC_SUPABASE_URL .env.local | cut -d= -f2)
+KEY=$(grep NEXT_PUBLIC_SUPABASE_ANON_KEY .env.local | cut -d= -f2)
+
+# 1) kolom yang dicari
+curl -s -H &quot;apikey: $KEY&quot; &quot;$URL/rest/v1/kelas_bermain?select=jenis&amp;limit=1&quot;
+
+# 2) KOLOM KONTROL PALSU — wajib membalas 42703
+curl -s -H &quot;apikey: $KEY&quot; &quot;$URL/rest/v1/kelas_bermain?select=kolom_kontrol_palsu&amp;limit=1&quot;
+</code></pre>
+<p>Tafsirkan begini:</p>
+<table>
+<thead>
+<tr>
+<th>Balasan</th>
+<th>Arti</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>42703 column ... does not exist</code> pada kolom kontrol</td>
+<td><strong>Probe-nya jujur.</strong> Lanjut baca hasil no. 1</td>
+</tr>
+<tr>
+<td><code>42703</code> pada kolom yang dicari</td>
+<td>Migrasinya <strong>belum jalan</strong></td>
+</tr>
+<tr>
+<td><code>42P01 relation does not exist</code></td>
+<td><strong>Tabelnya</strong> belum ada</td>
+</tr>
+<tr>
+<td><code>[]</code> pada kolom yang dicari</td>
+<td>Kolomnya ADA. Kosongnya karena RLS atau memang tak ada baris — <strong>tak bisa dibedakan</strong> (BUG-08)</td>
+</tr>
+<tr>
+<td><code>200</code> dengan data</td>
+<td>Kolomnya ada dan terbaca anon</td>
+</tr>
+</tbody>
+</table>
+<p>Tanpa kolom kontrol, probe yang salah URL/salah header juga membalas "tidak ada" — dan Anda akan
+menyimpulkan migrasinya gagal padahal probe-nya yang rusak.</p>
+<p><strong>Kunci anon TIDAK BISA membaca tabel ber-RLS</strong> (<code>langganan_anak</code>, <code>rekomendasi_psikolog</code>, <code>kegiatan_anak</code>,
+…). Untuk itu Anda perlu SQL Editor Supabase (login sebagai pemilik proyek), bukan probe.</p>
+<h3 id="26-memverifikasi-gambar-rapor-sertifikat-stiker">2.6 Memverifikasi gambar (rapor, sertifikat, stiker)</h3>
+<p>Semua gambar dirender di <strong>Canvas</strong> (<code>src/lib/rapor-jpeg.ts</code>, <code>sertifikat-jpeg.ts</code>, <code>kartu-bersama.ts</code>,
+<code>story-card.ts</code>). Tata letak kanvas <strong>tidak diperiksa oleh apa pun</strong> — bukan tipe, bukan lint, bukan test,
+bukan build. Satu-satunya cara mengetahui hasilnya benar adalah <strong>melihat gambarnya</strong>.</p>
+<p>Ada harness lokal untuk itu (folder <code>_rapor/</code>, tidak masuk git):</p>
+<pre><code class="language-bash">npx vite --config _rapor/vite.config.mjs      # server di :5599
+node _rapor/shot.mjs ''            _rapor/out.png     # fixture bawaan
+node _rapor/shot.mjs berat=1       _rapor/berat.png   # isi banyak
+node _rapor/shot.mjs ringan=1      _rapor/ringan.png  # isi sedikit
+node _rapor/shot.mjs sangatberat=1 _rapor/2hal.png    # sampai 2 halaman
+</code></pre>
+<p>Harness-nya me-render <strong><code>buatRaporJpeg</code> yang sungguhan</strong> dengan fixture <code>IsiRapor</code>, lalu memotret hasilnya
+dengan Chrome (<code>playwright-core</code>). Kalau folder <code>_rapor/</code> tidak ada di mesin Anda, buat ulang: satu
+<code>entry.ts</code> yang memanggil <code>buatRaporJpeg(isi)</code> lalu menempelkan blob-nya sebagai <code>&lt;img&gt;</code>, satu
+<code>vite.config.mjs</code> dengan <code>root: '_rapor'</code>, <code>publicDir</code> menunjuk <code>public/</code> proyek, alias <code>@</code> → <code>src</code>, dan
+satu <code>shot.mjs</code> yang menunggu <code>window.siap === true</code>.</p>
+<p><strong>Selalu periksa MINIMAL tiga keadaan:</strong> isi sedikit, isi banyak, dan keadaan kosong. Enam putaran render
+pernah dibutuhkan untuk satu perubahan tata letak rapor, dan tak satu pun masalahnya terlihat di kode.</p>
+<h3 id="27-mencari-sesuatu-di-kode">2.7 Mencari sesuatu di kode</h3>
+<pre><code class="language-bash">rg 'nama_kolom' src/                 # siapa yang menyentuh kolom ini
+rg &quot;from\('nama_tabel'\)&quot; src/lib    # semua query ke tabel ini
+rg 'updateTag'  src/lib/data         # semua penyegar cache
+rg '🐞' src/                          # catatan bug bersejarah di dalam kode
+rg 'export (async )?function' src/lib/data/&lt;f&gt;.ts
+</code></pre>
+<p><code>rg '🐞'</code> itu penting: setiap penanda 🐞 di kode ini adalah bug yang pernah terjadi, ditulis di tempat
+kejadiannya, beserta alasan kenapa perbaikannya berbentuk demikian. Jangan hapus penanda itu saat
+merapikan kode — ia mencegah bug yang sama dipasang kembali.</p>
+<hr />
+<h2 id="3-alur-satu-request-dari-klik-sampai-baris-database">3. Alur satu request: dari klik sampai baris database</h2>
+<p>Contoh: <strong>orang tua menyimpan checklist evaluasi kurikulum.</strong> Ikuti jalur ini saat mendebug fitur apa pun;
+bentuknya selalu sama.</p>
+<pre><code>1. src/components/KelasIsi.tsx                 ('use client')
+     centang checklist → kumpulkan hasil → panggil Server Action
+        │
+2. src/lib/data/kurikulum-actions.ts           ('use server')
+     simpanEvaluasi(anakId, kelasId, hasil, catatan)
+        ├─ guard peran: siapa yang boleh menilai?
+        ├─ SNAPSHOT kalimat evaluasi diambil dari MATERI di database,
+        │  BUKAN dari kiriman klien  ← kalau tidak, klien bisa mengarang butir
+        ├─ upsert ke evaluasi_kurikulum  (unique anak_id, kelas_id, PERAN)
+        └─ revalidatePath(...) supaya halaman terkait ikut segar
+        │
+3. Postgres + RLS
+     policy: ortu_id = auth.uid() | is_admin() | is_guru() | boleh_lihat_laporan_anak()
+     TANPA DELETE untuk ortu — riwayat rapor tak boleh dirapikan belakangan
+        │
+4. src/app/anak/[anakId]/rapor/[ym]/page.tsx   (Server Component)
+     getEvaluasiAnak(anakId) → saring per bulan → ringkasBulan() → tampil + JPEG
+</code></pre>
+<p>Empat titik gagal, dan gejalanya berbeda-beda:</p>
+<table>
+<thead>
+<tr>
+<th>Gagal di</th>
+<th>Gejala</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 klien</td>
+<td>Tombol tak melakukan apa-apa; error di console browser</td>
+</tr>
+<tr>
+<td>2 action</td>
+<td>Ada pesan galat dari action (kalau action-nya mengembalikan <code>{ok:false,error}</code>)</td>
+</tr>
+<tr>
+<td>3 RLS</td>
+<td><strong>Tersimpan "sukses" tapi tak pernah terbaca lagi.</strong> Ini yang paling membingungkan</td>
+</tr>
+<tr>
+<td>4 baca/cache</td>
+<td>Data ADA di database tapi halaman menampilkan yang lama (BUG-01)</td>
+</tr>
+</tbody>
+</table>
+<p>Cara memisahkan 3 dari 4 dalam satu langkah: <strong>buka data yang sama dari peran lain</strong> (admin). Kalau admin
+melihatnya dan orang tua tidak, itu RLS. Kalau keduanya tak melihat, tulisannya yang gagal atau
+pembacaannya salah jangkar.</p>
+<hr />
+<h2 id="4-aturan-besar-yang-mengikat-seluruh-kode">4. Aturan besar yang mengikat seluruh kode</h2>
+<p>Enam aturan ini menjelaskan bentuk kode di banyak tempat. Melanggarnya menghasilkan bug yang senyap.</p>
+<h3 id="41-migrasi-dijalankan-manual-setelah-deploy">4.1 Migrasi dijalankan MANUAL setelah deploy</h3>
+<p>Konsekuensinya: <strong>kode harus hidup pada database yang belum dimigrasi.</strong> Karena itu kolom baru dibaca
+dengan cadangan (<code>pilihToleran</code> di <code>src/lib/data/publik.ts</code>, <code>kolomKuotaHilang</code> di <code>kuota-event.ts</code>,
+<code>tabelProfilHilang</code> di <code>psikolog-profil.ts</code>), dan penulisan dicoba ulang tanpa kolom baru.</p>
+<p><strong>Arah cadangannya dipilih dari pertanyaan "apa yang BOCOR kalau saya salah", bukan dari kebiasaan.</strong>
+Untuk kolom yang menentukan siapa boleh melihat sesuatu, cadangan yang salah arah membuka materi kepada
+semua orang. Lihat BUG-04 — itu bug yang lahir persis dari kebiasaan "supaya tak gagal total".</p>
+<h3 id="42-waktu-selalu-wib-utc7-postgres-tidak-tahu-itu">4.2 Waktu selalu WIB (UTC+7); Postgres tidak tahu itu</h3>
+<p><code>current_date</code> dan <code>now()::date</code> di Postgres memakai <strong>UTC</strong>. Antara 00:00–07:00 WIB, keduanya masih
+menyebut tanggal kemarin. Semua batas hari/bulan di aplikasi ini dihitung di TypeScript:</p>
+<ul>
+<li><code>src/lib/domain/laporan-bulanan.ts</code> → <code>rentangBulan(ym)</code>, <code>bulanWib(iso)</code>, <code>bulanTerakhir()</code></li>
+<li><code>src/lib/domain/saring.ts</code> → <code>tanggalWibDariISO(iso)</code>, <code>dalamRentang()</code></li>
+<li><code>src/lib/domain/gamifikasi.ts</code> → <code>tanggalWIB()</code></li>
+<li>Di SQL, fungsi <code>hari_ini_wib()</code> — dan hak <code>execute</code>-nya harus dicabut dari <code>anon</code> (BUG-09)</li>
+</ul>
+<h3 id="43-batasi-dengan-kunci-yang-bicara-jangan-sembunyikan">4.3 Batasi dengan KUNCI yang bicara, jangan sembunyikan</h3>
+<p>Materi yang belum waktunya <strong>tampil terkunci 🔒 beserta alasannya</strong> ("terbuka pada bulan ke-4 langganan
+Bima"), bukan hilang dari daftar. Alasannya bukan estetika: daftar yang menyusut tanpa keterangan
+membuat orang tua menyimpulkan aplikasinya rusak, lalu melaporkannya sebagai data hilang — dan Anda akan
+mencari bug yang tak ada.</p>
+<h3 id="44-tidak-ada-pemotongan-senyap">4.4 Tidak ada pemotongan senyap</h3>
+<p>Setiap daftar yang dipotong <strong>wajib</strong> menyebut sisanya: <code>…dan N lainnya</code>, <code>…N penilaian lain — lihat di
+aplikasi</code>. Berlaku di layar maupun di JPEG. Cari calon pelanggaran dengan <code>rg 'slice\(0,' src/</code> lalu
+periksa apakah ada pemberitahuan sesudahnya.</p>
+<h3 id="45-snapshot-menyimpan-makna-saat-itu">4.5 Snapshot menyimpan MAKNA saat itu</h3>
+<p><code>evaluasi_kurikulum.hasil</code> menyimpan <strong>kalimat butirnya</strong>, bukan indeks. <code>kegiatan_anak.judul</code>,
+<code>catatan_perkembangan.penilaian</code>, dan rentang usia di <code>kelas_bermain</code> juga snapshot. Sebabnya: begitu
+admin menyunting kalimatnya, rapor bulan lalu <strong>tidak boleh berubah artinya</strong>. Menyimpan <code>[true,false]</code>
+beracuan indeks membuat rapor lama berbohong saat urutan butir bergeser.</p>
+<p>Harga dari keputusan ini adalah BUG-02: snapshot bisa basi, dan menyegarkannya butuh kerja eksplisit.</p>
+<h3 id="46-aturan-bisnis-hidup-di-domain-dan-ada-test-nya">4.6 Aturan bisnis hidup di <code>domain/</code>, dan ada test-nya</h3>
+<p>Kalau Anda menambahkan aturan (siapa boleh apa, berapa harganya, bulan ke berapa) dan menaruhnya di
+<code>page.tsx</code> atau di berkas <code>-actions</code>, aturan itu <strong>tak bisa diuji</strong> dan akan tersalin ke tempat lain
+dengan versi yang sedikit berbeda. Taruh di <code>src/lib/domain/</code>, beri test, lalu <strong>uji daya gigit test-nya</strong>
+(§2.4).</p>
+<hr />
+<h2 id="5-peta-fitur-berkas-fungsi">5. Peta fitur → berkas → fungsi</h2>
+<p>Kolom <strong>Domain</strong> adalah tempat aturannya; itu yang biasanya salah kalau <em>angkanya</em> keliru. Kolom <strong>Baca</strong>
+biasanya salah kalau <em>datanya tak muncul</em>. Kolom <strong>Tulis</strong> biasanya salah kalau <em>simpan tak berefek</em>.</p>
+<h3 id="51-kurikulum-ide-bermain-fitur-paling-banyak-bug-mulai-dari-sini">5.1 Kurikulum / Ide Bermain (fitur paling banyak bug — mulai dari sini)</h3>
+<table>
+<thead>
+<tr>
+<th>Bagian</th>
+<th>Berkas</th>
+<th>Fungsi kunci</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Halaman user</td>
+<td><code>src/app/kelas-saya/</code>, <code>kelas/[id]/</code>, <code>ortu/[anakId]/</code>, <code>main/[anakId]/</code>, <code>coba/kelas/[id]/</code>, <code>coba/tema/[id]/</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>Halaman admin</td>
+<td><code>src/app/admin/kelas-bermain/</code>, <code>admin/kategori-usia/</code>, <code>admin/tema/[id]/</code>, <code>admin/fokus-area/</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>Komponen</td>
+<td><code>src/components/KelasIsi.tsx</code></td>
+<td>checklist evaluasi + tombol game + simpan</td>
+</tr>
+<tr>
+<td><strong>Jam kurikulum</strong></td>
+<td><code>src/lib/domain/siklus-kurikulum.ts</code></td>
+<td><code>siklusBerjalan</code>, <code>konteksKurikulum</code>, <code>bracketUntukUmur</code>, <code>statusTemaBracket</code>, <code>kunciKarena</code>, <code>kelompokTemaBracket</code>, <code>saringBerkategori</code>, <code>adaTemaUntukBracket</code>, <code>tambahBulan</code>, <code>bulanPenuhLewat</code></td>
+</tr>
+<tr>
+<td>Aturan tema</td>
+<td><code>src/lib/domain/kurikulum.ts</code></td>
+<td><code>statusTema</code>, <code>kelompokTema</code>, <code>temaTerkunci</code>, <code>posisiBerikutnya</code>, <code>posisiTema</code>, <code>teksPosisi</code>, <code>salinTemaKeKategoriLain</code>, <code>cocokUsia</code>, <code>ringkasEvaluasi</code>, <code>susunHasilEvaluasi</code>, <code>evaluasiPerAktivitas</code>, <code>bulanKurikulumAnak</code></td>
+</tr>
+<tr>
+<td>Kategori usia</td>
+<td><code>src/lib/domain/kategori-usia.ts</code></td>
+<td><code>tumpukanKategori</code>, <code>petaUmurKategori</code>, <code>kategoriTanpaTema</code></td>
+</tr>
+<tr>
+<td>Baca</td>
+<td><code>src/lib/data/kurikulum.ts</code></td>
+<td><code>getKonteksKurikulumAnak</code>, <code>getBulanKurikulumAnak</code>, <code>getBulanKurikulumBanyak</code>, <code>getEvaluasiAnak</code>, <code>getEvaluasiTema</code></td>
+</tr>
+<tr>
+<td>Baca katalog</td>
+<td><code>src/lib/data/publik.ts</code></td>
+<td><code>getKelasPublik</code>, <code>getTemaPublik</code>, <code>getKelasAktifCached</code> (<strong>ter-cache, tag <code>katalog</code></strong>), <code>pilihToleran</code></td>
+</tr>
+<tr>
+<td>Baca admin</td>
+<td><code>src/lib/data/kelas-bermain.ts</code>, <code>kategori-usia.ts</code></td>
+<td><code>getKelasAktif</code>, <code>getKelasSemua</code>, <code>getKategoriUsiaSemua</code>, <code>getKategoriUsiaAktif</code></td>
+</tr>
+<tr>
+<td>Tulis</td>
+<td><code>src/lib/data/kelas-bermain-actions.ts</code></td>
+<td><code>buatKelas</code>, <code>updateKelas</code>, <code>toggleStatusKelas</code>, <code>hapusKelas</code>, <code>setBolehTrialKelas</code>, <code>denganRentangKategori</code> (internal)</td>
+</tr>
+<tr>
+<td>Tulis</td>
+<td><code>src/lib/data/kategori-usia-actions.ts</code></td>
+<td><code>buatKategoriUsia</code>, <code>updateKategoriUsia</code>, <code>hapusKategoriUsia</code></td>
+</tr>
+<tr>
+<td>Tulis</td>
+<td><code>src/lib/data/kurikulum-actions.ts</code></td>
+<td><code>simpanEvaluasi</code></td>
+</tr>
+<tr>
+<td>Catatan tema</td>
+<td><code>src/lib/data/catatan-tema.ts</code> / <code>-actions.ts</code></td>
+<td><code>getCatatanTemaAnak</code>, <code>getCatatanTemaSaya</code>, <code>getAnakBerevaluasi</code>, <code>simpanCatatanTema</code></td>
+</tr>
+<tr>
+<td>Tabel</td>
+<td><code>kelas_bermain</code> (kolom <code>jenis</code>, <code>bulan_kurikulum</code>, <code>urutan</code>, <code>kategori_usia_id</code>, <code>boleh_trial</code>, <code>aktivitas jsonb</code>), <code>kategori_usia</code>, <code>evaluasi_kurikulum</code> (<strong>unique <code>anak_id, kelas_id, peran</code></strong>), <code>catatan_tema</code>, <code>langganan_anak.kurikulum_mulai</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>Migrasi terkait</td>
+<td><code>0098_kurikulum.sql</code>, <code>0101_kelas_kategori_usia.sql</code>, <code>0102_kurikulum_posisi_unik.sql</code>, <code>0103_posisi_per_kategori.sql</code>, <code>0104_kurikulum_mulai.sql</code>, <code>0105_kelas_jenis.sql</code></td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Yang harus Anda pahami sebelum menyentuh fitur ini:</strong></p>
+<ul>
+<li><strong>Kunci itu milik ANAK, bukan akun.</strong> Kakak bisa di bulan ke-3 sementara bayi di bulan ke-1, dan tema
+  bulan ke-3 memang harus terkunci untuk bayi. Setiap halaman kurikulum wajib tahu <strong>anak siapa</strong> yang
+  sedang dibuka (<code>anakId</code> atau <code>?anak=</code>).</li>
+<li><strong>Bracket usia dihitung ULANG di awal setiap siklus, lalu dibekukan sepanjang siklus itu.</strong> Anak yang
+  ulang tahun di tengah bulan tidak berpindah tema. Siklus berikutnya barulah usianya dihitung lagi.</li>
+<li><strong>Bayaran membatasi TOTAL bulan, bukan per kategori.</strong> 3 bulan dibayar = Baby 1, Baby 2, Batita 1 — lalu
+  berhenti. Lihat BUG-07b.</li>
+<li><strong><code>jenis = 'event'</code></strong> adalah materi untuk acara offline: tak tampil di Ide Bermain, tak mempengaruhi
+  penomoran bulan/urutan. Indeks unik posisi hanya berlaku untuk <code>jenis = 'tema'</code>.</li>
+<li><strong><code>peran</code> ikut di dalam kunci unik <code>evaluasi_kurikulum</code>.</strong> Penilai boleh orang tua MAUPUN
+  guru/psikolog; tanpa <code>peran</code> di kuncinya, checklist guru akan <strong>menimpa</strong> checklist orang tua pada tema
+  yang sama — kehilangan data yang tak terlihat sampai rapornya dicetak.</li>
+<li><strong>"4 tema per bulan" adalah aturan ISI, bukan hukum kode.</strong> Kode menyimpan "bulan ke-N"; admin
+  diperingatkan bila sebuah bulan berisi ≠ 4 tema. Memaksa tepat 4 di kode akan menyembunyikan tema ke-5.</li>
+</ul>
+<h3 id="52-langganan-bertingkat-tagihan-voucher">5.2 Langganan bertingkat, tagihan, voucher</h3>
+<table>
+<thead>
+<tr>
+<th>Bagian</th>
+<th>Berkas</th>
+<th>Fungsi kunci</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Halaman</td>
+<td><code>src/app/langganan/</code>, <code>admin/langganan/</code>, <code>admin/paket/</code>, <code>admin/voucher/</code>, <code>admin/pengaturan-trial/</code>, <code>admin/pengaturan-bayar/</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>Domain</td>
+<td><code>src/lib/domain/entitlement.ts</code></td>
+<td><code>hakAksesAnak</code>, <code>hakAksesAkun</code>, <code>bolehBukaTema</code>, <code>tambahHari</code></td>
+</tr>
+<tr>
+<td>Domain</td>
+<td><code>src/lib/domain/trial.ts</code></td>
+<td><code>computeTrialEnd</code>, <code>statusLangganan</code>, <code>bolehAkses</code></td>
+</tr>
+<tr>
+<td>Domain</td>
+<td><code>src/lib/domain/langganan-harga.ts</code></td>
+<td><code>hitungTagihan</code>, <code>aturanKeluargaTerpakai</code></td>
+</tr>
+<tr>
+<td>Domain</td>
+<td><code>src/lib/domain/harga.ts</code></td>
+<td><code>hargaProdukUntuk</code>, <code>hargaEventUntuk</code>, <code>persenUntukPaket</code>, …</td>
+</tr>
+<tr>
+<td>Domain</td>
+<td><code>src/lib/domain/voucher.ts</code></td>
+<td><code>validasiVoucher</code>, <code>hitungPotongan</code>, <code>adaCakupan</code></td>
+</tr>
+<tr>
+<td>Domain</td>
+<td><code>src/lib/domain/laporan.ts</code></td>
+<td><code>ringkasanLangganan</code></td>
+</tr>
+<tr>
+<td>Baca</td>
+<td><code>src/lib/data/langganan-anak.ts</code></td>
+<td><code>getHakAnak</code>, <code>getHakAkun</code>, <code>ringkasLanggananAkun</code>, <code>barisLanggananAnak</code></td>
+</tr>
+<tr>
+<td>Baca</td>
+<td><code>src/lib/data/langganan-status.ts</code></td>
+<td><code>getStatusLangganan</code>, <code>getStatusSaya</code>, <code>dibatasiTrial</code></td>
+</tr>
+<tr>
+<td>Baca</td>
+<td><code>src/lib/data/paket.ts</code>, <code>tagihan.ts</code>, <code>voucher.ts</code></td>
+<td><code>getPaketAktif</code>, <code>getPaketMap</code>, <code>paketBelumSiap</code>, <code>getTagihanSaya</code>, <code>getTagihanMenunggu</code>, <code>nilaiVoucherByKode</code></td>
+</tr>
+<tr>
+<td><strong>Tulis (satu-satunya titik perpanjangan)</strong></td>
+<td><code>src/lib/data/langganan-anak-actions.ts</code></td>
+<td><strong><code>setPaketAnak(anakId, paketId, bulan)</code></strong>, <code>hentikanPaketAnak</code></td>
+</tr>
+<tr>
+<td>Tulis</td>
+<td><code>src/lib/data/tagihan-actions.ts</code>, <code>tagihan-admin-actions.ts</code></td>
+<td><code>buatTagihan</code>, <code>unggahBuktiTagihan</code>, <code>batalkanTagihan</code>, <code>setPaketBerikutnya</code>, <strong><code>verifikasiTagihan</code></strong>, <code>tolakTagihan</code></td>
+</tr>
+<tr>
+<td>Tulis</td>
+<td><code>src/lib/data/paket-actions.ts</code>, <code>voucher-actions.ts</code>, <code>admin-bisnis.ts</code></td>
+<td><code>buatPaket</code>, <code>updatePaket</code>, <code>buatVoucher</code>, <code>cekVoucher</code>, <code>aktifkanLangganan</code>, <code>simpanPengaturanTrial</code></td>
+</tr>
+<tr>
+<td>Tabel</td>
+<td><code>paket</code>, <code>langganan_anak</code>, <code>tagihan_langganan</code>, <code>tagihan_langganan_item</code>, <code>voucher</code>, <code>pengaturan_trial</code>, <code>pengaturan_bayar</code></td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>setPaketAnak</code> adalah satu-satunya tempat periode langganan diperpanjang</strong> — dipakai admin manual DAN
+oleh <code>verifikasiTagihan</code>. Kalau penghitung bulan kurikulum salah, di sinilah tempatnya, bukan di
+halamannya. Sengaja satu titik supaya tak ada dua jalur yang bisa berbeda.</p>
+<p><strong>Status diturunkan dari ANAK, bukan dari baris akun.</strong> Ada commit khusus untuk itu
+(<code>fix(langganan): status di Beranda &amp; Akun diturunkan dari ANAK</code>). Satu akun bisa punya beberapa anak
+dengan paket berbeda; menyimpulkan status dari akun akan salah untuk sebagian anaknya.</p>
+<h3 id="53-konsultasi-psikolog">5.3 Konsultasi psikolog</h3>
+<table>
+<thead>
+<tr>
+<th>Bagian</th>
+<th>Berkas</th>
+<th>Fungsi kunci</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Halaman</td>
+<td><code>src/app/konsultasi/</code>, <code>konsultasi/[pendaftaranId]/</code>, <code>psikolog/</code>, <code>psikolog/[pendaftaranId]/</code>, <code>psikolog/jadwal/</code>, <code>admin/psikolog/</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>Domain</td>
+<td><code>src/lib/domain/konsultasi-slot.ts</code></td>
+<td><code>keadaanSlot</code>, <code>memakaiSlotKonsultasi</code>, <code>draftKedaluwarsa</code></td>
+</tr>
+<tr>
+<td>Domain</td>
+<td><code>src/lib/domain/konsultasi-biaya.ts</code></td>
+<td><code>hitungBiayaKonsultasi</code></td>
+</tr>
+<tr>
+<td>Domain</td>
+<td><code>src/lib/domain/kuota-konsultasi.ts</code></td>
+<td><code>sisaKuotaKonsultasi</code>, <code>labelKuotaKonsultasi</code></td>
+</tr>
+<tr>
+<td>Domain</td>
+<td><code>src/lib/domain/jadwal.ts</code></td>
+<td><code>jadwalTeks</code></td>
+</tr>
+<tr>
+<td>Baca</td>
+<td><code>src/lib/data/konsultasi.ts</code></td>
+<td><code>getPsikologTersedia</code>, <code>getKonsultasiSaya</code>, <strong><code>getKonsultasiAnak</code></strong>, <code>getPesan</code>, <strong><code>getRekomendasiAnak</code></strong></td>
+</tr>
+<tr>
+<td>Baca</td>
+<td><code>src/lib/data/psikolog.ts</code>, <code>psikolog-profil.ts</code>, <code>konsultasi-tarif.ts</code>, <code>konsultasi-bayar.ts</code></td>
+<td><code>getSesiPsikolog</code>, <code>getJadwalSaya</code>, <code>getPendaftaranById</code>, <code>getProfilPsikolog</code>, <code>getPratinjauKonsultasi</code>, <code>getKonsultasiMenungguBayar</code></td>
+</tr>
+<tr>
+<td>Tulis</td>
+<td><code>src/lib/data/konsultasi-actions.ts</code></td>
+<td><code>daftarKonsultasi</code>, <code>kirimPesan</code>, <code>selesaikanKonsultasi</code>, <code>batalKonsultasi</code>, <code>unggahBuktiKonsultasi</code></td>
+</tr>
+<tr>
+<td>Tulis</td>
+<td><code>src/lib/data/psikolog-actions.ts</code></td>
+<td><code>simpanJadwal</code>, <code>setStatusKonsultasi</code>, <code>mulaiKonsultasi</code>, <strong><code>simpanRekomendasi</code></strong></td>
+</tr>
+<tr>
+<td>Tulis</td>
+<td><code>src/lib/data/admin-psikolog-actions.ts</code>, <code>konsultasi-bayar-actions.ts</code></td>
+<td><code>jadikanPsikolog</code>, <code>setTarifKonsultasi</code>, <code>verifikasiBayarKonsultasi</code></td>
+</tr>
+<tr>
+<td>Rekomendasi item</td>
+<td><code>src/lib/data/rekomendasi-item.ts</code> / <code>-actions.ts</code></td>
+<td><code>getKatalogRekomendasi</code>, <code>getRekomendasiItemAnak</code>, <code>tambahRekomendasiItem</code></td>
+</tr>
+<tr>
+<td>Tabel</td>
+<td><code>jadwal_psikolog</code>, <code>pendaftaran_konsultasi</code>, <code>pesan_konsultasi</code>, <code>rekomendasi_psikolog</code>, <code>rekomendasi_item</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>Migrasi</td>
+<td><code>0065_konsultasi.sql</code> (+ RLS &amp; <code>sisa_kuota_konsultasi</code>), <code>0092</code>, <code>0097</code></td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Perangkap khas fitur ini:</strong> <code>rekomendasi_psikolog.ortu_id</code> <strong>diisi dari kiriman form psikolog</strong>, dan
+policy bacanya <code>ortu_id = auth.uid()</code>. Kalau nilainya keliru, barisnya tersimpan dan terlihat oleh admin
+&amp; psikolog, tapi <strong>orang tua tak akan pernah bisa membacanya</strong> — tanpa galat apa pun. Lihat BUG-08.</p>
+<h3 id="54-rapor-bulanan-laporan-perkembangan">5.4 Rapor bulanan &amp; laporan perkembangan</h3>
+<table>
+<thead>
+<tr>
+<th>Bagian</th>
+<th>Berkas</th>
+<th>Fungsi kunci</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Halaman</td>
+<td><code>src/app/anak/[anakId]/rapor/[ym]/page.tsx</code>, <code>anak/[anakId]/laporan/</code>, <code>anak/[anakId]/</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>Komponen</td>
+<td><code>src/components/LaporanAnakView.tsx</code>, <code>UnduhRaporBtn.tsx</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>Domain</td>
+<td><code>src/lib/domain/laporan-bulanan.ts</code></td>
+<td><strong><code>ringkasBulan</code></strong>, <code>rentangBulan</code>, <code>bulanWib</code>, <strong><code>bulanRekomendasi</code></strong>, <code>bulanTerakhir</code>, <code>labelBulan</code>, <code>hitungArea</code>, <code>rapikanDaftar</code></td>
+</tr>
+<tr>
+<td>Domain</td>
+<td><code>src/lib/domain/laporan-anak.ts</code></td>
+<td><code>laporanAnak</code></td>
+</tr>
+<tr>
+<td>Gambar</td>
+<td><code>src/lib/rapor-jpeg.ts</code></td>
+<td><code>buatRaporJpeg</code> — A4 <strong>portrait</strong> 2480×3508, bisa 1 atau 2 halaman</td>
+</tr>
+<tr>
+<td>Baca</td>
+<td><code>src/lib/data/kegiatan.ts</code>, <code>catatan.ts</code>, <code>catatan-tema.ts</code>, <code>kurikulum.ts</code>, <code>konsultasi.ts</code>, <code>game-hasil.ts</code></td>
+<td><code>getKegiatanAnak</code>, <code>getCatatanAnak</code>, <code>getCatatanTemaAnak</code>, <code>getEvaluasiAnak</code>, <code>getRekomendasiAnak</code>, <code>getRingkasGameAnak</code></td>
+</tr>
+<tr>
+<td>Tulis</td>
+<td><code>src/lib/data/kegiatan-actions.ts</code></td>
+<td><code>catatKegiatan</code></td>
+</tr>
+<tr>
+<td>Tabel</td>
+<td><code>kegiatan_anak</code>, <code>hasil_main</code>, <code>catatan_perkembangan</code>, <code>catatan_tema</code>, <code>evaluasi_kurikulum</code>, <code>rekomendasi_psikolog</code>, <code>rekomendasi_item</code></td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Tiga hal yang membuat rapor sering terlihat "salah" padahal datanya benar:</strong></p>
+<ol>
+<li><strong>Definisi metrik.</strong> "Sesi game" dan "menit" HANYA dari <code>hasil_main</code>; <code>kegiatan_anak</code> tak punya kolom
+   durasi sama sekali. Karena itu angka keempat di rapor adalah <strong>Total aktivitas</strong>, bukan "total waktu
+   main" — anak yang mengerjakan 9 Ide Bermain tanpa menyentuh game dulu mendapat rapor berbunyi "0 m",
+   dan itu terbaca seperti rapor rusak.</li>
+<li><strong>Jangkar bulan.</strong> Tiap sumber punya kolom waktunya sendiri: <code>hasil_main.tanggal</code> (<strong>bukan</strong>
+   <code>created_at</code>), <code>evaluasi_kurikulum.updated_at</code> (waktu orang tua menyimpan), <code>rekomendasi_psikolog</code> →
+   <strong>tanggal konsultasinya</strong> lewat <code>bulanRekomendasi</code>. Salah kolom = data "hilang" dari bulan itu.</li>
+<li><strong>Tata letak JPEG.</strong> Lihat §2.6 dan BUG-11.</li>
+</ol>
+<h3 id="55-event-pendaftaran-sertifikat-stiker">5.5 Event, pendaftaran, sertifikat, stiker</h3>
+<table>
+<thead>
+<tr>
+<th>Bagian</th>
+<th>Berkas</th>
+<th>Fungsi kunci</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Halaman</td>
+<td><code>src/app/event/</code>, <code>event/[id]/daftar/</code>, <code>admin/event/</code>, <code>admin/event/[id]/pendaftar/</code>, <code>admin/event/[id]/cetak-peserta/</code>, <code>guru/</code>, <code>guru/[eventId]/</code>, <code>catatan/[eventId]/</code>, <code>sertifikat/[id]/</code>, <code>stiker-event/[id]/</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>Domain</td>
+<td><code>src/lib/domain/stiker.ts</code></td>
+<td><code>ukuranNama</code></td>
+</tr>
+<tr>
+<td>Baca</td>
+<td><code>src/lib/data/event.ts</code></td>
+<td><code>getEventTampil</code>, <code>getEvent</code>, <code>getEventDiikuti</code>, <code>getPendaftaranSaya</code>, <code>getKuotaEvent</code>, <code>sisaKuota</code>, <code>getKuotaTerpakai</code></td>
+</tr>
+<tr>
+<td>Baca</td>
+<td><code>src/lib/data/admin-event.ts</code>, <code>guru.ts</code>, <code>sertifikat.ts</code>, <code>kuota-event.ts</code></td>
+<td><code>getEventAdmin</code>, <code>getPendaftaranByEvent</code>, <code>getJumlahPendaftar</code>, <code>getPesertaEvent</code>, <code>getSertifikatAnak</code>, <code>bacaKuotaEvent</code>, <code>kolomKuotaHilang</code></td>
+</tr>
+<tr>
+<td>Tulis</td>
+<td><code>src/lib/data/event-actions.ts</code></td>
+<td><code>daftarEvent</code></td>
+</tr>
+<tr>
+<td>Tulis</td>
+<td><code>src/lib/data/admin-event-actions.ts</code></td>
+<td><code>buatEvent</code>, <code>updateEvent</code>, <code>setStatusPendaftaran</code>, <code>setKehadiran</code>, <strong><code>reschedulePendaftaran</code></strong>, <code>pindahKelasPendaftaran</code>, <code>simpanParameterPerkembangan</code>, <code>duplikatParameterPerkembangan</code>, <code>getPesertaEkspor</code></td>
+</tr>
+<tr>
+<td>Tulis</td>
+<td><code>src/lib/data/guru-actions.ts</code>, <code>admin-sertifikat-actions.ts</code></td>
+<td><code>simpanCatatan</code>, <code>generateSertifikatEvent</code>, <code>hapusSertifikat</code></td>
+</tr>
+<tr>
+<td>Tabel</td>
+<td><code>event</code>, <code>pendaftaran_event</code>, <code>catatan_perkembangan</code>, <code>sertifikat</code></td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p><code>reschedulePendaftaran</code> wajib <strong>memperbarui snapshot kelas &amp; jadwal</strong> saat pendaftar dipindah, dan <strong>tidak
+boleh</strong> menjatuhkannya ke kuota Gabungan tanpa ditanya — dua bug yang pernah terjadi berurutan
+(BUG-02, kelas snapshot).</p>
+<h3 id="56-game-gamifikasi">5.6 Game &amp; gamifikasi</h3>
+<table>
+<thead>
+<tr>
+<th>Bagian</th>
+<th>Berkas</th>
+<th>Fungsi kunci</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Halaman</td>
+<td><code>src/app/main/[anakId]/</code>, <code>pilih-game/[anakId]/</code>, <code>pilih-anak/</code></td>
+<td><code>MenuAnak.tsx</code> (<code>paketAwal</code>, <code>onKeluar</code>, <code>?kembali=</code>)</td>
+</tr>
+<tr>
+<td>Mesin game</td>
+<td><code>src/lib/game/*</code> (+ <code>src/lib/game/__tests__</code>)</td>
+<td>satu mesin per jenis (<code>ingatan</code>, <code>calistung</code>, <code>hitung</code>, <code>urutan</code>, <code>mewarnai</code>, <code>koding</code>, <code>ejakata</code>, …)</td>
+</tr>
+<tr>
+<td>Domain</td>
+<td><code>src/lib/domain/skor.ts</code>, <code>gamifikasi.ts</code>, <code>tantangan-kustom.ts</code>, <code>waktu.ts</code></td>
+<td><code>hitungBintang</code>, <code>evaluasiLencana</code>, <code>tantanganHariIni</code>, <code>progresTantangan</code>, <code>progresTantanganKustom</code>, <code>cocokItem</code>, <code>sisaDetik</code>, <code>kunciHari</code></td>
+</tr>
+<tr>
+<td>Baca</td>
+<td><code>src/lib/data/game-pilihan.ts</code>, <code>gamifikasi.ts</code>, <code>game-hasil.ts</code>, <code>aktivitas.ts</code></td>
+<td><code>getOpsiGame</code>, <code>getGamifikasiAnak</code>, <code>getRingkasGameAnak</code>, <code>getAktivitasRingkas</code></td>
+</tr>
+<tr>
+<td>Tulis</td>
+<td><code>src/lib/data/skor.ts</code>, <code>skor-core.ts</code>, <code>aktivitas-actions.ts</code>, <code>tantangan-kustom-actions.ts</code></td>
+<td><code>catatHasil</code>, <code>catatHasilCore</code>, <code>catatAktivitas</code>, <code>simpanTantangan</code></td>
+</tr>
+<tr>
+<td>Tabel</td>
+<td><code>paket_aset</code> (kolom <code>mesin</code> ber-CHECK), <code>hasil_main</code>, <code>aktivitas_anak</code>, <code>tantangan_kustom</code></td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Menambah jenis game baru butuh migrasi</strong>: nilai <code>mesin</code> yang baru harus didaftarkan ke CHECK
+<code>paket_aset_mesin_check</code>, jika tidak insert-nya ditolak database. Pernah terjadi dua kali (mesin
+<code>calistung</code> → migrasi 0074, mesin <code>ingatan</code> → migrasi 0080). Lihat BUG-10.</p>
+<h3 id="57-store-keranjang-pesanan">5.7 Store, keranjang, pesanan</h3>
+<table>
+<thead>
+<tr>
+<th>Bagian</th>
+<th>Berkas</th>
+<th>Fungsi kunci</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Halaman</td>
+<td><code>src/app/store/</code>, <code>store/[id]/</code>, <code>keranjang/</code>, <code>pesanan/</code>, <code>pesanan/[id]/</code>, <code>admin/produk/</code>, <code>admin/pesanan/</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>Domain</td>
+<td><code>src/lib/domain/harga.ts</code>, <code>voucher.ts</code></td>
+<td><code>hargaProdukUntukPaket</code>, <code>validasiVoucher</code></td>
+</tr>
+<tr>
+<td>Baca</td>
+<td><code>src/lib/data/store.ts</code>, <code>keranjang.ts</code>, <code>pesanan.ts</code>, <code>admin-store.ts</code></td>
+<td><code>getProdukTampil</code>, <code>getKeranjang</code>, <code>getJumlahKeranjang</code>, <code>getPesananSaya</code>, <code>getPesananSemua</code></td>
+</tr>
+<tr>
+<td>Tulis</td>
+<td><code>src/lib/data/keranjang-actions.ts</code></td>
+<td><code>tambahKeranjang</code>, <code>setQtyKeranjang</code>, <code>hapusKeranjang</code>, <strong><code>checkout</code></strong></td>
+</tr>
+<tr>
+<td>Tulis</td>
+<td><code>src/lib/data/admin-store-actions.ts</code>, <code>pesanan-actions.ts</code></td>
+<td><code>buatProduk</code>, <code>setOngkir</code>, <code>verifikasiPesanan</code>, <code>setResi</code>, <code>ubahStatusPesanan</code>, <code>uploadBuktiPesanan</code></td>
+</tr>
+<tr>
+<td>Tabel</td>
+<td><code>produk</code>, <code>keranjang</code>, <code>pesanan</code>, <code>pesanan_item</code></td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<h3 id="58-keuangan-internal">5.8 Keuangan (internal)</h3>
+<table>
+<thead>
+<tr>
+<th>Bagian</th>
+<th>Berkas</th>
+<th>Fungsi kunci</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Halaman</td>
+<td><code>src/app/admin/keuangan/**</code> (transaksi, expense, anggaran, aset, pajak, kpi, insight, laporan, master), <code>investor/</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>Baca</td>
+<td><code>src/lib/data/keuangan.ts</code></td>
+<td><code>getDashboardKeuangan</code>, <code>getLedger</code>, <code>getPerBulan</code>, <code>getPerKategori</code>, <code>getTransaksiDetail</code>, <code>getAset</code></td>
+</tr>
+<tr>
+<td>Baca</td>
+<td><code>src/lib/data/anggaran.ts</code>, <code>kpi.ts</code>, <code>sponsor.ts</code>, <code>investor.ts</code></td>
+<td><code>getAnggaranBulan</code>, <code>getBudgetMap</code>, <code>getForecast</code>, <code>getKpi</code>, <code>getInsight</code>, <code>getRingkasanSponsor</code></td>
+</tr>
+<tr>
+<td>Tulis</td>
+<td><code>src/lib/data/keuangan-actions.ts</code>, <code>anggaran-actions.ts</code>, <code>sponsor-actions.ts</code></td>
+<td><code>catatPengeluaran</code>, <code>hapusTransaksi</code>, <code>simpanAset</code>, <code>simpanAnggaran</code>, <code>simpanDeal</code>, <code>generateInvoice</code>, <code>catatPembayaran</code></td>
+</tr>
+<tr>
+<td><strong>Buku besar</strong></td>
+<td><code>src/lib/data/ledger.ts</code></td>
+<td><code>catatLedger</code>, <code>hapusLedgerRef</code></td>
+</tr>
+<tr>
+<td>Tabel</td>
+<td><code>transaksi</code>, <code>kategori_pengeluaran</code>, <code>kategori_aset</code>, <code>aset</code>, <code>anggaran</code>, <code>sponsor</code>, <code>deal_sponsor</code></td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p><code>catatLedger</code> dipanggil dari alur lain (verifikasi tagihan, pesanan) — kalau angka keuangan tak cocok
+dengan penjualan, telusuri siapa yang memanggil <code>catatLedger</code> / <code>hapusLedgerRef</code>, jangan mulai dari
+halaman keuangannya.</p>
+<h3 id="59-konten-komunitas-worksheet">5.9 Konten, komunitas, worksheet</h3>
+<table>
+<thead>
+<tr>
+<th>Bagian</th>
+<th>Berkas</th>
+<th>Fungsi kunci</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Halaman</td>
+<td><code>src/app/artikel/</code>, <code>artikel/[slug]/</code>, <code>komunitas/</code>, <code>komunitas/[postId]/</code>, <code>favorit/</code>, <code>admin/artikel/</code>, <code>admin/video/</code>, <code>admin/komunitas/</code>, <code>admin/feedback/</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td>Baca</td>
+<td><code>src/lib/data/artikel.ts</code></td>
+<td><code>getArtikelTerbit</code>, <code>getArtikelBySlugCached</code> (<strong>cache tag <code>artikel</code></strong>)</td>
+</tr>
+<tr>
+<td>Baca</td>
+<td><code>src/lib/data/komunitas.ts</code>, <code>video.ts</code>, <code>pustaka.ts</code>, <code>panduan.ts</code>, <code>favorit.ts</code>, <code>feedback.ts</code></td>
+<td><code>getFeed</code>, <code>getPostingan</code>, <code>getVideoByKategori</code>, <code>getPustaka</code>, <code>getModeOrtu</code>, <code>getFavoritKelas</code>, <code>getFeedbackAdmin</code></td>
+</tr>
+<tr>
+<td>Tulis</td>
+<td><code>src/lib/data/artikel-admin.ts</code>, <code>admin-konten.ts</code></td>
+<td><code>simpanArtikel</code>, <code>hapusArtikel</code>, <code>buatVideo</code>, <code>setBolehTrialTema</code>, <code>setMingguIni</code>, <code>simpanPanduan</code>, <code>ekstrakYoutubeId</code></td>
+</tr>
+<tr>
+<td>Tulis</td>
+<td><code>src/lib/data/komunitas-actions.ts</code>, <code>admin-komunitas.ts</code>, <code>feedback-actions.ts</code>, <code>favorit-actions.ts</code></td>
+<td><code>buatPostingan</code>, <code>toggleSuka</code>, <code>lapor</code>, <code>moderasiPostingan</code>, <code>tuntaskanLaporan</code>, <code>kirimFeedback</code>, <code>toggleFavorit</code></td>
+</tr>
+<tr>
+<td>Worksheet</td>
+<td><code>src/lib/domain/kuota-worksheet.ts</code>, <code>src/lib/data/worksheet.ts</code> / <code>-actions.ts</code></td>
+<td><code>sisaKuotaWorksheet</code>, <code>sisaWorksheetAkun</code>, <code>awalPeriode</code>, <code>getStatusWorksheet</code>, <code>mintaWorksheet</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="510-admin-peran-akses-menu">5.10 Admin, peran, akses menu</h3>
+<table>
+<thead>
+<tr>
+<th>Bagian</th>
+<th>Berkas</th>
+<th>Fungsi kunci</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Middleware</td>
+<td><code>src/proxy.ts</code>, <code>src/lib/menu-admin.ts</code></td>
+<td><code>keyMenuDariPath</code>, <code>menuUntukRole</code>, <code>DEFAULT_AKSES</code></td>
+</tr>
+<tr>
+<td>Gerbang peran</td>
+<td><code>src/lib/data/admin.ts</code></td>
+<td><strong><code>getAdminTerjamin</code></strong>, <code>getSuperuserTerjamin</code>, <code>getAksesAdmin</code></td>
+</tr>
+<tr>
+<td>Gerbang peran</td>
+<td><code>src/lib/data/guru.ts</code>, <code>psikolog.ts</code>, <code>investor.ts</code>, <code>anak.ts</code></td>
+<td><code>getGuruTerjamin</code>, <code>getPsikologTerjamin</code>, <code>getInvestorTerjamin</code>, <code>getAnakTerjamin</code></td>
+</tr>
+<tr>
+<td>Baca</td>
+<td><code>src/lib/data/admin-users.ts</code>, <code>pengaturan-menu.ts</code></td>
+<td><code>getDaftarUser</code>, <code>getMenuAkses</code>, <code>getFiturAkses</code></td>
+</tr>
+<tr>
+<td>Tulis</td>
+<td><code>src/lib/data/admin-users-actions.ts</code>, <code>admin-bisnis.ts</code>, <code>admin-guru-actions.ts</code></td>
+<td><code>setRole</code>, <code>buatUser</code>, <code>tambahUserRole</code>, <code>simpanMenuAkses</code>, <code>simpanFiturAkses</code>, <code>jadikanGuru</code>, <code>cabutGuru</code></td>
+</tr>
+<tr>
+<td>Tulis</td>
+<td><code>src/lib/data/ortu-actions.ts</code></td>
+<td><code>updateAnak</code>, <code>setBatas</code>, <code>hapusAnak</code>, <code>simpanProfilPengiriman</code>, <code>setPin</code></td>
+</tr>
+<tr>
+<td>SQL</td>
+<td>fungsi <code>is_admin()</code>, <code>is_guru()</code>, <code>is_psikolog()</code>, <code>boleh_lihat_laporan_anak()</code>, <code>hari_ini_wib()</code></td>
+<td>dipakai di policy RLS</td>
+</tr>
+</tbody>
+</table>
+<p>Pola <code>get&lt;Peran&gt;Terjamin</code> adalah <strong>satu-satunya</strong> gerbang peran yang sah — ia membaca peran dari database
+dan memantulkan yang tak berhak. Jangan menulis pemeriksaan peran sendiri di <code>page.tsx</code>; satu akun bisa
+merangkap beberapa peran, dan versi sendiri akan salah untuk kasus itu.</p>
+<hr />
+<h2 id="6-katalog-bug-yang-sering-terjadi">6. Katalog bug yang sering terjadi</h2>
+<p>Format tiap entri: <strong>Gejala → Akar → Tempat → Cara membuktikan → Cara memperbaiki.</strong></p>
+<hr />
+<h3 id="bug-01-perubahan-admin-tersimpan-tapi-halaman-pengguna-tetap-yang-lama">BUG-01 · Perubahan admin tersimpan, tapi halaman pengguna tetap yang lama</h3>
+<p><strong>Gejala.</strong> Admin menyimpan, muncul "berhasil", data di halaman admin ikut berubah — tapi halaman
+pengguna masih menampilkan versi lama. Bisa bertahan berjam-jam. Tak ada galat.</p>
+<p><strong>Akar.</strong> Pembaca publik memakai <code>unstable_cache</code> bertag (agar bisa di-cache lintas-user), dan Server
+Action yang menulisnya <strong>lupa memanggil <code>updateTag</code></strong>.</p>
+<p><strong>Tempat.</strong>
+- Pembaca ter-cache: <code>src/lib/data/publik.ts</code> → <code>getKelasAktifCached</code> (tag <strong><code>katalog</code></strong>);
+  <code>src/lib/data/artikel.ts</code> → <code>getArtikelTerbitCached</code>, <code>getArtikelBySlugCached</code> (tag <strong><code>artikel</code></strong>)
+- Penulis yang wajib menyegarkan: <code>kelas-bermain-actions.ts</code>, <code>kategori-usia-actions.ts</code>,
+  <code>admin-store-actions.ts</code>, <code>artikel-admin.ts</code></p>
+<p><strong>Cara membuktikan.</strong> Bandingkan <strong>halaman admin</strong> (tak ter-cache) dengan <strong>halaman pengguna</strong>. Kalau
+admin benar dan pengguna lama → cache. Kalau keduanya lama → tulisannya yang gagal, bukan cache.</p>
+<p><strong>Cara memperbaiki.</strong> Tambahkan <code>updateTag('&lt;tag&gt;')</code> di <strong>setiap</strong> cabang sukses action-nya — termasuk
+cabang cadangan pra-migrasi. Di <code>kelas-bermain-actions.ts</code> ada tiga cabang keluar (kolom baru berhasil,
+kolom baru gagal lalu diulang tanpa kolom itu, dan jalur biasa); melewatkan satu cabang menghasilkan bug
+yang <strong>kadang</strong> muncul, dan bug yang kadang muncul jauh lebih mahal daripada bug yang selalu muncul.</p>
+<p>Rujukan: <code>fix(ide bermain): perubahan tak pernah tayang — cache katalog tak disegarkan</code>.</p>
+<hr />
+<h3 id="bug-02-angka-atau-label-membangkang-snapshot-vs-master">BUG-02 · Angka atau label membangkang: SNAPSHOT vs MASTER</h3>
+<p><strong>Gejala.</strong> Admin mengubah rentang usia sebuah kategori dari "1–3 th" ke "2–3 th". Kartu Ide Bermain
+tetap menulis "1–3 th". Membuka materinya dan menekan Simpan <strong>tidak menolong</strong>.</p>
+<p><strong>Akar — dua lapis, dan lapis kedua yang mengecoh:</strong>
+1. Rentang usia di baris materi adalah <strong>snapshot</strong> dari kategorinya (sengaja — §4.5). Mengubah master
+   tidak mengubah snapshot.
+2. Menyimpan ulang materinya juga tak menolong, karena <strong>form mengirim balik nilai LAMA</strong> yang ia baca
+   saat Edit dibuka. Penyegaran hanya terjadi bila admin kebetulan menyentuh dropdown kategorinya.</p>
+<p><strong>Tempat.</strong> <code>src/lib/data/kategori-usia-actions.ts:65</code> (<code>updateKategoriUsia</code>),
+<code>src/lib/data/kelas-bermain-actions.ts:49</code> (<code>denganRentangKategori</code>).</p>
+<p><strong>Cara membuktikan.</strong> Baca baris <code>kelas_bermain</code> langsung di Supabase SQL Editor dan bandingkan kolom
+rentangnya dengan <code>kategori_usia</code>. Kalau berbeda, ini bug-nya — bukan bug tampilan.</p>
+<p><strong>Cara memperbaiki.</strong> Dua-duanya, dan keduanya di SERVER:
+- Saat master diubah → <strong>jalarkan</strong> ke snapshot di <code>kelas_bermain</code> dan <code>paket_aset</code>.
+- Saat materi disimpan → snapshot <strong>diturunkan di server dari master</strong>, bukan dipakai apa adanya dari form.</p>
+<p>Menambal hanya salah satunya menyisakan satu jalan bagi angka basi untuk kembali.</p>
+<p><strong>Keluarga bug yang sama</strong> (semuanya snapshot yang bisa basi): judul kelas di <code>kegiatan_anak</code>, nama anak
+di <code>sertifikat</code> (<code>fix(sertifikat): tampilkan NAMA LENGKAP anak, termasuk pada sertifikat lama</code>), snapshot
+kelas &amp; jadwal saat reschedule (<code>fix(reschedule): perbarui snapshot kelas &amp; jadwal</code>).</p>
+<blockquote>
+<p><strong>Kalau Anda hanya membaca satu entri dari dokumen ini, baca yang ini.</strong> Saran "coba buka lalu simpan
+ulang" pernah diberikan untuk bug ini dan <strong>salah</strong> — form mengirim balik snapshot basi, jadi menyimpan
+ulang tidak mengubah apa pun. Gejalanya persis sama dengan bug cache (BUG-01), dan cara membedakannya
+hanya satu: <strong>baca barisnya di database.</strong></p>
+</blockquote>
+<hr />
+<h3 id="bug-03-halaman-mati-atau-daftar-kosong-setelah-deploy-migrasi-belum-jalan">BUG-03 · Halaman mati atau daftar kosong setelah deploy (migrasi belum jalan)</h3>
+<p><strong>Gejala.</strong> Setelah deploy, halaman 500 atau daftar tiba-tiba kosong. Di lokal semuanya normal.</p>
+<p><strong>Akar.</strong> Kode membaca kolom/tabel yang migrasinya <strong>belum dijalankan</strong> di produksi. Migrasi di proyek ini
+dijalankan <strong>manual, sesudah deploy</strong> (§4.1).</p>
+<p><strong>Tempat.</strong> Pola cadangan yang benar: <code>pilihToleran</code> (<code>src/lib/data/publik.ts</code>), <code>kolomKuotaHilang</code>
+(<code>kuota-event.ts</code>), <code>tabelProfilHilang</code> (<code>psikolog-profil.ts</code>).</p>
+<p><strong>Cara membuktikan.</strong> Probe REST dengan kolom kontrol palsu (§2.5). <code>42703</code> pada kolom yang dicari =
+migrasi belum jalan. <code>42P01</code> = tabelnya belum ada.</p>
+<p><strong>Cara memperbaiki.</strong> Jalankan migrasinya. Lalu, supaya tak terulang: setiap kolom baru dibaca lewat
+<code>pilihToleran</code> (dua daftar kolom: baru dan lama), dan setiap penulisan mencoba tanpa kolom baru bila
+percobaan pertama gagal. <strong>Lalu baca BUG-04 sebelum memilih arah cadangannya.</strong></p>
+<hr />
+<h3 id="bug-04-cadangan-pra-migrasi-gagal-ke-arah-terbuka-materi-bocor">BUG-04 · Cadangan pra-migrasi gagal ke arah TERBUKA (materi bocor)</h3>
+<p><strong>Gejala.</strong> Materi yang ditandai admin sebagai "bukan untuk pengguna" (jenis Event) justru <strong>paling mudah
+dilihat</strong> — muncul untuk semua orang tua, terbuka penuh.</p>
+<p><strong>Akar.</strong> Cadangan versi pertama menyimpan materi EVENT sebagai tema biasa "supaya tak gagal total". Baris
+itu lahir dengan <code>jenis</code> bawaan <code>'tema'</code> dan posisi <code>0/0</code> — yaitu <strong>tema tanpa posisi</strong>, yang saat itu
+diperlakukan sebagai <strong>terbuka</strong>. Dua kelonggaran yang masing-masing masuk akal bertemu dan menghasilkan
+kebocoran.</p>
+<p><strong>Tempat.</strong> <code>src/lib/data/kelas-bermain-actions.ts:175</code>, <code>src/lib/domain/siklus-kurikulum.ts:299</code>.</p>
+<p><strong>Cara membuktikan.</strong> Buka halaman kurikulum sebagai orang tua dari akun tanpa langganan. Materi Event
+tidak boleh terlihat sama sekali.</p>
+<p><strong>Cara memperbaiki.</strong> Tiga hal sekaligus:
+1. Cadangan pra-migrasi <strong>hanya untuk <code>'tema'</code></strong>; menyimpan EVENT sebelum kolom <code>jenis</code> ada <strong>ditolak</strong>
+   dengan pesan yang menyebut nomor migrasinya — gagal-dengan-pesan-jelas lebih baik daripada tersimpan
+   salah arti.
+2. Tema <strong>ber-kategori</strong> tanpa posisi → <strong>terkunci</strong>, bukan terbuka.
+3. Kelonggaran "tanpa posisi = terbuka" hanya berlaku untuk materi lama tanpa kategori, yang lewat jalur
+   <code>TANPA_BRACKET</code> — jalur yang berbeda.</p>
+<p><strong>Aturan yang harus Anda pegang:</strong> arah cadangan dipilih dengan bertanya <strong>"apa yang bocor kalau saya
+salah?"</strong>, bukan dengan kebiasaan "jangan sampai gagal". Untuk kolom yang menentukan <strong>siapa boleh
+melihat</strong>, cadangan yang salah arah adalah lubang keamanan, bukan ketidaknyamanan.</p>
+<p>Rujukan: <code>fix(ide-bermain): cadangan pra-migrasi jangan gagal ke arah TERBUKA</code>.</p>
+<hr />
+<h3 id="bug-05-data-hilang-di-batas-hari-atau-bulan-wib-vs-utc">BUG-05 · Data "hilang" di batas hari atau bulan (WIB vs UTC)</h3>
+<p><strong>Gejala.</strong> Kegiatan malam tanggal 31 muncul di bulan berikutnya. Catatan yang diisi pukul 01:00 WIB
+terhitung di tanggal kemarin. Streak harian terputus padahal anak bermain tiap hari.</p>
+<p><strong>Akar.</strong> <code>created_at</code> adalah <code>timestamptz</code> <strong>UTC</strong>. <code>current_date</code> / <code>now()::date</code> di Postgres juga UTC.
+Antara 00:00–07:00 WIB, keduanya masih menyebut tanggal kemarin.</p>
+<p><strong>Tempat.</strong> <code>src/lib/domain/laporan-bulanan.ts</code> (<code>rentangBulan</code>, <code>bulanWib</code>),
+<code>src/lib/domain/saring.ts</code> (<code>tanggalWibDariISO</code>, <code>dalamRentang</code>), <code>src/lib/domain/gamifikasi.ts</code>
+(<code>tanggalWIB</code>), fungsi SQL <code>hari_ini_wib()</code>.</p>
+<p><strong>Cara membuktikan.</strong> Tulis test dengan cap waktu <strong>di dalam jendela 17:00–24:00 UTC</strong> (= 00:00–07:00 WIB
+hari berikutnya) dan pastikan hasilnya masuk hari/bulan yang benar. Contoh: <code>2026-08-31T20:00:00Z</code> harus
+terhitung <strong>September</strong>, bukan Agustus.</p>
+<p><strong>Cara memperbaiki.</strong> Hitung batas di TypeScript lewat helper domain yang sudah ada. Jangan
+membandingkan cap waktu UTC dengan tanggal yang dipilih pengguna, dan <strong>jangan</strong> memakai <code>current_date</code>
+di SQL untuk logika hari.</p>
+<p><strong>Perangkap tambahan:</strong> batas akhir rentang yang <strong>eksklusif</strong> membuat catatan pada tanggal <code>sampai</code>
+lenyap. <code>dalamRentang</code> di <code>saring.ts</code> sengaja <strong>inklusif di kedua ujung</strong> dan menukar batas yang terbalik.</p>
+<hr />
+<h3 id="bug-06-jangkar-waktu-memakai-kolom-yang-salah">BUG-06 · Jangkar waktu memakai kolom yang salah</h3>
+<p><strong>Gejala.</strong> Rekomendasi psikolog untuk sesi 30 Agustus tidak ada di rapor Agustus — dan muncul di rapor
+September, bulan yang tak punya sesi konsultasi sama sekali.</p>
+<p><strong>Akar.</strong> Disaring dengan <code>created_at</code>, yaitu <strong>kapan psikolog mengetiknya</strong> — sering beberapa hari
+setelah sesinya. Kolom yang mewakili peristiwanya adalah <strong>tanggal konsultasi</strong>.</p>
+<p><strong>Tempat.</strong> <code>src/lib/domain/laporan-bulanan.ts</code> → <code>bulanRekomendasi(rek, tanggalKonsultasi)</code>;
+dipakai di <code>src/app/anak/[anakId]/rapor/[ym]/page.tsx</code>.</p>
+<p><strong>Cara membuktikan.</strong> Buka rapor bulan sesi DAN bulan berikutnya. Kalau isinya muncul di bulan yang salah,
+jangkarnya salah — bukan datanya hilang.</p>
+<p><strong>Cara memperbaiki.</strong> Pilih kolom yang <strong>mewakili peristiwanya</strong>, bukan yang paling mudah diambil.
+Sediakan cadangan untuk baris yang tak punya relasi (rekomendasi lepas tanpa <code>pendaftaran_id</code> → pakai
+<code>created_at</code>).</p>
+<p><strong>Kolom waktu yang benar per sumber</strong> — hafalkan atau salin:</p>
+<table>
+<thead>
+<tr>
+<th>Tabel</th>
+<th>Kolom waktu yang BENAR</th>
+<th>Jangan pakai</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hasil_main</code></td>
+<td><code>tanggal</code></td>
+<td><code>created_at</code> (gagal SENYAP → sesi game selalu 0)</td>
+</tr>
+<tr>
+<td><code>evaluasi_kurikulum</code></td>
+<td><code>updated_at</code> (saat ortu menyimpan)</td>
+<td><code>created_at</code> materinya</td>
+</tr>
+<tr>
+<td><code>rekomendasi_psikolog</code></td>
+<td>tanggal <code>pendaftaran_konsultasi</code>-nya</td>
+<td><code>created_at</code></td>
+</tr>
+<tr>
+<td><code>pendaftaran_konsultasi</code></td>
+<td><code>tanggal</code> (sudah tanggal LOKAL/WIB, <strong>jangan digeser lagi</strong>)</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>catatan_tema</code></td>
+<td><code>updated_at</code></td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="bug-07-gerbang-hak-memeriksa-keberadaan-paket-bukan-status-nya">BUG-07 · Gerbang hak: memeriksa keberadaan paket, bukan STATUS-nya</h3>
+<p><strong>Gejala.</strong> Anak yang masih <strong>trial</strong> bisa membuka tema yang akses trial-nya sudah dimatikan, lewat
+tautan langsung.</p>
+<p><strong>Akar.</strong> Syaratnya ditulis <code>!paketTertinggi &amp;&amp; boleh_trial === false</code>. Anak trial <strong>punya</strong> paket (paket
+trial), jadi syarat itu tak pernah terpenuhi untuknya.</p>
+<p><strong>Tempat.</strong> <code>src/lib/domain/entitlement.ts:138</code> → <code>bolehBukaTema</code>; <code>src/lib/domain/trial.ts</code> →
+<code>statusLangganan</code>.</p>
+<p><strong>Cara membuktikan.</strong> Uji dengan tiga akun: tanpa langganan, trial, berbayar. Bug seperti ini <strong>selalu</strong>
+lolos kalau Anda hanya menguji dua.</p>
+<p><strong>Cara memperbaiki.</strong> Yang menentukan adalah <strong>status</strong> (<code>aktif</code> / <code>tenggang</code> / <code>trial</code> / <code>habis</code>), bukan
+ada-tidaknya baris paket. <code>hakAksesAkun</code> mengembalikan <code>status</code>, dan <code>bolehBukaTema</code> memakai itu.</p>
+<p><strong>Pesan galatnya juga bagian dari perbaikan.</strong> Trial yang tak punya hak harus melihat <strong>ajakan
+berlangganan</strong>, bukan "bulan ke-N masih ditutup" — itu dua keadaan yang berbeda, dan pesan yang salah
+membuat orang tua (dan Anda) mengejar penyebab yang salah.</p>
+<hr />
+<h3 id="bug-07b-batas-bayar-bocor-saat-kategori-usia-berganti">BUG-07b · Batas bayar bocor saat kategori usia berganti</h3>
+<p><strong>Gejala.</strong> Anak yang membayar 3 bulan lalu berhenti tetap bisa membuka bundel bulanan ke-4 dan ke-5
+begitu kategori usianya berganti.</p>
+<p><strong>Akar.</strong> Batas dihitung <strong>per kategori</strong> (<code>min(dijalani[b], siklus)</code>), sehingga batas 3 bulan berlaku
+untuk Baby DAN untuk Batita — masing-masing 3.</p>
+<p><strong>Tempat.</strong> <code>src/lib/domain/siklus-kurikulum.ts:174</code> → <code>konteksKurikulum</code>.</p>
+<p><strong>Cara memperbaiki.</strong> Bayaran membatasi <strong>TOTAL</strong> bulan yang diberikan, lintas kategori: 3 bulan dibayar =
+Baby 1, Baby 2, Batita 1 — lalu berhenti sampai ada pembayaran berikutnya, yang membuka Batita 2.
+<code>bracket</code> tetap kategori <strong>hari ini</strong>, apa pun hak bayarnya; hak hanya menentukan <strong>berapa</strong> bulan.</p>
+<hr />
+<h3 id="bug-08-barisnya-ada-tapi-pembacanya-tak-melihatnya-rls">BUG-08 · Barisnya ada, tapi pembacanya tak melihatnya (RLS)</h3>
+<p><strong>Gejala.</strong> Data terlihat di panel admin tapi tidak di akun orang tua (atau sebaliknya). Query tidak
+mengembalikan galat — ia mengembalikan <code>[]</code>.</p>
+<p><strong>Akar.</strong> RLS. <code>[]</code> dari PostgREST <strong>tidak bisa dibedakan</strong> antara "tak ada baris" dan "ada baris tapi
+policy menutupnya".</p>
+<p><strong>Tempat contoh.</strong> <code>rekomendasi_psikolog</code> (<code>0065_konsultasi.sql</code>): policy baca
+<code>ortu_id = auth.uid() or psikolog_id = auth.uid() or is_admin()</code>. Nilai <code>ortu_id</code> <strong>diisi dari kiriman
+form psikolog</strong> (<code>simpanRekomendasi</code>) — kalau keliru, orang tua tak akan pernah bisa membacanya.</p>
+<p><strong>Cara membuktikan — tiga langkah, urut:</strong>
+1. <strong>Bandingkan dua peran.</strong> Buka data yang sama sebagai admin dan sebagai orang tua. Muncul di admin
+   saja → RLS/kepemilikan baris. Tak muncul di keduanya → tulisannya gagal atau jangkarnya salah.
+2. <strong>Buktikan tabel &amp; kolomnya ada</strong> dengan probe + kolom kontrol palsu (§2.5), supaya Anda tak mengejar
+   masalah RLS yang sebenarnya masalah migrasi.
+3. <strong>Baca barisnya di Supabase SQL Editor</strong> (melewati RLS). Kalau barisnya ada dengan <code>ortu_id</code> yang
+   berbeda dari akun orang tua itu, Anda sudah menemukannya.</p>
+<p><strong>Cara memperbaiki.</strong> Jangan mengendurkan policy-nya. Perbaiki <strong>penulisannya</strong>: <code>ortu_id</code> harus
+diturunkan di server dari kepemilikan anaknya, bukan diterima dari klien. Klien yang boleh memilih
+<code>ortu_id</code> juga boleh menuliskan rekomendasi ke akun orang lain.</p>
+<hr />
+<h3 id="bug-09-fungsi-postgres-bisa-dipanggil-dengan-kunci-anon">BUG-09 · Fungsi Postgres bisa dipanggil dengan kunci anon</h3>
+<p><strong>Gejala.</strong> Tidak ada gejala di UI. Kunci anon (yang ada di bundel JavaScript publik) bisa memanggil
+fungsi <code>SECURITY DEFINER</code> lewat REST dan mendapat data lintas-akun.</p>
+<p><strong>Akar.</strong> Postgres memberi <code>EXECUTE</code> ke <code>PUBLIC</code> secara <strong>bawaan</strong> untuk fungsi baru. <code>revoke ... from
+public</code> <strong>tidak</strong> menutup role <code>anon</code> dan <code>authenticated</code> yang mendapat hak secara terpisah.</p>
+<p><strong>Tempat.</strong> Semua <code>create function</code> di <code>supabase/migrations/</code>, khususnya yang <code>SECURITY DEFINER</code>
+(mis. <code>sisa_kuota_konsultasi</code>, <code>hari_ini_wib</code>).</p>
+<p><strong>Cara membuktikan.</strong></p>
+<pre><code class="language-bash">curl -s -X POST -H &quot;apikey: $ANON&quot; -H &quot;Content-Type: application/json&quot; \
+  -d '{}' &quot;$URL/rest/v1/rpc/nama_fungsi&quot;
+</code></pre>
+<p>Kalau membalas 200 dengan data, fungsinya terbuka.</p>
+<p><strong>Cara memperbaiki.</strong> <strong>DUA</strong> revoke, bukan satu:</p>
+<pre><code class="language-sql">revoke execute on function public.nama_fungsi(...) from public;
+revoke execute on function public.nama_fungsi(...) from anon, authenticated;
+grant  execute on function public.nama_fungsi(...) to authenticated;  -- bila memang perlu
+</code></pre>
+<p>Rujukan: <code>fix(sql): pencabutan hak fungsi butuh DUA revoke (0097)</code>,
+<code>fix(sql): cabut execute anon dari hari_ini_wib</code>.</p>
+<p><strong>Penjagaan di Edge Function / Server Action TIDAK menjaga RPC-nya.</strong> Jalur REST langsung melewati
+keduanya.</p>
+<hr />
+<h3 id="bug-10-migrasi-gagal-atau-insert-ditolak-database">BUG-10 · Migrasi gagal atau insert ditolak database</h3>
+<p><strong>Dua bentuk yang berbeda:</strong></p>
+<p><strong>(a) Indeks unik dipasang sebelum datanya dirapikan.</strong>
+Migrasi 0102 gagal dengan <code>Key (bulan_kurikulum, urutan)=(1, 0) is duplicated</code>, sebab baris lama semuanya
+berposisi <code>0</code>. <strong>Perbaikan:</strong> nomori ulang dulu, <strong>baru</strong> pasang indeksnya — dalam migrasi yang sama, urut.
+Rujukan: <code>fix(migrasi 0102): nomori ulang posisi kurikulum dulu, baru kunci indeksnya</code>.</p>
+<p><strong>(b) Nilai baru belum didaftarkan ke CHECK constraint.</strong>
+Menambah mesin game baru tanpa mendaftarkannya ke <code>paket_aset_mesin_check</code> → insert ditolak database.</p>
+<p>Ini bukan kasus langka: <strong>sepuluh migrasi di repo ini ada semata-mata untuk mendaftarkan satu nilai <code>mesin</code>
+baru</strong> — <code>0025_mesin_mewarnai</code>, <code>0029_mesin_dekode</code>, <code>0030_mesin_urutan</code>, <code>0031_mesin_jalur</code>,
+<code>0032_mesin_hitung</code>, <code>0035_mesin_cocokkan</code>, <code>0036_mesin_ejakata</code>, <code>0037_mesin_garis</code>,
+<code>0074_mesin_calistung</code>, <code>0080_mesin_ingatan</code>. Kalau Anda menambah mesin game, <strong>migrasi itu bagian dari
+pekerjaannya</strong>, bukan pekerjaan susulan. Polanya: <code>drop constraint if exists</code> lalu <code>add constraint</code> dengan
+daftar lengkap yang baru.</p>
+<p><strong>Cara membuktikan.</strong> Baca pesan galat SQL-nya apa adanya — Postgres menyebut nama constraint-nya. Ini
+salah satu dari sedikit bug di dokumen ini yang <strong>memang</strong> memberi pesan jelas; jangan menebak-nebak
+saat pesannya sudah ada.</p>
+<p><strong>Aturan migrasi:</strong> setiap migrasi harus <strong>idempoten</strong> (<code>create ... if not exists</code>, <code>drop policy if
+exists</code> sebelum <code>create policy</code>, blok <code>do $$ ... $$</code> untuk CHECK) — sebab <code>migrasi.mjs</code> menjalankan
+<strong>semua</strong> berkas, dan migrasi baru yang tidak idempoten akan membuat migrasi lama gagal lalu menghentikan
+seluruh rantainya.</p>
+<hr />
+<h3 id="bug-11-tata-letak-gambar-rusak-tapi-semua-gerbang-mutu-hijau">BUG-11 · Tata letak gambar rusak, tapi semua gerbang mutu hijau</h3>
+<p><strong>Gejala.</strong> Teks bertumpuk, batang progres menimpa baris berikutnya, satu bagian tak ikut tercetak, kartu
+ber-tint menabrak footer, batang progres yatim di puncak halaman berikutnya.</p>
+<p><strong>Akar.</strong> Tata letak Canvas tidak diperiksa oleh apa pun. <code>tsc</code>, <code>eslint</code>, <code>npm test</code>, dan <code>npm run build</code>
+semuanya hijau untuk gambar yang rusak total.</p>
+<p><strong>Tempat.</strong> <code>src/lib/rapor-jpeg.ts</code>, <code>src/lib/sertifikat-jpeg.ts</code>, <code>src/lib/kartu-bersama.ts</code>,
+<code>src/lib/story-card.ts</code>.</p>
+<p><strong>Cara membuktikan.</strong> Render gambarnya (§2.6). Tidak ada jalan lain.</p>
+<p><strong>Cara memperbaiki — dan hal-hal yang sudah terbukti mengecoh:</strong>
+- <strong>Baseline, bukan tepi atas.</strong> <code>barisRingkas</code>/<code>barisTeks</code> memakai <code>y</code> sebagai <strong>baseline</strong> dan
+  mengembalikan baseline berikutnya. Menggambar batang di <strong>bawah</strong> baseline membuatnya menimpa baris
+  selanjutnya.
+- <strong>Emoji dan judul 54px lebih tinggi daripada teks biasa.</strong> Jarak yang pas-pasan akan tertimpa. Butuh
+  tiga percobaan untuk menyadari ini.
+- <strong><code>destination-over</code> tidak menghasilkan tint</strong> kalau latar halaman sudah opak. Pakai
+  <code>globalCompositeOperation = 'multiply'</code> <strong>setelah</strong> isinya digambar, dan <strong>jepit</strong> tingginya ke batas isi.
+- <strong>Tinggi teks tak bisa dihitung di muka</strong> — ia bergantung pada pembungkusan kata dan pada <code>ukuranPas</code>
+  yang mengecilkan huruf sampai muat. Karena itu keputusan 1-vs-2 halaman diambil dengan <strong>menggambar satu
+  halaman dulu lalu menghitung berapa banyak isi yang dipotong</strong> (<code>terpotong</code>), bukan dengan mengukur
+  sampai mana isinya turun. Percobaan pertama memakai cara mengukur dan <strong>selalu</strong> menyimpulkan dua
+  halaman — sebab tata letaknya elastis (batas kolom &amp; plafon diturunkan dari tinggi kanvas), jadi isinya
+  ikut memanjang mengisi kanvas mana pun yang diberikan.
+- <strong>Anggaran daftar harus diturunkan dari tinggi halaman</strong>, bukan angka tetap. Angka tetap adalah batas
+  <em>jumlah</em>, bukan batas <em>ruang</em>: ia memotong isi, lalu penghitung <code>terpotong</code> membacanya sebagai "tidak
+  cukup" dan memaksa halaman kedua padahal separuh halaman pertama masih kosong. Lihat <code>muat()</code> di
+  <code>rapor-jpeg.ts</code>.
+- <strong>Jangan memaku titik mulai sebuah bagian ke plafon bagian di atasnya.</strong> <code>Math.max(yR, plafonCatatan)</code>
+  meninggalkan lubang kosong ketika bagian atas selesai lebih awal.
+- <strong>Selalu periksa tiga keadaan:</strong> isi sedikit, isi banyak, keadaan kosong.</p>
+<hr />
+<h3 id="bug-12-pemotongan-senyap-rapor-terbaca-lengkap-padahal-tidak">BUG-12 · Pemotongan senyap: rapor terbaca lengkap padahal tidak</h3>
+<p><strong>Gejala.</strong> Rapor menampilkan tiga dari empat domain penilaian dan <strong>tampak lengkap</strong>. Orang tua tak punya
+cara menyadari ada yang hilang.</p>
+<p><strong>Akar.</strong> Loop yang <code>break</code> saat ruang habis, tanpa memberi tahu ada sisa. Pemberitahuan tingkat atas
+("…dan N catatan lain") hanya menghitung <strong>catatan</strong> yang utuh tak tercetak, bukan <strong>baris di dalam</strong>
+sebuah catatan.</p>
+<p><strong>Tempat.</strong> <code>src/lib/rapor-jpeg.ts</code> (blok catatan perkembangan, evaluasi kurikulum, butir psikolog),
+<code>src/components/LaporanAnakView.tsx</code>.</p>
+<p><strong>Cara membuktikan.</strong> Beri fixture yang isinya jauh lebih banyak daripada ruang, lalu <strong>hitung</strong> entri di
+gambar dan bandingkan dengan fixture-nya.</p>
+<p><strong>Cara memperbaiki.</strong> Setiap loop yang bisa berhenti lebih awal harus:
+1. menghitung berapa yang tercetak,
+2. mencetak pemberitahuan sisanya (<code>…N penilaian lain — lihat di aplikasi</code>),
+3. berhenti <strong>satu baris lebih awal</strong> supaya pemberitahuannya sendiri kebagian tempat.</p>
+<p>Cari calon pelanggaran: <code>rg 'break' src/lib/rapor-jpeg.ts</code> dan <code>rg 'slice\(0,' src/</code>.</p>
+<hr />
+<h3 id="bug-13-interaksi-game-salah-saat-diklik-cepat-stale-closure">BUG-13 · Interaksi game salah saat diklik cepat (stale closure)</h3>
+<p><strong>Gejala.</strong> Di game Ingatan, pasangan yang benar tak terdeteksi bila dua kartu diklik cepat. Sesekali,
+tak bisa diulang dengan mudah.</p>
+<p><strong>Akar.</strong> Handler React membaca state dari closure yang sudah basi.</p>
+<p><strong>Tempat.</strong> <code>src/lib/game/*</code> (mesin game) + komponennya di <code>src/app/main/[anakId]/</code>.</p>
+<p><strong>Cara memperbaiki.</strong> Model data yang eksplisit (1 baris = 1 pasangan), pencocokan <strong>by id</strong> dengan nilai
+ternormalisasi, dan pembaruan state lewat bentuk fungsional (<code>setX(prev =&gt; …)</code>) — bukan membaca variabel
+dari closure. Rujukan: <code>fix(game ingatan): pasangan tak terdeteksi saat klik cepat (stale closure)</code>.</p>
+<hr />
+<h3 id="bug-14-form-tidak-ter-reset-atau-field-baru-hilang-saat-edit">BUG-14 · Form tidak ter-reset, atau field baru hilang saat Edit</h3>
+<p><strong>Gejala.</strong> Setelah simpan, nominal/kategori/foto masih terisi nilai sebelumnya. Atau: menyunting sebuah
+baris <strong>menghapus</strong> field yang baru ditambahkan.</p>
+<p><strong>Akar.</strong> Form mengirim seluruh objek. Field yang tidak ada di form dikirim sebagai <code>undefined</code>/kosong dan
+<strong>menimpa</strong> nilai yang sudah tersimpan.</p>
+<p><strong>Tempat.</strong> <code>src/app/admin/keuangan/*</code>, <code>src/app/admin/kelas-bermain/KelasAdmin.tsx</code>, dan form admin lain.</p>
+<p><strong>Cara memperbaiki.</strong> Kirim hanya field yang benar-benar disunting, atau isi form dari baris terbaru
+sebelum submit. Setelah simpan sukses, <strong>reset state form secara eksplisit</strong> — jangan mengandalkan
+re-render.</p>
+<p>Ini kembar dekat BUG-02: keduanya berakar pada form yang mengirim balik snapshot lamanya.</p>
+<hr />
+<h3 id="bug-15-aturan-hanya-ditegakkan-di-klien">BUG-15 · Aturan hanya ditegakkan di klien</h3>
+<p><strong>Gejala.</strong> Pendaftaran event bisa lolos tanpa bukti bayar dengan memanipulasi klien. Tidak terlihat dari
+UI biasa.</p>
+<p><strong>Akar.</strong> Validasi hanya di komponen.</p>
+<p><strong>Tempat.</strong> <code>src/lib/data/event-actions.ts</code> (<code>daftarEvent</code>), dan semua berkas <code>-actions</code>.</p>
+<p><strong>Cara memperbaiki.</strong> <strong>Setiap</strong> aturan ditegakkan di Server Action. Validasi klien hanya untuk kenyamanan.
+Rujukan: <code>fix(daftar-event): bukti bayar ditegakkan di SERVER, bukan hanya di klien</code>.</p>
+<p><strong>Berlaku juga untuk parameter redirect.</strong> <code>?kembali=</code> hanya boleh menerima <strong>path internal</strong>; parameter
+redirect yang menerima URL apa pun adalah lubang open-redirect.</p>
+<hr />
+<h3 id="bug-16-gerbang-langganan-memantulkan-halaman-yang-seharusnya-terbuka">BUG-16 · Gerbang langganan memantulkan halaman yang seharusnya terbuka</h3>
+<p><strong>Gejala.</strong> Profil anak tak bisa dibuka sama sekali — halaman memantul tanpa pesan.</p>
+<p><strong>Akar.</strong> Gerbang langganan dipasang di halaman yang tak seharusnya digerbangi. Karena pantulannya diam,
+tak ada jejak di UI maupun di log.</p>
+<p><strong>Tempat.</strong> <code>src/app/anak/[anakId]/</code>, pola <code>get&lt;Peran&gt;Terjamin</code> di <code>src/lib/data/*.ts</code>.</p>
+<p><strong>Cara membuktikan.</strong> Cari <code>redirect(</code> di halaman itu dan jalur yang mendahuluinya. <strong>Kalau <code>console.log</code>
+di dalam halaman tak pernah muncul di terminal, kodenya memantul lebih awal</strong> — di middleware
+(<code>src/proxy.ts</code>) atau di gerbang perannya.</p>
+<p><strong>Cara memperbaiki.</strong> Pantulan yang diam adalah bug tersendiri. Halaman yang menolak harus <strong>mengatakan
+alasannya</strong> (§4.3).</p>
+<hr />
+<h2 id="7-indeks-cepat-gejala-tempat">7. Indeks cepat: gejala → tempat</h2>
+<table>
+<thead>
+<tr>
+<th>Gejala</th>
+<th>Curigai</th>
+<th>Bug</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Simpan sukses tapi halaman user lama</td>
+<td><code>updateTag</code> hilang di action</td>
+<td>BUG-01</td>
+</tr>
+<tr>
+<td>Angka/label tak berubah walau sudah disimpan ulang</td>
+<td>snapshot vs master; form kirim nilai lama</td>
+<td><strong>BUG-02</strong></td>
+</tr>
+<tr>
+<td>Halaman 500 / daftar kosong sesudah deploy</td>
+<td>migrasi belum jalan</td>
+<td>BUG-03</td>
+</tr>
+<tr>
+<td>Materi Event / tema terkunci malah terlihat semua orang</td>
+<td>arah cadangan pra-migrasi</td>
+<td>BUG-04</td>
+</tr>
+<tr>
+<td>Kegiatan pindah bulan; streak putus</td>
+<td>WIB vs UTC</td>
+<td>BUG-05</td>
+</tr>
+<tr>
+<td>Data ada tapi salah bulan</td>
+<td>jangkar waktu salah kolom</td>
+<td>BUG-06</td>
+</tr>
+<tr>
+<td>Trial bisa buka yang tak berhak</td>
+<td>gerbang cek paket, bukan status</td>
+<td>BUG-07</td>
+</tr>
+<tr>
+<td>Sudah berhenti bayar tapi bulan baru terbuka</td>
+<td>batas per kategori, bukan total</td>
+<td>BUG-07b</td>
+</tr>
+<tr>
+<td>Admin lihat, ortu tidak</td>
+<td>RLS / <code>ortu_id</code> salah</td>
+<td>BUG-08</td>
+</tr>
+<tr>
+<td>Data lintas-akun bisa diambil kunci anon</td>
+<td><code>EXECUTE</code> fungsi belum dicabut ganda</td>
+<td>BUG-09</td>
+</tr>
+<tr>
+<td>Migrasi gagal / insert ditolak</td>
+<td>indeks sebelum data rapi; CHECK belum didaftarkan</td>
+<td>BUG-10</td>
+</tr>
+<tr>
+<td>Rapor/sertifikat/stiker berantakan</td>
+<td>tata letak Canvas</td>
+<td>BUG-11</td>
+</tr>
+<tr>
+<td>Rapor tampak lengkap tapi ada yang hilang</td>
+<td>pemotongan senyap</td>
+<td>BUG-12</td>
+</tr>
+<tr>
+<td>Game salah deteksi saat klik cepat</td>
+<td>stale closure</td>
+<td>BUG-13</td>
+</tr>
+<tr>
+<td>Field form tak ter-reset / field baru hilang</td>
+<td>form kirim objek penuh</td>
+<td>BUG-14</td>
+</tr>
+<tr>
+<td>Aturan bisa dilewati dari klien</td>
+<td>validasi tak ada di server</td>
+<td>BUG-15</td>
+</tr>
+<tr>
+<td>Halaman memantul tanpa pesan</td>
+<td>gerbang salah pasang</td>
+<td>BUG-16</td>
+</tr>
+<tr>
+<td>SEMUA tema tertutup padahal berlangganan</td>
+<td>rentang <code>kategori_usia</code> bertumpang &amp; ada kategori tanpa tema</td>
+<td>lihat di bawah</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Catatan khusus "semua tema tertutup".</strong> Ini pernah salah didiagnosis <strong>dua kali</strong> — pertama disangka
+jangkar usia yang dibekukan, lalu disangka celah kategori 4–5 tahun. Akar sebenarnya: <strong>rentang
+<code>kategori_usia</code> saling bertumpang</strong>, sehingga usia 6 tahun jatuh ke kategori <em>Early Childhood</em> (5–6) yang
+<strong>nol tema</strong> — bukan ke kategori 6–9 yang berisi. Cara menemukannya bukan dengan membaca kode, melainkan
+dengan <strong>menjalankan <code>tumpukanKategori</code> dan <code>kategoriTanpaTema</code> (<code>src/lib/domain/kategori-usia.ts</code>) atas
+data master yang sungguhan.</strong> Kedua fungsi itu ada khusus untuk itu — pakailah sebelum menebak.</p>
+<hr />
+<h2 id="8-migrasi-database-aturan-main">8. Migrasi database: aturan main</h2>
+<p>Letak: <code>supabase/migrations/NNNN_nama.sql</code> (kini 105 berkas). Dijalankan <strong>manual</strong> di Supabase SQL Editor.</p>
+<p>Daftar periksa sebelum menulis migrasi:</p>
+<ol>
+<li><strong>Idempoten.</strong> <code>create table if not exists</code>, <code>create index if not exists</code>,
+   <code>drop policy if exists</code> sebelum <code>create policy</code>, blok <code>do $$ ... $$</code> untuk menambah CHECK.
+   Alasannya di BUG-10: seluruh rantai dijalankan ulang, dan satu migrasi yang tidak idempoten
+   menghentikan yang lain.</li>
+<li><strong>Rapikan data DULU, kunci belakangan.</strong> Backfill/renumber sebelum <code>create unique index</code>.</li>
+<li><strong>RLS untuk setiap tabel baru</strong> — <code>enable row level security</code> + policy eksplisit. Tabel tanpa policy
+   tak bisa dibaca siapa pun; tabel tanpa RLS bisa dibaca semua orang.</li>
+<li><strong>Pertimbangkan DELETE.</strong> Untuk tabel riwayat (mis. <code>evaluasi_kurikulum</code>), ortu <strong>tidak</strong> diberi hak
+   DELETE — riwayat rapor tak boleh dirapikan belakangan.</li>
+<li><strong>Fungsi baru: cabut <code>EXECUTE</code> dua kali</strong> (BUG-09).</li>
+<li><strong>Kolom NOT NULL baru memecahkan pemasangan BARU</strong>, bukan hanya data lama — beri <code>default</code>, atau
+   backfill lalu baru pasang <code>not null</code>.</li>
+<li><strong>Sesudah dijalankan, buktikan dengan probe</strong> (§2.5) — jangan berasumsi.</li>
+<li><strong>Kodenya harus tetap hidup SEBELUM migrasi jalan</strong> (§4.1) — dan arah cadangannya dipilih dengan
+   bertanya "apa yang bocor kalau saya salah" (BUG-04).</li>
+</ol>
+<hr />
+<h2 id="9-pantangan">9. Pantangan</h2>
+<table>
+<thead>
+<tr>
+<th>Jangan</th>
+<th>Sebab</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Memakai <code>createAdminClient()</code> untuk membaca data pengguna</td>
+<td>Melewati RLS. Satu salah tulis = kebocoran lintas-akun</td>
+</tr>
+<tr>
+<td>Menaruh aturan bisnis di <code>page.tsx</code> atau berkas <code>-actions</code></td>
+<td>Tak bisa diuji, dan akan tersalin dengan versi berbeda</td>
+</tr>
+<tr>
+<td>Menaruh <code>SUPABASE_SERVICE_ROLE_KEY</code> di mana pun selain <code>.env.local</code> / env Vercel</td>
+<td>Repo ini <strong>publik</strong></td>
+</tr>
+<tr>
+<td>Menempel kunci <code>service_role</code> ke chat, issue, atau screenshot</td>
+<td>Sama seperti di atas</td>
+</tr>
+<tr>
+<td>Memakai <code>current_date</code> / <code>now()::date</code> untuk logika hari</td>
+<td>UTC, bukan WIB (BUG-05)</td>
+</tr>
+<tr>
+<td>Menyembunyikan konten yang tak boleh diakses</td>
+<td>Kunci + alasan (§4.3). Yang hilang tanpa jejak akan dilaporkan sebagai data hilang</td>
+</tr>
+<tr>
+<td>Memotong daftar tanpa "…dan N lainnya"</td>
+<td>BUG-12</td>
+</tr>
+<tr>
+<td>Menyimpan indeks butir, bukan kalimatnya</td>
+<td>Rapor lama akan berbohong (§4.5)</td>
+</tr>
+<tr>
+<td>Percaya bahwa <code>tsc</code> + <code>build</code> hijau berarti benar</td>
+<td>BUG-01, BUG-02, BUG-11 semuanya hijau</td>
+</tr>
+<tr>
+<td>Menerima test hijau sebagai bukti tanpa uji daya gigit</td>
+<td>§2.4</td>
+</tr>
+<tr>
+<td>Menghapus komentar 🐞 saat merapikan kode</td>
+<td>Komentar itulah yang mencegah bug yang sama dipasang kembali</td>
+</tr>
+<tr>
+<td>Menyimpulkan "tak ada baris" dari <code>[]</code></td>
+<td>Bisa berarti RLS (BUG-08)</td>
+</tr>
+<tr>
+<td>Memperlonggar policy RLS supaya data muncul</td>
+<td>Hampir selalu penulisannya yang salah, bukan policy-nya</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="10-lampiran-seluruh-modul-domain-fungsinya">10. Lampiran: seluruh modul domain &amp; fungsinya</h2>
+<p>Semua <strong>murni</strong> (tanpa I/O) dan hampir semua punya test di <code>src/lib/domain/__tests__/</code>. Kalau angkanya
+salah, mulai dari sini — bisa dibuktikan tanpa menyalakan aplikasi.</p>
+<table>
+<thead>
+<tr>
+<th>Modul</th>
+<th>Fungsi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>anak.ts</code></td>
+<td><code>umurTahun</code>, <code>umurBulanTotal</code>, <code>umurTeks</code>, <code>modeDefault</code></td>
+</tr>
+<tr>
+<td><code>entitlement.ts</code></td>
+<td><code>hakAksesAnak</code>, <code>hakAksesAkun</code>, <code>bolehBukaTema</code>, <code>tambahHari</code></td>
+</tr>
+<tr>
+<td><code>gamifikasi.ts</code></td>
+<td><code>tanggalWIB</code>, <code>evaluasiLencana</code>, <code>tantanganHariIni</code>, <code>progresTantangan</code></td>
+</tr>
+<tr>
+<td><code>harga.ts</code></td>
+<td><code>persenProdukUntuk</code>, <code>hargaProdukUntuk</code>, <code>persenEventUntuk</code>, <code>hargaEventUntuk</code>, <code>persenUntukPaket</code>, <code>hargaEventUntukPaket</code>, <code>hargaProdukUntukPaket</code></td>
+</tr>
+<tr>
+<td><code>jadwal.ts</code></td>
+<td><code>jadwalTeks</code></td>
+</tr>
+<tr>
+<td><code>kategori-usia.ts</code></td>
+<td><code>tumpukanKategori</code>, <code>petaUmurKategori</code>, <code>kategoriTanpaTema</code></td>
+</tr>
+<tr>
+<td><code>konsultasi-biaya.ts</code></td>
+<td><code>hitungBiayaKonsultasi</code></td>
+</tr>
+<tr>
+<td><code>konsultasi-slot.ts</code></td>
+<td><code>memakaiSlotKonsultasi</code>, <code>draftKedaluwarsa</code>, <code>keadaanSlot</code></td>
+</tr>
+<tr>
+<td><code>kuota-konsultasi.ts</code></td>
+<td><code>sisaKuotaKonsultasi</code>, <code>labelKuotaKonsultasi</code></td>
+</tr>
+<tr>
+<td><code>kuota-worksheet.ts</code></td>
+<td><code>awalPeriode</code>, <code>sisaKuotaWorksheet</code>, <code>sisaWorksheetAkun</code></td>
+</tr>
+<tr>
+<td><code>kurikulum.ts</code></td>
+<td><code>bulanKurikulumAnak</code>, <code>statusTema</code>, <code>kelompokTema</code>, <code>susunHasilEvaluasi</code>, <code>temaTerkunci</code>, <code>posisiBerikutnya</code>, <code>salinTemaKeKategoriLain</code>, <code>cocokUsia</code>, <code>ringkasEvaluasi</code>, <code>posisiTema</code>, <code>evaluasiPerAktivitas</code>, <code>teksPosisi</code></td>
+</tr>
+<tr>
+<td><code>langganan-harga.ts</code></td>
+<td><code>aturanKeluargaTerpakai</code>, <code>hitungTagihan</code></td>
+</tr>
+<tr>
+<td><code>laporan-anak.ts</code></td>
+<td><code>laporanAnak</code></td>
+</tr>
+<tr>
+<td><code>laporan-bulanan.ts</code></td>
+<td><code>bulanWib</code>, <code>bulanRekomendasi</code>, <code>rentangBulan</code>, <code>labelBulan</code>, <code>bulanTerakhir</code>, <code>hitungArea</code>, <code>ringkasBulan</code>, <code>rapikanDaftar</code></td>
+</tr>
+<tr>
+<td><code>laporan.ts</code></td>
+<td><code>ringkasanLangganan</code></td>
+</tr>
+<tr>
+<td><code>paginasi.ts</code></td>
+<td><code>saringPaginasi</code></td>
+</tr>
+<tr>
+<td><code>reminder.ts</code></td>
+<td><code>susunPesanReminder</code>, <code>jadwalUntukKelas</code></td>
+</tr>
+<tr>
+<td><code>saring.ts</code></td>
+<td><code>rapikanKunci</code>, <code>cocokCari</code>, <code>tanggalWibDariISO</code>, <code>dalamRentang</code>, <code>rentangTerpakai</code>, <code>tanggalEvent</code>, <code>eventDalamRentang</code></td>
+</tr>
+<tr>
+<td><code>siklus-kurikulum.ts</code></td>
+<td><code>tambahBulan</code>, <code>bulanPenuhLewat</code>, <code>siklusBerjalan</code>, <code>bracketUntukUmur</code>, <code>konteksKurikulum</code>, <code>kunciKarena</code>, <code>adaTemaUntukBracket</code>, <code>statusTemaBracket</code>, <code>kelompokTemaBracket</code>, <code>saringBerkategori</code></td>
+</tr>
+<tr>
+<td><code>skor.ts</code></td>
+<td><code>hitungBintang</code></td>
+</tr>
+<tr>
+<td><code>stiker.ts</code></td>
+<td><code>ukuranNama</code></td>
+</tr>
+<tr>
+<td><code>tantangan-kustom.ts</code></td>
+<td><code>cocokItem</code>, <code>progresTantanganKustom</code>, <code>ringkasSyarat</code></td>
+</tr>
+<tr>
+<td><code>trial.ts</code></td>
+<td><code>computeTrialEnd</code>, <code>statusLangganan</code>, <code>bolehAkses</code></td>
+</tr>
+<tr>
+<td><code>usia.ts</code></td>
+<td><code>cocokUsia</code>, <code>kategoriUsia</code></td>
+</tr>
+<tr>
+<td><code>voucher.ts</code></td>
+<td><code>adaCakupan</code>, <code>hitungPotongan</code>, <code>validasiVoucher</code></td>
+</tr>
+<tr>
+<td><code>waktu.ts</code></td>
+<td><code>sisaDetik</code>, <code>waktuHabis</code>, <code>kunciHari</code></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="dokumen-terkait">Dokumen terkait</h2>
+<table>
+<thead>
+<tr>
+<th>Berkas</th>
+<th>Isi</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="REFERENSI-KODE-KIDZPLAYFUL.md"><code>REFERENSI-KODE-KIDZPLAYFUL.md</code></a></td>
+<td>Peta lapis, 105 modul data, 7 alur ujung-ke-ujung</td>
+</tr>
+<tr>
+<td><a href="DEVELOPER-KIDZPLAYFUL.md"><code>DEVELOPER-KIDZPLAYFUL.md</code></a></td>
+<td>Rincian fitur &amp; keputusan produk</td>
+</tr>
+<tr>
+<td><a href="DOKUMENTASI-KIDZPLAYFUL.md"><code>DOKUMENTASI-KIDZPLAYFUL.md</code></a></td>
+<td>Dokumentasi pengguna</td>
+</tr>
+<tr>
+<td><a href="INFRASTRUKTUR-KIDZPLAYFUL.md"><code>INFRASTRUKTUR-KIDZPLAYFUL.md</code></a></td>
+<td>Deploy, env, Vercel, Supabase</td>
+</tr>
+<tr>
+<td><a href="RUNBOOK-OPERASIONAL.md"><code>RUNBOOK-OPERASIONAL.md</code></a></td>
+<td>Prosedur operasional harian</td>
+</tr>
+<tr>
+<td><code>CLAUDE.md</code> (akar repo)</td>
+<td>Konvensi wajib repo</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3 id="cara-membangun-ulang-pdf-dokumen-ini">Cara membangun ulang PDF dokumen ini</h3>
+<pre><code class="language-bash">python tools/md2pdf.py docs/PANDUAN-DEBUG-KIDZPLAYFUL.md          # -&gt; .html
+# lalu cetak HTML-nya ke PDF dengan Chrome:
+&quot;&lt;path-chrome&gt;&quot; --headless --disable-gpu \
+  --print-to-pdf=docs/PANDUAN-DEBUG-KIDZPLAYFUL.pdf \
+  --no-pdf-header-footer docs/PANDUAN-DEBUG-KIDZPLAYFUL.html
+</code></pre></body></html>

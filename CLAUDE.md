@@ -80,6 +80,8 @@ Jangan pakai *secret key*. `NEXT_PUBLIC_*` harus ada **sebelum build** (juga di 
 
 Sebelum mengubah apa pun di wilayah yang belum dikenal, buka **`docs/REFERENSI-KODE-KIDZPLAYFUL.md`** — peta modul & fungsi per lapisan, alur ujung-ke-ujung untuk jalur penting (kurikulum, worksheet, konsultasi, langganan, skor game, checkout, rapor), dan indeks **"gejala → berkas yang harus dibuka"**. Dokumen ini menjawab *di mana* sebuah aturan hidup; `docs/DEVELOPER-KIDZPLAYFUL.md` menjawab *kenapa* ia begitu.
 
+Saat **memburu bug**, buka **`docs/PANDUAN-DEBUG-KIDZPLAYFUL.md`** (+PDF) lebih dulu: peta fitur → berkas → fungsi, dan **katalog 17 bug yang pernah benar-benar terjadi** di aplikasi ini beserta cara membuktikan & memperbaikinya. Tiga kelas bug terbesar di sini (cache basi, snapshot basi, tata letak kanvas) **lolos `tsc` dan `build` dengan sempurna** — jangan jadikan gerbang mutu hijau sebagai bukti.
+
 ## Database & migrasi
 
 - Migrasi SQL di `supabase/migrations/0001..0099`, **dijalankan MANUAL berurutan** di **Supabase SQL Editor** (tidak ada CLI migrate). Saat menambah skema: buat file `00NN_*.sql` baru, lalu minta user menjalankannya.
@@ -126,5 +128,6 @@ Rancangan disetujui owner, **kode belum dikerjakan** — detail lengkap + daftar
 - `docs/DOKUMENTASI-KIDZPLAYFUL.md` (+PDF) — dokumentasi teknis menyeluruh (arsitektur, skema, deploy).
 - `docs/INFRASTRUKTUR-KIDZPLAYFUL.md` (+PDF) — **rencana infrastruktur & skala**: model kapasitas 4 tier (T0→T3) dengan pemicu terukur, index/RLS/RPC agregasi, observability & alert, backup/DR, egress & biaya. Semua SQL/kode di sana berstatus **lampiran siap tempel — belum diterapkan ke repo**.
 - `docs/RUNBOOK-OPERASIONAL.md` (+PDF) — prosedur saat kejadian (RB-01…RB-09): backup, uji restore, DR, insiden down, rilis+migrasi, rollback, rotasi kredensial.
+- `docs/PANDUAN-DEBUG-KIDZPLAYFUL.md` (+PDF) — **panduan debug untuk programmer tanpa bantuan AI**: alat debug (log di mana, probe REST ber-kolom-kontrol, uji daya gigit, verifikasi kanvas), peta fitur → berkas → fungsi, katalog 17 bug beserta akar & perbaikannya, indeks gejala → tempat, aturan migrasi, dan daftar pantangan.
 - `docs/specs/` — spec desain. `docs/superpowers/plans/` — rencana per milestone (M1–M17).
 - `MEMORY.md` — peta modul & alur (dari `/graphify`).
