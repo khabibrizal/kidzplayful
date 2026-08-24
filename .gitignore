@@ -49,3 +49,6 @@ next-env.d.ts
 
 # graphify knowledge graph output (besar, regen via /graphify)
 graphify-out/
+
+# harness lokal untuk merender rapor JPEG saat verifikasi visual (bukan bagian aplikasi)
+_rapor/

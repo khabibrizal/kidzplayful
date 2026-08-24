@@ -1,6 +1,6 @@
 // src/lib/domain/__tests__/laporan-bulanan.test.ts
 import { describe, it, expect } from 'vitest';
-import { rentangBulan, ringkasBulan, labelBulan, bulanTerakhir } from '../laporan-bulanan';
+import { rentangBulan, ringkasBulan, labelBulan, bulanTerakhir, rapikanDaftar, hitungArea } from '../laporan-bulanan';
 
 describe('rentangBulan', () => {
   it('memberi awal & akhir bulan dalam WIB', () => {
@@ -73,7 +73,11 @@ describe('ringkasBulan', () => {
     expect(r.totalSesi).toBe(3);
     expect(r.totalBintang).toBe(6);
     expect(r.totalMenit).toBe(2);          // 130 detik → 2 menit
-    expect(r.perArea).toEqual({ kognitif: 2, 'motorik-halus': 1 });
+    // Definisi `perArea` MELEBAR (lihat `hitungArea`): kini juga menghitung area dari
+    // penilaian guru & fokus_area Ide Bermain, bukan hanya `hasil_main.area_skill`.
+    // Fixture ini punya satu penilaian guru ber-area 'Sensorik', jadi ia ikut terhitung.
+    expect(r.perArea).toMatchObject({ kognitif: 2, 'motorik-halus': 1 });
+    expect(r.perArea.Sensorik).toBe(1);
     expect(r.areaTerbanyak).toBe('kognitif');
   });
 
@@ -135,5 +139,100 @@ describe('ringkasBulan', () => {
   it('adaIsi true bila ada kegiatan ATAU sesi game', () => {
     expect(ringkasBulan({ ...dasar, hasilMain: [] }).adaIsi).toBe(true);
     expect(ringkasBulan({ ...dasar, kegiatan: [] }).adaIsi).toBe(true);
+  });
+});
+
+describe('rapikanDaftar', () => {
+  it('memberi spasi sesudah koma yang menempel', () => {
+    // Bug yang terlihat di rapor Agustus 2026.
+    expect(rapikanDaftar('Berjalan,melompat,menjaga keseimbangan'))
+      .toBe('Berjalan, melompat, menjaga keseimbangan');
+  });
+  it('koma yang SUDAH bersih tak diubah', () => {
+    expect(rapikanDaftar('a, b, c')).toBe('a, b, c');
+  });
+  it('ANGKA setelah koma tidak disentuh — "1,5" bukan daftar', () => {
+    // Memberi spasi di situ mengubah arti bilangannya.
+    expect(rapikanDaftar('berat 1,5 kg')).toBe('berat 1,5 kg');
+    expect(rapikanDaftar('a,b dan 2,5 cm')).toBe('a, b dan 2,5 cm');
+  });
+  it('spasi berlebih dirapikan & ujungnya dipangkas', () => {
+    expect(rapikanDaftar('  a,b   c  ')).toBe('a, b c');
+  });
+  it('null/undefined → string kosong', () => {
+    expect(rapikanDaftar(null)).toBe('');
+    expect(rapikanDaftar(undefined)).toBe('');
+  });
+});
+
+describe('hitungArea — tiga sumber, bukan hanya sesi game', () => {
+  it('kasus rapor Arsyi: 9 ide bermain, 0 game → area TIDAK lagi kosong', () => {
+    // Inilah bug yang dilaporkan: dulu hanya `hasil_main.area_skill` yang dihitung, jadi
+    // anak yang tak menyentuh game mendapat "Belum ada data" di rapor yang sudah memuat
+    // empat domain perkembangan.
+    const h = hitungArea({
+      ideBermain: [['motorik-kasar', 'bahasa'], ['motorik-kasar'], ['kognitif']],
+      catatan: ['motorik-kasar', 'bahasa'],
+      game: [],
+    });
+    expect(h.terbanyak).toEqual(['motorik-kasar']);
+    expect(h.perArea['motorik-kasar']).toBe(3);
+    expect(h.label).toBe('motorik-kasar');
+    expect(h.dariMana).toBe('dihitung dari 3 ide bermain & 2 penilaian guru');
+  });
+
+  it('SERI diakui, tidak dipaksa jadi satu', () => {
+    const h = hitungArea({ ideBermain: [['a'], ['b']], catatan: [], game: [] });
+    expect(h.terbanyak).toEqual(['a', 'b']);
+    expect(h.label).toBe('a & b');
+  });
+
+  it('seri lebih dari dua diringkas, bukan dipotong diam-diam', () => {
+    const h = hitungArea({ ideBermain: [['a'], ['b'], ['c'], ['d']], catatan: [], game: [] });
+    expect(h.terbanyak).toEqual(['a', 'b', 'c', 'd']);
+    expect(h.label).toBe('a & b & 2 lainnya');
+  });
+
+  it('satu tema bisa melatih beberapa area — semuanya dihitung', () => {
+    const h = hitungArea({ ideBermain: [['x', 'y', 'z']], catatan: [], game: [] });
+    expect(h.perArea).toEqual({ x: 1, y: 1, z: 1 });
+  });
+
+  it('sesi game tetap ikut dihitung (sumber lama tak dibuang)', () => {
+    const h = hitungArea({ ideBermain: [], catatan: [], game: ['motorik', 'motorik'] });
+    expect(h.terbanyak).toEqual(['motorik']);
+    expect(h.dariMana).toBe('dihitung dari 2 sesi game');
+  });
+
+  it('nilai kosong/whitespace tak menghasilkan area hantu', () => {
+    const h = hitungArea({ ideBermain: [[''], ['  '], null], catatan: [null, ''], game: [undefined] });
+    expect(h.perArea).toEqual({});
+    expect(h.terbanyak).toEqual([]);
+    expect(h.label).toBeNull();
+    expect(h.dariMana).toBe('');
+  });
+
+  it('null/undefined aman', () => {
+    expect(hitungArea(null).label).toBeNull();
+    expect(hitungArea(undefined).perArea).toEqual({});
+  });
+});
+
+describe('ringkasBulan: totalAktivitas', () => {
+  const kosong = { kegiatan: [], hasilMain: [], catatan: [], event: [], rekomendasi: 0 };
+  it('menjumlahkan Ide Bermain + video + sesi game', () => {
+    const r = ringkasBulan({
+      ...kosong,
+      kegiatan: [
+        { jenis: 'ide-bermain', judul: 'A', waktu: '2026-08-01T00:00:00Z' },
+        { jenis: 'ide-bermain', judul: 'A', waktu: '2026-08-02T00:00:00Z' },
+        { jenis: 'video', judul: 'V', waktu: '2026-08-03T00:00:00Z' },
+      ],
+      hasilMain: [{ area_skill: 'x', bintang: 1, durasi_detik: 60, selesai: true }],
+    });
+    expect(r.totalAktivitas).toBe(4);
+  });
+  it('nol bila memang tak ada apa-apa', () => {
+    expect(ringkasBulan(kosong).totalAktivitas).toBe(0);
   });
 });

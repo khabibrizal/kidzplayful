@@ -5,6 +5,7 @@
 // ukuran berkasnya PASTI, tidak bergantung setelan skala/margin/header-footer pengguna.
 'use client';
 import { ukuranPas, muatGambar, keluarga, siapkanFont } from './kartu-bersama';
+import { rapikanDaftar } from './domain/laporan-bulanan';
 
 const W = 3508, H = 2480;            // A4 landscape @300dpi
 const HITAM = '#000000';
@@ -20,6 +21,10 @@ export interface IsiRapor {
   bintang: number;
   menit: number;
   areaTerbanyak: string | null;
+  /** total Ide Bermain + video + sesi game bulan itu */
+  totalAktivitas: number;
+  /** kalimat asal-usul `areaTerbanyak` */
+  areaDariMana: string;
   daftarIdeBermain: { judul: string; jumlah: number }[];
   daftarVideo: { judul: string; jumlah: number }[];
   event: string[];
@@ -81,7 +86,13 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
     { n: String(isi.ideBermain), l: 'Ide Bermain' },
     { n: String(isi.video), l: 'Video ditonton' },
     { n: String(isi.sesiGame), l: 'Sesi game' },
-    { n: `${isi.menit} m`, l: 'Total waktu main' },
+    // Angka utama keempat = TOTAL AKTIVITAS, bukan "total waktu main".
+    //
+    // 🐞 Durasi hanya tercatat untuk sesi game (`hasil_main.durasi_detik`);
+    // `kegiatan_anak` tak punya kolom durasi sama sekali. Jadi "waktu main" tak pernah bisa
+    // mewakili seluruh aktivitas, dan anak yang mengerjakan 9 Ide Bermain tanpa menyentuh
+    // game mendapat rapor berbunyi "0 m" — terbaca seperti rapor yang rusak.
+    { n: String(isi.totalAktivitas), l: 'Total aktivitas' },
   ];
   const kw = (W - 280 - 3 * 40) / 4;
   kotak.forEach((k, i) => {
@@ -104,7 +115,10 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
   // pertama menaruh semuanya di kanan, dan hasilnya bagian konsultasi TIDAK IKUT TERCETAK
   // sementara kolom kiri kosong separuh. Itu ditemukan dari memeriksa gambarnya, bukan kodenya.
   const kiriX = 140, kananX = W / 2 + 40, kolomL = W / 2 - 220;
-  const BATAS_BAWAH = H - 240;
+  // Ruang footer diperbesar untuk menampung baris legenda BSH/MB yang baru: batas isi
+  // menentukan kapan teks dipotong, jadi menambah baris footer TANPA menaikkan batas ini
+  // akan membuat isi kolom bertabrakan dengan legendanya.
+  const BATAS_BAWAH = H - 300;
   let yK = 1160, yR = 1160;
 
   const judulBagian = (teks: string, x: number, y: number) => {
@@ -144,7 +158,9 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
     const peran = e.peran === 'ortu' ? 'orang tua' : e.peran;
     // Posisi kurikulum ditulis SINGKAT (B2·M3) — barisnya sempit, dan kepanjangan akan
     // memaksa `ukuranPas` mengecilkan huruf sampai sulit dibaca.
-    const pos = e.bulan ? ` [B${e.bulan}·M${e.minggu ?? 1}]` : '';
+    // Kode internal seperti "[B1·M4]" TIDAK dirender ke rapor orang tua — ia bahasa admin.
+    // Posisinya tetap disebut, tapi dengan kata yang bisa dibaca siapa pun.
+    const pos = e.bulan ? ` (bulan ke-${e.bulan} · minggu ke-${e.minggu ?? 1})` : '';
     barisEval.push({ teks: `• ${e.judulTema}${pos} — ${e.tercapai}/${e.total} (${peran})` });
     temaTertulis++;
     for (const g of e.perAktivitas ?? []) {
@@ -208,7 +224,7 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
   if (adaRuang(70 + 52)) {
   yK += 26;
   yK = judulBagian('📺 Video yang ditonton', kiriX, yK);
-  if (isi.daftarVideo.length === 0) yK = barisTeks('—', kiriX, yK, kolomL);
+  if (isi.daftarVideo.length === 0) yK = barisTeks('Belum ada video ditonton bulan ini.', kiriX, yK, kolomL);
   else {
     let n = 0;
     for (const it of isi.daftarVideo.slice(0, 5)) {
@@ -224,7 +240,13 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
   if (adaRuang(70 + 104)) {
   yK += 26;
   yK = judulBagian('🌱 Area yang paling dilatih', kiriX, yK);
-  yK = barisTeks(isi.areaTerbanyak ?? 'Belum ada data', kiriX, yK, kolomL, 1);
+  // Keadaan kosong SERAGAM & menyebut apa yang kosong. "Belum ada data" tak memberi tahu
+  // data apa, dan bercampur dengan tanda "—" di bagian lain membuat rapor terlihat setengah
+  // jadi. Di sini sekalian dijelaskan dari mana angkanya dihitung — lihat catatan di
+  // `sesiGame`/`menit`: keduanya HANYA dari sesi game.
+  yK = barisTeks(isi.areaTerbanyak ?? 'Belum ada aktivitas yang tercatat bulan ini.', kiriX, yK, kolomL, 1);
+  // Asal-usul angkanya ikut ditulis: "area paling dilatih" tanpa penjelasan hanya klaim.
+  if (isi.areaTerbanyak && isi.areaDariMana) yK = barisTeks(isi.areaDariMana, kiriX + 26, yK, kolomL - 26);
   yK = barisTeks(`Total ⭐ ${isi.bintang} bintang terkumpul`, kiriX, yK, kolomL, 1);
 
   // Event yang catatan gurunya sudah tercetak di kolom kanan TIDAK diulang di sini —
@@ -251,7 +273,7 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
   const plafonCatatan = adaKonsultasi ? 1160 + (BATAS_BAWAH - 1160) * 0.55 : BATAS_BAWAH;
 
   yR = judulBagian('📝 Catatan perkembangan', kananX, yR);
-  if (isi.catatanGuru.length === 0) yR = barisTeks('—', kananX, yR, kolomL, 1);
+  if (isi.catatanGuru.length === 0) yR = barisTeks('Belum ada catatan perkembangan bulan ini.', kananX, yR, kolomL, 1);
   else {
     let dicetak = 0;
     for (const c of isi.catatanGuru) {
@@ -259,7 +281,7 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
       yR = barisTeks(`• ${c.judulEvent}${c.dinilai_oleh ? ` — ${c.dinilai_oleh}` : ''}`, kananX, yR, kolomL, 1);
       for (const n of c.penilaian) {
         if (yR > plafonCatatan - 40) break;
-        yR = barisTeks(`${n.area}: ${n.indikator} — ${n.nilai}`, kananX + 26, yR, kolomL - 26);
+        yR = barisTeks(`${rapikanDaftar(n.area)}: ${rapikanDaftar(n.indikator)} — ${n.nilai}`, kananX + 26, yR, kolomL - 26);
       }
       if (c.catatan && yR < plafonCatatan - 40) yR = barisTeks(`"${c.catatan}"`, kananX + 26, yR, kolomL - 26);
       dicetak += 1;
@@ -314,6 +336,11 @@ export async function buatRaporJpeg(isi: IsiRapor): Promise<Blob> {
   // Kaki
   ctx.textAlign = 'center';
   ctx.fillStyle = ABU; ctx.font = `italic 44px ${fTeks}`;
+  // Legenda singkatan: istilah BSH/MB dipakai di kolom kanan tapi tak dijelaskan di mana pun,
+  // dan orang tua tak wajib tahu kosakata PAUD.
+  ctx.font = `600 40px ${fTeks}`; ctx.fillStyle = ABU;
+  ctx.fillText('BSH = Berkembang Sesuai Harapan  ·  MB = Mulai Berkembang', W / 2, H - 215);
+  ctx.font = `600 46px ${fTeks}`;
   ctx.fillText('Teruslah bermain, belajar, dan bertumbuh, ya! 💛  ·  KidzPlayful', W / 2, H - 130);
 
   return await new Promise<Blob>((res, rej) =>

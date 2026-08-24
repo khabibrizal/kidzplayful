@@ -88,8 +88,19 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
   // pertarungan ruang lagi, padahal isinya sejenis.
   const catatanTema = catatanTemaSemua.filter((c) => dalamRentang(c.updated_at));
 
+  // `fokus_area` tema Ide Bermain yang dikerjakan bulan itu — bahan untuk "area paling
+  // dilatih". Satu array per kegiatan, sebab satu tema bisa melatih beberapa area, dan
+  // tema yang dikerjakan berulang memang layak berbobot lebih.
+  // Tema yang sudah dinonaktifkan tak ada di `kelasSemua` → array kosong; sumber lain
+  // (penilaian guru, sesi game) tetap mengisi hitungannya.
+  const areaKelas = new Map(kelasSemua.map((k) => [k.id, k.fokus_area ?? []]));
+  const fokusAreaIde = kegiatan
+    .filter((k) => k.jenis === 'ide-bermain')
+    .map((k) => (k.ref_id ? areaKelas.get(k.ref_id) ?? [] : []));
+
   const r = ringkasBulan({
     kegiatan,
+    fokusAreaIde,
     hasilMain: (main ?? []) as { area_skill: string | null; bintang: number | null; durasi_detik: number | null; selesai: boolean | null }[],
     catatan: [
       ...catatanBulan.map((x) => ({
@@ -139,7 +150,12 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
     }),
   });
 
-  const namaArea = r.areaTerbanyak ? (LABEL_AREA[r.areaTerbanyak] ?? r.areaTerbanyak) : null;
+  // Tiap KUNCI diterjemahkan lebih dulu, baru digabung — menerjemahkan string gabungan
+  // ("motorik-halus & kognitif") tak akan pernah cocok dengan LABEL_AREA.
+  const namaArea = r.areaTeratas.length
+    ? r.areaTeratas.slice(0, 2).map((k) => LABEL_AREA[k] ?? k).join(' & ')
+      + (r.areaTeratas.length > 2 ? ` & ${r.areaTeratas.length - 2} lainnya` : '')
+    : null;
   const nama = (anak.nama as string) ?? 'Anak';
 
   return (
@@ -355,6 +371,8 @@ export default async function RaporBulananPage({ params }: { params: Promise<{ a
               namaAnak: nama, periode,
               ideBermain: r.ideBermain, video: r.video, sesiGame: r.totalSesi,
               bintang: r.totalBintang, menit: r.totalMenit,
+              totalAktivitas: r.totalAktivitas,
+              areaDariMana: r.areaDariMana,
               areaTerbanyak: namaArea,
               daftarIdeBermain: r.daftarIdeBermain, daftarVideo: r.daftarVideo,
               event: r.event, catatanGuru: r.catatanGuru, rekomendasi: r.rekomendasi,

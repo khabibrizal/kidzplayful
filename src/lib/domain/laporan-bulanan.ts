@@ -113,6 +113,26 @@ export interface RingkasanBulan {
   totalMenit: number;
   perArea: Record<string, number>;
   areaTerbanyak: string | null;
+  /**
+   * TOTAL aktivitas bulan itu: Ide Bermain + video + sesi game.
+   *
+   * Menggantikan "total waktu main" sebagai angka utama keempat. Durasi hanya tercatat untuk
+   * sesi game (`hasil_main.durasi_detik`) — `kegiatan_anak` tak punya kolom durasi sama
+   * sekali — jadi "waktu main" tak pernah bisa mewakili seluruh aktivitas, dan menampilkannya
+   * sebagai angka utama membuat rapor anak yang aktif berbunyi "0 m".
+   */
+  totalAktivitas: number;
+  /** kalimat asal-usul `areaTerbanyak`, supaya angkanya bisa dipertanggungjawabkan */
+  areaDariMana: string;
+  /**
+   * KUNCI area teratas, mentah & belum digabung (`['motorik-halus','kognitif']`).
+   *
+   * `areaTerbanyak` sudah berupa label gabungan, dan kunci mentahnya masih dibutuhkan karena
+   * halaman rapor menerjemahkan tiap kunci lewat `LABEL_AREA` sebelum ditampilkan —
+   * menerjemahkan string yang SUDAH digabung tak akan pernah cocok, dan orang tua akan
+   * membaca "motorik-halus & kognitif" alih-alih "Motorik Halus & Kognitif".
+   */
+  areaTeratas: string[];
   catatanGuru: CatatanRingkas[];
   event: string[];
   /** jumlah sesi konsultasi pada periode ini */
@@ -137,6 +157,78 @@ function kelompok(items: KegiatanRingkas[]): { judul: string; jumlah: number }[]
     .sort((a, b) => b.jumlah - a.jumlah || a.judul.localeCompare(b.judul));
 }
 
+/**
+ * Dari mana "area yang paling dilatih" dihitung.
+ *
+ * 🐞 Sebelumnya HANYA dari `hasil_main.area_skill` — yakni sesi game. Anak yang bulan itu
+ * mengerjakan 9 Ide Bermain tapi tak menyentuh game satu kali pun mendapat "Belum ada data",
+ * padahal di rapor yang SAMA sudah tercetak empat domain perkembangan dari catatan guru.
+ * Angkanya benar, definisinya yang terlalu sempit.
+ *
+ * Tiga sumber digabung karena ketiganya memang menyatakan area yang dilatih:
+ *   • `ideBermain` — `fokus_area` tema yang dikerjakan di rumah (satu array per kegiatan,
+ *      sebab satu tema bisa melatih beberapa area sekaligus);
+ *   • `catatan`    — area pada penilaian guru di event;
+ *   • `game`       — `area_skill` sesi game, sumber yang lama.
+ */
+export interface SumberArea {
+  ideBermain: (string[] | null | undefined)[];
+  catatan: (string | null | undefined)[];
+  game: (string | null | undefined)[];
+}
+
+export interface HasilArea {
+  perArea: Record<string, number>;
+  /** area dengan hitungan tertinggi — bisa lebih dari satu bila SERI */
+  terbanyak: string[];
+  /** label siap tampil, mis. "Motorik kasar & Bahasa"; null bila tak ada sumber sama sekali */
+  label: string | null;
+  /** kalimat asal-usul angkanya, mis. "dihitung dari 9 ide bermain & 5 sesi game" */
+  dariMana: string;
+}
+
+/** Berapa area teratas yang ikut ditulis di label sebelum sisanya diringkas. */
+const MAKS_AREA_LABEL = 2;
+
+export function hitungArea(s: SumberArea | null | undefined): HasilArea {
+  const perArea: Record<string, number> = {};
+  const tambah = (a: string | null | undefined) => {
+    const k = (a ?? '').trim();
+    if (k) perArea[k] = (perArea[k] ?? 0) + 1;
+  };
+  // Yang dihitung adalah kegiatan yang BENAR-BENAR menyumbang area. `[' ']` panjangnya 1
+  // tapi tak menyumbang apa pun, dan menghitungnya membuat kalimat asal-usul mengklaim
+  // "dihitung dari 2 ide bermain" padahal tak satu pun area berasal dari sana.
+  const ide = (s?.ideBermain ?? []).filter((x) => (x ?? []).some((a) => (a ?? '').trim()));
+  for (const arr of s?.ideBermain ?? []) for (const a of arr ?? []) tambah(a);
+  const cat = (s?.catatan ?? []).filter((x) => (x ?? '').trim());
+  for (const a of cat) tambah(a);
+  const gm = (s?.game ?? []).filter((x) => (x ?? '').trim());
+  for (const a of gm) tambah(a);
+
+  const urut = Object.entries(perArea).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  const puncak = urut[0]?.[1] ?? 0;
+  // SERI diakui, tidak dipaksa jadi satu: dua area yang sama-sama tertinggi adalah kabar
+  // yang lebih benar daripada memilih salah satu berdasarkan urutan abjad.
+  const terbanyak = urut.filter(([, n]) => n === puncak).map(([a]) => a);
+
+  const bagian: string[] = [];
+  if (ide.length) bagian.push(`${ide.length} ide bermain`);
+  if (cat.length) bagian.push(`${cat.length} penilaian guru`);
+  if (gm.length) bagian.push(`${gm.length} sesi game`);
+  const dariMana = bagian.length
+    ? `dihitung dari ${bagian.slice(0, -1).join(', ')}${bagian.length > 1 ? ' & ' : ''}${bagian[bagian.length - 1]}`
+    : '';
+
+  let label: string | null = null;
+  if (terbanyak.length) {
+    const tampil = terbanyak.slice(0, MAKS_AREA_LABEL);
+    const sisa = terbanyak.length - tampil.length;
+    label = tampil.join(' & ') + (sisa > 0 ? ` & ${sisa} lainnya` : '');
+  }
+  return { perArea, terbanyak, label, dariMana };
+}
+
 export function ringkasBulan(input: {
   kegiatan: KegiatanRingkas[];
   hasilMain: HasilMainRingkas[];
@@ -146,23 +238,26 @@ export function ringkasBulan(input: {
   rekomendasiPsikolog?: RekomendasiRingkas[];
   rekomendasiItem?: ItemRingkas[];
   evaluasi?: EvaluasiRingkas[];
+  /** `fokus_area` tema Ide Bermain yang dikerjakan bulan itu — satu array per kegiatan */
+  fokusAreaIde?: (string[] | null | undefined)[];
 }): RingkasanBulan {
   const keg = input.kegiatan ?? [];
   const ide = keg.filter((k) => k.jenis === 'ide-bermain');
   const vid = keg.filter((k) => k.jenis === 'video');
 
   const main = input.hasilMain ?? [];
-  const perArea: Record<string, number> = {};
   let bintang = 0;
   let detik = 0;
   for (const h of main) {
-    const area = (h.area_skill ?? '').trim();
-    if (area) perArea[area] = (perArea[area] ?? 0) + 1;
     bintang += Math.max(0, Math.floor(Number(h.bintang) || 0));
     detik += Math.max(0, Math.floor(Number(h.durasi_detik) || 0));
   }
-  const areaTerbanyak = Object.entries(perArea)
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] ?? null;
+  // Area dihitung dari TIGA sumber, bukan hanya sesi game — lihat `hitungArea`.
+  const area = hitungArea({
+    ideBermain: input.fokusAreaIde ?? [],
+    catatan: (input.catatan ?? []).flatMap((c) => (c.penilaian ?? []).map((n) => n.area)),
+    game: main.map((h) => h.area_skill),
+  });
 
   return {
     totalKegiatan: keg.length,
@@ -173,8 +268,11 @@ export function ringkasBulan(input: {
     totalSesi: main.length,
     totalBintang: bintang,
     totalMenit: Math.round(detik / 60),
-    perArea,
-    areaTerbanyak,
+    perArea: area.perArea,
+    areaTerbanyak: area.label,
+    areaTeratas: area.terbanyak,
+    totalAktivitas: keg.length + main.length,
+    areaDariMana: area.dariMana,
     catatanGuru: input.catatan ?? [],
     event: input.event ?? [],
     rekomendasi: Math.max(0, Math.floor(input.rekomendasi || 0)),
@@ -187,4 +285,23 @@ export function ringkasBulan(input: {
       || (input.event ?? []).length > 0 || (input.rekomendasiPsikolog ?? []).length > 0
       || (input.rekomendasiItem ?? []).length > 0 || (input.evaluasi ?? []).length > 0,
   };
+}
+
+/**
+ * Rapikan teks yang berisi daftar dipisah koma untuk DITAMPILKAN.
+ *
+ * 🐞 Di rapor Agustus 2026 terbaca "Berjalan,melompat,menjaga keseimbangan" — koma tanpa
+ * spasi. Sumbernya BUKAN `join(',')` di kode (jalur ini mencetak `indikator` apa adanya),
+ * melainkan teks yang diketik admin begitu. Karena itu perapiannya dilakukan saat MENAMPILKAN,
+ * bukan dengan mengubah data: memperbaiki datanya hanya menolong baris yang sudah ada, dan
+ * baris berikutnya akan salah lagi.
+ *
+ * Yang dirapikan hanya koma yang menempel ke karakter berikutnya. Angka seperti "1,5" sengaja
+ * TIDAK disentuh — memberi spasi di situ akan mengubah arti.
+ */
+export function rapikanDaftar(teks: string | null | undefined): string {
+  return (teks ?? '')
+    .replace(/,(?=\S)(?!\d)/g, ', ')   // koma yang menempel, kecuali di depan angka
+    .replace(/\s{2,}/g, ' ')
+    .trim();
 }
